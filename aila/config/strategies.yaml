@@ -1,0 +1,144 @@
+# AILA - Strategy Configuration
+# This file contains configurable parameters for trading strategies
+
+# Default Triple SuperTrend Strategy
+triple_supertrend:
+  # SuperTrend parameters
+  supertrend:
+    # ST1 - Slow SuperTrend
+    st1:
+      period: 12
+      multiplier: 3.0
+
+    # ST2 - Medium SuperTrend (used for stop-loss by default)
+    st2:
+      period: 11
+      multiplier: 2.0
+
+    # ST3 - Fast SuperTrend
+    st3:
+      period: 10
+      multiplier: 1.0
+
+  # EMA Filter settings
+  ema:
+    enabled: true
+    period: 200
+    filter_mode: strict  # strict | soft
+    # strict: Only trade in direction of EMA
+    # soft: Reduce position size when trading against EMA
+
+  # Timeframe for analysis
+  timeframe: "1h"
+
+  # Trading pairs
+  pairs:
+    - BTCUSDT
+    - ETHUSDT
+
+  # Entry rules
+  entry:
+    min_volume_multiplier: 1.0  # Min volume vs average
+    max_spread_percent: 0.1     # Max allowed spread
+
+# Risk Management Configuration
+risk:
+  # Stop-Loss settings
+  stop_loss:
+    mode: supertrend_line  # supertrend_line | fixed_percent | atr
+    supertrend_line: 2     # Use ST2 line for stop-loss (1, 2, or 3)
+    fixed_percent: 2.0     # Fallback fixed percent
+    atr_multiplier: 1.5    # ATR multiplier for ATR mode
+
+  # Take-Profit settings
+  take_profit:
+    mode: risk_ratio       # risk_ratio | fixed_percent | multi_target
+    risk_ratio: 2.0        # R:R for single target
+    fixed_percent: 4.0     # Fixed percent for fixed mode
+
+    # Multi-target settings
+    multi_targets:
+      - percent: 50        # Close 50% at 1.5R
+        target: 1.5
+      - percent: 30        # Close 30% at 2R
+        target: 2.0
+      - percent: 20        # Close 20% at 3R
+        target: 3.0
+
+  # Position sizing
+  position:
+    mode: risk_percent     # risk_percent | fixed_amount | kelly
+    risk_per_trade: 2.0    # % of balance to risk
+    max_position: 20.0     # Max % of balance in one position
+    max_open_positions: 3  # Max concurrent positions
+
+  # Trailing stop
+  trailing:
+    enabled: true
+    activation: 1.0        # % profit to activate
+    step: 0.5              # % trailing step
+
+  # Safety limits
+  safety:
+    max_daily_loss_percent: 5.0
+    max_weekly_loss_percent: 10.0
+    max_drawdown_percent: 15.0
+    min_balance_usdt: 100.0
+
+    # Consecutive loss handling
+    consecutive_losses_limit: 3
+    cooldown_minutes: 60
+
+# Futures-specific settings
+futures:
+  default_leverage: 10
+  leverage_mode: cross  # cross | isolated
+
+  # Per-symbol leverage limits
+  leverage_presets:
+    BTCUSDT:
+      max: 100
+      default: 10
+    ETHUSDT:
+      max: 100
+      default: 10
+    SOLUSDT:
+      max: 50
+      default: 5
+    XRPUSDT:
+      max: 75
+      default: 5
+    DOGEUSDT:
+      max: 50
+      default: 3
+
+# Available timeframes
+timeframes:
+  available:
+    - "1m"
+    - "3m"
+    - "5m"
+    - "15m"
+    - "30m"
+    - "1h"
+    - "2h"
+    - "4h"
+    - "6h"
+    - "12h"
+    - "1d"
+    - "1w"
+
+# Trading pairs configuration
+trading_pairs:
+  # Minimum requirements for pair selection
+  min_volume_24h: 1000000  # Min 24h volume in USDT
+  min_price: 0.0001
+
+  # Blacklisted pairs (never trade)
+  blacklist:
+    - LUNAUSDT
+    - USTCUSDT
+    - LUNCUSDT
+
+  # Whitelist (if set, only trade these)
+  whitelist: []  # Empty = allow all non-blacklisted
