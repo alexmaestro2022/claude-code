@@ -69,7 +69,10 @@ class TradeExecutor:
 
         # Initialize appropriate trader
         if client.config.account_type == AccountType.FUTURES:
-            self.trader = FuturesTrader(client)
+            self.trader = FuturesTrader(
+                client,
+                default_leverage=client.config.default_leverage,
+            )
         else:
             self.trader = SpotTrader(client)
 

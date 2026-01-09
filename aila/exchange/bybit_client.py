@@ -543,7 +543,7 @@ class BybitClient:
             side=side,
             size=Decimal(str(data.get("size", "0"))),
             entry_price=Decimal(str(data.get("avgPrice", "0"))),
-            leverage=int(data.get("leverage", 1)),
+            leverage=int(float(data.get("leverage", 1))),
             margin_mode=MarginMode(data.get("tradeMode", "cross").lower()),
             unrealized_pnl=Decimal(str(data.get("unrealisedPnl", "0"))),
             realized_pnl=Decimal(str(data.get("cumRealisedPnl", "0"))),
@@ -768,7 +768,7 @@ class BybitClient:
                 max_order_qty=Decimal(str(item.get("lotSizeFilter", {}).get("maxOrderQty", "1000000"))),
                 qty_step=Decimal(str(item.get("lotSizeFilter", {}).get("qtyStep", "0.001"))),
                 tick_size=Decimal(str(item.get("priceFilter", {}).get("tickSize", "0.01"))),
-                max_leverage=int(item.get("leverageFilter", {}).get("maxLeverage", 100)),
+                max_leverage=int(float(item.get("leverageFilter", {}).get("maxLeverage", 100))),
             )
             pairs.append(pair)
             self._trading_pairs[pair.symbol] = pair
