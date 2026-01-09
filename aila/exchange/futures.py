@@ -170,11 +170,19 @@ class FuturesTrader:
             # USDT amount * leverage / price = quantity
             position_value = usdt_amount * Decimal(str(lev))
             quantity = position_value / ticker.last_price
-            quantity = pair.round_quantity(quantity)
 
         if quantity is None:
             logger.error("No quantity specified")
             return None
+
+        # Round quantity to valid step size
+        quantity = pair.round_quantity(quantity)
+
+        # Round stop_loss and take_profit to valid tick size
+        if stop_loss is not None:
+            stop_loss = pair.round_price(stop_loss)
+        if take_profit is not None:
+            take_profit = pair.round_price(take_profit)
 
         # Validate order
         is_valid, error = pair.validate_order(quantity)
