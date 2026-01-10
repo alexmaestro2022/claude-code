@@ -37,7 +37,12 @@ class DatabaseSettings(BaseSettings):
 class ExchangeSettings(BaseSettings):
     """Exchange API configuration."""
 
-    model_config = SettingsConfigDict(env_prefix="BYBIT_")
+    model_config = SettingsConfigDict(
+        env_prefix="BYBIT_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     api_key: SecretStr = SecretStr("")
     api_secret: SecretStr = SecretStr("")
@@ -53,7 +58,12 @@ class ExchangeSettings(BaseSettings):
 class StrategySettings(BaseSettings):
     """Strategy configuration."""
 
-    model_config = SettingsConfigDict(env_prefix="STRATEGY_")
+    model_config = SettingsConfigDict(
+        env_prefix="STRATEGY_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     # SuperTrend parameters
     st1_period: int = 12
@@ -76,7 +86,12 @@ class StrategySettings(BaseSettings):
 class RiskSettings(BaseSettings):
     """Risk management configuration."""
 
-    model_config = SettingsConfigDict(env_prefix="RISK_")
+    model_config = SettingsConfigDict(
+        env_prefix="RISK_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     # Stop-loss
     sl_mode: str = "supertrend_line"  # supertrend_line | fixed_percent | atr
@@ -109,7 +124,12 @@ class RiskSettings(BaseSettings):
 class FuturesSettings(BaseSettings):
     """Futures trading configuration."""
 
-    model_config = SettingsConfigDict(env_prefix="FUTURES_")
+    model_config = SettingsConfigDict(
+        env_prefix="FUTURES_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     default_leverage: int = 10
     leverage_mode: str = "cross"  # cross | isolated
