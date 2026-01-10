@@ -899,7 +899,7 @@ DASHBOARD_HTML = r"""
 
     <!-- Create Bot Modal -->
     <div class="modal" id="createBotModal">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width: 700px;">
             <div class="modal-header">
                 <h3 data-i18n="createBot">Create Bot</h3>
                 <button class="modal-close" onclick="closeModal('createBotModal')">&times;</button>
@@ -910,16 +910,23 @@ DASHBOARD_HTML = r"""
                     <input type="text" id="newBotName" placeholder="My Bot">
                 </div>
                 <div class="setting-item">
-                    <label data-i18n="tradingPairs">Trading Pairs</label>
-                    <input type="text" id="newBotPairs" value="BTCUSDT" placeholder="BTCUSDT,ETHUSDT">
+                    <label data-i18n="tradingPair">Trading Pair</label>
+                    <select id="newBotPair" style="max-height: 200px;">
+                        <option value="BTCUSDT">BTCUSDT</option>
+                    </select>
                 </div>
                 <div class="setting-item">
                     <label data-i18n="timeframe">Timeframe</label>
                     <select id="newBotTimeframe">
+                        <option value="1m">1m</option>
+                        <option value="3m">3m</option>
                         <option value="5m">5m</option>
                         <option value="15m" selected>15m</option>
+                        <option value="30m">30m</option>
                         <option value="1h">1h</option>
+                        <option value="2h">2h</option>
                         <option value="4h">4h</option>
+                        <option value="1d">1d</option>
                     </select>
                 </div>
                 <div class="setting-item">
@@ -927,12 +934,31 @@ DASHBOARD_HTML = r"""
                     <input type="number" id="newBotLeverage" value="10" min="1" max="100">
                 </div>
                 <div class="setting-item">
-                    <label data-i18n="riskPerTrade">Risk %</label>
+                    <label data-i18n="riskPerTrade">Risk per Trade (%)</label>
                     <input type="number" id="newBotRisk" value="2" min="0.1" max="10" step="0.1">
                 </div>
                 <div class="setting-item">
-                    <label data-i18n="tpRatio">R:R Ratio</label>
+                    <label data-i18n="tpRatio">Take Profit (R:R)</label>
                     <input type="number" id="newBotTpRatio" value="2" min="1" max="10" step="0.5">
+                </div>
+                <div class="setting-item">
+                    <label data-i18n="slMode">Stop Loss Mode</label>
+                    <select id="newBotSlMode">
+                        <option value="supertrend_line" selected>SuperTrend Line</option>
+                        <option value="fixed_percent">Fixed Percent</option>
+                        <option value="atr">ATR</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label data-i18n="maxPositions">Max Positions</label>
+                    <input type="number" id="newBotMaxPositions" value="3" min="1" max="10">
+                </div>
+                <div class="setting-item">
+                    <label data-i18n="emaFilter">EMA 200 Filter</label>
+                    <select id="newBotEmaEnabled">
+                        <option value="true" selected data-i18n="enabled">Enabled</option>
+                        <option value="false" data-i18n="disabled">Disabled</option>
+                    </select>
                 </div>
             </div>
             <div class="settings-actions">
@@ -958,6 +984,7 @@ DASHBOARD_HTML = r"""
                 strategySettings: 'Strategy Settings',
                 timeframe: 'Timeframe',
                 tradingPairs: 'Trading Pairs',
+                tradingPair: 'Trading Pair',
                 riskPerTrade: 'Risk per Trade (%)',
                 tpRatio: 'Take Profit Ratio (R:R)',
                 slMode: 'Stop Loss Mode',
@@ -1018,6 +1045,7 @@ DASHBOARD_HTML = r"""
                 strategySettings: 'Настройки стратегии',
                 timeframe: 'Таймфрейм',
                 tradingPairs: 'Торговые пары',
+                tradingPair: 'Торговая пара',
                 riskPerTrade: 'Риск на сделку (%)',
                 tpRatio: 'Тейк-профит (R:R)',
                 slMode: 'Режим стоп-лосса',
@@ -1428,7 +1456,34 @@ DASHBOARD_HTML = r"""
         }
 
         // Modal functions
-        function showCreateBotModal() {
+        async function showCreateBotModal() {
+            // Load trading pairs into dropdown
+            try {
+                const response = await fetch('/api/trading-pairs');
+                const data = await response.json();
+                const select = document.getElementById('newBotPair');
+                select.innerHTML = '';
+
+                if (data.pairs && data.pairs.length > 0) {
+                    data.pairs.forEach(pair => {
+                        const option = document.createElement('option');
+                        option.value = pair.symbol;
+                        option.textContent = pair.symbol;
+                        select.appendChild(option);
+                    });
+                } else {
+                    // Default pairs if API fails
+                    ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'DOGEUSDT'].forEach(symbol => {
+                        const option = document.createElement('option');
+                        option.value = symbol;
+                        option.textContent = symbol;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (err) {
+                console.error('Failed to load pairs for modal:', err);
+            }
+
             document.getElementById('createBotModal').classList.add('show');
         }
 
@@ -1458,17 +1513,22 @@ DASHBOARD_HTML = r"""
             }
 
             grid.innerHTML = botsData.map(bot => `
-                <div class="bot-card ${bot.status === 'running' ? 'running' : ''}">
+                <div class="bot-card ${bot.status === 'running' ? 'running' : ''}" style="min-width: 400px;">
                     <div class="bot-header">
                         <span class="bot-name">${bot.name}</span>
                         <span class="bot-status ${bot.status}">${bot.status === 'running' ? t('running') : t('stopped')}</span>
                     </div>
                     <div class="bot-details">
-                        <div><strong>${t('tradingPairs')}:</strong> ${bot.trading_pairs.join(', ')}</div>
-                        <div><strong>${t('timeframe')}:</strong> ${bot.timeframe}</div>
-                        <div><strong>${t('leverage')}:</strong> ${bot.leverage}x | <strong>R:R:</strong> ${bot.tp_risk_ratio}</div>
-                        <div><strong>${t('riskPerTrade')}:</strong> ${bot.risk_per_trade}%</div>
+                        <div><strong>${t('tradingPair')}:</strong> ${Array.isArray(bot.trading_pairs) ? bot.trading_pairs[0] : bot.trading_pairs}</div>
+                        <div><strong>${t('timeframe')}:</strong> ${bot.timeframe} | <strong>${t('leverage')}:</strong> ${bot.leverage}x</div>
+                        <div><strong>R:R:</strong> ${bot.tp_risk_ratio} | <strong>${t('riskPerTrade')}:</strong> ${bot.risk_per_trade}%</div>
+                        <div><strong>EMA200:</strong> ${bot.ema_enabled ? '✓' : '✗'} | <strong>SL:</strong> ${bot.sl_mode}</div>
                     </div>
+                    ${bot.status === 'running' ? `
+                        <div class="bot-chart-container" style="margin: 10px 0;">
+                            <div class="chart-wrapper" id="bot-chart-${bot.id}" style="height: 200px;"></div>
+                        </div>
+                    ` : ''}
                     <div class="bot-actions">
                         ${bot.status === 'running' ?
                             `<button class="btn btn-danger" onclick="stopSpecificBot('${bot.id}')">${t('stop')}</button>` :
@@ -1478,16 +1538,132 @@ DASHBOARD_HTML = r"""
                     </div>
                 </div>
             `).join('');
+
+            // Create charts for running bots
+            botsData.filter(bot => bot.status === 'running').forEach(bot => {
+                setTimeout(() => createBotChart(bot), 100);
+            });
+        }
+
+        // Create chart for a specific bot with indicators
+        async function createBotChart(bot) {
+            const symbol = Array.isArray(bot.trading_pairs) ? bot.trading_pairs[0] : bot.trading_pairs;
+            const chartContainer = document.getElementById('bot-chart-' + bot.id);
+            if (!chartContainer || typeof LightweightCharts === 'undefined') return;
+
+            chartContainer.innerHTML = '';
+
+            const chart = LightweightCharts.createChart(chartContainer, {
+                width: chartContainer.clientWidth,
+                height: 200,
+                layout: {
+                    background: { type: 'solid', color: 'transparent' },
+                    textColor: '#888',
+                },
+                grid: {
+                    vertLines: { color: 'rgba(255, 255, 255, 0.05)' },
+                    horzLines: { color: 'rgba(255, 255, 255, 0.05)' },
+                },
+                rightPriceScale: { borderColor: 'rgba(255, 255, 255, 0.1)' },
+                timeScale: { borderColor: 'rgba(255, 255, 255, 0.1)', timeVisible: true },
+            });
+
+            // Candlestick series
+            const candlestickSeries = chart.addCandlestickSeries({
+                upColor: '#00ff88',
+                downColor: '#ff4444',
+                borderDownColor: '#ff4444',
+                borderUpColor: '#00ff88',
+                wickDownColor: '#ff4444',
+                wickUpColor: '#00ff88',
+            });
+
+            // Get interval from timeframe
+            const tfMap = {'1m':'1','3m':'3','5m':'5','15m':'15','30m':'30','1h':'60','2h':'120','4h':'240','1d':'D'};
+            const interval = tfMap[bot.timeframe] || '15';
+
+            // Load klines
+            try {
+                const klinesResponse = await fetch(`/api/klines/${symbol}?interval=${interval}&limit=100`);
+                const klinesData = await klinesResponse.json();
+                if (klinesData.klines && klinesData.klines.length > 0) {
+                    candlestickSeries.setData(klinesData.klines);
+                }
+            } catch (err) {
+                console.error('Failed to load klines for bot chart:', err);
+            }
+
+            // Load and add indicators
+            try {
+                const indResponse = await fetch(`/api/indicators/${symbol}?interval=${interval}&limit=200`);
+                const indData = await indResponse.json();
+
+                if (indData.indicators) {
+                    // EMA 200 (if enabled)
+                    if (bot.ema_enabled && indData.indicators.ema200 && indData.indicators.ema200.length > 0) {
+                        const emaSeries = chart.addLineSeries({
+                            color: '#ffcc00',
+                            lineWidth: 2,
+                            title: 'EMA200',
+                        });
+                        emaSeries.setData(indData.indicators.ema200);
+                    }
+
+                    // SuperTrend 1 (green/red)
+                    if (indData.indicators.supertrend1 && indData.indicators.supertrend1.length > 0) {
+                        const st1Series = chart.addLineSeries({
+                            color: '#00ff88',
+                            lineWidth: 1,
+                            title: 'ST1',
+                        });
+                        st1Series.setData(indData.indicators.supertrend1.map(p => ({time: p.time, value: p.value})));
+                    }
+
+                    // SuperTrend 2 (cyan/orange)
+                    if (indData.indicators.supertrend2 && indData.indicators.supertrend2.length > 0) {
+                        const st2Series = chart.addLineSeries({
+                            color: '#00d4ff',
+                            lineWidth: 1,
+                            title: 'ST2',
+                        });
+                        st2Series.setData(indData.indicators.supertrend2.map(p => ({time: p.time, value: p.value})));
+                    }
+
+                    // SuperTrend 3 (purple/pink)
+                    if (indData.indicators.supertrend3 && indData.indicators.supertrend3.length > 0) {
+                        const st3Series = chart.addLineSeries({
+                            color: '#aa00ff',
+                            lineWidth: 1,
+                            title: 'ST3',
+                        });
+                        st3Series.setData(indData.indicators.supertrend3.map(p => ({time: p.time, value: p.value})));
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to load indicators for bot chart:', err);
+            }
+
+            // Fit content
+            chart.timeScale().fitContent();
+
+            // Handle resize
+            new ResizeObserver(() => {
+                chart.applyOptions({ width: chartContainer.clientWidth });
+            }).observe(chartContainer);
         }
 
         async function createBot() {
+            const selectedPair = document.getElementById('newBotPair').value;
             const config = {
                 name: document.getElementById('newBotName').value || 'Bot ' + (botsData.length + 1),
-                trading_pairs: document.getElementById('newBotPairs').value.split(',').map(s => s.trim()),
+                trading_pairs: [selectedPair],
                 timeframe: document.getElementById('newBotTimeframe').value,
                 leverage: parseInt(document.getElementById('newBotLeverage').value),
                 risk_per_trade: parseFloat(document.getElementById('newBotRisk').value),
                 tp_risk_ratio: parseFloat(document.getElementById('newBotTpRatio').value),
+                sl_mode: document.getElementById('newBotSlMode').value,
+                max_positions: parseInt(document.getElementById('newBotMaxPositions').value),
+                ema_enabled: document.getElementById('newBotEmaEnabled').value === 'true',
             };
 
             try {
@@ -2144,6 +2320,111 @@ async def get_ticker(symbol: str):
     except Exception as e:
         logger.error("Failed to get ticker", symbol=symbol, error=str(e))
         return {"error": str(e)}
+
+
+@app.get("/api/indicators/{symbol}")
+async def get_indicators(symbol: str, interval: str = "15", limit: int = 200):
+    """Get indicator data (EMA200, SuperTrend) for charts."""
+    client = bot_state.get("client")
+    if not client:
+        return {"error": "Not connected to exchange", "indicators": {}}
+
+    try:
+        import pandas as pd
+        import numpy as np
+
+        df = client.get_klines(symbol=symbol, interval=interval, limit=limit)
+        if df.empty:
+            return {"indicators": {}}
+
+        # Calculate EMA 200
+        ema_period = 200
+        if len(df) >= ema_period:
+            df['ema200'] = df['close'].ewm(span=ema_period, adjust=False).mean()
+        else:
+            df['ema200'] = df['close'].ewm(span=len(df), adjust=False).mean()
+
+        # Calculate SuperTrend (3 different settings)
+        def calculate_supertrend(df, period, multiplier):
+            hl2 = (df['high'] + df['low']) / 2
+
+            # ATR calculation
+            tr1 = df['high'] - df['low']
+            tr2 = abs(df['high'] - df['close'].shift(1))
+            tr3 = abs(df['low'] - df['close'].shift(1))
+            tr = pd.concat([tr1, tr2, tr3], axis=1).max(axis=1)
+            atr = tr.rolling(window=period).mean()
+
+            # SuperTrend
+            upper_band = hl2 + (multiplier * atr)
+            lower_band = hl2 - (multiplier * atr)
+
+            supertrend = pd.Series(index=df.index, dtype=float)
+            direction = pd.Series(index=df.index, dtype=int)
+
+            for i in range(period, len(df)):
+                if df['close'].iloc[i] > upper_band.iloc[i-1]:
+                    direction.iloc[i] = 1
+                elif df['close'].iloc[i] < lower_band.iloc[i-1]:
+                    direction.iloc[i] = -1
+                else:
+                    direction.iloc[i] = direction.iloc[i-1] if i > period else 1
+
+                if direction.iloc[i] == 1:
+                    supertrend.iloc[i] = lower_band.iloc[i]
+                else:
+                    supertrend.iloc[i] = upper_band.iloc[i]
+
+            return supertrend, direction
+
+        # Three SuperTrend settings (from strategy)
+        st1, dir1 = calculate_supertrend(df, 10, 1.0)
+        st2, dir2 = calculate_supertrend(df, 11, 2.0)
+        st3, dir3 = calculate_supertrend(df, 12, 3.0)
+
+        # Prepare response
+        result = {
+            "ema200": [],
+            "supertrend1": [],
+            "supertrend2": [],
+            "supertrend3": [],
+        }
+
+        for idx, row in df.iterrows():
+            timestamp = int(idx.timestamp())
+
+            if pd.notna(df.loc[idx, 'ema200']):
+                result["ema200"].append({
+                    "time": timestamp,
+                    "value": float(df.loc[idx, 'ema200'])
+                })
+
+            if pd.notna(st1.loc[idx]):
+                result["supertrend1"].append({
+                    "time": timestamp,
+                    "value": float(st1.loc[idx]),
+                    "color": "#00ff88" if dir1.loc[idx] == 1 else "#ff4444"
+                })
+
+            if pd.notna(st2.loc[idx]):
+                result["supertrend2"].append({
+                    "time": timestamp,
+                    "value": float(st2.loc[idx]),
+                    "color": "#00d4ff" if dir2.loc[idx] == 1 else "#ff8800"
+                })
+
+            if pd.notna(st3.loc[idx]):
+                result["supertrend3"].append({
+                    "time": timestamp,
+                    "value": float(st3.loc[idx]),
+                    "color": "#aa00ff" if dir3.loc[idx] == 1 else "#ff0088"
+                })
+
+        return {"indicators": result}
+
+    except Exception as e:
+        logger.error("Failed to calculate indicators", symbol=symbol, error=str(e))
+        return {"indicators": {}, "error": str(e)}
 
 
 @app.websocket("/ws/logs")
