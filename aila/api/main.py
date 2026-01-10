@@ -1776,7 +1776,7 @@ DASHBOARD_HTML = r"""
 
             // Load klines
             try {
-                const klinesResponse = await fetch(`/api/klines/${symbol}?interval=${interval}&limit=100`);
+                const klinesResponse = await fetch(`/api/klines/${symbol}?interval=${interval}&limit=500`);
                 const klinesData = await klinesResponse.json();
                 console.log(`Chart update for ${symbol}:`, klinesData.klines?.length || 0, 'candles');
                 if (klinesData.klines && klinesData.klines.length > 0) {
@@ -1797,7 +1797,7 @@ DASHBOARD_HTML = r"""
 
             // Load indicators
             try {
-                const indResponse = await fetch(`/api/indicators/${symbol}?interval=${interval}&limit=200`);
+                const indResponse = await fetch(`/api/indicators/${symbol}?interval=${interval}&limit=500`);
                 const indData = await indResponse.json();
 
                 if (indData.indicators) {
@@ -2097,7 +2097,7 @@ DASHBOARD_HTML = r"""
 
             // Load klines
             try {
-                const klinesResponse = await fetch(`/api/klines/${symbol}?interval=${interval}&limit=200`);
+                const klinesResponse = await fetch(`/api/klines/${symbol}?interval=${interval}&limit=500`);
                 const klinesData = await klinesResponse.json();
                 if (klinesData.klines && klinesData.klines.length > 0) {
                     candlestickSeries.setData(klinesData.klines);
@@ -2108,7 +2108,7 @@ DASHBOARD_HTML = r"""
 
             // Load indicators
             try {
-                const indResponse = await fetch(`/api/indicators/${symbol}?interval=${interval}&limit=200`);
+                const indResponse = await fetch(`/api/indicators/${symbol}?interval=${interval}&limit=500`);
                 const indData = await indResponse.json();
 
                 if (indData.indicators) {
@@ -2188,7 +2188,7 @@ DASHBOARD_HTML = r"""
 
             try {
                 // Update klines
-                const klinesResponse = await fetch(`/api/klines/${symbol}?interval=${interval}&limit=100`);
+                const klinesResponse = await fetch(`/api/klines/${symbol}?interval=${interval}&limit=500`);
                 const klinesData = await klinesResponse.json();
                 console.log(`Fullscreen chart update for ${symbol}:`, klinesData.klines?.length || 0, 'candles');
 
@@ -2215,7 +2215,7 @@ DASHBOARD_HTML = r"""
                 }
 
                 // Update indicators
-                const indResponse = await fetch(`/api/indicators/${symbol}?interval=${interval}&limit=100`);
+                const indResponse = await fetch(`/api/indicators/${symbol}?interval=${interval}&limit=500`);
                 const indData = await indResponse.json();
 
                 if (indData.indicators) {
@@ -2353,7 +2353,7 @@ DASHBOARD_HTML = r"""
         async function updateChartData(symbol) {
             const interval = document.getElementById('chartTimeframe').value;
             try {
-                const response = await fetch(`/api/klines/${symbol}?interval=${interval}&limit=100`);
+                const response = await fetch(`/api/klines/${symbol}?interval=${interval}&limit=500`);
                 const data = await response.json();
 
                 if (data.klines && data.klines.length > 0 && charts[symbol]) {
