@@ -306,30 +306,22 @@ def main():
         print(f"  Mode: Auto-start")
     print(f"{'='*50}\n")
 
-    # Global shutdown flag
-    shutdown_requested = False
+    def force_exit(signum, frame):
+        """Exit immediately on Ctrl+C."""
+        print("\nExiting...")
+        os._exit(0)
 
-    def force_shutdown(signum, frame):
-        """Force shutdown on signal."""
-        nonlocal shutdown_requested
-        if shutdown_requested:
-            # Second Ctrl+C - force exit immediately
-            print("\nForce exit...")
-            os._exit(0)
-        shutdown_requested = True
-        print("\nShutdown signal received... (press Ctrl+C again to force)")
-
-    # Register signal handlers
-    signal.signal(signal.SIGINT, force_shutdown)
-    signal.signal(signal.SIGTERM, force_shutdown)
+    # Register signal handlers - exit immediately
+    signal.signal(signal.SIGINT, force_exit)
+    signal.signal(signal.SIGTERM, force_exit)
 
     try:
         if args.no_autostart:
             # Run web server only mode
             add_log("[info    ] Web interface started. Use buttons to control bot.")
-            while not shutdown_requested:
+            while True:
                 import time
-                time.sleep(0.5)
+                time.sleep(1)
         else:
             # Run with auto-start
             loop = asyncio.new_event_loop()
@@ -340,9 +332,7 @@ def main():
                 loop.close()
     except Exception as e:
         print(f"Error: {e}")
-    finally:
-        print("Exiting...")
-        os._exit(0)
+        os._exit(1)
 
 
 if __name__ == "__main__":
