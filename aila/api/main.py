@@ -69,7 +69,7 @@ app.add_middleware(
 
 
 # Dashboard HTML with auto-refresh and copy button
-DASHBOARD_HTML = """
+DASHBOARD_HTML = r"""
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -383,104 +383,131 @@ DASHBOARD_HTML = """
         .running .btn-success {
             opacity: 0.5;
         }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .lang-selector {
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(0, 0, 0, 0.3);
+            color: #e0e0e0;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .lang-selector:focus {
+            outline: none;
+            border-color: #00d4ff;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
             <h1>AILA Trading Bot</h1>
-            <div class="status">
-                <div class="status-dot" id="statusDot"></div>
-                <span id="statusText">Connecting...</span>
+            <div class="header-right">
+                <select class="lang-selector" id="langSelector" onchange="changeLanguage(this.value)">
+                    <option value="en">English</option>
+                    <option value="ru">Русский</option>
+                </select>
+                <div class="status">
+                    <div class="status-dot" id="statusDot"></div>
+                    <span id="statusText" data-i18n="connecting">Connecting...</span>
+                </div>
             </div>
         </header>
 
         <div class="controls">
             <div class="control-group">
                 <button class="btn btn-success btn-large" id="startBtn" onclick="startBot()">
-                    <span class="btn-icon">▶</span> Start Bot
+                    <span class="btn-icon">▶</span> <span data-i18n="startBot">Start Bot</span>
                 </button>
                 <button class="btn btn-danger btn-large" id="stopBtn" onclick="stopBot()" disabled>
-                    <span class="btn-icon">■</span> Stop Bot
+                    <span class="btn-icon">■</span> <span data-i18n="stopBot">Stop Bot</span>
                 </button>
                 <button class="btn btn-primary btn-large" onclick="toggleSettings()">
-                    <span class="btn-icon">⚙</span> Settings
+                    <span class="btn-icon">⚙</span> <span data-i18n="settings">Settings</span>
                 </button>
             </div>
         </div>
 
         <div class="settings-panel" id="settingsPanel" style="display: none;">
-            <h3>Strategy Settings</h3>
+            <h3 data-i18n="strategySettings">Strategy Settings</h3>
             <div class="settings-grid">
                 <div class="setting-item">
-                    <label>Timeframe</label>
+                    <label data-i18n="timeframe">Timeframe</label>
                     <select id="timeframe">
-                        <option value="1m">1 minute</option>
-                        <option value="5m">5 minutes</option>
-                        <option value="15m">15 minutes</option>
-                        <option value="30m">30 minutes</option>
-                        <option value="1h" selected>1 hour</option>
-                        <option value="4h">4 hours</option>
-                        <option value="1d">1 day</option>
+                        <option value="1m">1m</option>
+                        <option value="5m">5m</option>
+                        <option value="15m">15m</option>
+                        <option value="30m">30m</option>
+                        <option value="1h" selected>1h</option>
+                        <option value="4h">4h</option>
+                        <option value="1d">1d</option>
                     </select>
                 </div>
                 <div class="setting-item">
-                    <label>Trading Pairs</label>
+                    <label data-i18n="tradingPairs">Trading Pairs</label>
                     <input type="text" id="tradingPairs" value="BTCUSDT,ETHUSDT" placeholder="BTCUSDT,ETHUSDT">
                 </div>
                 <div class="setting-item">
-                    <label>Risk per Trade (%)</label>
+                    <label data-i18n="riskPerTrade">Risk per Trade (%)</label>
                     <input type="number" id="riskPerTrade" value="2" min="0.1" max="10" step="0.1">
                 </div>
                 <div class="setting-item">
-                    <label>Take Profit Ratio (R:R)</label>
+                    <label data-i18n="tpRatio">Take Profit Ratio (R:R)</label>
                     <input type="number" id="tpRatio" value="2" min="1" max="10" step="0.5">
                 </div>
                 <div class="setting-item">
-                    <label>Stop Loss Mode</label>
+                    <label data-i18n="slMode">Stop Loss Mode</label>
                     <select id="slMode">
                         <option value="supertrend_line" selected>SuperTrend Line</option>
-                        <option value="fixed_percent">Fixed Percent</option>
-                        <option value="atr">ATR Based</option>
+                        <option value="fixed_percent" data-i18n="fixedPercent">Fixed Percent</option>
+                        <option value="atr">ATR</option>
                     </select>
                 </div>
                 <div class="setting-item">
-                    <label>Leverage</label>
+                    <label data-i18n="leverage">Leverage</label>
                     <input type="number" id="leverage" value="10" min="1" max="100" step="1">
                 </div>
                 <div class="setting-item">
-                    <label>Max Open Positions</label>
+                    <label data-i18n="maxPositions">Max Open Positions</label>
                     <input type="number" id="maxPositions" value="3" min="1" max="10" step="1">
                 </div>
                 <div class="setting-item">
-                    <label>EMA Filter</label>
+                    <label data-i18n="emaFilter">EMA Filter</label>
                     <select id="emaEnabled">
-                        <option value="true" selected>Enabled</option>
-                        <option value="false">Disabled</option>
+                        <option value="true" selected data-i18n="enabled">Enabled</option>
+                        <option value="false" data-i18n="disabled">Disabled</option>
                     </select>
                 </div>
             </div>
             <div class="settings-actions">
-                <button class="btn btn-secondary" onclick="loadSettings()">Reset</button>
-                <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+                <button class="btn btn-secondary" onclick="loadSettings()" data-i18n="reset">Reset</button>
+                <button class="btn btn-primary" onclick="saveSettings()" data-i18n="saveSettings">Save Settings</button>
             </div>
         </div>
 
         <div class="cards">
             <div class="card">
-                <div class="card-title">Balance (USDT)</div>
+                <div class="card-title" data-i18n="balance">Balance (USDT)</div>
                 <div class="card-value" id="balance">--</div>
             </div>
             <div class="card">
-                <div class="card-title">Open Positions</div>
+                <div class="card-title" data-i18n="openPositions">Open Positions</div>
                 <div class="card-value" id="positions">--</div>
             </div>
             <div class="card">
-                <div class="card-title">Today's Trades</div>
+                <div class="card-title" data-i18n="todayTrades">Today's Trades</div>
                 <div class="card-value" id="trades">--</div>
             </div>
             <div class="card">
-                <div class="card-title">Today's PnL</div>
+                <div class="card-title" data-i18n="todayPnl">Today's PnL</div>
                 <div class="card-value" id="pnl">--</div>
             </div>
         </div>
@@ -488,12 +515,12 @@ DASHBOARD_HTML = """
         <div class="logs-container">
             <div class="logs-header">
                 <div style="display: flex; align-items: center;">
-                    <h2>Live Logs</h2>
-                    <span class="auto-scroll-indicator active" id="autoScrollIndicator">Auto-scroll ON</span>
+                    <h2 data-i18n="liveLogs">Live Logs</h2>
+                    <span class="auto-scroll-indicator active" id="autoScrollIndicator" data-i18n="autoScrollOn">Auto-scroll ON</span>
                 </div>
                 <div class="btn-group">
-                    <button class="btn btn-secondary" onclick="clearLogs()">Clear</button>
-                    <button class="btn btn-primary" onclick="copyLogs()">Copy Logs</button>
+                    <button class="btn btn-secondary" onclick="clearLogs()" data-i18n="clear">Clear</button>
+                    <button class="btn btn-primary" onclick="copyLogs()" data-i18n="copyLogs">Copy Logs</button>
                 </div>
             </div>
             <div class="logs" id="logs"></div>
@@ -507,6 +534,118 @@ DASHBOARD_HTML = """
     <div class="toast" id="toast">Logs copied to clipboard!</div>
 
     <script>
+        // Localization
+        const i18n = {
+            en: {
+                connecting: 'Connecting...',
+                connected: 'Connected',
+                disconnected: 'Disconnected',
+                startBot: 'Start Bot',
+                stopBot: 'Stop Bot',
+                running: 'Running',
+                starting: 'Starting...',
+                stopping: 'Stopping...',
+                settings: 'Settings',
+                strategySettings: 'Strategy Settings',
+                timeframe: 'Timeframe',
+                tradingPairs: 'Trading Pairs',
+                riskPerTrade: 'Risk per Trade (%)',
+                tpRatio: 'Take Profit Ratio (R:R)',
+                slMode: 'Stop Loss Mode',
+                leverage: 'Leverage',
+                maxPositions: 'Max Open Positions',
+                emaFilter: 'EMA Filter',
+                enabled: 'Enabled',
+                disabled: 'Disabled',
+                fixedPercent: 'Fixed Percent',
+                reset: 'Reset',
+                saveSettings: 'Save Settings',
+                balance: 'Balance (USDT)',
+                openPositions: 'Open Positions',
+                todayTrades: "Today's Trades",
+                todayPnl: "Today's PnL",
+                liveLogs: 'Live Logs',
+                autoScrollOn: 'Auto-scroll ON',
+                autoScrollOff: 'Auto-scroll OFF (scroll to bottom to enable)',
+                clear: 'Clear',
+                copyLogs: 'Copy Logs',
+                logsCopied: 'Logs copied to clipboard!',
+                copyFailed: 'Failed to copy logs',
+                botStarted: 'Bot started successfully!',
+                botStopped: 'Bot stopped successfully!',
+                failedStart: 'Failed to start',
+                failedStop: 'Failed to stop',
+                settingsSaved: 'Settings saved! Restart bot to apply.',
+                failedSave: 'Failed to save',
+                logsCleared: '--- Logs cleared ---'
+            },
+            ru: {
+                connecting: 'Подключение...',
+                connected: 'Подключено',
+                disconnected: 'Отключено',
+                startBot: 'Запуск',
+                stopBot: 'Стоп',
+                running: 'Работает',
+                starting: 'Запуск...',
+                stopping: 'Остановка...',
+                settings: 'Настройки',
+                strategySettings: 'Настройки стратегии',
+                timeframe: 'Таймфрейм',
+                tradingPairs: 'Торговые пары',
+                riskPerTrade: 'Риск на сделку (%)',
+                tpRatio: 'Тейк-профит (R:R)',
+                slMode: 'Режим стоп-лосса',
+                leverage: 'Плечо',
+                maxPositions: 'Макс. позиций',
+                emaFilter: 'EMA фильтр',
+                enabled: 'Включен',
+                disabled: 'Выключен',
+                fixedPercent: 'Фикс. процент',
+                reset: 'Сброс',
+                saveSettings: 'Сохранить',
+                balance: 'Баланс (USDT)',
+                openPositions: 'Открытые позиции',
+                todayTrades: 'Сделок сегодня',
+                todayPnl: 'PnL за день',
+                liveLogs: 'Логи',
+                autoScrollOn: 'Авто-прокрутка ВКЛ',
+                autoScrollOff: 'Авто-прокрутка ВЫКЛ (прокрутите вниз для включения)',
+                clear: 'Очистить',
+                copyLogs: 'Копировать',
+                logsCopied: 'Логи скопированы!',
+                copyFailed: 'Ошибка копирования',
+                botStarted: 'Бот запущен!',
+                botStopped: 'Бот остановлен!',
+                failedStart: 'Ошибка запуска',
+                failedStop: 'Ошибка остановки',
+                settingsSaved: 'Настройки сохранены! Перезапустите бот.',
+                failedSave: 'Ошибка сохранения',
+                logsCleared: '--- Логи очищены ---'
+            }
+        };
+
+        let currentLang = localStorage.getItem('ailaLang') || 'en';
+
+        function t(key) {
+            return i18n[currentLang][key] || i18n['en'][key] || key;
+        }
+
+        function changeLanguage(lang) {
+            currentLang = lang;
+            localStorage.setItem('ailaLang', lang);
+            updateUI();
+        }
+
+        function updateUI() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (i18n[currentLang][key]) {
+                    el.textContent = i18n[currentLang][key];
+                }
+            });
+            document.getElementById('langSelector').value = currentLang;
+        }
+
         let ws;
         let autoScroll = true;
         let reconnectAttempts = 0;
@@ -519,7 +658,7 @@ DASHBOARD_HTML = """
             ws.onopen = function() {
                 console.log('WebSocket connected');
                 document.getElementById('statusDot').classList.remove('disconnected');
-                document.getElementById('statusText').textContent = 'Connected';
+                document.getElementById('statusText').textContent = t('connected');
                 reconnectAttempts = 0;
             };
 
@@ -530,7 +669,7 @@ DASHBOARD_HTML = """
             ws.onclose = function() {
                 console.log('WebSocket disconnected');
                 document.getElementById('statusDot').classList.add('disconnected');
-                document.getElementById('statusText').textContent = 'Disconnected';
+                document.getElementById('statusText').textContent = t('disconnected');
 
                 // Reconnect
                 if (reconnectAttempts < maxReconnectAttempts) {
@@ -578,19 +717,30 @@ DASHBOARD_HTML = """
             const logsDiv = document.getElementById('logs');
             const lines = Array.from(logsDiv.querySelectorAll('.log-line'))
                 .map(line => line.textContent)
-                .join('\\n');
+                .join('\n');
 
             navigator.clipboard.writeText(lines).then(() => {
-                showToast('Logs copied to clipboard!');
+                showToast(t('logsCopied'));
             }).catch(err => {
                 console.error('Failed to copy:', err);
-                showToast('Failed to copy logs');
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = lines;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showToast(t('logsCopied'));
+                } catch (e) {
+                    showToast(t('copyFailed'));
+                }
+                document.body.removeChild(textArea);
             });
         }
 
         function clearLogs() {
             document.getElementById('logs').innerHTML = '';
-            addLogLine('--- Logs cleared ---');
+            addLogLine(t('logsCleared'));
         }
 
         function showToast(message) {
@@ -610,10 +760,10 @@ DASHBOARD_HTML = """
 
             const indicator = document.getElementById('autoScrollIndicator');
             if (autoScroll) {
-                indicator.textContent = 'Auto-scroll ON';
+                indicator.textContent = t('autoScrollOn');
                 indicator.classList.add('active');
             } else {
-                indicator.textContent = 'Auto-scroll OFF (scroll to bottom to enable)';
+                indicator.textContent = t('autoScrollOff');
                 indicator.classList.remove('active');
             }
         });
@@ -667,26 +817,26 @@ DASHBOARD_HTML = """
             try {
                 const btn = document.getElementById('startBtn');
                 btn.disabled = true;
-                btn.innerHTML = '<span class="btn-icon">⏳</span> Starting...';
+                btn.innerHTML = '<span class="btn-icon">⏳</span> ' + t('starting');
 
                 const response = await fetch('/api/bot/start', { method: 'POST' });
                 const data = await response.json();
 
                 if (data.success) {
-                    showToast('Bot started successfully!');
+                    showToast(t('botStarted'));
                     document.getElementById('startBtn').disabled = true;
                     document.getElementById('stopBtn').disabled = false;
-                    btn.innerHTML = '<span class="btn-icon">▶</span> Running';
+                    btn.innerHTML = '<span class="btn-icon">▶</span> ' + t('running');
                 } else {
-                    showToast('Failed to start: ' + data.message);
+                    showToast(t('failedStart') + ': ' + data.message);
                     btn.disabled = false;
-                    btn.innerHTML = '<span class="btn-icon">▶</span> Start Bot';
+                    btn.innerHTML = '<span class="btn-icon">▶</span> ' + t('startBot');
                 }
             } catch (err) {
                 console.error('Failed to start bot:', err);
-                showToast('Failed to start bot');
+                showToast(t('failedStart'));
                 document.getElementById('startBtn').disabled = false;
-                document.getElementById('startBtn').innerHTML = '<span class="btn-icon">▶</span> Start Bot';
+                document.getElementById('startBtn').innerHTML = '<span class="btn-icon">▶</span> ' + t('startBot');
             }
         }
 
@@ -694,23 +844,23 @@ DASHBOARD_HTML = """
             try {
                 const btn = document.getElementById('stopBtn');
                 btn.disabled = true;
-                btn.innerHTML = '<span class="btn-icon">⏳</span> Stopping...';
+                btn.innerHTML = '<span class="btn-icon">⏳</span> ' + t('stopping');
 
                 const response = await fetch('/api/bot/stop', { method: 'POST' });
                 const data = await response.json();
 
                 if (data.success) {
-                    showToast('Bot stopped successfully!');
+                    showToast(t('botStopped'));
                     document.getElementById('startBtn').disabled = false;
-                    document.getElementById('startBtn').innerHTML = '<span class="btn-icon">▶</span> Start Bot';
-                    btn.innerHTML = '<span class="btn-icon">■</span> Stop Bot';
+                    document.getElementById('startBtn').innerHTML = '<span class="btn-icon">▶</span> ' + t('startBot');
+                    btn.innerHTML = '<span class="btn-icon">■</span> ' + t('stopBot');
                 } else {
-                    showToast('Failed to stop: ' + data.message);
+                    showToast(t('failedStop') + ': ' + data.message);
                     btn.disabled = false;
                 }
             } catch (err) {
                 console.error('Failed to stop bot:', err);
-                showToast('Failed to stop bot');
+                showToast(t('failedStop'));
                 document.getElementById('stopBtn').disabled = false;
             }
         }
@@ -764,13 +914,13 @@ DASHBOARD_HTML = """
 
                 const data = await response.json();
                 if (data.success) {
-                    showToast('Settings saved! Restart bot to apply.');
+                    showToast(t('settingsSaved'));
                 } else {
-                    showToast('Failed to save: ' + data.message);
+                    showToast(t('failedSave') + ': ' + data.message);
                 }
             } catch (err) {
                 console.error('Failed to save settings:', err);
-                showToast('Failed to save settings');
+                showToast(t('failedSave'));
             }
         }
 
@@ -782,7 +932,7 @@ DASHBOARD_HTML = """
 
                 if (data.running) {
                     document.getElementById('startBtn').disabled = true;
-                    document.getElementById('startBtn').innerHTML = '<span class="btn-icon">▶</span> Running';
+                    document.getElementById('startBtn').innerHTML = '<span class="btn-icon">▶</span> ' + t('running');
                     document.getElementById('stopBtn').disabled = false;
                 }
             } catch (err) {
@@ -790,6 +940,8 @@ DASHBOARD_HTML = """
             }
         }
 
+        // Initialize UI
+        updateUI();
         checkBotStatus();
     </script>
 </body>
