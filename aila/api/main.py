@@ -865,7 +865,10 @@ DASHBOARD_HTML = r"""
                         <option value="1h">1h</option>
                         <option value="2h">2h</option>
                         <option value="4h">4h</option>
+                        <option value="6h">6h</option>
+                        <option value="12h">12h</option>
                         <option value="1d">1d</option>
+                        <option value="1w">1w</option>
                     </select>
                 </div>
                 <div class="setting-item">
@@ -882,11 +885,27 @@ DASHBOARD_HTML = r"""
                 </div>
                 <div class="setting-item">
                     <label data-i18n="slMode">Stop Loss Mode</label>
-                    <select id="newBotSlMode">
+                    <select id="newBotSlMode" onchange="toggleSlOptions('new')">
                         <option value="supertrend_line" selected>SuperTrend Line</option>
                         <option value="fixed_percent">Fixed Percent</option>
                         <option value="atr">ATR</option>
                     </select>
+                </div>
+                <div class="setting-item" id="newSlLineContainer">
+                    <label data-i18n="slLine">SL SuperTrend Line</label>
+                    <select id="newBotSlLine">
+                        <option value="1">Line 1 (Fast)</option>
+                        <option value="2" selected>Line 2 (Medium)</option>
+                        <option value="3">Line 3 (Slow)</option>
+                    </select>
+                </div>
+                <div class="setting-item" id="newSlPercentContainer" style="display: none;">
+                    <label data-i18n="slPercent">SL Fixed Percent (%)</label>
+                    <input type="number" id="newBotSlPercent" value="2" min="0.5" max="10" step="0.5">
+                </div>
+                <div class="setting-item" id="newSlAtrContainer" style="display: none;">
+                    <label data-i18n="slAtrMult">SL ATR Multiplier</label>
+                    <input type="number" id="newBotSlAtrMult" value="1.5" min="0.5" max="5" step="0.1">
                 </div>
                 <div class="setting-item">
                     <label data-i18n="maxPositions">Max Positions</label>
@@ -898,6 +917,28 @@ DASHBOARD_HTML = r"""
                         <option value="true" selected data-i18n="enabled">Enabled</option>
                         <option value="false" data-i18n="disabled">Disabled</option>
                     </select>
+                </div>
+                <div class="setting-item">
+                    <label data-i18n="emaMode">EMA Filter Mode</label>
+                    <select id="newBotEmaMode">
+                        <option value="strict" selected data-i18n="strict">Strict</option>
+                        <option value="soft" data-i18n="soft">Soft (50% size)</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label data-i18n="trailingStop">Trailing Stop</label>
+                    <select id="newBotTrailingEnabled">
+                        <option value="true" selected data-i18n="enabled">Enabled</option>
+                        <option value="false" data-i18n="disabled">Disabled</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label data-i18n="trailingActivation">Trailing Activation (%)</label>
+                    <input type="number" id="newBotTrailingActivation" value="1.0" min="0.5" max="5" step="0.1">
+                </div>
+                <div class="setting-item">
+                    <label data-i18n="trailingStep">Trailing Step (%)</label>
+                    <input type="number" id="newBotTrailingStep" value="0.5" min="0.1" max="2" step="0.1">
                 </div>
             </div>
             <div class="settings-actions">
@@ -943,7 +984,10 @@ DASHBOARD_HTML = r"""
                         <option value="1h">1h</option>
                         <option value="2h">2h</option>
                         <option value="4h">4h</option>
+                        <option value="6h">6h</option>
+                        <option value="12h">12h</option>
                         <option value="1d">1d</option>
+                        <option value="1w">1w</option>
                     </select>
                 </div>
                 <div class="setting-item">
@@ -960,11 +1004,27 @@ DASHBOARD_HTML = r"""
                 </div>
                 <div class="setting-item">
                     <label data-i18n="slMode">Stop Loss Mode</label>
-                    <select id="editBotSlMode">
+                    <select id="editBotSlMode" onchange="toggleSlOptions('edit')">
                         <option value="supertrend_line">SuperTrend Line</option>
                         <option value="fixed_percent">Fixed Percent</option>
                         <option value="atr">ATR</option>
                     </select>
+                </div>
+                <div class="setting-item" id="editSlLineContainer">
+                    <label data-i18n="slLine">SL SuperTrend Line</label>
+                    <select id="editBotSlLine">
+                        <option value="1">Line 1 (Fast)</option>
+                        <option value="2">Line 2 (Medium)</option>
+                        <option value="3">Line 3 (Slow)</option>
+                    </select>
+                </div>
+                <div class="setting-item" id="editSlPercentContainer" style="display: none;">
+                    <label data-i18n="slPercent">SL Fixed Percent (%)</label>
+                    <input type="number" id="editBotSlPercent" value="2" min="0.5" max="10" step="0.5">
+                </div>
+                <div class="setting-item" id="editSlAtrContainer" style="display: none;">
+                    <label data-i18n="slAtrMult">SL ATR Multiplier</label>
+                    <input type="number" id="editBotSlAtrMult" value="1.5" min="0.5" max="5" step="0.1">
                 </div>
                 <div class="setting-item">
                     <label data-i18n="maxPositions">Max Positions</label>
@@ -976,6 +1036,28 @@ DASHBOARD_HTML = r"""
                         <option value="true" data-i18n="enabled">Enabled</option>
                         <option value="false" data-i18n="disabled">Disabled</option>
                     </select>
+                </div>
+                <div class="setting-item">
+                    <label data-i18n="emaMode">EMA Filter Mode</label>
+                    <select id="editBotEmaMode">
+                        <option value="strict" data-i18n="strict">Strict</option>
+                        <option value="soft" data-i18n="soft">Soft (50% size)</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label data-i18n="trailingStop">Trailing Stop</label>
+                    <select id="editBotTrailingEnabled">
+                        <option value="true" data-i18n="enabled">Enabled</option>
+                        <option value="false" data-i18n="disabled">Disabled</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label data-i18n="trailingActivation">Trailing Activation (%)</label>
+                    <input type="number" id="editBotTrailingActivation" value="1.0" min="0.5" max="5" step="0.1">
+                </div>
+                <div class="setting-item">
+                    <label data-i18n="trailingStep">Trailing Step (%)</label>
+                    <input type="number" id="editBotTrailingStep" value="0.5" min="0.1" max="2" step="0.1">
                 </div>
             </div>
             <div class="settings-actions">
@@ -1021,9 +1103,18 @@ DASHBOARD_HTML = r"""
                 riskPerTrade: 'Risk per Trade (%)',
                 tpRatio: 'Take Profit Ratio (R:R)',
                 slMode: 'Stop Loss Mode',
+                slLine: 'SL SuperTrend Line',
+                slPercent: 'SL Fixed Percent (%)',
+                slAtrMult: 'SL ATR Multiplier',
                 leverage: 'Leverage',
                 maxPositions: 'Max Open Positions',
                 emaFilter: 'EMA Filter',
+                emaMode: 'EMA Filter Mode',
+                strict: 'Strict',
+                soft: 'Soft (50% size)',
+                trailingStop: 'Trailing Stop',
+                trailingActivation: 'Trailing Activation (%)',
+                trailingStep: 'Trailing Step (%)',
                 enabled: 'Enabled',
                 disabled: 'Disabled',
                 fixedPercent: 'Fixed Percent',
@@ -1088,9 +1179,18 @@ DASHBOARD_HTML = r"""
                 riskPerTrade: 'Риск на сделку (%)',
                 tpRatio: 'Тейк-профит (R:R)',
                 slMode: 'Режим стоп-лосса',
+                slLine: 'Линия SuperTrend для SL',
+                slPercent: 'SL фикс. процент (%)',
+                slAtrMult: 'SL ATR множитель',
                 leverage: 'Плечо',
                 maxPositions: 'Макс. позиций',
                 emaFilter: 'EMA фильтр',
+                emaMode: 'Режим EMA фильтра',
+                strict: 'Строгий',
+                soft: 'Мягкий (50% размер)',
+                trailingStop: 'Трейлинг-стоп',
+                trailingActivation: 'Активация трейлинга (%)',
+                trailingStep: 'Шаг трейлинга (%)',
                 enabled: 'Включен',
                 disabled: 'Выключен',
                 fixedPercent: 'Фикс. процент',
@@ -1919,8 +2019,21 @@ DASHBOARD_HTML = r"""
             }
         }
 
+        // Toggle SL options based on selected mode
+        function toggleSlOptions(prefix) {
+            const slMode = document.getElementById(prefix + 'BotSlMode').value;
+            const lineContainer = document.getElementById(prefix + 'SlLineContainer');
+            const percentContainer = document.getElementById(prefix + 'SlPercentContainer');
+            const atrContainer = document.getElementById(prefix + 'SlAtrContainer');
+
+            lineContainer.style.display = slMode === 'supertrend_line' ? 'block' : 'none';
+            percentContainer.style.display = slMode === 'fixed_percent' ? 'block' : 'none';
+            atrContainer.style.display = slMode === 'atr' ? 'block' : 'none';
+        }
+
         async function createBot() {
             const selectedPair = document.getElementById('newBotPair').value;
+            const slMode = document.getElementById('newBotSlMode').value;
             const config = {
                 name: document.getElementById('newBotName').value || 'Bot ' + (botsData.length + 1),
                 trading_pairs: [selectedPair],
@@ -1928,9 +2041,16 @@ DASHBOARD_HTML = r"""
                 leverage: parseInt(document.getElementById('newBotLeverage').value),
                 risk_per_trade: parseFloat(document.getElementById('newBotRisk').value),
                 tp_risk_ratio: parseFloat(document.getElementById('newBotTpRatio').value),
-                sl_mode: document.getElementById('newBotSlMode').value,
+                sl_mode: slMode,
+                sl_supertrend_line: parseInt(document.getElementById('newBotSlLine').value),
+                sl_fixed_percent: parseFloat(document.getElementById('newBotSlPercent').value),
+                sl_atr_multiplier: parseFloat(document.getElementById('newBotSlAtrMult').value),
                 max_positions: parseInt(document.getElementById('newBotMaxPositions').value),
                 ema_enabled: document.getElementById('newBotEmaEnabled').value === 'true',
+                ema_filter_mode: document.getElementById('newBotEmaMode').value,
+                trailing_enabled: document.getElementById('newBotTrailingEnabled').value === 'true',
+                trailing_activation: parseFloat(document.getElementById('newBotTrailingActivation').value),
+                trailing_step: parseFloat(document.getElementById('newBotTrailingStep').value),
             };
 
             try {
@@ -2021,14 +2141,25 @@ DASHBOARD_HTML = r"""
             document.getElementById('editBotRisk').value = bot.risk_per_trade;
             document.getElementById('editBotTpRatio').value = bot.tp_risk_ratio;
             document.getElementById('editBotSlMode').value = bot.sl_mode;
+            document.getElementById('editBotSlLine').value = bot.sl_supertrend_line || 2;
+            document.getElementById('editBotSlPercent').value = bot.sl_fixed_percent || 2;
+            document.getElementById('editBotSlAtrMult').value = bot.sl_atr_multiplier || 1.5;
             document.getElementById('editBotMaxPositions').value = bot.max_positions;
             document.getElementById('editBotEmaEnabled').value = bot.ema_enabled ? 'true' : 'false';
+            document.getElementById('editBotEmaMode').value = bot.ema_filter_mode || 'strict';
+            document.getElementById('editBotTrailingEnabled').value = bot.trailing_enabled !== false ? 'true' : 'false';
+            document.getElementById('editBotTrailingActivation').value = bot.trailing_activation || 1.0;
+            document.getElementById('editBotTrailingStep').value = bot.trailing_step || 0.5;
+
+            // Toggle SL options visibility
+            toggleSlOptions('edit');
 
             document.getElementById('editBotModal').classList.add('show');
         }
 
         async function saveEditBot() {
             const botId = document.getElementById('editBotId').value;
+            const slMode = document.getElementById('editBotSlMode').value;
             const config = {
                 name: document.getElementById('editBotName').value,
                 trading_pairs: [document.getElementById('editBotPair').value],
@@ -2036,9 +2167,16 @@ DASHBOARD_HTML = r"""
                 leverage: parseInt(document.getElementById('editBotLeverage').value),
                 risk_per_trade: parseFloat(document.getElementById('editBotRisk').value),
                 tp_risk_ratio: parseFloat(document.getElementById('editBotTpRatio').value),
-                sl_mode: document.getElementById('editBotSlMode').value,
+                sl_mode: slMode,
+                sl_supertrend_line: parseInt(document.getElementById('editBotSlLine').value),
+                sl_fixed_percent: parseFloat(document.getElementById('editBotSlPercent').value),
+                sl_atr_multiplier: parseFloat(document.getElementById('editBotSlAtrMult').value),
                 max_positions: parseInt(document.getElementById('editBotMaxPositions').value),
                 ema_enabled: document.getElementById('editBotEmaEnabled').value === 'true',
+                ema_filter_mode: document.getElementById('editBotEmaMode').value,
+                trailing_enabled: document.getElementById('editBotTrailingEnabled').value === 'true',
+                trailing_activation: parseFloat(document.getElementById('editBotTrailingActivation').value),
+                trailing_step: parseFloat(document.getElementById('editBotTrailingStep').value),
             };
 
             try {
