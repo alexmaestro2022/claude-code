@@ -213,6 +213,15 @@ class BybitClient:
 
     # ========== Account Methods ==========
 
+    def _safe_decimal(self, value: any, default: str = "0") -> Decimal:
+        """Safely convert value to Decimal, handling empty strings and invalid values."""
+        if value is None or value == "":
+            return Decimal(default)
+        try:
+            return Decimal(str(value))
+        except Exception:
+            return Decimal(default)
+
     def get_balance(self, asset: str = "USDT") -> Balance:
         """
         Get balance for a specific asset.
@@ -233,11 +242,11 @@ class BybitClient:
                 if coin.get("coin") == asset:
                     return Balance(
                         asset=asset,
-                        total=Decimal(str(coin.get("walletBalance", "0"))),
-                        available=Decimal(str(coin.get("availableToWithdraw", "0"))),
-                        locked=Decimal(str(coin.get("locked", "0"))),
-                        unrealized_pnl=Decimal(str(coin.get("unrealisedPnl", "0"))),
-                        equity=Decimal(str(coin.get("equity", "0"))),
+                        total=self._safe_decimal(coin.get("walletBalance")),
+                        available=self._safe_decimal(coin.get("availableToWithdraw")),
+                        locked=self._safe_decimal(coin.get("locked")),
+                        unrealized_pnl=self._safe_decimal(coin.get("unrealisedPnl")),
+                        equity=self._safe_decimal(coin.get("equity")),
                         account_type=self.config.account_type,
                     )
 
@@ -264,16 +273,16 @@ class BybitClient:
         balances = []
         for account in result.get("list", []):
             for coin in account.get("coin", []):
-                total = Decimal(str(coin.get("walletBalance", "0")))
+                total = self._safe_decimal(coin.get("walletBalance"))
                 if total > 0:
                     balances.append(
                         Balance(
                             asset=coin.get("coin"),
                             total=total,
-                            available=Decimal(str(coin.get("availableToWithdraw", "0"))),
-                            locked=Decimal(str(coin.get("locked", "0"))),
-                            unrealized_pnl=Decimal(str(coin.get("unrealisedPnl", "0"))),
-                            equity=Decimal(str(coin.get("equity", "0"))),
+                            available=self._safe_decimal(coin.get("availableToWithdraw")),
+                            locked=self._safe_decimal(coin.get("locked")),
+                            unrealized_pnl=self._safe_decimal(coin.get("unrealisedPnl")),
+                            equity=self._safe_decimal(coin.get("equity")),
                             account_type=self.config.account_type,
                         )
                     )
