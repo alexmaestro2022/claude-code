@@ -1541,14 +1541,17 @@ DASHBOARD_HTML = r"""
                 const response = await fetch('/api/trading-pairs');
                 const data = await response.json();
                 allTradingPairs = data.pairs || [];
+                console.log('Loaded trading pairs:', allTradingPairs.length, 'unique symbols:', new Set(allTradingPairs.map(p => p.symbol)).size);
             } catch (err) {
                 console.error('Failed to load trading pairs:', err);
                 allTradingPairs = [];
             }
         }
 
-        // Load pairs on page load
-        loadTradingPairsCache();
+        // Load pairs on page load (only once)
+        if (allTradingPairs.length === 0) {
+            loadTradingPairsCache();
+        }
 
         function showPairDropdown(prefix) {
             const dropdown = document.getElementById(prefix + 'PairDropdown');
@@ -1568,27 +1571,34 @@ DASHBOARD_HTML = r"""
             const dropdown = document.getElementById(prefix + 'PairDropdown');
             const searchValue = searchInput.value.toUpperCase().trim();
 
+            console.log('filterTradingPairs called, search:', searchValue, 'total pairs:', allTradingPairs.length);
+
             // First filter by search, then deduplicate
             const matchingPairs = allTradingPairs.filter(pair =>
                 pair.symbol.toUpperCase().includes(searchValue) ||
                 pair.base.toUpperCase().includes(searchValue)
             );
 
-            // Deduplicate by symbol
-            const uniquePairs = [];
-            const seen = new Set();
-            for (const pair of matchingPairs) {
-                if (!seen.has(pair.symbol)) {
-                    seen.add(pair.symbol);
-                    uniquePairs.push(pair);
-                }
-                if (uniquePairs.length >= 50) break;
-            }
+            console.log('Matching pairs:', matchingPairs.length);
 
+            // Deduplicate by symbol using Map for guaranteed uniqueness
+            const pairsMap = new Map();
+            for (const pair of matchingPairs) {
+                if (!pairsMap.has(pair.symbol)) {
+                    pairsMap.set(pair.symbol, pair);
+                }
+            }
+            const uniquePairs = Array.from(pairsMap.values()).slice(0, 50);
+
+            console.log('Unique pairs after dedup:', uniquePairs.length, uniquePairs.map(p => p.symbol));
+
+            // Clear dropdown completely
             dropdown.innerHTML = '';
-            uniquePairs.forEach(pair => {
+
+            uniquePairs.forEach((pair, index) => {
                 const item = document.createElement('div');
                 item.className = 'pair-dropdown-item';
+                item.id = `pair-item-${prefix}-${index}`;
                 item.style.cssText = 'padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #333;';
                 item.innerHTML = `<strong>${pair.base}</strong><span style="color: #888;">USDT</span>`;
                 item.onmouseover = () => item.style.background = '#2a2a4e';
@@ -1596,6 +1606,8 @@ DASHBOARD_HTML = r"""
                 item.onclick = () => selectPair(prefix, pair.symbol);
                 dropdown.appendChild(item);
             });
+
+            console.log('Dropdown children count:', dropdown.children.length);
 
             if (uniquePairs.length === 0) {
                 dropdown.innerHTML = '<div style="padding: 12px; color: #888; text-align: center;">No pairs found</div>';
