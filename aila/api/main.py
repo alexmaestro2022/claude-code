@@ -844,11 +844,11 @@ DASHBOARD_HTML = r"""
                 </div>
                 <div class="setting-item">
                     <label data-i18n="tradingPair">Trading Pair</label>
-                    <div class="pair-search-container" style="position: relative;">
+                    <div class="pair-search-container" style="position: relative; display: flex; align-items: center;">
                         <input type="text" id="newBotPairSearch" placeholder="Search pair... (e.g. BTC, ETH)"
                                oninput="filterTradingPairs('new')" onfocus="showPairDropdown('new')"
-                               autocomplete="off" style="width: calc(100% - 30px); padding-right: 30px;">
-                        <span onclick="clearPairSearch('new')" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #888; font-size: 18px; line-height: 1;">&times;</span>
+                               autocomplete="off" style="width: 100%; padding-right: 25px;">
+                        <span onclick="clearPairSearch('new')" style="position: absolute; right: 10px; cursor: pointer; color: #888; font-size: 16px; font-weight: bold;">&times;</span>
                         <div id="newPairDropdown" class="pair-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; max-height: 250px; overflow-y: auto; background: #1a1a2e; border: 1px solid #333; border-radius: 5px; z-index: 1000;">
                         </div>
                         <input type="hidden" id="newBotPair" value="BTCUSDT">
@@ -922,11 +922,11 @@ DASHBOARD_HTML = r"""
                 </div>
                 <div class="setting-item">
                     <label data-i18n="tradingPair">Trading Pair</label>
-                    <div class="pair-search-container" style="position: relative;">
+                    <div class="pair-search-container" style="position: relative; display: flex; align-items: center;">
                         <input type="text" id="editBotPairSearch" placeholder="Search pair... (e.g. BTC, ETH)"
                                oninput="filterTradingPairs('edit')" onfocus="showPairDropdown('edit')"
-                               autocomplete="off" style="width: calc(100% - 30px); padding-right: 30px;">
-                        <span onclick="clearPairSearch('edit')" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #888; font-size: 18px; line-height: 1;">&times;</span>
+                               autocomplete="off" style="width: 100%; padding-right: 25px;">
+                        <span onclick="clearPairSearch('edit')" style="position: absolute; right: 10px; cursor: pointer; color: #888; font-size: 16px; font-weight: bold;">&times;</span>
                         <div id="editPairDropdown" class="pair-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; max-height: 250px; overflow-y: auto; background: #1a1a2e; border: 1px solid #333; border-radius: 5px; z-index: 1000;">
                         </div>
                         <input type="hidden" id="editBotPair" value="">
@@ -2821,15 +2821,18 @@ async def get_trading_pairs():
         try:
             pairs = client.get_trading_pairs()
             result = []
+            seen_symbols = set()
             for pair in pairs:
                 if pair.quote_asset == "USDT" and pair.status == "Trading":
-                    result.append({
-                        "symbol": pair.symbol,
-                        "base": pair.base_asset,
-                        "quote": pair.quote_asset,
-                        "minQty": str(pair.min_order_qty),
-                        "maxLeverage": pair.max_leverage,
-                    })
+                    if pair.symbol not in seen_symbols:
+                        seen_symbols.add(pair.symbol)
+                        result.append({
+                            "symbol": pair.symbol,
+                            "base": pair.base_asset,
+                            "quote": pair.quote_asset,
+                            "minQty": str(pair.min_order_qty),
+                            "maxLeverage": pair.max_leverage,
+                        })
 
             # Sort by symbol
             result.sort(key=lambda x: x["symbol"])
