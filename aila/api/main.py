@@ -33,8 +33,13 @@ def add_log(message: str):
     log_entry = f"{timestamp} | {message}"
     log_buffer.append(log_entry)
 
-    # Broadcast to all connected clients
-    asyncio.create_task(broadcast_log(log_entry))
+    # Broadcast to all connected clients (only if event loop is running)
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(broadcast_log(log_entry))
+    except RuntimeError:
+        # No running event loop - skip broadcast (will be sent on next WS poll)
+        pass
 
 
 async def broadcast_log(message: str):
