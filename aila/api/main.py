@@ -847,7 +847,8 @@ DASHBOARD_HTML = r"""
                     <div class="pair-search-container" style="position: relative;">
                         <input type="text" id="newBotPairSearch" placeholder="Search pair... (e.g. BTC, ETH)"
                                oninput="filterTradingPairs('new')" onfocus="showPairDropdown('new')"
-                               autocomplete="off" style="width: 100%;">
+                               autocomplete="off" style="width: calc(100% - 30px); padding-right: 30px;">
+                        <span onclick="clearPairSearch('new')" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #888; font-size: 18px; line-height: 1;">&times;</span>
                         <div id="newPairDropdown" class="pair-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; max-height: 250px; overflow-y: auto; background: #1a1a2e; border: 1px solid #333; border-radius: 5px; z-index: 1000;">
                         </div>
                         <input type="hidden" id="newBotPair" value="BTCUSDT">
@@ -924,7 +925,8 @@ DASHBOARD_HTML = r"""
                     <div class="pair-search-container" style="position: relative;">
                         <input type="text" id="editBotPairSearch" placeholder="Search pair... (e.g. BTC, ETH)"
                                oninput="filterTradingPairs('edit')" onfocus="showPairDropdown('edit')"
-                               autocomplete="off" style="width: 100%;">
+                               autocomplete="off" style="width: calc(100% - 30px); padding-right: 30px;">
+                        <span onclick="clearPairSearch('edit')" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #888; font-size: 18px; line-height: 1;">&times;</span>
                         <div id="editPairDropdown" class="pair-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; max-height: 250px; overflow-y: auto; background: #1a1a2e; border: 1px solid #333; border-radius: 5px; z-index: 1000;">
                         </div>
                         <input type="hidden" id="editBotPair" value="">
@@ -1564,19 +1566,27 @@ DASHBOARD_HTML = r"""
         function filterTradingPairs(prefix) {
             const searchInput = document.getElementById(prefix + 'BotPairSearch');
             const dropdown = document.getElementById(prefix + 'PairDropdown');
-            const searchValue = searchInput.value.toUpperCase();
+            const searchValue = searchInput.value.toUpperCase().trim();
 
-            // Filter and remove duplicates using Map
+            // First filter by search, then deduplicate
+            const matchingPairs = allTradingPairs.filter(pair =>
+                pair.symbol.toUpperCase().includes(searchValue) ||
+                pair.base.toUpperCase().includes(searchValue)
+            );
+
+            // Deduplicate by symbol
+            const uniquePairs = [];
             const seen = new Set();
-            const filtered = allTradingPairs.filter(pair => {
-                if (seen.has(pair.symbol)) return false;
-                seen.add(pair.symbol);
-                return pair.symbol.toUpperCase().includes(searchValue) ||
-                       pair.base.toUpperCase().includes(searchValue);
-            }).slice(0, 50); // Limit to 50 results for performance
+            for (const pair of matchingPairs) {
+                if (!seen.has(pair.symbol)) {
+                    seen.add(pair.symbol);
+                    uniquePairs.push(pair);
+                }
+                if (uniquePairs.length >= 50) break;
+            }
 
             dropdown.innerHTML = '';
-            filtered.forEach(pair => {
+            uniquePairs.forEach(pair => {
                 const item = document.createElement('div');
                 item.className = 'pair-dropdown-item';
                 item.style.cssText = 'padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #333;';
@@ -1587,7 +1597,7 @@ DASHBOARD_HTML = r"""
                 dropdown.appendChild(item);
             });
 
-            if (filtered.length === 0) {
+            if (uniquePairs.length === 0) {
                 dropdown.innerHTML = '<div style="padding: 12px; color: #888; text-align: center;">No pairs found</div>';
             }
         }
@@ -1596,6 +1606,12 @@ DASHBOARD_HTML = r"""
             document.getElementById(prefix + 'BotPairSearch').value = symbol;
             document.getElementById(prefix + 'BotPair').value = symbol;
             document.getElementById(prefix + 'PairDropdown').style.display = 'none';
+        }
+
+        function clearPairSearch(prefix) {
+            document.getElementById(prefix + 'BotPairSearch').value = '';
+            document.getElementById(prefix + 'BotPair').value = '';
+            showPairDropdown(prefix);
         }
 
         async function showCreateBotModal() {
