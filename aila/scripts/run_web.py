@@ -9,6 +9,7 @@ import asyncio
 import sys
 import signal
 import threading
+import os
 from pathlib import Path
 
 # Add project root to path
@@ -305,35 +306,43 @@ def main():
         print(f"  Mode: Auto-start")
     print(f"{'='*50}\n")
 
-    # Flag for shutdown
-    shutdown_flag = {"stop": False}
+    # Global shutdown flag
+    shutdown_requested = False
 
-    # Run bot or keep server running
-    async def keep_running():
-        """Keep the server running without auto-starting bot."""
-        add_log("[info    ] Web interface started. Use buttons to control bot.")
-        while not shutdown_flag["stop"]:
-            await asyncio.sleep(0.5)
+    def force_shutdown(signum, frame):
+        """Force shutdown on signal."""
+        nonlocal shutdown_requested
+        if shutdown_requested:
+            # Second Ctrl+C - force exit immediately
+            print("\nForce exit...")
+            os._exit(0)
+        shutdown_requested = True
+        print("\nShutdown signal received... (press Ctrl+C again to force)")
 
-    # Handle shutdown
-    def handle_shutdown(signum, frame):
-        print("\nShutdown signal received...")
-        shutdown_flag["stop"] = True
-        bot_state["running"] = False
-        api_bot_state["running"] = False
-
-    signal.signal(signal.SIGINT, handle_shutdown)
-    signal.signal(signal.SIGTERM, handle_shutdown)
+    # Register signal handlers
+    signal.signal(signal.SIGINT, force_shutdown)
+    signal.signal(signal.SIGTERM, force_shutdown)
 
     try:
         if args.no_autostart:
-            asyncio.run(keep_running())
+            # Run web server only mode
+            add_log("[info    ] Web interface started. Use buttons to control bot.")
+            while not shutdown_requested:
+                import time
+                time.sleep(0.5)
         else:
-            asyncio.run(run_bot())
-    except KeyboardInterrupt:
-        pass
+            # Run with auto-start
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                loop.run_until_complete(run_bot())
+            finally:
+                loop.close()
+    except Exception as e:
+        print(f"Error: {e}")
     finally:
         print("Exiting...")
+        os._exit(0)
 
 
 if __name__ == "__main__":
