@@ -306,22 +306,13 @@ def main():
         print(f"  Mode: Auto-start")
     print(f"{'='*50}\n")
 
-    def force_exit(signum, frame):
-        """Exit immediately on Ctrl+C."""
-        print("\nExiting...")
-        os._exit(0)
-
-    # Register signal handlers - exit immediately
-    signal.signal(signal.SIGINT, force_exit)
-    signal.signal(signal.SIGTERM, force_exit)
-
     try:
         if args.no_autostart:
             # Run web server only mode
             add_log("[info    ] Web interface started. Use buttons to control bot.")
+            import time
             while True:
-                import time
-                time.sleep(1)
+                time.sleep(0.1)
         else:
             # Run with auto-start
             loop = asyncio.new_event_loop()
@@ -330,9 +321,12 @@ def main():
                 loop.run_until_complete(run_bot())
             finally:
                 loop.close()
+    except KeyboardInterrupt:
+        print("\nExiting...")
     except Exception as e:
         print(f"Error: {e}")
-        os._exit(1)
+    finally:
+        os._exit(0)
 
 
 if __name__ == "__main__":
