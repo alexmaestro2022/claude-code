@@ -978,7 +978,12 @@ DASHBOARD_HTML = r"""
                 <h3 id="fullscreenChartTitle">Chart</h3>
                 <button class="modal-close" onclick="closeFullscreenChart()">&times;</button>
             </div>
-            <div id="fullscreenChartContainer" style="height: calc(100% - 50px); width: 100%;"></div>
+            <div id="fullscreenChartInfo" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 15px; background: rgba(0,255,136,0.1); border-radius: 5px; margin-bottom: 10px; font-family: monospace;">
+                <span id="fsPrice" style="color: #00ff88; font-size: 18px; font-weight: bold;">--</span>
+                <span id="fsCountdown" style="color: #ffcc00; font-size: 16px;">--:--</span>
+                <span id="fsUpdateTime" style="color: #888; font-size: 12px;">Loading...</span>
+            </div>
+            <div id="fullscreenChartContainer" style="height: calc(100% - 90px); width: 100%;"></div>
         </div>
     </div>
 
@@ -1461,6 +1466,39 @@ DASHBOARD_HTML = r"""
         updateUI();
         checkBotStatus();
 
+        // Global countdown timer for bot cards
+        function updateAllBotCountdowns() {
+            const countdownElements = document.querySelectorAll('.bot-countdown');
+            const now = Math.floor(Date.now() / 1000);
+
+            countdownElements.forEach(el => {
+                const timeframe = el.dataset.timeframe;
+                if (!timeframe) return;
+
+                const durations = {
+                    '1m': 60, '3m': 180, '5m': 300, '15m': 900, '30m': 1800,
+                    '1h': 3600, '2h': 7200, '4h': 14400, '1d': 86400
+                };
+                const tfDuration = durations[timeframe] || 900;
+                const candleStart = Math.floor(now / tfDuration) * tfDuration;
+                const candleEnd = candleStart + tfDuration;
+                const remaining = candleEnd - now;
+
+                // Format countdown
+                const h = Math.floor(remaining / 3600);
+                const m = Math.floor((remaining % 3600) / 60);
+                const s = remaining % 60;
+                if (h > 0) {
+                    el.textContent = `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+                } else {
+                    el.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+                }
+            });
+        }
+
+        // Update countdowns every second
+        setInterval(updateAllBotCountdowns, 1000);
+
         // Tab Navigation
         function showTab(tabName) {
             // Hide all tabs
@@ -1578,8 +1616,9 @@ DASHBOARD_HTML = r"""
                     ${bot.status === 'running' ? `
                         <div class="bot-chart-container" style="margin: 10px 0; cursor: pointer;" ondblclick="openFullscreenChart('${bot.id}')" title="${t('doubleClickChart')}">
                             <div class="chart-wrapper" id="bot-chart-${bot.id}" style="height: 200px;"></div>
-                            <div style="display: flex; justify-content: space-between; font-size: 11px; color: #666; margin-top: 5px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #666; margin-top: 5px;">
                                 <span>${t('doubleClickChart')}</span>
+                                <span class="bot-countdown" data-timeframe="${bot.timeframe}" style="color: #ffcc00; font-weight: bold;">--:--</span>
                                 <span class="update-time" style="color: #00ff88;">Loading...</span>
                             </div>
                         </div>
@@ -1962,6 +2001,51 @@ DASHBOARD_HTML = r"""
         let fullscreenChart = null;
         let fullscreenChartData = null;
         let fullscreenUpdateInterval = null;
+        let fullscreenCountdownInterval = null;
+
+        // Get timeframe duration in seconds
+        function getTimeframeDuration(timeframe) {
+            const durations = {
+                '1m': 60,
+                '3m': 180,
+                '5m': 300,
+                '15m': 900,
+                '30m': 1800,
+                '1h': 3600,
+                '2h': 7200,
+                '4h': 14400,
+                '1d': 86400,
+            };
+            return durations[timeframe] || 900;
+        }
+
+        // Format countdown time
+        function formatCountdown(seconds) {
+            if (seconds < 0) seconds = 0;
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = seconds % 60;
+            if (h > 0) {
+                return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            }
+            return `${m}:${s.toString().padStart(2, '0')}`;
+        }
+
+        // Update countdown timer
+        function updateCountdown() {
+            if (!fullscreenChartData) return;
+
+            const tfDuration = getTimeframeDuration(fullscreenChartData.bot.timeframe);
+            const now = Math.floor(Date.now() / 1000);
+            const candleStart = Math.floor(now / tfDuration) * tfDuration;
+            const candleEnd = candleStart + tfDuration;
+            const remaining = candleEnd - now;
+
+            const countdownEl = document.getElementById('fsCountdown');
+            if (countdownEl) {
+                countdownEl.textContent = formatCountdown(remaining);
+            }
+        }
 
         async function openFullscreenChart(botId) {
             const bot = botsData.find(b => b.id === botId);
@@ -2099,6 +2183,13 @@ DASHBOARD_HTML = r"""
             // Start real-time updates
             const updateMs = getUpdateInterval(bot.timeframe);
             fullscreenUpdateInterval = setInterval(() => updateFullscreenChart(), updateMs);
+
+            // Start countdown timer (updates every second)
+            updateCountdown();
+            fullscreenCountdownInterval = setInterval(updateCountdown, 1000);
+
+            // Initial chart update
+            await updateFullscreenChart();
         }
 
         async function updateFullscreenChart() {
@@ -2107,32 +2198,49 @@ DASHBOARD_HTML = r"""
             const { symbol, interval, candlestickSeries, emaSeries, st1Series, st2Series, st3Series, bot } = fullscreenChartData;
 
             try {
-                // Update klines (fetch last 10 candles for update)
-                const klinesResponse = await fetch(`/api/klines/${symbol}?interval=${interval}&limit=10`);
+                // Update klines
+                const klinesResponse = await fetch(`/api/klines/${symbol}?interval=${interval}&limit=100`);
                 const klinesData = await klinesResponse.json();
+                console.log(`Fullscreen chart update for ${symbol}:`, klinesData.klines?.length || 0, 'candles');
+
                 if (klinesData.klines && klinesData.klines.length > 0) {
-                    // Update each candle (this handles both new candles and updates to current candle)
-                    klinesData.klines.forEach(candle => {
-                        candlestickSeries.update(candle);
-                    });
+                    candlestickSeries.setData(klinesData.klines);
+
+                    // Update price display
+                    const lastCandle = klinesData.klines[klinesData.klines.length - 1];
+                    const priceEl = document.getElementById('fsPrice');
+                    if (priceEl && lastCandle) {
+                        const priceChange = lastCandle.close - lastCandle.open;
+                        const color = priceChange >= 0 ? '#00ff88' : '#ff4444';
+                        const arrow = priceChange >= 0 ? '▲' : '▼';
+                        priceEl.style.color = color;
+                        priceEl.textContent = `${arrow} ${lastCandle.close.toFixed(2)}`;
+                    }
+
+                    // Update time display
+                    const updateTimeEl = document.getElementById('fsUpdateTime');
+                    if (updateTimeEl) {
+                        const now = new Date();
+                        updateTimeEl.textContent = `Updated: ${now.toLocaleTimeString()}`;
+                    }
                 }
 
                 // Update indicators
-                const indResponse = await fetch(`/api/indicators/${symbol}?interval=${interval}&limit=10`);
+                const indResponse = await fetch(`/api/indicators/${symbol}?interval=${interval}&limit=100`);
                 const indData = await indResponse.json();
 
                 if (indData.indicators) {
                     if (emaSeries && indData.indicators.ema200) {
-                        indData.indicators.ema200.forEach(p => emaSeries.update(p));
+                        emaSeries.setData(indData.indicators.ema200);
                     }
                     if (st1Series && indData.indicators.supertrend1) {
-                        indData.indicators.supertrend1.forEach(p => st1Series.update({time: p.time, value: p.value}));
+                        st1Series.setData(indData.indicators.supertrend1.map(p => ({time: p.time, value: p.value})));
                     }
                     if (st2Series && indData.indicators.supertrend2) {
-                        indData.indicators.supertrend2.forEach(p => st2Series.update({time: p.time, value: p.value}));
+                        st2Series.setData(indData.indicators.supertrend2.map(p => ({time: p.time, value: p.value})));
                     }
                     if (st3Series && indData.indicators.supertrend3) {
-                        indData.indicators.supertrend3.forEach(p => st3Series.update({time: p.time, value: p.value}));
+                        st3Series.setData(indData.indicators.supertrend3.map(p => ({time: p.time, value: p.value})));
                     }
                 }
             } catch (err) {
@@ -2145,6 +2253,11 @@ DASHBOARD_HTML = r"""
             if (fullscreenUpdateInterval) {
                 clearInterval(fullscreenUpdateInterval);
                 fullscreenUpdateInterval = null;
+            }
+            // Stop countdown timer
+            if (fullscreenCountdownInterval) {
+                clearInterval(fullscreenCountdownInterval);
+                fullscreenCountdownInterval = null;
             }
             fullscreenChartData = null;
 
