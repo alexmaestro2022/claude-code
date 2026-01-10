@@ -1894,22 +1894,26 @@ DASHBOARD_HTML = r"""
                 });
             }
 
+            // SuperTrend lines with different thickness
             st1Series = chart.addLineSeries({
-                color: '#00ff88',
                 lineWidth: 1,
-                title: 'ST1',
+                title: 'ST1 Fast',
+                lastValueVisible: false,
+                priceLineVisible: false,
             });
 
             st2Series = chart.addLineSeries({
-                color: '#00d4ff',
-                lineWidth: 1,
-                title: 'ST2',
+                lineWidth: 2,
+                title: 'ST2 Medium',
+                lastValueVisible: false,
+                priceLineVisible: false,
             });
 
             st3Series = chart.addLineSeries({
-                color: '#aa00ff',
-                lineWidth: 1,
-                title: 'ST3',
+                lineWidth: 3,
+                title: 'ST3 Slow',
+                lastValueVisible: false,
+                priceLineVisible: false,
             });
 
             // Store chart references
@@ -1992,14 +1996,15 @@ DASHBOARD_HTML = r"""
                     if (emaSeries && indData.indicators.ema200) {
                         emaSeries.setData(indData.indicators.ema200);
                     }
+                    // SuperTrend with green/red colors based on direction
                     if (st1Series && indData.indicators.supertrend1) {
-                        st1Series.setData(indData.indicators.supertrend1.map(p => ({time: p.time, value: p.value})));
+                        st1Series.setData(indData.indicators.supertrend1.map(p => ({time: p.time, value: p.value, color: p.color})));
                     }
                     if (st2Series && indData.indicators.supertrend2) {
-                        st2Series.setData(indData.indicators.supertrend2.map(p => ({time: p.time, value: p.value})));
+                        st2Series.setData(indData.indicators.supertrend2.map(p => ({time: p.time, value: p.value, color: p.color})));
                     }
                     if (st3Series && indData.indicators.supertrend3) {
-                        st3Series.setData(indData.indicators.supertrend3.map(p => ({time: p.time, value: p.value})));
+                        st3Series.setData(indData.indicators.supertrend3.map(p => ({time: p.time, value: p.value, color: p.color})));
                     }
                 }
             } catch (err) {
@@ -2335,34 +2340,37 @@ DASHBOARD_HTML = r"""
                         fullscreenChartData.emaSeries.setData(indData.indicators.ema200);
                     }
 
-                    // SuperTrend 1
+                    // SuperTrend 1 (Fast: period=10, mult=1.0) - thinnest line
                     if (indData.indicators.supertrend1 && indData.indicators.supertrend1.length > 0) {
                         fullscreenChartData.st1Series = fullscreenChart.addLineSeries({
-                            color: '#00ff88',
-                            lineWidth: 2,
-                            title: 'ST1 (10, 1.0)',
+                            lineWidth: 1,
+                            title: 'ST1 Fast',
+                            lastValueVisible: false,
+                            priceLineVisible: false,
                         });
-                        fullscreenChartData.st1Series.setData(indData.indicators.supertrend1.map(p => ({time: p.time, value: p.value})));
+                        fullscreenChartData.st1Series.setData(indData.indicators.supertrend1.map(p => ({time: p.time, value: p.value, color: p.color})));
                     }
 
-                    // SuperTrend 2
+                    // SuperTrend 2 (Medium: period=11, mult=2.0) - medium line
                     if (indData.indicators.supertrend2 && indData.indicators.supertrend2.length > 0) {
                         fullscreenChartData.st2Series = fullscreenChart.addLineSeries({
-                            color: '#00d4ff',
                             lineWidth: 2,
-                            title: 'ST2 (11, 2.0)',
+                            title: 'ST2 Medium',
+                            lastValueVisible: false,
+                            priceLineVisible: false,
                         });
-                        fullscreenChartData.st2Series.setData(indData.indicators.supertrend2.map(p => ({time: p.time, value: p.value})));
+                        fullscreenChartData.st2Series.setData(indData.indicators.supertrend2.map(p => ({time: p.time, value: p.value, color: p.color})));
                     }
 
-                    // SuperTrend 3
+                    // SuperTrend 3 (Slow: period=12, mult=3.0) - thickest line
                     if (indData.indicators.supertrend3 && indData.indicators.supertrend3.length > 0) {
                         fullscreenChartData.st3Series = fullscreenChart.addLineSeries({
-                            color: '#aa00ff',
-                            lineWidth: 2,
-                            title: 'ST3 (12, 3.0)',
+                            lineWidth: 3,
+                            title: 'ST3 Slow',
+                            lastValueVisible: false,
+                            priceLineVisible: false,
                         });
-                        fullscreenChartData.st3Series.setData(indData.indicators.supertrend3.map(p => ({time: p.time, value: p.value})));
+                        fullscreenChartData.st3Series.setData(indData.indicators.supertrend3.map(p => ({time: p.time, value: p.value, color: p.color})));
                     }
                 }
             } catch (err) {
@@ -2436,13 +2444,13 @@ DASHBOARD_HTML = r"""
                         emaSeries.setData(indData.indicators.ema200);
                     }
                     if (st1Series && indData.indicators.supertrend1) {
-                        st1Series.setData(indData.indicators.supertrend1.map(p => ({time: p.time, value: p.value})));
+                        st1Series.setData(indData.indicators.supertrend1.map(p => ({time: p.time, value: p.value, color: p.color})));
                     }
                     if (st2Series && indData.indicators.supertrend2) {
-                        st2Series.setData(indData.indicators.supertrend2.map(p => ({time: p.time, value: p.value})));
+                        st2Series.setData(indData.indicators.supertrend2.map(p => ({time: p.time, value: p.value, color: p.color})));
                     }
                     if (st3Series && indData.indicators.supertrend3) {
-                        st3Series.setData(indData.indicators.supertrend3.map(p => ({time: p.time, value: p.value})));
+                        st3Series.setData(indData.indicators.supertrend3.map(p => ({time: p.time, value: p.value, color: p.color})));
                     }
                 }
             } catch (err) {
@@ -3166,6 +3174,7 @@ async def get_indicators(symbol: str, interval: str = "15", limit: int = 200):
                     "value": float(df.loc[idx, 'ema200'])
                 })
 
+            # ST1 (fast, period=10, mult=1.0) - thinnest line
             if pd.notna(st1.loc[idx]):
                 result["supertrend1"].append({
                     "time": timestamp,
@@ -3173,18 +3182,20 @@ async def get_indicators(symbol: str, interval: str = "15", limit: int = 200):
                     "color": "#00ff88" if dir1.loc[idx] == 1 else "#ff4444"
                 })
 
+            # ST2 (medium, period=11, mult=2.0) - medium line
             if pd.notna(st2.loc[idx]):
                 result["supertrend2"].append({
                     "time": timestamp,
                     "value": float(st2.loc[idx]),
-                    "color": "#00d4ff" if dir2.loc[idx] == 1 else "#ff8800"
+                    "color": "#00ff88" if dir2.loc[idx] == 1 else "#ff4444"
                 })
 
+            # ST3 (slow, period=12, mult=3.0) - thickest line
             if pd.notna(st3.loc[idx]):
                 result["supertrend3"].append({
                     "time": timestamp,
                     "value": float(st3.loc[idx]),
-                    "color": "#aa00ff" if dir3.loc[idx] == 1 else "#ff0088"
+                    "color": "#00ff88" if dir3.loc[idx] == 1 else "#ff4444"
                 })
 
         return {"indicators": result}
