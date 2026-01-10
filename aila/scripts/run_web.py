@@ -315,12 +315,15 @@ def main():
     signal.signal(signal.SIGTERM, handle_shutdown)
 
     # Run bot or keep server running
+    async def keep_running():
+        """Keep the server running without auto-starting bot."""
+        add_log("[info    ] Web interface started. Use buttons to control bot.")
+        while True:
+            await asyncio.sleep(1)
+
     try:
         if args.no_autostart:
-            # Just keep the web server running
-            add_log("[info    ] Web interface started. Use buttons to control bot.")
-            while True:
-                asyncio.get_event_loop().run_until_complete(asyncio.sleep(1))
+            asyncio.run(keep_running())
         else:
             asyncio.run(run_bot())
     except KeyboardInterrupt:
