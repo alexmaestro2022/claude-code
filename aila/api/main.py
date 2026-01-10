@@ -286,6 +286,103 @@ DASHBOARD_HTML = """
             color: #666;
             font-size: 12px;
         }
+
+        .controls {
+            margin-bottom: 20px;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        .btn-large {
+            padding: 15px 30px;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-icon {
+            font-size: 14px;
+        }
+
+        .btn-danger {
+            background: #ff4444;
+            color: white;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: #ff6666;
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .settings-panel {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .settings-panel h3 {
+            margin-bottom: 20px;
+            color: #00d4ff;
+            font-size: 18px;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .setting-item {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .setting-item label {
+            font-size: 13px;
+            color: #888;
+        }
+
+        .setting-item input,
+        .setting-item select {
+            padding: 10px 12px;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.3);
+            color: #e0e0e0;
+            font-size: 14px;
+        }
+
+        .setting-item input:focus,
+        .setting-item select:focus {
+            outline: none;
+            border-color: #00d4ff;
+        }
+
+        .settings-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .running .btn-success {
+            opacity: 0.5;
+        }
     </style>
 </head>
 <body>
@@ -297,6 +394,77 @@ DASHBOARD_HTML = """
                 <span id="statusText">Connecting...</span>
             </div>
         </header>
+
+        <div class="controls">
+            <div class="control-group">
+                <button class="btn btn-success btn-large" id="startBtn" onclick="startBot()">
+                    <span class="btn-icon">▶</span> Start Bot
+                </button>
+                <button class="btn btn-danger btn-large" id="stopBtn" onclick="stopBot()" disabled>
+                    <span class="btn-icon">■</span> Stop Bot
+                </button>
+                <button class="btn btn-primary btn-large" onclick="toggleSettings()">
+                    <span class="btn-icon">⚙</span> Settings
+                </button>
+            </div>
+        </div>
+
+        <div class="settings-panel" id="settingsPanel" style="display: none;">
+            <h3>Strategy Settings</h3>
+            <div class="settings-grid">
+                <div class="setting-item">
+                    <label>Timeframe</label>
+                    <select id="timeframe">
+                        <option value="1m">1 minute</option>
+                        <option value="5m">5 minutes</option>
+                        <option value="15m">15 minutes</option>
+                        <option value="30m">30 minutes</option>
+                        <option value="1h" selected>1 hour</option>
+                        <option value="4h">4 hours</option>
+                        <option value="1d">1 day</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label>Trading Pairs</label>
+                    <input type="text" id="tradingPairs" value="BTCUSDT,ETHUSDT" placeholder="BTCUSDT,ETHUSDT">
+                </div>
+                <div class="setting-item">
+                    <label>Risk per Trade (%)</label>
+                    <input type="number" id="riskPerTrade" value="2" min="0.1" max="10" step="0.1">
+                </div>
+                <div class="setting-item">
+                    <label>Take Profit Ratio (R:R)</label>
+                    <input type="number" id="tpRatio" value="2" min="1" max="10" step="0.5">
+                </div>
+                <div class="setting-item">
+                    <label>Stop Loss Mode</label>
+                    <select id="slMode">
+                        <option value="supertrend_line" selected>SuperTrend Line</option>
+                        <option value="fixed_percent">Fixed Percent</option>
+                        <option value="atr">ATR Based</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label>Leverage</label>
+                    <input type="number" id="leverage" value="10" min="1" max="100" step="1">
+                </div>
+                <div class="setting-item">
+                    <label>Max Open Positions</label>
+                    <input type="number" id="maxPositions" value="3" min="1" max="10" step="1">
+                </div>
+                <div class="setting-item">
+                    <label>EMA Filter</label>
+                    <select id="emaEnabled">
+                        <option value="true" selected>Enabled</option>
+                        <option value="false">Disabled</option>
+                    </select>
+                </div>
+            </div>
+            <div class="settings-actions">
+                <button class="btn btn-secondary" onclick="loadSettings()">Reset</button>
+                <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+            </div>
+        </div>
 
         <div class="cards">
             <div class="card">
@@ -493,6 +661,136 @@ DASHBOARD_HTML = """
 
         // Refresh stats every 10 seconds
         setInterval(fetchStats, 10000);
+
+        // Bot control functions
+        async function startBot() {
+            try {
+                const btn = document.getElementById('startBtn');
+                btn.disabled = true;
+                btn.innerHTML = '<span class="btn-icon">⏳</span> Starting...';
+
+                const response = await fetch('/api/bot/start', { method: 'POST' });
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast('Bot started successfully!');
+                    document.getElementById('startBtn').disabled = true;
+                    document.getElementById('stopBtn').disabled = false;
+                    btn.innerHTML = '<span class="btn-icon">▶</span> Running';
+                } else {
+                    showToast('Failed to start: ' + data.message);
+                    btn.disabled = false;
+                    btn.innerHTML = '<span class="btn-icon">▶</span> Start Bot';
+                }
+            } catch (err) {
+                console.error('Failed to start bot:', err);
+                showToast('Failed to start bot');
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('startBtn').innerHTML = '<span class="btn-icon">▶</span> Start Bot';
+            }
+        }
+
+        async function stopBot() {
+            try {
+                const btn = document.getElementById('stopBtn');
+                btn.disabled = true;
+                btn.innerHTML = '<span class="btn-icon">⏳</span> Stopping...';
+
+                const response = await fetch('/api/bot/stop', { method: 'POST' });
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast('Bot stopped successfully!');
+                    document.getElementById('startBtn').disabled = false;
+                    document.getElementById('startBtn').innerHTML = '<span class="btn-icon">▶</span> Start Bot';
+                    btn.innerHTML = '<span class="btn-icon">■</span> Stop Bot';
+                } else {
+                    showToast('Failed to stop: ' + data.message);
+                    btn.disabled = false;
+                }
+            } catch (err) {
+                console.error('Failed to stop bot:', err);
+                showToast('Failed to stop bot');
+                document.getElementById('stopBtn').disabled = false;
+            }
+        }
+
+        function toggleSettings() {
+            const panel = document.getElementById('settingsPanel');
+            if (panel.style.display === 'none') {
+                panel.style.display = 'block';
+                loadSettings();
+            } else {
+                panel.style.display = 'none';
+            }
+        }
+
+        async function loadSettings() {
+            try {
+                const response = await fetch('/api/settings');
+                const data = await response.json();
+
+                document.getElementById('timeframe').value = data.timeframe || '1h';
+                document.getElementById('tradingPairs').value = (data.trading_pairs || []).join(',');
+                document.getElementById('riskPerTrade').value = data.risk_per_trade || 2;
+                document.getElementById('tpRatio').value = data.tp_risk_ratio || 2;
+                document.getElementById('slMode').value = data.sl_mode || 'supertrend_line';
+                document.getElementById('leverage').value = data.leverage || 10;
+                document.getElementById('maxPositions').value = data.max_open_positions || 3;
+                document.getElementById('emaEnabled').value = data.ema_enabled ? 'true' : 'false';
+            } catch (err) {
+                console.error('Failed to load settings:', err);
+            }
+        }
+
+        async function saveSettings() {
+            try {
+                const settings = {
+                    timeframe: document.getElementById('timeframe').value,
+                    trading_pairs: document.getElementById('tradingPairs').value.split(',').map(s => s.trim()),
+                    risk_per_trade: parseFloat(document.getElementById('riskPerTrade').value),
+                    tp_risk_ratio: parseFloat(document.getElementById('tpRatio').value),
+                    sl_mode: document.getElementById('slMode').value,
+                    leverage: parseInt(document.getElementById('leverage').value),
+                    max_open_positions: parseInt(document.getElementById('maxPositions').value),
+                    ema_enabled: document.getElementById('emaEnabled').value === 'true'
+                };
+
+                const response = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settings)
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    showToast('Settings saved! Restart bot to apply.');
+                } else {
+                    showToast('Failed to save: ' + data.message);
+                }
+            } catch (err) {
+                console.error('Failed to save settings:', err);
+                showToast('Failed to save settings');
+            }
+        }
+
+        // Check bot status on load
+        async function checkBotStatus() {
+            try {
+                const response = await fetch('/api/bot/status');
+                const data = await response.json();
+
+                if (data.running) {
+                    document.getElementById('startBtn').disabled = true;
+                    document.getElementById('startBtn').innerHTML = '<span class="btn-icon">▶</span> Running';
+                    document.getElementById('stopBtn').disabled = false;
+                }
+            } catch (err) {
+                console.error('Failed to check bot status:', err);
+            }
+        }
+
+        checkBotStatus();
     </script>
 </body>
 </html>
@@ -521,6 +819,100 @@ async def get_stats():
 async def get_logs():
     """Get buffered logs."""
     return {"logs": list(log_buffer)}
+
+
+# Bot state (will be populated by run_web.py)
+bot_state = {
+    "running": False,
+    "engine": None,
+    "client": None,
+    "start_callback": None,
+    "stop_callback": None,
+}
+
+# Current settings (runtime)
+runtime_settings = {
+    "timeframe": "1h",
+    "trading_pairs": ["BTCUSDT", "ETHUSDT"],
+    "risk_per_trade": 2.0,
+    "tp_risk_ratio": 2.0,
+    "sl_mode": "supertrend_line",
+    "leverage": 10,
+    "max_open_positions": 3,
+    "ema_enabled": True,
+}
+
+
+@app.get("/api/bot/status")
+async def get_bot_status():
+    """Get current bot status."""
+    return {"running": bot_state.get("running", False)}
+
+
+@app.post("/api/bot/start")
+async def start_bot():
+    """Start the trading bot."""
+    if bot_state.get("running"):
+        return {"success": False, "message": "Bot is already running"}
+
+    start_callback = bot_state.get("start_callback")
+    if start_callback:
+        try:
+            await start_callback()
+            return {"success": True, "message": "Bot started"}
+        except Exception as e:
+            return {"success": False, "message": str(e)}
+
+    return {"success": False, "message": "Start callback not configured"}
+
+
+@app.post("/api/bot/stop")
+async def stop_bot():
+    """Stop the trading bot."""
+    if not bot_state.get("running"):
+        return {"success": False, "message": "Bot is not running"}
+
+    stop_callback = bot_state.get("stop_callback")
+    if stop_callback:
+        try:
+            await stop_callback()
+            return {"success": True, "message": "Bot stopped"}
+        except Exception as e:
+            return {"success": False, "message": str(e)}
+
+    return {"success": False, "message": "Stop callback not configured"}
+
+
+@app.get("/api/settings")
+async def get_settings():
+    """Get current strategy settings."""
+    return runtime_settings
+
+
+@app.post("/api/settings")
+async def save_settings(settings: dict):
+    """Save strategy settings."""
+    try:
+        if "timeframe" in settings:
+            runtime_settings["timeframe"] = settings["timeframe"]
+        if "trading_pairs" in settings:
+            runtime_settings["trading_pairs"] = settings["trading_pairs"]
+        if "risk_per_trade" in settings:
+            runtime_settings["risk_per_trade"] = float(settings["risk_per_trade"])
+        if "tp_risk_ratio" in settings:
+            runtime_settings["tp_risk_ratio"] = float(settings["tp_risk_ratio"])
+        if "sl_mode" in settings:
+            runtime_settings["sl_mode"] = settings["sl_mode"]
+        if "leverage" in settings:
+            runtime_settings["leverage"] = int(settings["leverage"])
+        if "max_open_positions" in settings:
+            runtime_settings["max_open_positions"] = int(settings["max_open_positions"])
+        if "ema_enabled" in settings:
+            runtime_settings["ema_enabled"] = settings["ema_enabled"]
+
+        return {"success": True, "message": "Settings saved"}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
 
 
 @app.websocket("/ws/logs")

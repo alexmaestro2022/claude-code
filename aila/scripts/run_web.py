@@ -22,7 +22,7 @@ from aila.core.strategy import TripleSuperTrendConfig, TripleSuperTrendStrategy
 from aila.exchange import BybitClient, BybitConfig
 from aila.exchange.models import AccountType
 from aila.trading import TradingEngine, TradingEngineConfig
-from aila.api.main import app, add_log, log_buffer
+from aila.api.main import app, add_log, log_buffer, bot_state as api_bot_state, runtime_settings
 
 logger = structlog.get_logger(__name__)
 
@@ -32,6 +32,18 @@ bot_state = {
     "client": None,
     "running": False,
 }
+
+
+def sync_runtime_settings():
+    """Sync runtime settings from config."""
+    runtime_settings["timeframe"] = settings.strategy.timeframe
+    runtime_settings["trading_pairs"] = settings.strategy.trading_pairs
+    runtime_settings["risk_per_trade"] = settings.risk.risk_per_trade
+    runtime_settings["tp_risk_ratio"] = settings.risk.tp_risk_ratio
+    runtime_settings["sl_mode"] = settings.risk.sl_mode
+    runtime_settings["leverage"] = settings.futures.default_leverage
+    runtime_settings["max_open_positions"] = settings.risk.max_open_positions
+    runtime_settings["ema_enabled"] = settings.strategy.ema_enabled
 
 
 def create_bybit_config() -> BybitConfig:
@@ -151,9 +163,12 @@ async def get_stats():
     return stats
 
 
-async def run_bot():
-    """Run the trading bot."""
-    add_log("[info    ] Starting AILA Trading Bot with Web Interface")
+async def start_trading():
+    """Start the trading bot (called from API)."""
+    add_log("[info    ] Starting AILA Trading Bot...")
+
+    # Sync settings
+    sync_runtime_settings()
 
     # Create configurations
     bybit_config = create_bybit_config()
@@ -170,6 +185,8 @@ async def run_bot():
     # Store in global state
     bot_state["client"] = client
     bot_state["engine"] = engine
+    api_bot_state["client"] = client
+    api_bot_state["engine"] = engine
 
     # Register callbacks
     async def on_signal(sig):
@@ -186,27 +203,55 @@ async def run_bot():
     engine.on_trade(on_trade)
     engine.on_error(on_error)
 
+    # Connect to exchange
+    if not client.connect():
+        add_log("[error   ] Failed to connect to exchange")
+        raise Exception("Failed to connect to exchange")
+
+    # Validate connection
+    is_valid, message = client.validate_connection()
+    if not is_valid:
+        add_log(f"[error   ] Connection validation failed: {message}")
+        raise Exception(f"Connection validation failed: {message}")
+
+    add_log(f"[info    ] {message}")
+
+    # Start trading engine
+    if not await engine.start():
+        add_log("[error   ] Failed to start trading engine")
+        raise Exception("Failed to start trading engine")
+
+    add_log(f"[info    ] Bot running - pairs={strategy.trading_pairs} timeframe={strategy.timeframe}")
+    bot_state["running"] = True
+    api_bot_state["running"] = True
+
+
+async def stop_trading():
+    """Stop the trading bot (called from API)."""
+    add_log("[info    ] Stopping bot...")
+
+    bot_state["running"] = False
+    api_bot_state["running"] = False
+
+    if bot_state["engine"]:
+        await bot_state["engine"].stop()
+    if bot_state["client"]:
+        bot_state["client"].disconnect()
+
+    bot_state["engine"] = None
+    bot_state["client"] = None
+    api_bot_state["engine"] = None
+    api_bot_state["client"] = None
+
+    add_log("[info    ] Bot stopped")
+
+
+async def run_bot():
+    """Run the trading bot (auto-start mode)."""
+    add_log("[info    ] Starting AILA Trading Bot with Web Interface")
+
     try:
-        # Connect to exchange
-        if not client.connect():
-            add_log("[error   ] Failed to connect to exchange")
-            return
-
-        # Validate connection
-        is_valid, message = client.validate_connection()
-        if not is_valid:
-            add_log(f"[error   ] Connection validation failed: {message}")
-            return
-
-        add_log(f"[info    ] {message}")
-
-        # Start trading engine
-        if not await engine.start():
-            add_log("[error   ] Failed to start trading engine")
-            return
-
-        add_log(f"[info    ] Bot running - pairs={strategy.trading_pairs} timeframe={strategy.timeframe}")
-        bot_state["running"] = True
+        await start_trading()
 
         # Keep running
         while bot_state["running"]:
@@ -216,10 +261,8 @@ async def run_bot():
         add_log(f"[error   ] Unexpected error: {str(e)}")
 
     finally:
-        add_log("[info    ] Shutting down...")
-        await engine.stop()
-        client.disconnect()
-        add_log("[info    ] Bot stopped")
+        if bot_state["running"]:
+            await stop_trading()
 
 
 def run_uvicorn():
@@ -236,6 +279,19 @@ def run_uvicorn():
 
 def main():
     """Main entry point."""
+    import argparse
+
+    parser = argparse.ArgumentParser(description="AILA Trading Bot with Web Interface")
+    parser.add_argument("--no-autostart", action="store_true", help="Don't auto-start the bot")
+    args = parser.parse_args()
+
+    # Sync settings on startup
+    sync_runtime_settings()
+
+    # Set up API callbacks
+    api_bot_state["start_callback"] = start_trading
+    api_bot_state["stop_callback"] = stop_trading
+
     # Start web server in background thread
     web_thread = threading.Thread(target=run_uvicorn, daemon=True)
     web_thread.start()
@@ -243,19 +299,30 @@ def main():
     print(f"\n{'='*50}")
     print(f"  AILA Trading Bot - Web Interface")
     print(f"  Dashboard: http://{settings.web.host}:{settings.web.port}")
+    if args.no_autostart:
+        print(f"  Mode: Manual start (use web interface)")
+    else:
+        print(f"  Mode: Auto-start")
     print(f"{'='*50}\n")
 
     # Handle shutdown
     def handle_shutdown(signum, frame):
         print("\nShutdown signal received...")
         bot_state["running"] = False
+        api_bot_state["running"] = False
 
     signal.signal(signal.SIGINT, handle_shutdown)
     signal.signal(signal.SIGTERM, handle_shutdown)
 
-    # Run bot
+    # Run bot or keep server running
     try:
-        asyncio.run(run_bot())
+        if args.no_autostart:
+            # Just keep the web server running
+            add_log("[info    ] Web interface started. Use buttons to control bot.")
+            while True:
+                asyncio.get_event_loop().run_until_complete(asyncio.sleep(1))
+        else:
+            asyncio.run(run_bot())
     except KeyboardInterrupt:
         pass
 
