@@ -60,6 +60,11 @@ def create_bybit_config() -> BybitConfig:
 
 def create_strategy_config() -> TripleSuperTrendConfig:
     """Create strategy configuration from runtime settings."""
+    # For auto_search mode, use max_simultaneous_orders as max_open_positions
+    max_positions = runtime_settings.get("max_open_positions", settings.risk.max_open_positions)
+    if runtime_settings.get("auto_search_active"):
+        max_positions = runtime_settings.get("max_simultaneous_orders", 3)
+
     return TripleSuperTrendConfig(
         st1_period=settings.strategy.st1_period,
         st1_multiplier=settings.strategy.st1_multiplier,
@@ -70,20 +75,20 @@ def create_strategy_config() -> TripleSuperTrendConfig:
         # Use runtime settings instead of config file
         ema_enabled=runtime_settings.get("ema_enabled", settings.strategy.ema_enabled),
         ema_period=settings.strategy.ema_period,
-        ema_filter_mode=settings.strategy.ema_filter_mode,
+        ema_filter_mode=runtime_settings.get("ema_filter_mode", settings.strategy.ema_filter_mode),
         timeframe=runtime_settings.get("timeframe", settings.strategy.timeframe),
         trading_pairs=runtime_settings.get("trading_pairs", settings.strategy.trading_pairs),
         risk_per_trade=runtime_settings.get("risk_per_trade", settings.risk.risk_per_trade),
         max_position_percent=settings.risk.max_position_percent,
-        max_open_positions=runtime_settings.get("max_open_positions", settings.risk.max_open_positions),
+        max_open_positions=max_positions,
         sl_mode=runtime_settings.get("sl_mode", settings.risk.sl_mode),
-        sl_supertrend_line=settings.risk.sl_supertrend_line,
-        sl_fixed_percent=settings.risk.sl_fixed_percent,
+        sl_supertrend_line=runtime_settings.get("sl_supertrend_line", settings.risk.sl_supertrend_line),
+        sl_fixed_percent=runtime_settings.get("sl_fixed_percent", settings.risk.sl_fixed_percent),
         tp_mode=settings.risk.tp_mode,
         tp_risk_ratio=runtime_settings.get("tp_risk_ratio", settings.risk.tp_risk_ratio),
-        trailing_enabled=settings.risk.trailing_enabled,
-        trailing_activation=settings.risk.trailing_activation,
-        trailing_step=settings.risk.trailing_step,
+        trailing_enabled=runtime_settings.get("trailing_enabled", settings.risk.trailing_enabled),
+        trailing_activation=runtime_settings.get("trailing_activation", settings.risk.trailing_activation),
+        trailing_step=runtime_settings.get("trailing_step", settings.risk.trailing_step),
     )
 
 
@@ -174,8 +179,16 @@ async def start_trading():
     tf = runtime_settings.get("timeframe", settings.strategy.timeframe)
     leverage = runtime_settings.get("leverage", settings.futures.default_leverage)
     ema = runtime_settings.get("ema_enabled", settings.strategy.ema_enabled)
+    bot_mode = runtime_settings.get("bot_mode", "manual")
+    auto_search = runtime_settings.get("auto_search_active", False)
 
-    add_log(f"[info    ] Config: pairs={pairs} timeframe={tf} leverage={leverage}x ema={ema}")
+    if auto_search:
+        max_orders = runtime_settings.get("max_simultaneous_orders", 3)
+        add_log(f"[info    ] Mode: AUTO SEARCH - scanning {len(pairs)} pairs, max orders={max_orders}")
+    else:
+        add_log(f"[info    ] Mode: MANUAL - pairs={pairs}")
+
+    add_log(f"[info    ] Config: timeframe={tf} leverage={leverage}x ema={ema}")
 
     # Create configurations
     bybit_config = create_bybit_config()

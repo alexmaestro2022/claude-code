@@ -843,6 +843,13 @@ DASHBOARD_HTML = r"""
                     <input type="text" id="newBotName" placeholder="My Bot">
                 </div>
                 <div class="setting-item">
+                    <label data-i18n="botMode">Bot Mode</label>
+                    <select id="newBotMode" onchange="toggleBotMode('new')">
+                        <option value="manual" selected data-i18n="manualMode">Manual (Single Pair)</option>
+                        <option value="auto_search" data-i18n="autoSearchMode">Auto Search (All Pairs)</option>
+                    </select>
+                </div>
+                <div class="setting-item" id="newPairContainer">
                     <label data-i18n="tradingPair">Trading Pair</label>
                     <div class="pair-search-container" style="position: relative; display: flex; align-items: center;">
                         <input type="text" id="newBotPairSearch" placeholder="Search pair... (e.g. BTC, ETH)"
@@ -852,6 +859,13 @@ DASHBOARD_HTML = r"""
                         <div id="newPairDropdown" class="pair-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; max-height: 250px; overflow-y: auto; background: #1a1a2e; border: 1px solid #333; border-radius: 5px; z-index: 1000;">
                         </div>
                         <input type="hidden" id="newBotPair" value="BTCUSDT">
+                    </div>
+                </div>
+                <div class="setting-item" id="newMaxOrdersContainer" style="display: none;">
+                    <label data-i18n="maxSimultaneousOrders">Max Simultaneous Orders</label>
+                    <input type="number" id="newBotMaxOrders" value="3" min="1" max="20">
+                    <div style="margin-top: 5px; font-size: 11px; color: #888;" data-i18n="autoSearchHint">
+                        Bot will scan all pairs and open orders when strategy conditions match
                     </div>
                 </div>
                 <div class="setting-item">
@@ -988,6 +1002,13 @@ DASHBOARD_HTML = r"""
                     <input type="text" id="editBotName">
                 </div>
                 <div class="setting-item">
+                    <label data-i18n="botMode">Bot Mode</label>
+                    <select id="editBotMode" onchange="toggleBotMode('edit')">
+                        <option value="manual" data-i18n="manualMode">Manual (Single Pair)</option>
+                        <option value="auto_search" data-i18n="autoSearchMode">Auto Search (All Pairs)</option>
+                    </select>
+                </div>
+                <div class="setting-item" id="editPairContainer">
                     <label data-i18n="tradingPair">Trading Pair</label>
                     <div class="pair-search-container" style="position: relative; display: flex; align-items: center;">
                         <input type="text" id="editBotPairSearch" placeholder="Search pair... (e.g. BTC, ETH)"
@@ -997,6 +1018,13 @@ DASHBOARD_HTML = r"""
                         <div id="editPairDropdown" class="pair-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; max-height: 250px; overflow-y: auto; background: #1a1a2e; border: 1px solid #333; border-radius: 5px; z-index: 1000;">
                         </div>
                         <input type="hidden" id="editBotPair" value="">
+                    </div>
+                </div>
+                <div class="setting-item" id="editMaxOrdersContainer" style="display: none;">
+                    <label data-i18n="maxSimultaneousOrders">Max Simultaneous Orders</label>
+                    <input type="number" id="editBotMaxOrders" value="3" min="1" max="20">
+                    <div style="margin-top: 5px; font-size: 11px; color: #888;" data-i18n="autoSearchHint">
+                        Bot will scan all pairs and open orders when strategy conditions match
                     </div>
                 </div>
                 <div class="setting-item">
@@ -1217,7 +1245,12 @@ DASHBOARD_HTML = r"""
                 edit: 'Edit',
                 activeBots: 'Active Bots',
                 botUpdated: 'Bot updated successfully!',
-                doubleClickChart: 'Double-click for fullscreen'
+                doubleClickChart: 'Double-click for fullscreen',
+                botMode: 'Bot Mode',
+                manualMode: 'Manual (Single Pair)',
+                autoSearchMode: 'Auto Search (All Pairs)',
+                maxSimultaneousOrders: 'Max Simultaneous Orders',
+                autoSearchHint: 'Bot will scan all pairs and open orders when strategy conditions match'
             },
             ru: {
                 connecting: 'Подключение...',
@@ -1298,7 +1331,12 @@ DASHBOARD_HTML = r"""
                 edit: 'Редакт.',
                 activeBots: 'Активных ботов',
                 botUpdated: 'Бот обновлен!',
-                doubleClickChart: 'Двойной клик для полноэкранного режима'
+                doubleClickChart: 'Двойной клик для полноэкранного режима',
+                botMode: 'Режим бота',
+                manualMode: 'Ручной (одна пара)',
+                autoSearchMode: 'Автопоиск (все пары)',
+                maxSimultaneousOrders: 'Макс. одновременных ордеров',
+                autoSearchHint: 'Бот сканирует все пары и открывает ордера при совпадении условий стратегии'
             }
         };
 
@@ -1932,7 +1970,8 @@ DASHBOARD_HTML = r"""
                         <span class="bot-status ${bot.status}">${bot.status === 'running' ? t('running') : t('stopped')}</span>
                     </div>
                     <div class="bot-details">
-                        <div><strong>${t('tradingPair')}:</strong> ${Array.isArray(bot.trading_pairs) ? bot.trading_pairs[0] : bot.trading_pairs}</div>
+                        <div><strong>${t('botMode')}:</strong> ${bot.bot_mode === 'auto_search' ? '<span style="color: #ffcc00;">' + t('autoSearchMode') + '</span>' : t('manualMode')}</div>
+                        <div><strong>${bot.bot_mode === 'auto_search' ? t('maxSimultaneousOrders') : t('tradingPair')}:</strong> ${bot.bot_mode === 'auto_search' ? bot.max_simultaneous_orders || 3 : (Array.isArray(bot.trading_pairs) ? bot.trading_pairs[0] : bot.trading_pairs)}</div>
                         <div><strong>${t('timeframe')}:</strong> ${bot.timeframe} | <strong>${t('leverage')}:</strong> ${bot.leverage}x</div>
                         <div><strong>R:R:</strong> ${bot.tp_risk_ratio} | <strong>${t('riskPerTrade')}:</strong> ${bot.risk_per_trade}%</div>
                         <div><strong>EMA200:</strong> ${bot.ema_enabled ? '✓' : '✗'} | <strong>SL:</strong> ${bot.sl_mode}</div>
@@ -1971,7 +2010,11 @@ DASHBOARD_HTML = r"""
 
         // Create chart for a specific bot with indicators
         async function createBotChart(bot) {
-            const symbol = Array.isArray(bot.trading_pairs) ? bot.trading_pairs[0] : bot.trading_pairs;
+            // For auto_search mode, show BTCUSDT as default chart
+            let symbol = 'BTCUSDT';
+            if (bot.bot_mode !== 'auto_search') {
+                symbol = Array.isArray(bot.trading_pairs) ? bot.trading_pairs[0] : bot.trading_pairs;
+            }
             const chartContainer = document.getElementById('bot-chart-' + bot.id);
             if (!chartContainer || typeof LightweightCharts === 'undefined') return;
 
@@ -2160,6 +2203,23 @@ DASHBOARD_HTML = r"""
             }
         }
 
+        // Toggle bot mode (manual/auto_search)
+        function toggleBotMode(prefix) {
+            const mode = document.getElementById(prefix + 'BotMode').value;
+            const pairContainer = document.getElementById(prefix + 'PairContainer');
+            const maxOrdersContainer = document.getElementById(prefix + 'MaxOrdersContainer');
+            const pairInfoContainer = document.getElementById(prefix + 'PairInfoContainer');
+
+            if (mode === 'auto_search') {
+                if (pairContainer) pairContainer.style.display = 'none';
+                if (pairInfoContainer) pairInfoContainer.style.display = 'none';
+                if (maxOrdersContainer) maxOrdersContainer.style.display = 'block';
+            } else {
+                if (pairContainer) pairContainer.style.display = 'block';
+                if (maxOrdersContainer) maxOrdersContainer.style.display = 'none';
+            }
+        }
+
         // Toggle SL options based on selected mode
         function toggleSlOptions(prefix) {
             const slMode = document.getElementById(prefix + 'BotSlMode').value;
@@ -2173,11 +2233,14 @@ DASHBOARD_HTML = r"""
         }
 
         async function createBot() {
+            const botMode = document.getElementById('newBotMode').value;
             const selectedPair = document.getElementById('newBotPair').value;
             const slMode = document.getElementById('newBotSlMode').value;
             const config = {
                 name: document.getElementById('newBotName').value || 'Bot ' + (botsData.length + 1),
-                trading_pairs: [selectedPair],
+                bot_mode: botMode,
+                trading_pairs: botMode === 'auto_search' ? [] : [selectedPair],
+                max_simultaneous_orders: parseInt(document.getElementById('newBotMaxOrders').value) || 3,
                 timeframe: document.getElementById('newBotTimeframe').value,
                 leverage: parseInt(document.getElementById('newBotLeverage').value),
                 order_size: parseFloat(document.getElementById('newBotOrderSize').value),
@@ -2276,12 +2339,19 @@ DASHBOARD_HTML = r"""
             const currentPair = Array.isArray(bot.trading_pairs) ? bot.trading_pairs[0] : bot.trading_pairs;
             document.getElementById('editBotId').value = bot.id;
             document.getElementById('editBotName').value = bot.name;
-            document.getElementById('editBotPairSearch').value = currentPair;
-            document.getElementById('editBotPair').value = currentPair;
+            document.getElementById('editBotMode').value = bot.bot_mode || 'manual';
+            document.getElementById('editBotMaxOrders').value = bot.max_simultaneous_orders || 3;
+            document.getElementById('editBotPairSearch').value = currentPair || '';
+            document.getElementById('editBotPair').value = currentPair || '';
             document.getElementById('editBotTimeframe').value = bot.timeframe;
 
-            // Update pair info first (sets leverage options)
-            updatePairInfo('edit', currentPair);
+            // Toggle bot mode visibility
+            toggleBotMode('edit');
+
+            // Update pair info first (sets leverage options) - only for manual mode
+            if (bot.bot_mode !== 'auto_search' && currentPair) {
+                updatePairInfo('edit', currentPair);
+            }
 
             // Then set values
             document.getElementById('editBotLeverage').value = bot.leverage;
@@ -2310,10 +2380,13 @@ DASHBOARD_HTML = r"""
 
         async function saveEditBot() {
             const botId = document.getElementById('editBotId').value;
+            const botMode = document.getElementById('editBotMode').value;
             const slMode = document.getElementById('editBotSlMode').value;
             const config = {
                 name: document.getElementById('editBotName').value,
-                trading_pairs: [document.getElementById('editBotPair').value],
+                bot_mode: botMode,
+                trading_pairs: botMode === 'auto_search' ? [] : [document.getElementById('editBotPair').value],
+                max_simultaneous_orders: parseInt(document.getElementById('editBotMaxOrders').value) || 3,
                 timeframe: document.getElementById('editBotTimeframe').value,
                 leverage: parseInt(document.getElementById('editBotLeverage').value),
                 order_size: parseFloat(document.getElementById('editBotOrderSize').value),
@@ -2984,14 +3057,24 @@ async def create_bot(config: dict):
     bot_config = {
         "id": bot_id,
         "name": config.get("name", f"Bot {len(bots_registry) + 1}"),
+        "bot_mode": config.get("bot_mode", "manual"),
         "trading_pairs": config.get("trading_pairs", ["BTCUSDT"]),
+        "max_simultaneous_orders": config.get("max_simultaneous_orders", 3),
         "timeframe": config.get("timeframe", "15m"),
         "risk_per_trade": config.get("risk_per_trade", 2.0),
         "tp_risk_ratio": config.get("tp_risk_ratio", 2.0),
         "sl_mode": config.get("sl_mode", "supertrend_line"),
+        "sl_supertrend_line": config.get("sl_supertrend_line", 2),
+        "sl_fixed_percent": config.get("sl_fixed_percent", 2.0),
+        "sl_atr_multiplier": config.get("sl_atr_multiplier", 1.5),
         "leverage": config.get("leverage", 10),
+        "order_size": config.get("order_size", 100.0),
         "max_positions": config.get("max_positions", 3),
         "ema_enabled": config.get("ema_enabled", True),
+        "ema_filter_mode": config.get("ema_filter_mode", "strict"),
+        "trailing_enabled": config.get("trailing_enabled", True),
+        "trailing_activation": config.get("trailing_activation", 1.0),
+        "trailing_step": config.get("trailing_step", 0.5),
         "status": "stopped",
         "created_at": datetime.now().isoformat(),
     }
@@ -3013,8 +3096,12 @@ async def update_bot(bot_id: str, config: dict):
     # Update allowed fields
     if "name" in config:
         bot["name"] = config["name"]
+    if "bot_mode" in config:
+        bot["bot_mode"] = config["bot_mode"]
     if "trading_pairs" in config:
         bot["trading_pairs"] = config["trading_pairs"]
+    if "max_simultaneous_orders" in config:
+        bot["max_simultaneous_orders"] = int(config["max_simultaneous_orders"])
     if "timeframe" in config:
         bot["timeframe"] = config["timeframe"]
     if "risk_per_trade" in config:
@@ -3023,12 +3110,28 @@ async def update_bot(bot_id: str, config: dict):
         bot["tp_risk_ratio"] = float(config["tp_risk_ratio"])
     if "sl_mode" in config:
         bot["sl_mode"] = config["sl_mode"]
+    if "sl_supertrend_line" in config:
+        bot["sl_supertrend_line"] = int(config["sl_supertrend_line"])
+    if "sl_fixed_percent" in config:
+        bot["sl_fixed_percent"] = float(config["sl_fixed_percent"])
+    if "sl_atr_multiplier" in config:
+        bot["sl_atr_multiplier"] = float(config["sl_atr_multiplier"])
     if "leverage" in config:
         bot["leverage"] = int(config["leverage"])
+    if "order_size" in config:
+        bot["order_size"] = float(config["order_size"])
     if "max_positions" in config:
         bot["max_positions"] = int(config["max_positions"])
     if "ema_enabled" in config:
         bot["ema_enabled"] = config["ema_enabled"]
+    if "ema_filter_mode" in config:
+        bot["ema_filter_mode"] = config["ema_filter_mode"]
+    if "trailing_enabled" in config:
+        bot["trailing_enabled"] = config["trailing_enabled"]
+    if "trailing_activation" in config:
+        bot["trailing_activation"] = float(config["trailing_activation"])
+    if "trailing_step" in config:
+        bot["trailing_step"] = float(config["trailing_step"])
 
     add_log(f"[info    ] Bot updated: {bot['name']} (ID: {bot_id})")
 
@@ -3062,14 +3165,36 @@ async def start_specific_bot(bot_id: str):
         return {"success": False, "message": "Bot is already running"}
 
     # Update runtime settings with this bot's config
-    runtime_settings["trading_pairs"] = bot["trading_pairs"]
+    runtime_settings["bot_mode"] = bot.get("bot_mode", "manual")
+    runtime_settings["max_simultaneous_orders"] = bot.get("max_simultaneous_orders", 3)
+
+    # For auto_search mode, get all trading pairs
+    if bot.get("bot_mode") == "auto_search":
+        # Get all perpetual USDT pairs from cache or fetch
+        if trading_pairs_cache["pairs"]:
+            runtime_settings["trading_pairs"] = [p["symbol"] for p in trading_pairs_cache["pairs"]]
+        else:
+            runtime_settings["trading_pairs"] = ["BTCUSDT"]  # Fallback
+        runtime_settings["auto_search_active"] = True
+    else:
+        runtime_settings["trading_pairs"] = bot["trading_pairs"]
+        runtime_settings["auto_search_active"] = False
+
     runtime_settings["timeframe"] = bot["timeframe"]
     runtime_settings["risk_per_trade"] = bot["risk_per_trade"]
     runtime_settings["tp_risk_ratio"] = bot["tp_risk_ratio"]
     runtime_settings["sl_mode"] = bot["sl_mode"]
+    runtime_settings["sl_supertrend_line"] = bot.get("sl_supertrend_line", 2)
+    runtime_settings["sl_fixed_percent"] = bot.get("sl_fixed_percent", 2.0)
+    runtime_settings["sl_atr_multiplier"] = bot.get("sl_atr_multiplier", 1.5)
     runtime_settings["leverage"] = bot["leverage"]
+    runtime_settings["order_size"] = bot.get("order_size", 100.0)
     runtime_settings["max_open_positions"] = bot["max_positions"]
     runtime_settings["ema_enabled"] = bot["ema_enabled"]
+    runtime_settings["ema_filter_mode"] = bot.get("ema_filter_mode", "strict")
+    runtime_settings["trailing_enabled"] = bot.get("trailing_enabled", True)
+    runtime_settings["trailing_activation"] = bot.get("trailing_activation", 1.0)
+    runtime_settings["trailing_step"] = bot.get("trailing_step", 0.5)
 
     # Start the bot
     start_callback = bot_state.get("start_callback")
