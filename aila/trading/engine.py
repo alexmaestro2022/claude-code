@@ -454,32 +454,90 @@ class TradingEngine:
             await self._close_position(symbol, reason="engine_stop")
 
     async def _position_monitoring_loop(self) -> None:
-        """Monitor positions for SL/TP updates."""
+        """Monitor positions for SL/TP updates based on SuperTrend line."""
+        # Track last candle close time for each symbol
+        last_candle_time: dict[str, datetime] = {}
+
         while self.state == EngineState.RUNNING:
             try:
                 for symbol, position_data in list(self._active_positions.items()):
-                    ticker = self.client.get_ticker(symbol)
-                    if not ticker:
-                        continue
-
-                    current_price = float(ticker.last_price)
-                    entry_price = position_data["entry_price"]
-                    side = position_data["side"]
-
-                    # Update trailing stop if enabled
-                    if self.stop_loss_manager.config.trailing_enabled:
-                        current_sl = Decimal(str(position_data.get("stop_loss", 0)))
-                        new_sl = self.stop_loss_manager.update_trailing_stop(
-                            side=side,
-                            entry_price=Decimal(str(entry_price)),
-                            current_price=Decimal(str(current_price)),
-                            current_stop=current_sl,
+                    try:
+                        # Get candle data to check for new closed candle
+                        df = self.client.get_klines(
+                            symbol=symbol,
+                            interval=self._timeframe_to_interval(self.strategy.timeframe),
+                            limit=250,
                         )
 
-                        if new_sl.price != current_sl and not self.config.paper_trading:
-                            if isinstance(self.trader, FuturesTrader):
-                                self.trader.update_stop_loss(symbol, new_sl.price)
-                            position_data["stop_loss"] = float(new_sl.price)
+                        if df.empty or len(df) < 50:
+                            continue
+
+                        # Get the last closed candle time (second to last row, as last is still forming)
+                        current_candle_time = df.index[-2] if len(df) > 1 else df.index[-1]
+
+                        # Check if a new candle has closed
+                        prev_candle_time = last_candle_time.get(symbol)
+                        if prev_candle_time is not None and current_candle_time <= prev_candle_time:
+                            # No new candle closed, skip
+                            continue
+
+                        # Update last candle time
+                        last_candle_time[symbol] = current_candle_time
+
+                        # Calculate SuperTrend indicators
+                        indicators = self.strategy.calculate_indicators(df)
+                        triple_st = indicators.get("triple_supertrend")
+
+                        if not triple_st:
+                            continue
+
+                        # Get the SL SuperTrend line value based on settings
+                        sl_line = self.strategy.config.sl_supertrend_line
+                        line_map = {
+                            1: triple_st.st1.supertrend,
+                            2: triple_st.st2.supertrend,
+                            3: triple_st.st3.supertrend,
+                        }
+                        st_line = line_map.get(sl_line, triple_st.st2.supertrend)
+                        new_sl_price = float(st_line.iloc[-2])  # Use closed candle value
+
+                        current_sl = position_data.get("stop_loss", 0)
+                        side = position_data["side"]
+
+                        # Only move SL in profit direction (trailing stop behavior)
+                        should_update = False
+                        if side == "long":
+                            # For long: only move SL up (higher)
+                            if new_sl_price > current_sl:
+                                should_update = True
+                        else:
+                            # For short: only move SL down (lower)
+                            if new_sl_price < current_sl or current_sl == 0:
+                                should_update = True
+
+                        if should_update:
+                            logger.info(
+                                "Updating SL to SuperTrend line",
+                                symbol=symbol,
+                                side=side,
+                                old_sl=current_sl,
+                                new_sl=new_sl_price,
+                                st_line=sl_line,
+                            )
+
+                            # Update on exchange if not paper trading
+                            if not self.config.paper_trading:
+                                if isinstance(self.trader, FuturesTrader):
+                                    try:
+                                        self.trader.update_stop_loss(symbol, Decimal(str(new_sl_price)))
+                                    except Exception as e:
+                                        logger.error("Failed to update SL on exchange", error=str(e))
+
+                            # Update local position data
+                            position_data["stop_loss"] = new_sl_price
+
+                    except Exception as e:
+                        logger.error("Error updating position SL", symbol=symbol, error=str(e))
 
                 await asyncio.sleep(self.config.position_check_interval)
 
