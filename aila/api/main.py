@@ -844,9 +844,14 @@ DASHBOARD_HTML = r"""
                 </div>
                 <div class="setting-item">
                     <label data-i18n="tradingPair">Trading Pair</label>
-                    <select id="newBotPair" style="max-height: 200px;">
-                        <option value="BTCUSDT">BTCUSDT</option>
-                    </select>
+                    <div class="pair-search-container" style="position: relative;">
+                        <input type="text" id="newBotPairSearch" placeholder="Search pair... (e.g. BTC, ETH)"
+                               oninput="filterTradingPairs('new')" onfocus="showPairDropdown('new')"
+                               autocomplete="off" style="width: 100%;">
+                        <div id="newPairDropdown" class="pair-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; max-height: 250px; overflow-y: auto; background: #1a1a2e; border: 1px solid #333; border-radius: 5px; z-index: 1000;">
+                        </div>
+                        <input type="hidden" id="newBotPair" value="BTCUSDT">
+                    </div>
                 </div>
                 <div class="setting-item">
                     <label data-i18n="timeframe">Timeframe</label>
@@ -916,7 +921,14 @@ DASHBOARD_HTML = r"""
                 </div>
                 <div class="setting-item">
                     <label data-i18n="tradingPair">Trading Pair</label>
-                    <select id="editBotPair"></select>
+                    <div class="pair-search-container" style="position: relative;">
+                        <input type="text" id="editBotPairSearch" placeholder="Search pair... (e.g. BTC, ETH)"
+                               oninput="filterTradingPairs('edit')" onfocus="showPairDropdown('edit')"
+                               autocomplete="off" style="width: 100%;">
+                        <div id="editPairDropdown" class="pair-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; max-height: 250px; overflow-y: auto; background: #1a1a2e; border: 1px solid #333; border-radius: 5px; z-index: 1000;">
+                        </div>
+                        <input type="hidden" id="editBotPair" value="">
+                    </div>
                 </div>
                 <div class="setting-item">
                     <label data-i18n="timeframe">Timeframe</label>
@@ -1520,39 +1532,86 @@ DASHBOARD_HTML = r"""
         }
 
         // Modal functions
-        async function showCreateBotModal() {
-            // Load trading pairs into dropdown
+        let allTradingPairs = [];
+
+        async function loadTradingPairsCache() {
             try {
                 const response = await fetch('/api/trading-pairs');
                 const data = await response.json();
-                const select = document.getElementById('newBotPair');
-                select.innerHTML = '';
-
-                if (data.pairs && data.pairs.length > 0) {
-                    data.pairs.forEach(pair => {
-                        const option = document.createElement('option');
-                        option.value = pair.symbol;
-                        option.textContent = pair.symbol;
-                        select.appendChild(option);
-                    });
-                } else {
-                    // Default pairs if API fails
-                    ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'DOGEUSDT'].forEach(symbol => {
-                        const option = document.createElement('option');
-                        option.value = symbol;
-                        option.textContent = symbol;
-                        select.appendChild(option);
-                    });
-                }
+                allTradingPairs = data.pairs || [];
             } catch (err) {
-                console.error('Failed to load pairs for modal:', err);
+                console.error('Failed to load trading pairs:', err);
+                allTradingPairs = [];
             }
+        }
+
+        // Load pairs on page load
+        loadTradingPairsCache();
+
+        function showPairDropdown(prefix) {
+            const dropdown = document.getElementById(prefix + 'PairDropdown');
+            dropdown.style.display = 'block';
+            filterTradingPairs(prefix);
+        }
+
+        function hidePairDropdown(prefix) {
+            setTimeout(() => {
+                const dropdown = document.getElementById(prefix + 'PairDropdown');
+                dropdown.style.display = 'none';
+            }, 200);
+        }
+
+        function filterTradingPairs(prefix) {
+            const searchInput = document.getElementById(prefix + 'BotPairSearch');
+            const dropdown = document.getElementById(prefix + 'PairDropdown');
+            const searchValue = searchInput.value.toUpperCase();
+
+            const filtered = allTradingPairs.filter(pair =>
+                pair.symbol.toUpperCase().includes(searchValue) ||
+                pair.base.toUpperCase().includes(searchValue)
+            ).slice(0, 50); // Limit to 50 results for performance
+
+            dropdown.innerHTML = '';
+            filtered.forEach(pair => {
+                const item = document.createElement('div');
+                item.className = 'pair-dropdown-item';
+                item.style.cssText = 'padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #333;';
+                item.innerHTML = `<strong>${pair.base}</strong><span style="color: #888;">USDT</span>`;
+                item.onmouseover = () => item.style.background = '#2a2a4e';
+                item.onmouseout = () => item.style.background = 'transparent';
+                item.onclick = () => selectPair(prefix, pair.symbol);
+                dropdown.appendChild(item);
+            });
+
+            if (filtered.length === 0) {
+                dropdown.innerHTML = '<div style="padding: 12px; color: #888; text-align: center;">No pairs found</div>';
+            }
+        }
+
+        function selectPair(prefix, symbol) {
+            document.getElementById(prefix + 'BotPairSearch').value = symbol;
+            document.getElementById(prefix + 'BotPair').value = symbol;
+            document.getElementById(prefix + 'PairDropdown').style.display = 'none';
+        }
+
+        async function showCreateBotModal() {
+            // Reload pairs if empty
+            if (allTradingPairs.length === 0) {
+                await loadTradingPairsCache();
+            }
+
+            // Reset search field
+            document.getElementById('newBotPairSearch').value = 'BTCUSDT';
+            document.getElementById('newBotPair').value = 'BTCUSDT';
 
             document.getElementById('createBotModal').classList.add('show');
         }
 
         function closeModal(modalId) {
             document.getElementById(modalId).classList.remove('show');
+            // Hide dropdowns
+            const dropdowns = document.querySelectorAll('.pair-dropdown');
+            dropdowns.forEach(d => d.style.display = 'none');
         }
 
         // Bots Management
@@ -1917,30 +1976,17 @@ DASHBOARD_HTML = r"""
             const bot = botsData.find(b => b.id === botId);
             if (!bot) return;
 
-            // Load trading pairs into dropdown
-            try {
-                const response = await fetch('/api/trading-pairs');
-                const data = await response.json();
-                const select = document.getElementById('editBotPair');
-                select.innerHTML = '';
-
-                const pairs = data.pairs && data.pairs.length > 0 ? data.pairs :
-                    [{symbol:'BTCUSDT'},{symbol:'ETHUSDT'},{symbol:'SOLUSDT'},{symbol:'XRPUSDT'},{symbol:'DOGEUSDT'}];
-
-                pairs.forEach(pair => {
-                    const option = document.createElement('option');
-                    option.value = pair.symbol;
-                    option.textContent = pair.symbol;
-                    select.appendChild(option);
-                });
-            } catch (err) {
-                console.error('Failed to load pairs for edit modal:', err);
+            // Reload pairs if empty
+            if (allTradingPairs.length === 0) {
+                await loadTradingPairsCache();
             }
 
             // Fill form with bot data
+            const currentPair = Array.isArray(bot.trading_pairs) ? bot.trading_pairs[0] : bot.trading_pairs;
             document.getElementById('editBotId').value = bot.id;
             document.getElementById('editBotName').value = bot.name;
-            document.getElementById('editBotPair').value = Array.isArray(bot.trading_pairs) ? bot.trading_pairs[0] : bot.trading_pairs;
+            document.getElementById('editBotPairSearch').value = currentPair;
+            document.getElementById('editBotPair').value = currentPair;
             document.getElementById('editBotTimeframe').value = bot.timeframe;
             document.getElementById('editBotLeverage').value = bot.leverage;
             document.getElementById('editBotRisk').value = bot.risk_per_trade;
