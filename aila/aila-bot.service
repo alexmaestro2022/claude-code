@@ -5,9 +5,9 @@ After=network.target
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/home/user/claude-code/aila
-Environment="PATH=/home/user/claude-code/aila/.venv/bin:/usr/local/bin:/usr/bin:/bin"
-ExecStart=/home/user/claude-code/aila/.venv/bin/python -m api.main
+WorkingDirectory=/opt/aila
+Environment="PATH=/opt/aila/venv/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=/opt/aila/venv/bin/python -m aila.scripts.run_web
 Restart=always
 RestartSec=10
 
