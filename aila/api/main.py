@@ -3172,7 +3172,11 @@ async def start_specific_bot(bot_id: str):
     if bot.get("bot_mode") == "auto_search":
         # Get all perpetual USDT pairs from cache or fetch
         if trading_pairs_cache["pairs"]:
-            runtime_settings["trading_pairs"] = [p["symbol"] for p in trading_pairs_cache["pairs"]]
+            # Filter out any undefined/empty symbols
+            runtime_settings["trading_pairs"] = [
+                p["symbol"] for p in trading_pairs_cache["pairs"]
+                if p.get("symbol") and p["symbol"] not in ("undefined", "null", "")
+            ]
         else:
             runtime_settings["trading_pairs"] = ["BTCUSDT"]  # Fallback
         runtime_settings["auto_search_active"] = True
