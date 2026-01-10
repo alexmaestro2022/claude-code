@@ -715,27 +715,47 @@ DASHBOARD_HTML = r"""
 
         function copyLogs() {
             const logsDiv = document.getElementById('logs');
-            const lines = Array.from(logsDiv.querySelectorAll('.log-line'))
-                .map(line => line.textContent)
-                .join('\n');
+            const logLines = logsDiv.querySelectorAll('.log-line');
+            let text = '';
+            for (let i = 0; i < logLines.length; i++) {
+                text += logLines[i].textContent;
+                if (i < logLines.length - 1) text += String.fromCharCode(10);
+            }
 
-            navigator.clipboard.writeText(lines).then(() => {
-                showToast(t('logsCopied'));
-            }).catch(err => {
-                console.error('Failed to copy:', err);
-                // Fallback for older browsers
-                const textArea = document.createElement('textarea');
-                textArea.value = lines;
-                document.body.appendChild(textArea);
-                textArea.select();
-                try {
-                    document.execCommand('copy');
+            // Try modern clipboard API first
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(function() {
                     showToast(t('logsCopied'));
-                } catch (e) {
+                }).catch(function(err) {
+                    console.error('Clipboard API failed:', err);
+                    fallbackCopy(text);
+                });
+            } else {
+                fallbackCopy(text);
+            }
+        }
+
+        function fallbackCopy(text) {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-9999px';
+            textArea.style.top = '0';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    showToast(t('logsCopied'));
+                } else {
                     showToast(t('copyFailed'));
                 }
-                document.body.removeChild(textArea);
-            });
+            } catch (err) {
+                console.error('Fallback copy failed:', err);
+                showToast(t('copyFailed'));
+            }
+            document.body.removeChild(textArea);
         }
 
         function clearLogs() {
