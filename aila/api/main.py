@@ -1640,20 +1640,9 @@ DASHBOARD_HTML = r"""
             });
         }
 
-        // Get update interval based on timeframe (in milliseconds)
+        // Get update interval - fast 1 second updates for real-time feel
         function getUpdateInterval(timeframe) {
-            const intervals = {
-                '1m': 3000,    // 3 sec
-                '3m': 5000,    // 5 sec
-                '5m': 10000,   // 10 sec
-                '15m': 15000,  // 15 sec
-                '30m': 30000,  // 30 sec
-                '1h': 60000,   // 1 min
-                '2h': 60000,   // 1 min
-                '4h': 120000,  // 2 min
-                '1d': 300000,  // 5 min
-            };
-            return intervals[timeframe] || 15000;
+            return 1000; // 1 second for all timeframes
         }
 
         // Create chart for a specific bot with indicators
