@@ -1541,7 +1541,6 @@ DASHBOARD_HTML = r"""
                 const response = await fetch('/api/trading-pairs');
                 const data = await response.json();
                 allTradingPairs = data.pairs || [];
-                console.log('Loaded trading pairs:', allTradingPairs.length, 'unique symbols:', new Set(allTradingPairs.map(p => p.symbol)).size);
             } catch (err) {
                 console.error('Failed to load trading pairs:', err);
                 allTradingPairs = [];
@@ -1571,15 +1570,17 @@ DASHBOARD_HTML = r"""
             const dropdown = document.getElementById(prefix + 'PairDropdown');
             const searchValue = searchInput.value.toUpperCase().trim();
 
-            console.log('filterTradingPairs called, search:', searchValue, 'total pairs:', allTradingPairs.length);
+            // Filter out dated futures (quarterly contracts like BTCUSDT-16JAN26)
+            // Only show perpetual contracts (without date suffix)
+            const perpetualPairs = allTradingPairs.filter(pair =>
+                !/-\d{2}[A-Z]{3}\d{2}$/.test(pair.symbol)
+            );
 
-            // First filter by search, then deduplicate
-            const matchingPairs = allTradingPairs.filter(pair =>
+            // Then filter by search
+            const matchingPairs = perpetualPairs.filter(pair =>
                 pair.symbol.toUpperCase().includes(searchValue) ||
                 pair.base.toUpperCase().includes(searchValue)
             );
-
-            console.log('Matching pairs:', matchingPairs.length);
 
             // Deduplicate by symbol using Map for guaranteed uniqueness
             const pairsMap = new Map();
@@ -1589,8 +1590,6 @@ DASHBOARD_HTML = r"""
                 }
             }
             const uniquePairs = Array.from(pairsMap.values()).slice(0, 50);
-
-            console.log('Unique pairs after dedup:', uniquePairs.length, uniquePairs.map(p => p.symbol));
 
             // Clear dropdown completely
             dropdown.innerHTML = '';
@@ -1606,8 +1605,6 @@ DASHBOARD_HTML = r"""
                 item.onclick = () => selectPair(prefix, pair.symbol);
                 dropdown.appendChild(item);
             });
-
-            console.log('Dropdown children count:', dropdown.children.length);
 
             if (uniquePairs.length === 0) {
                 dropdown.innerHTML = '<div style="padding: 12px; color: #888; text-align: center;">No pairs found</div>';
