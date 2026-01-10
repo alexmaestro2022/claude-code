@@ -1566,10 +1566,14 @@ DASHBOARD_HTML = r"""
             const dropdown = document.getElementById(prefix + 'PairDropdown');
             const searchValue = searchInput.value.toUpperCase();
 
-            const filtered = allTradingPairs.filter(pair =>
-                pair.symbol.toUpperCase().includes(searchValue) ||
-                pair.base.toUpperCase().includes(searchValue)
-            ).slice(0, 50); // Limit to 50 results for performance
+            // Filter and remove duplicates using Map
+            const seen = new Set();
+            const filtered = allTradingPairs.filter(pair => {
+                if (seen.has(pair.symbol)) return false;
+                seen.add(pair.symbol);
+                return pair.symbol.toUpperCase().includes(searchValue) ||
+                       pair.base.toUpperCase().includes(searchValue);
+            }).slice(0, 50); // Limit to 50 results for performance
 
             dropdown.innerHTML = '';
             filtered.forEach(pair => {
