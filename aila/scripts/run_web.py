@@ -48,18 +48,18 @@ def sync_runtime_settings():
 
 
 def create_bybit_config() -> BybitConfig:
-    """Create Bybit configuration from settings."""
+    """Create Bybit configuration from runtime settings."""
     return BybitConfig(
         api_key=settings.exchange.api_key.get_secret_value(),
         api_secret=settings.exchange.api_secret.get_secret_value(),
         testnet=settings.exchange.testnet,
         account_type=AccountType(settings.exchange.account_type),
-        default_leverage=settings.futures.default_leverage,
+        default_leverage=runtime_settings.get("leverage", settings.futures.default_leverage),
     )
 
 
 def create_strategy_config() -> TripleSuperTrendConfig:
-    """Create strategy configuration from settings."""
+    """Create strategy configuration from runtime settings."""
     return TripleSuperTrendConfig(
         st1_period=settings.strategy.st1_period,
         st1_multiplier=settings.strategy.st1_multiplier,
@@ -67,19 +67,20 @@ def create_strategy_config() -> TripleSuperTrendConfig:
         st2_multiplier=settings.strategy.st2_multiplier,
         st3_period=settings.strategy.st3_period,
         st3_multiplier=settings.strategy.st3_multiplier,
-        ema_enabled=settings.strategy.ema_enabled,
+        # Use runtime settings instead of config file
+        ema_enabled=runtime_settings.get("ema_enabled", settings.strategy.ema_enabled),
         ema_period=settings.strategy.ema_period,
         ema_filter_mode=settings.strategy.ema_filter_mode,
-        timeframe=settings.strategy.timeframe,
-        trading_pairs=settings.strategy.trading_pairs,
-        risk_per_trade=settings.risk.risk_per_trade,
+        timeframe=runtime_settings.get("timeframe", settings.strategy.timeframe),
+        trading_pairs=runtime_settings.get("trading_pairs", settings.strategy.trading_pairs),
+        risk_per_trade=runtime_settings.get("risk_per_trade", settings.risk.risk_per_trade),
         max_position_percent=settings.risk.max_position_percent,
-        max_open_positions=settings.risk.max_open_positions,
-        sl_mode=settings.risk.sl_mode,
+        max_open_positions=runtime_settings.get("max_open_positions", settings.risk.max_open_positions),
+        sl_mode=runtime_settings.get("sl_mode", settings.risk.sl_mode),
         sl_supertrend_line=settings.risk.sl_supertrend_line,
         sl_fixed_percent=settings.risk.sl_fixed_percent,
         tp_mode=settings.risk.tp_mode,
-        tp_risk_ratio=settings.risk.tp_risk_ratio,
+        tp_risk_ratio=runtime_settings.get("tp_risk_ratio", settings.risk.tp_risk_ratio),
         trailing_enabled=settings.risk.trailing_enabled,
         trailing_activation=settings.risk.trailing_activation,
         trailing_step=settings.risk.trailing_step,
@@ -168,15 +169,20 @@ async def start_trading():
     """Start the trading bot (called from API)."""
     add_log("[info    ] Starting AILA Trading Bot...")
 
-    # Sync settings
-    sync_runtime_settings()
+    # Log runtime settings
+    pairs = runtime_settings.get("trading_pairs", settings.strategy.trading_pairs)
+    tf = runtime_settings.get("timeframe", settings.strategy.timeframe)
+    leverage = runtime_settings.get("leverage", settings.futures.default_leverage)
+    ema = runtime_settings.get("ema_enabled", settings.strategy.ema_enabled)
+
+    add_log(f"[info    ] Config: pairs={pairs} timeframe={tf} leverage={leverage}x ema={ema}")
 
     # Create configurations
     bybit_config = create_bybit_config()
     strategy_config = create_strategy_config()
     engine_config = create_engine_config()
 
-    add_log(f"[info    ] Strategy: tp_risk_ratio={strategy_config.tp_risk_ratio} sl_mode={strategy_config.sl_mode}")
+    add_log(f"[info    ] Strategy: tp_ratio={strategy_config.tp_risk_ratio} sl_mode={strategy_config.sl_mode} risk={strategy_config.risk_per_trade}%")
 
     # Initialize components
     client = BybitClient(bybit_config)
