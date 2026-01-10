@@ -43,6 +43,7 @@ class TradingEngineConfig:
     # Trading settings
     auto_start: bool = False
     paper_trading: bool = False
+    order_size: float = 100.0  # Fixed order size in USDT
 
     # Safety
     max_daily_loss_percent: float = 5.0
@@ -128,8 +129,13 @@ class TradingEngine:
         else:
             self.trader = SpotTrader(client)
 
-        # Risk management
-        self.position_sizer = PositionSizer()
+        # Risk management - use fixed_amount mode with order_size
+        position_sizing_config = PositionSizingConfig(
+            mode="fixed_amount",
+            fixed_amount=Decimal(str(self.config.order_size)),
+            max_open_positions=strategy.config.max_open_positions,
+        )
+        self.position_sizer = PositionSizer(position_sizing_config)
         self.stop_loss_manager = StopLossManager()
         self.take_profit_manager = TakeProfitManager()
 

@@ -97,6 +97,7 @@ def create_engine_config() -> TradingEngineConfig:
     return TradingEngineConfig(
         max_daily_loss_percent=settings.risk.max_daily_loss_percent,
         paper_trading=not settings.is_production,
+        order_size=runtime_settings.get("order_size", 100.0),
     )
 
 
@@ -188,7 +189,8 @@ async def start_trading():
     else:
         add_log(f"[info    ] Mode: MANUAL - pairs={pairs}")
 
-    add_log(f"[info    ] Config: timeframe={tf} leverage={leverage}x ema={ema}")
+    order_size = runtime_settings.get("order_size", 100.0)
+    add_log(f"[info    ] Config: timeframe={tf} leverage={leverage}x ema={ema} order_size={order_size} USDT")
 
     # Create configurations
     bybit_config = create_bybit_config()
