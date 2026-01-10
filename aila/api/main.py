@@ -2740,54 +2740,81 @@ async def stop_specific_bot(bot_id: str):
 
 @app.get("/api/trading-pairs")
 async def get_trading_pairs():
-    """Get available trading pairs from exchange."""
+    """Get available trading pairs from Bybit futures exchange."""
+    import httpx
     from datetime import datetime, timedelta
 
-    # Return cached data if fresh (less than 5 minutes old)
+    # Return cached data if fresh (less than 10 minutes old)
     if trading_pairs_cache["pairs"] and trading_pairs_cache["last_update"]:
-        if datetime.now() - trading_pairs_cache["last_update"] < timedelta(minutes=5):
+        if datetime.now() - trading_pairs_cache["last_update"] < timedelta(minutes=10):
             return {"pairs": trading_pairs_cache["pairs"]}
 
+    # First try using connected client
     client = bot_state.get("client")
-    if not client:
-        # Return default pairs if no client
-        return {"pairs": [
-            {"symbol": "BTCUSDT", "base": "BTC", "quote": "USDT"},
-            {"symbol": "ETHUSDT", "base": "ETH", "quote": "USDT"},
-            {"symbol": "SOLUSDT", "base": "SOL", "quote": "USDT"},
-            {"symbol": "XRPUSDT", "base": "XRP", "quote": "USDT"},
-            {"symbol": "DOGEUSDT", "base": "DOGE", "quote": "USDT"},
-            {"symbol": "ADAUSDT", "base": "ADA", "quote": "USDT"},
-            {"symbol": "AVAXUSDT", "base": "AVAX", "quote": "USDT"},
-            {"symbol": "LINKUSDT", "base": "LINK", "quote": "USDT"},
-            {"symbol": "MATICUSDT", "base": "MATIC", "quote": "USDT"},
-            {"symbol": "LTCUSDT", "base": "LTC", "quote": "USDT"},
-        ]}
+    if client:
+        try:
+            pairs = client.get_trading_pairs()
+            result = []
+            for pair in pairs:
+                if pair.quote_asset == "USDT" and pair.status == "Trading":
+                    result.append({
+                        "symbol": pair.symbol,
+                        "base": pair.base_asset,
+                        "quote": pair.quote_asset,
+                        "minQty": str(pair.min_order_qty),
+                        "maxLeverage": pair.max_leverage,
+                    })
 
+            # Sort by symbol
+            result.sort(key=lambda x: x["symbol"])
+
+            # Cache the result
+            trading_pairs_cache["pairs"] = result
+            trading_pairs_cache["last_update"] = datetime.now()
+
+            return {"pairs": result}
+        except Exception as e:
+            logger.error("Failed to get trading pairs from client", error=str(e))
+
+    # Fallback: fetch directly from Bybit public API
     try:
-        pairs = client.get_trading_pairs()
-        result = []
-        for pair in pairs:
-            if pair.quote_asset == "USDT" and pair.status == "Trading":
-                result.append({
-                    "symbol": pair.symbol,
-                    "base": pair.base_asset,
-                    "quote": pair.quote_asset,
-                    "minQty": str(pair.min_order_qty),
-                    "maxLeverage": pair.max_leverage,
-                })
+        async with httpx.AsyncClient(timeout=10.0) as http_client:
+            response = await http_client.get(
+                "https://api.bybit.com/v5/market/instruments-info",
+                params={"category": "linear"}
+            )
+            data = response.json()
 
-        # Sort by symbol
-        result.sort(key=lambda x: x["symbol"])
+            if data.get("retCode") == 0:
+                result = []
+                for item in data.get("result", {}).get("list", []):
+                    if item.get("quoteCoin") == "USDT" and item.get("status") == "Trading":
+                        result.append({
+                            "symbol": item.get("symbol"),
+                            "base": item.get("baseCoin"),
+                            "quote": item.get("quoteCoin"),
+                            "minQty": item.get("lotSizeFilter", {}).get("minOrderQty", "0.001"),
+                            "maxLeverage": int(float(item.get("leverageFilter", {}).get("maxLeverage", "100"))),
+                        })
 
-        # Cache the result
-        trading_pairs_cache["pairs"] = result
-        trading_pairs_cache["last_update"] = datetime.now()
+                # Sort by symbol
+                result.sort(key=lambda x: x["symbol"])
 
-        return {"pairs": result}
+                # Cache the result
+                trading_pairs_cache["pairs"] = result
+                trading_pairs_cache["last_update"] = datetime.now()
+
+                logger.info(f"Loaded {len(result)} trading pairs from Bybit API")
+                return {"pairs": result}
+
     except Exception as e:
-        logger.error("Failed to get trading pairs", error=str(e))
-        return {"pairs": [], "error": str(e)}
+        logger.error("Failed to fetch trading pairs from Bybit API", error=str(e))
+
+    # Return cached data if available (even if stale)
+    if trading_pairs_cache["pairs"]:
+        return {"pairs": trading_pairs_cache["pairs"]}
+
+    return {"pairs": [], "error": "Failed to load trading pairs"}
 
 
 @app.get("/api/klines/{symbol}")
