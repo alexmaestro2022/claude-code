@@ -1520,6 +1520,10 @@ DASHBOARD_HTML = r"""
         // Bots Management
         let botsData = [];
 
+        // Chart storage for real-time updates (must be defined before renderBots)
+        const botCharts = {};
+        const chartUpdateIntervals = {};
+
         async function loadBots() {
             try {
                 const response = await fetch('/api/bots');
@@ -1533,6 +1537,21 @@ DASHBOARD_HTML = r"""
 
         function renderBots() {
             const grid = document.getElementById('botsGrid');
+
+            // Clean up all existing bot charts and intervals before re-rendering
+            Object.keys(chartUpdateIntervals).forEach(botId => {
+                clearInterval(chartUpdateIntervals[botId]);
+                delete chartUpdateIntervals[botId];
+            });
+            Object.keys(botCharts).forEach(botId => {
+                try {
+                    if (botCharts[botId] && botCharts[botId].chart) {
+                        botCharts[botId].chart.remove();
+                    }
+                } catch(e) {}
+                delete botCharts[botId];
+            });
+
             if (botsData.length === 0) {
                 grid.innerHTML = '<p style="color: #888; text-align: center; padding: 40px;">' + t('noBots') + '</p>';
                 // Update active bots counter
@@ -1580,10 +1599,6 @@ DASHBOARD_HTML = r"""
                 setTimeout(() => createBotChart(bot), 100);
             });
         }
-
-        // Chart storage for real-time updates
-        const botCharts = {};
-        const chartUpdateIntervals = {};
 
         // Get update interval based on timeframe (in milliseconds)
         function getUpdateInterval(timeframe) {
