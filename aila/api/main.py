@@ -1600,7 +1600,7 @@ DASHBOARD_HTML = r"""
                 item.className = 'pair-dropdown-item';
                 item.id = `pair-item-${prefix}-${index}`;
                 item.style.cssText = 'padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #333;';
-                item.innerHTML = `<strong>${pair.base}</strong><span style="color: #888;">USDT</span>`;
+                item.innerHTML = `<strong>${pair.symbol}</strong>`;
                 item.onmouseover = () => item.style.background = '#2a2a4e';
                 item.onmouseout = () => item.style.background = 'transparent';
                 item.onclick = () => selectPair(prefix, pair.symbol);
