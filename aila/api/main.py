@@ -1581,11 +1581,41 @@ DASHBOARD_HTML = r"""
             });
         }
 
+        // Chart storage for real-time updates
+        const botCharts = {};
+        const chartUpdateIntervals = {};
+
+        // Get update interval based on timeframe (in milliseconds)
+        function getUpdateInterval(timeframe) {
+            const intervals = {
+                '1m': 3000,    // 3 sec
+                '3m': 5000,    // 5 sec
+                '5m': 10000,   // 10 sec
+                '15m': 15000,  // 15 sec
+                '30m': 30000,  // 30 sec
+                '1h': 60000,   // 1 min
+                '2h': 60000,   // 1 min
+                '4h': 120000,  // 2 min
+                '1d': 300000,  // 5 min
+            };
+            return intervals[timeframe] || 15000;
+        }
+
         // Create chart for a specific bot with indicators
         async function createBotChart(bot) {
             const symbol = Array.isArray(bot.trading_pairs) ? bot.trading_pairs[0] : bot.trading_pairs;
             const chartContainer = document.getElementById('bot-chart-' + bot.id);
             if (!chartContainer || typeof LightweightCharts === 'undefined') return;
+
+            // Clear previous chart and interval
+            if (botCharts[bot.id]) {
+                botCharts[bot.id].chart.remove();
+                delete botCharts[bot.id];
+            }
+            if (chartUpdateIntervals[bot.id]) {
+                clearInterval(chartUpdateIntervals[bot.id]);
+                delete chartUpdateIntervals[bot.id];
+            }
 
             chartContainer.innerHTML = '';
 
@@ -1618,66 +1648,53 @@ DASHBOARD_HTML = r"""
             const tfMap = {'1m':'1','3m':'3','5m':'5','15m':'15','30m':'30','1h':'60','2h':'120','4h':'240','1d':'D'};
             const interval = tfMap[bot.timeframe] || '15';
 
-            // Load klines
-            try {
-                const klinesResponse = await fetch(`/api/klines/${symbol}?interval=${interval}&limit=100`);
-                const klinesData = await klinesResponse.json();
-                if (klinesData.klines && klinesData.klines.length > 0) {
-                    candlestickSeries.setData(klinesData.klines);
-                }
-            } catch (err) {
-                console.error('Failed to load klines for bot chart:', err);
+            // Create indicator series
+            let emaSeries = null;
+            let st1Series = null;
+            let st2Series = null;
+            let st3Series = null;
+
+            if (bot.ema_enabled) {
+                emaSeries = chart.addLineSeries({
+                    color: '#ffcc00',
+                    lineWidth: 2,
+                    title: 'EMA200',
+                });
             }
 
-            // Load and add indicators
-            try {
-                const indResponse = await fetch(`/api/indicators/${symbol}?interval=${interval}&limit=200`);
-                const indData = await indResponse.json();
+            st1Series = chart.addLineSeries({
+                color: '#00ff88',
+                lineWidth: 1,
+                title: 'ST1',
+            });
 
-                if (indData.indicators) {
-                    // EMA 200 (if enabled)
-                    if (bot.ema_enabled && indData.indicators.ema200 && indData.indicators.ema200.length > 0) {
-                        const emaSeries = chart.addLineSeries({
-                            color: '#ffcc00',
-                            lineWidth: 2,
-                            title: 'EMA200',
-                        });
-                        emaSeries.setData(indData.indicators.ema200);
-                    }
+            st2Series = chart.addLineSeries({
+                color: '#00d4ff',
+                lineWidth: 1,
+                title: 'ST2',
+            });
 
-                    // SuperTrend 1 (green/red)
-                    if (indData.indicators.supertrend1 && indData.indicators.supertrend1.length > 0) {
-                        const st1Series = chart.addLineSeries({
-                            color: '#00ff88',
-                            lineWidth: 1,
-                            title: 'ST1',
-                        });
-                        st1Series.setData(indData.indicators.supertrend1.map(p => ({time: p.time, value: p.value})));
-                    }
+            st3Series = chart.addLineSeries({
+                color: '#aa00ff',
+                lineWidth: 1,
+                title: 'ST3',
+            });
 
-                    // SuperTrend 2 (cyan/orange)
-                    if (indData.indicators.supertrend2 && indData.indicators.supertrend2.length > 0) {
-                        const st2Series = chart.addLineSeries({
-                            color: '#00d4ff',
-                            lineWidth: 1,
-                            title: 'ST2',
-                        });
-                        st2Series.setData(indData.indicators.supertrend2.map(p => ({time: p.time, value: p.value})));
-                    }
+            // Store chart references
+            botCharts[bot.id] = {
+                chart,
+                candlestickSeries,
+                emaSeries,
+                st1Series,
+                st2Series,
+                st3Series,
+                symbol,
+                interval,
+                bot
+            };
 
-                    // SuperTrend 3 (purple/pink)
-                    if (indData.indicators.supertrend3 && indData.indicators.supertrend3.length > 0) {
-                        const st3Series = chart.addLineSeries({
-                            color: '#aa00ff',
-                            lineWidth: 1,
-                            title: 'ST3',
-                        });
-                        st3Series.setData(indData.indicators.supertrend3.map(p => ({time: p.time, value: p.value})));
-                    }
-                }
-            } catch (err) {
-                console.error('Failed to load indicators for bot chart:', err);
-            }
+            // Load initial data
+            await updateBotChartData(bot.id);
 
             // Fit content
             chart.timeScale().fitContent();
@@ -1686,6 +1703,66 @@ DASHBOARD_HTML = r"""
             new ResizeObserver(() => {
                 chart.applyOptions({ width: chartContainer.clientWidth });
             }).observe(chartContainer);
+
+            // Set up real-time updates
+            const updateMs = getUpdateInterval(bot.timeframe);
+            chartUpdateIntervals[bot.id] = setInterval(() => {
+                updateBotChartData(bot.id);
+            }, updateMs);
+        }
+
+        // Update chart data (for real-time updates)
+        async function updateBotChartData(botId) {
+            const chartData = botCharts[botId];
+            if (!chartData) return;
+
+            const { candlestickSeries, emaSeries, st1Series, st2Series, st3Series, symbol, interval, bot } = chartData;
+
+            // Load klines
+            try {
+                const klinesResponse = await fetch(`/api/klines/${symbol}?interval=${interval}&limit=100`);
+                const klinesData = await klinesResponse.json();
+                if (klinesData.klines && klinesData.klines.length > 0) {
+                    candlestickSeries.setData(klinesData.klines);
+                }
+            } catch (err) {
+                console.error('Failed to update klines:', err);
+            }
+
+            // Load indicators
+            try {
+                const indResponse = await fetch(`/api/indicators/${symbol}?interval=${interval}&limit=200`);
+                const indData = await indResponse.json();
+
+                if (indData.indicators) {
+                    if (emaSeries && indData.indicators.ema200) {
+                        emaSeries.setData(indData.indicators.ema200);
+                    }
+                    if (st1Series && indData.indicators.supertrend1) {
+                        st1Series.setData(indData.indicators.supertrend1.map(p => ({time: p.time, value: p.value})));
+                    }
+                    if (st2Series && indData.indicators.supertrend2) {
+                        st2Series.setData(indData.indicators.supertrend2.map(p => ({time: p.time, value: p.value})));
+                    }
+                    if (st3Series && indData.indicators.supertrend3) {
+                        st3Series.setData(indData.indicators.supertrend3.map(p => ({time: p.time, value: p.value})));
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to update indicators:', err);
+            }
+        }
+
+        // Clean up chart when bot is stopped
+        function cleanupBotChart(botId) {
+            if (chartUpdateIntervals[botId]) {
+                clearInterval(chartUpdateIntervals[botId]);
+                delete chartUpdateIntervals[botId];
+            }
+            if (botCharts[botId]) {
+                botCharts[botId].chart.remove();
+                delete botCharts[botId];
+            }
         }
 
         async function createBot() {
@@ -1845,6 +1922,8 @@ DASHBOARD_HTML = r"""
 
         // Fullscreen Chart Functions
         let fullscreenChart = null;
+        let fullscreenChartData = null;
+        let fullscreenUpdateInterval = null;
 
         async function openFullscreenChart(botId) {
             const bot = botsData.find(b => b.id === botId);
@@ -1893,6 +1972,18 @@ DASHBOARD_HTML = r"""
             const tfMap = {'1m':'1','3m':'3','5m':'5','15m':'15','30m':'30','1h':'60','2h':'120','4h':'240','1d':'D'};
             const interval = tfMap[bot.timeframe] || '15';
 
+            // Store chart data for updates
+            fullscreenChartData = {
+                bot: bot,
+                symbol: symbol,
+                interval: interval,
+                candlestickSeries: candlestickSeries,
+                emaSeries: null,
+                st1Series: null,
+                st2Series: null,
+                st3Series: null
+            };
+
             // Load klines
             try {
                 const klinesResponse = await fetch(`/api/klines/${symbol}?interval=${interval}&limit=200`);
@@ -1912,42 +2003,42 @@ DASHBOARD_HTML = r"""
                 if (indData.indicators) {
                     // EMA 200 (if enabled)
                     if (bot.ema_enabled && indData.indicators.ema200 && indData.indicators.ema200.length > 0) {
-                        const emaSeries = fullscreenChart.addLineSeries({
+                        fullscreenChartData.emaSeries = fullscreenChart.addLineSeries({
                             color: '#ffcc00',
                             lineWidth: 2,
                             title: 'EMA200',
                         });
-                        emaSeries.setData(indData.indicators.ema200);
+                        fullscreenChartData.emaSeries.setData(indData.indicators.ema200);
                     }
 
                     // SuperTrend 1
                     if (indData.indicators.supertrend1 && indData.indicators.supertrend1.length > 0) {
-                        const st1Series = fullscreenChart.addLineSeries({
+                        fullscreenChartData.st1Series = fullscreenChart.addLineSeries({
                             color: '#00ff88',
                             lineWidth: 2,
                             title: 'ST1 (10, 1.0)',
                         });
-                        st1Series.setData(indData.indicators.supertrend1.map(p => ({time: p.time, value: p.value})));
+                        fullscreenChartData.st1Series.setData(indData.indicators.supertrend1.map(p => ({time: p.time, value: p.value})));
                     }
 
                     // SuperTrend 2
                     if (indData.indicators.supertrend2 && indData.indicators.supertrend2.length > 0) {
-                        const st2Series = fullscreenChart.addLineSeries({
+                        fullscreenChartData.st2Series = fullscreenChart.addLineSeries({
                             color: '#00d4ff',
                             lineWidth: 2,
                             title: 'ST2 (11, 2.0)',
                         });
-                        st2Series.setData(indData.indicators.supertrend2.map(p => ({time: p.time, value: p.value})));
+                        fullscreenChartData.st2Series.setData(indData.indicators.supertrend2.map(p => ({time: p.time, value: p.value})));
                     }
 
                     // SuperTrend 3
                     if (indData.indicators.supertrend3 && indData.indicators.supertrend3.length > 0) {
-                        const st3Series = fullscreenChart.addLineSeries({
+                        fullscreenChartData.st3Series = fullscreenChart.addLineSeries({
                             color: '#aa00ff',
                             lineWidth: 2,
                             title: 'ST3 (12, 3.0)',
                         });
-                        st3Series.setData(indData.indicators.supertrend3.map(p => ({time: p.time, value: p.value})));
+                        fullscreenChartData.st3Series.setData(indData.indicators.supertrend3.map(p => ({time: p.time, value: p.value})));
                     }
                 }
             } catch (err) {
@@ -1966,9 +2057,59 @@ DASHBOARD_HTML = r"""
                 }
             });
             resizeObserver.observe(container);
+
+            // Start real-time updates
+            const updateMs = getUpdateInterval(bot.timeframe);
+            fullscreenUpdateInterval = setInterval(() => updateFullscreenChart(), updateMs);
+        }
+
+        async function updateFullscreenChart() {
+            if (!fullscreenChartData || !fullscreenChart) return;
+
+            const { symbol, interval, candlestickSeries, emaSeries, st1Series, st2Series, st3Series, bot } = fullscreenChartData;
+
+            try {
+                // Update klines (fetch last 10 candles for update)
+                const klinesResponse = await fetch(`/api/klines/${symbol}?interval=${interval}&limit=10`);
+                const klinesData = await klinesResponse.json();
+                if (klinesData.klines && klinesData.klines.length > 0) {
+                    // Update each candle (this handles both new candles and updates to current candle)
+                    klinesData.klines.forEach(candle => {
+                        candlestickSeries.update(candle);
+                    });
+                }
+
+                // Update indicators
+                const indResponse = await fetch(`/api/indicators/${symbol}?interval=${interval}&limit=10`);
+                const indData = await indResponse.json();
+
+                if (indData.indicators) {
+                    if (emaSeries && indData.indicators.ema200) {
+                        indData.indicators.ema200.forEach(p => emaSeries.update(p));
+                    }
+                    if (st1Series && indData.indicators.supertrend1) {
+                        indData.indicators.supertrend1.forEach(p => st1Series.update({time: p.time, value: p.value}));
+                    }
+                    if (st2Series && indData.indicators.supertrend2) {
+                        indData.indicators.supertrend2.forEach(p => st2Series.update({time: p.time, value: p.value}));
+                    }
+                    if (st3Series && indData.indicators.supertrend3) {
+                        indData.indicators.supertrend3.forEach(p => st3Series.update({time: p.time, value: p.value}));
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to update fullscreen chart:', err);
+            }
         }
 
         function closeFullscreenChart() {
+            // Stop real-time updates
+            if (fullscreenUpdateInterval) {
+                clearInterval(fullscreenUpdateInterval);
+                fullscreenUpdateInterval = null;
+            }
+            fullscreenChartData = null;
+
             document.getElementById('fullscreenChartModal').classList.remove('show');
             if (fullscreenChart) {
                 fullscreenChart.remove();
