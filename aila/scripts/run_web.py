@@ -152,7 +152,7 @@ async def get_stats():
 
         try:
             positions = bot_state["client"].get_positions()
-            stats["positions"] = len([p for p in positions if float(p.quantity) > 0])
+            stats["positions"] = len([p for p in positions if float(p.size) > 0])
         except Exception:
             pass
 

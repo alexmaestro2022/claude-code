@@ -81,6 +81,7 @@ DASHBOARD_HTML = r"""
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AILA Trading Bot</title>
+    <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         * {
             margin: 0;
@@ -97,7 +98,7 @@ DASHBOARD_HTML = r"""
         }
 
         .container {
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
         }
 
@@ -235,7 +236,7 @@ DASHBOARD_HTML = r"""
             background: #0d0d0d;
             border-radius: 8px;
             padding: 15px;
-            height: 500px;
+            height: 300px;
             overflow-y: auto;
             font-family: 'Consolas', 'Monaco', monospace;
             font-size: 13px;
@@ -268,6 +269,7 @@ DASHBOARD_HTML = r"""
             transform: translateY(100px);
             opacity: 0;
             transition: all 0.3s;
+            z-index: 1000;
         }
 
         .toast.show {
@@ -300,6 +302,7 @@ DASHBOARD_HTML = r"""
             display: flex;
             gap: 15px;
             justify-content: center;
+            flex-wrap: wrap;
         }
 
         .btn-large {
@@ -409,6 +412,300 @@ DASHBOARD_HTML = r"""
             outline: none;
             border-color: #00d4ff;
         }
+
+        /* Charts Section */
+        .charts-section {
+            margin-bottom: 20px;
+        }
+
+        .charts-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .charts-header h3 {
+            color: #00d4ff;
+            font-size: 18px;
+        }
+
+        .chart-selector {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .chart-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+        }
+
+        .chart-container {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .chart-symbol {
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .chart-price {
+            font-size: 14px;
+            color: #00d4ff;
+        }
+
+        .chart-change {
+            font-size: 12px;
+            margin-left: 8px;
+        }
+
+        .chart-change.positive { color: #00ff88; }
+        .chart-change.negative { color: #ff4444; }
+
+        .chart-wrapper {
+            height: 250px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        /* Bots Manager Section */
+        .bots-section {
+            margin-bottom: 20px;
+        }
+
+        .bots-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .bots-header h3 {
+            color: #00d4ff;
+            font-size: 18px;
+        }
+
+        .bots-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+        }
+
+        .bot-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .bot-card.running {
+            border-color: #00ff88;
+        }
+
+        .bot-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .bot-name {
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .bot-status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .bot-status.running {
+            background: #00ff88;
+            color: #1a1a2e;
+        }
+
+        .bot-status.stopped {
+            background: rgba(255, 255, 255, 0.2);
+            color: #888;
+        }
+
+        .bot-details {
+            font-size: 13px;
+            color: #888;
+            margin-bottom: 15px;
+        }
+
+        .bot-details div {
+            margin-bottom: 5px;
+        }
+
+        .bot-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .bot-actions .btn {
+            flex: 1;
+        }
+
+        /* Trading Pairs Selector */
+        .pairs-selector {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .pairs-selector h3 {
+            color: #00d4ff;
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+
+        .pairs-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .pair-chip {
+            padding: 8px 15px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+
+        .pair-chip:hover {
+            border-color: #00d4ff;
+        }
+
+        .pair-chip.selected {
+            background: linear-gradient(90deg, #00d4ff, #00ff88);
+            color: #1a1a2e;
+            font-weight: bold;
+        }
+
+        .pairs-search {
+            margin-bottom: 15px;
+        }
+
+        .pairs-search input {
+            width: 100%;
+            padding: 10px 15px;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.3);
+            color: #e0e0e0;
+            font-size: 14px;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1a1a2e;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h3 {
+            color: #00d4ff;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 24px;
+            cursor: pointer;
+        }
+
+        .modal-close:hover {
+            color: #fff;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 10px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            background: none;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .tab:hover {
+            color: #fff;
+        }
+
+        .tab.active {
+            color: #00d4ff;
+            border-bottom: 2px solid #00d4ff;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -427,116 +724,223 @@ DASHBOARD_HTML = r"""
             </div>
         </header>
 
-        <div class="controls">
-            <div class="control-group">
-                <button class="btn btn-success btn-large" id="startBtn" onclick="startBot()">
-                    <span class="btn-icon">▶</span> <span data-i18n="startBot">Start Bot</span>
-                </button>
-                <button class="btn btn-danger btn-large" id="stopBtn" onclick="stopBot()" disabled>
-                    <span class="btn-icon">■</span> <span data-i18n="stopBot">Stop Bot</span>
-                </button>
-                <button class="btn btn-primary btn-large" onclick="toggleSettings()">
-                    <span class="btn-icon">⚙</span> <span data-i18n="settings">Settings</span>
-                </button>
+        <!-- Tabs Navigation -->
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('dashboard')" data-i18n="dashboard">Dashboard</button>
+            <button class="tab" onclick="showTab('bots')" data-i18n="botsManager">Bots Manager</button>
+            <button class="tab" onclick="showTab('charts')" data-i18n="charts">Charts</button>
+            <button class="tab" onclick="showTab('pairs')" data-i18n="tradingPairs">Trading Pairs</button>
+        </div>
+
+        <!-- Dashboard Tab -->
+        <div class="tab-content active" id="tab-dashboard">
+            <div class="controls">
+                <div class="control-group">
+                    <button class="btn btn-success btn-large" id="startBtn" onclick="startBot()">
+                        <span class="btn-icon">▶</span> <span data-i18n="startBot">Start Bot</span>
+                    </button>
+                    <button class="btn btn-danger btn-large" id="stopBtn" onclick="stopBot()" disabled>
+                        <span class="btn-icon">■</span> <span data-i18n="stopBot">Stop Bot</span>
+                    </button>
+                    <button class="btn btn-primary btn-large" onclick="toggleSettings()">
+                        <span class="btn-icon">⚙</span> <span data-i18n="settings">Settings</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="settings-panel" id="settingsPanel" style="display: none;">
+                <h3 data-i18n="strategySettings">Strategy Settings</h3>
+                <div class="settings-grid">
+                    <div class="setting-item">
+                        <label data-i18n="timeframe">Timeframe</label>
+                        <select id="timeframe">
+                            <option value="1m">1m</option>
+                            <option value="5m">5m</option>
+                            <option value="15m">15m</option>
+                            <option value="30m">30m</option>
+                            <option value="1h" selected>1h</option>
+                            <option value="4h">4h</option>
+                            <option value="1d">1d</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label data-i18n="tradingPairs">Trading Pairs</label>
+                        <input type="text" id="tradingPairs" value="BTCUSDT,ETHUSDT" placeholder="BTCUSDT,ETHUSDT">
+                    </div>
+                    <div class="setting-item">
+                        <label data-i18n="riskPerTrade">Risk per Trade (%)</label>
+                        <input type="number" id="riskPerTrade" value="2" min="0.1" max="10" step="0.1">
+                    </div>
+                    <div class="setting-item">
+                        <label data-i18n="tpRatio">Take Profit Ratio (R:R)</label>
+                        <input type="number" id="tpRatio" value="2" min="1" max="10" step="0.5">
+                    </div>
+                    <div class="setting-item">
+                        <label data-i18n="slMode">Stop Loss Mode</label>
+                        <select id="slMode">
+                            <option value="supertrend_line" selected>SuperTrend Line</option>
+                            <option value="fixed_percent" data-i18n="fixedPercent">Fixed Percent</option>
+                            <option value="atr">ATR</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label data-i18n="leverage">Leverage</label>
+                        <input type="number" id="leverage" value="10" min="1" max="100" step="1">
+                    </div>
+                    <div class="setting-item">
+                        <label data-i18n="maxPositions">Max Open Positions</label>
+                        <input type="number" id="maxPositions" value="3" min="1" max="10" step="1">
+                    </div>
+                    <div class="setting-item">
+                        <label data-i18n="emaFilter">EMA Filter</label>
+                        <select id="emaEnabled">
+                            <option value="true" selected data-i18n="enabled">Enabled</option>
+                            <option value="false" data-i18n="disabled">Disabled</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="settings-actions">
+                    <button class="btn btn-secondary" onclick="loadSettings()" data-i18n="reset">Reset</button>
+                    <button class="btn btn-primary" onclick="saveSettings()" data-i18n="saveSettings">Save Settings</button>
+                </div>
+            </div>
+
+            <div class="cards">
+                <div class="card">
+                    <div class="card-title" data-i18n="balance">Balance (USDT)</div>
+                    <div class="card-value" id="balance">--</div>
+                </div>
+                <div class="card">
+                    <div class="card-title" data-i18n="openPositions">Open Positions</div>
+                    <div class="card-value" id="positions">--</div>
+                </div>
+                <div class="card">
+                    <div class="card-title" data-i18n="todayTrades">Today's Trades</div>
+                    <div class="card-value" id="trades">--</div>
+                </div>
+                <div class="card">
+                    <div class="card-title" data-i18n="todayPnl">Today's PnL</div>
+                    <div class="card-value" id="pnl">--</div>
+                </div>
+            </div>
+
+            <div class="logs-container">
+                <div class="logs-header">
+                    <div style="display: flex; align-items: center;">
+                        <h2 data-i18n="liveLogs">Live Logs</h2>
+                        <span class="auto-scroll-indicator active" id="autoScrollIndicator" data-i18n="autoScrollOn">Auto-scroll ON</span>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-secondary" onclick="clearLogs()" data-i18n="clear">Clear</button>
+                        <button class="btn btn-primary" onclick="copyLogs()" data-i18n="copyLogs">Copy Logs</button>
+                    </div>
+                </div>
+                <div class="logs" id="logs"></div>
             </div>
         </div>
 
-        <div class="settings-panel" id="settingsPanel" style="display: none;">
-            <h3 data-i18n="strategySettings">Strategy Settings</h3>
-            <div class="settings-grid">
-                <div class="setting-item">
-                    <label data-i18n="timeframe">Timeframe</label>
-                    <select id="timeframe">
-                        <option value="1m">1m</option>
-                        <option value="5m">5m</option>
-                        <option value="15m">15m</option>
-                        <option value="30m">30m</option>
-                        <option value="1h" selected>1h</option>
-                        <option value="4h">4h</option>
-                        <option value="1d">1d</option>
-                    </select>
+        <!-- Bots Manager Tab -->
+        <div class="tab-content" id="tab-bots">
+            <div class="bots-section">
+                <div class="bots-header">
+                    <h3 data-i18n="botsManager">Bots Manager</h3>
+                    <button class="btn btn-primary" onclick="showCreateBotModal()" data-i18n="createBot">+ Create Bot</button>
                 </div>
-                <div class="setting-item">
-                    <label data-i18n="tradingPairs">Trading Pairs</label>
-                    <input type="text" id="tradingPairs" value="BTCUSDT,ETHUSDT" placeholder="BTCUSDT,ETHUSDT">
+                <div class="bots-grid" id="botsGrid">
+                    <!-- Bots will be loaded here -->
                 </div>
-                <div class="setting-item">
-                    <label data-i18n="riskPerTrade">Risk per Trade (%)</label>
-                    <input type="number" id="riskPerTrade" value="2" min="0.1" max="10" step="0.1">
-                </div>
-                <div class="setting-item">
-                    <label data-i18n="tpRatio">Take Profit Ratio (R:R)</label>
-                    <input type="number" id="tpRatio" value="2" min="1" max="10" step="0.5">
-                </div>
-                <div class="setting-item">
-                    <label data-i18n="slMode">Stop Loss Mode</label>
-                    <select id="slMode">
-                        <option value="supertrend_line" selected>SuperTrend Line</option>
-                        <option value="fixed_percent" data-i18n="fixedPercent">Fixed Percent</option>
-                        <option value="atr">ATR</option>
-                    </select>
-                </div>
-                <div class="setting-item">
-                    <label data-i18n="leverage">Leverage</label>
-                    <input type="number" id="leverage" value="10" min="1" max="100" step="1">
-                </div>
-                <div class="setting-item">
-                    <label data-i18n="maxPositions">Max Open Positions</label>
-                    <input type="number" id="maxPositions" value="3" min="1" max="10" step="1">
-                </div>
-                <div class="setting-item">
-                    <label data-i18n="emaFilter">EMA Filter</label>
-                    <select id="emaEnabled">
-                        <option value="true" selected data-i18n="enabled">Enabled</option>
-                        <option value="false" data-i18n="disabled">Disabled</option>
-                    </select>
-                </div>
-            </div>
-            <div class="settings-actions">
-                <button class="btn btn-secondary" onclick="loadSettings()" data-i18n="reset">Reset</button>
-                <button class="btn btn-primary" onclick="saveSettings()" data-i18n="saveSettings">Save Settings</button>
             </div>
         </div>
 
-        <div class="cards">
-            <div class="card">
-                <div class="card-title" data-i18n="balance">Balance (USDT)</div>
-                <div class="card-value" id="balance">--</div>
-            </div>
-            <div class="card">
-                <div class="card-title" data-i18n="openPositions">Open Positions</div>
-                <div class="card-value" id="positions">--</div>
-            </div>
-            <div class="card">
-                <div class="card-title" data-i18n="todayTrades">Today's Trades</div>
-                <div class="card-value" id="trades">--</div>
-            </div>
-            <div class="card">
-                <div class="card-title" data-i18n="todayPnl">Today's PnL</div>
-                <div class="card-value" id="pnl">--</div>
+        <!-- Charts Tab -->
+        <div class="tab-content" id="tab-charts">
+            <div class="charts-section">
+                <div class="charts-header">
+                    <h3 data-i18n="priceCharts">Price Charts</h3>
+                    <div class="chart-selector">
+                        <select id="chartTimeframe" onchange="updateAllCharts()">
+                            <option value="1">1m</option>
+                            <option value="5">5m</option>
+                            <option value="15" selected>15m</option>
+                            <option value="60">1h</option>
+                            <option value="240">4h</option>
+                            <option value="D">1d</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="chart-grid" id="chartsGrid">
+                    <!-- Charts will be loaded here -->
+                </div>
             </div>
         </div>
 
-        <div class="logs-container">
-            <div class="logs-header">
-                <div style="display: flex; align-items: center;">
-                    <h2 data-i18n="liveLogs">Live Logs</h2>
-                    <span class="auto-scroll-indicator active" id="autoScrollIndicator" data-i18n="autoScrollOn">Auto-scroll ON</span>
+        <!-- Trading Pairs Tab -->
+        <div class="tab-content" id="tab-pairs">
+            <div class="pairs-selector">
+                <h3 data-i18n="availablePairs">Available Trading Pairs</h3>
+                <div class="pairs-search">
+                    <input type="text" id="pairsSearch" placeholder="Search pairs..." oninput="filterPairs()">
                 </div>
-                <div class="btn-group">
-                    <button class="btn btn-secondary" onclick="clearLogs()" data-i18n="clear">Clear</button>
-                    <button class="btn btn-primary" onclick="copyLogs()" data-i18n="copyLogs">Copy Logs</button>
+                <div class="pairs-grid" id="pairsGrid">
+                    <!-- Pairs will be loaded here -->
+                </div>
+                <div class="settings-actions" style="margin-top: 15px;">
+                    <button class="btn btn-primary" onclick="applySelectedPairs()" data-i18n="applyPairs">Apply Selected Pairs</button>
                 </div>
             </div>
-            <div class="logs" id="logs"></div>
         </div>
 
         <footer>
-            AILA v1.0.0 | Triple SuperTrend + EMA200 Strategy
+            AILA v2.0.0 | Triple SuperTrend + EMA200 Strategy | Multi-Bot Trading Platform
         </footer>
     </div>
 
     <div class="toast" id="toast">Logs copied to clipboard!</div>
+
+    <!-- Create Bot Modal -->
+    <div class="modal" id="createBotModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 data-i18n="createBot">Create Bot</h3>
+                <button class="modal-close" onclick="closeModal('createBotModal')">&times;</button>
+            </div>
+            <div class="settings-grid">
+                <div class="setting-item">
+                    <label data-i18n="botName">Bot Name</label>
+                    <input type="text" id="newBotName" placeholder="My Bot">
+                </div>
+                <div class="setting-item">
+                    <label data-i18n="tradingPairs">Trading Pairs</label>
+                    <input type="text" id="newBotPairs" value="BTCUSDT" placeholder="BTCUSDT,ETHUSDT">
+                </div>
+                <div class="setting-item">
+                    <label data-i18n="timeframe">Timeframe</label>
+                    <select id="newBotTimeframe">
+                        <option value="5m">5m</option>
+                        <option value="15m" selected>15m</option>
+                        <option value="1h">1h</option>
+                        <option value="4h">4h</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label data-i18n="leverage">Leverage</label>
+                    <input type="number" id="newBotLeverage" value="10" min="1" max="100">
+                </div>
+                <div class="setting-item">
+                    <label data-i18n="riskPerTrade">Risk %</label>
+                    <input type="number" id="newBotRisk" value="2" min="0.1" max="10" step="0.1">
+                </div>
+                <div class="setting-item">
+                    <label data-i18n="tpRatio">R:R Ratio</label>
+                    <input type="number" id="newBotTpRatio" value="2" min="1" max="10" step="0.5">
+                </div>
+            </div>
+            <div class="settings-actions">
+                <button class="btn btn-secondary" onclick="closeModal('createBotModal')" data-i18n="cancel">Cancel</button>
+                <button class="btn btn-primary" onclick="createBot()" data-i18n="create">Create</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         // Localization
@@ -582,7 +986,24 @@ DASHBOARD_HTML = r"""
                 failedStop: 'Failed to stop',
                 settingsSaved: 'Settings saved! Restart bot to apply.',
                 failedSave: 'Failed to save',
-                logsCleared: '--- Logs cleared ---'
+                logsCleared: '--- Logs cleared ---',
+                dashboard: 'Dashboard',
+                botsManager: 'Bots Manager',
+                charts: 'Charts',
+                priceCharts: 'Price Charts',
+                availablePairs: 'Available Trading Pairs',
+                createBot: '+ Create Bot',
+                botName: 'Bot Name',
+                cancel: 'Cancel',
+                create: 'Create',
+                stopped: 'Stopped',
+                start: 'Start',
+                stop: 'Stop',
+                delete: 'Delete',
+                applyPairs: 'Apply Selected Pairs',
+                noBots: 'No bots created yet. Click "Create Bot" to start.',
+                botCreated: 'Bot created successfully!',
+                botDeleted: 'Bot deleted successfully!'
             },
             ru: {
                 connecting: 'Подключение...',
@@ -625,7 +1046,24 @@ DASHBOARD_HTML = r"""
                 failedStop: 'Ошибка остановки',
                 settingsSaved: 'Настройки сохранены! Перезапустите бот.',
                 failedSave: 'Ошибка сохранения',
-                logsCleared: '--- Логи очищены ---'
+                logsCleared: '--- Логи очищены ---',
+                dashboard: 'Панель',
+                botsManager: 'Управление ботами',
+                charts: 'Графики',
+                priceCharts: 'Графики цен',
+                availablePairs: 'Доступные торговые пары',
+                createBot: '+ Создать бот',
+                botName: 'Название бота',
+                cancel: 'Отмена',
+                create: 'Создать',
+                stopped: 'Остановлен',
+                start: 'Запуск',
+                stop: 'Стоп',
+                delete: 'Удалить',
+                applyPairs: 'Применить выбранные пары',
+                noBots: 'Ботов пока нет. Нажмите "Создать бот" для начала.',
+                botCreated: 'Бот создан!',
+                botDeleted: 'Бот удален!'
             }
         };
 
@@ -968,6 +1406,363 @@ DASHBOARD_HTML = r"""
         // Initialize UI
         updateUI();
         checkBotStatus();
+
+        // Tab Navigation
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Show selected tab
+            document.getElementById('tab-' + tabName).classList.add('active');
+            event.target.classList.add('active');
+
+            // Load data for specific tabs
+            if (tabName === 'bots') loadBots();
+            if (tabName === 'charts') loadCharts();
+            if (tabName === 'pairs') loadTradingPairs();
+        }
+
+        // Modal functions
+        function showCreateBotModal() {
+            document.getElementById('createBotModal').classList.add('show');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('show');
+        }
+
+        // Bots Management
+        let botsData = [];
+
+        async function loadBots() {
+            try {
+                const response = await fetch('/api/bots');
+                const data = await response.json();
+                botsData = data.bots || [];
+                renderBots();
+            } catch (err) {
+                console.error('Failed to load bots:', err);
+            }
+        }
+
+        function renderBots() {
+            const grid = document.getElementById('botsGrid');
+            if (botsData.length === 0) {
+                grid.innerHTML = '<p style="color: #888; text-align: center; padding: 40px;">' + t('noBots') + '</p>';
+                return;
+            }
+
+            grid.innerHTML = botsData.map(bot => `
+                <div class="bot-card ${bot.status === 'running' ? 'running' : ''}">
+                    <div class="bot-header">
+                        <span class="bot-name">${bot.name}</span>
+                        <span class="bot-status ${bot.status}">${bot.status === 'running' ? t('running') : t('stopped')}</span>
+                    </div>
+                    <div class="bot-details">
+                        <div><strong>${t('tradingPairs')}:</strong> ${bot.trading_pairs.join(', ')}</div>
+                        <div><strong>${t('timeframe')}:</strong> ${bot.timeframe}</div>
+                        <div><strong>${t('leverage')}:</strong> ${bot.leverage}x | <strong>R:R:</strong> ${bot.tp_risk_ratio}</div>
+                        <div><strong>${t('riskPerTrade')}:</strong> ${bot.risk_per_trade}%</div>
+                    </div>
+                    <div class="bot-actions">
+                        ${bot.status === 'running' ?
+                            `<button class="btn btn-danger" onclick="stopSpecificBot('${bot.id}')">${t('stop')}</button>` :
+                            `<button class="btn btn-success" onclick="startSpecificBot('${bot.id}')">${t('start')}</button>`
+                        }
+                        <button class="btn btn-secondary" onclick="deleteBot('${bot.id}')" ${bot.status === 'running' ? 'disabled' : ''}>${t('delete')}</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function createBot() {
+            const config = {
+                name: document.getElementById('newBotName').value || 'Bot ' + (botsData.length + 1),
+                trading_pairs: document.getElementById('newBotPairs').value.split(',').map(s => s.trim()),
+                timeframe: document.getElementById('newBotTimeframe').value,
+                leverage: parseInt(document.getElementById('newBotLeverage').value),
+                risk_per_trade: parseFloat(document.getElementById('newBotRisk').value),
+                tp_risk_ratio: parseFloat(document.getElementById('newBotTpRatio').value),
+            };
+
+            try {
+                const response = await fetch('/api/bots', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast(t('botCreated'));
+                    closeModal('createBotModal');
+                    loadBots();
+                } else {
+                    showToast(data.message);
+                }
+            } catch (err) {
+                console.error('Failed to create bot:', err);
+            }
+        }
+
+        async function startSpecificBot(botId) {
+            try {
+                const response = await fetch(`/api/bots/${botId}/start`, { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    showToast(t('botStarted'));
+                    loadBots();
+                } else {
+                    showToast(data.message);
+                }
+            } catch (err) {
+                console.error('Failed to start bot:', err);
+            }
+        }
+
+        async function stopSpecificBot(botId) {
+            try {
+                const response = await fetch(`/api/bots/${botId}/stop`, { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    showToast(t('botStopped'));
+                    loadBots();
+                } else {
+                    showToast(data.message);
+                }
+            } catch (err) {
+                console.error('Failed to stop bot:', err);
+            }
+        }
+
+        async function deleteBot(botId) {
+            if (!confirm('Delete this bot?')) return;
+
+            try {
+                const response = await fetch(`/api/bots/${botId}`, { method: 'DELETE' });
+                const data = await response.json();
+                if (data.success) {
+                    showToast(t('botDeleted'));
+                    loadBots();
+                } else {
+                    showToast(data.message);
+                }
+            } catch (err) {
+                console.error('Failed to delete bot:', err);
+            }
+        }
+
+        // Charts
+        let charts = {};
+        let chartSymbols = ['BTCUSDT', 'ETHUSDT'];
+
+        async function loadCharts() {
+            const grid = document.getElementById('chartsGrid');
+            grid.innerHTML = '';
+
+            // Get current trading pairs
+            try {
+                const response = await fetch('/api/settings');
+                const settings = await response.json();
+                if (settings.trading_pairs && settings.trading_pairs.length > 0) {
+                    chartSymbols = settings.trading_pairs;
+                }
+            } catch (err) {
+                console.error('Failed to load settings for charts:', err);
+            }
+
+            // Create chart containers
+            for (const symbol of chartSymbols) {
+                const container = document.createElement('div');
+                container.className = 'chart-container';
+                container.innerHTML = `
+                    <div class="chart-header">
+                        <span class="chart-symbol">${symbol}</span>
+                        <span class="chart-price" id="price-${symbol}">--</span>
+                    </div>
+                    <div class="chart-wrapper" id="chart-${symbol}"></div>
+                `;
+                grid.appendChild(container);
+
+                // Create chart
+                await createChart(symbol);
+            }
+        }
+
+        async function createChart(symbol) {
+            const chartContainer = document.getElementById('chart-' + symbol);
+            if (!chartContainer) return;
+
+            // Clear existing chart
+            chartContainer.innerHTML = '';
+
+            // Check if LightweightCharts is available
+            if (typeof LightweightCharts === 'undefined') {
+                chartContainer.innerHTML = '<p style="color: #888; text-align: center; padding: 40px;">Chart library loading...</p>';
+                return;
+            }
+
+            const chart = LightweightCharts.createChart(chartContainer, {
+                width: chartContainer.clientWidth,
+                height: 250,
+                layout: {
+                    background: { type: 'solid', color: 'transparent' },
+                    textColor: '#888',
+                },
+                grid: {
+                    vertLines: { color: 'rgba(255, 255, 255, 0.05)' },
+                    horzLines: { color: 'rgba(255, 255, 255, 0.05)' },
+                },
+                crosshair: {
+                    mode: LightweightCharts.CrosshairMode.Normal,
+                },
+                rightPriceScale: {
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                },
+                timeScale: {
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                    timeVisible: true,
+                },
+            });
+
+            const candlestickSeries = chart.addCandlestickSeries({
+                upColor: '#00ff88',
+                downColor: '#ff4444',
+                borderDownColor: '#ff4444',
+                borderUpColor: '#00ff88',
+                wickDownColor: '#ff4444',
+                wickUpColor: '#00ff88',
+            });
+
+            charts[symbol] = { chart, series: candlestickSeries };
+
+            // Load data
+            await updateChartData(symbol);
+
+            // Handle resize
+            new ResizeObserver(() => {
+                chart.applyOptions({ width: chartContainer.clientWidth });
+            }).observe(chartContainer);
+        }
+
+        async function updateChartData(symbol) {
+            const interval = document.getElementById('chartTimeframe').value;
+            try {
+                const response = await fetch(`/api/klines/${symbol}?interval=${interval}&limit=100`);
+                const data = await response.json();
+
+                if (data.klines && data.klines.length > 0 && charts[symbol]) {
+                    charts[symbol].series.setData(data.klines);
+
+                    // Update price
+                    const lastKline = data.klines[data.klines.length - 1];
+                    const priceEl = document.getElementById('price-' + symbol);
+                    if (priceEl) {
+                        priceEl.textContent = '$' + parseFloat(lastKline.close).toFixed(2);
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to load chart data for ' + symbol + ':', err);
+            }
+        }
+
+        function updateAllCharts() {
+            for (const symbol of chartSymbols) {
+                updateChartData(symbol);
+            }
+        }
+
+        // Trading Pairs
+        let allPairs = [];
+        let selectedPairs = new Set(['BTCUSDT', 'ETHUSDT']);
+
+        async function loadTradingPairs() {
+            try {
+                const response = await fetch('/api/trading-pairs');
+                const data = await response.json();
+                allPairs = data.pairs || [];
+
+                // Get current selected pairs
+                const settingsResponse = await fetch('/api/settings');
+                const settings = await settingsResponse.json();
+                if (settings.trading_pairs) {
+                    selectedPairs = new Set(settings.trading_pairs);
+                }
+
+                renderPairs();
+            } catch (err) {
+                console.error('Failed to load trading pairs:', err);
+            }
+        }
+
+        function renderPairs() {
+            const grid = document.getElementById('pairsGrid');
+            const searchValue = document.getElementById('pairsSearch').value.toUpperCase();
+
+            const filteredPairs = allPairs.filter(pair =>
+                pair.symbol.toUpperCase().includes(searchValue) ||
+                pair.base.toUpperCase().includes(searchValue)
+            );
+
+            grid.innerHTML = filteredPairs.map(pair => `
+                <div class="pair-chip ${selectedPairs.has(pair.symbol) ? 'selected' : ''}"
+                     onclick="togglePair('${pair.symbol}')">
+                    ${pair.symbol}
+                </div>
+            `).join('');
+        }
+
+        function filterPairs() {
+            renderPairs();
+        }
+
+        function togglePair(symbol) {
+            if (selectedPairs.has(symbol)) {
+                selectedPairs.delete(symbol);
+            } else {
+                selectedPairs.add(symbol);
+            }
+            renderPairs();
+        }
+
+        async function applySelectedPairs() {
+            const pairs = Array.from(selectedPairs);
+            if (pairs.length === 0) {
+                showToast('Select at least one pair');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ trading_pairs: pairs })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast(t('settingsSaved'));
+                    document.getElementById('tradingPairs').value = pairs.join(',');
+                    chartSymbols = pairs;
+                } else {
+                    showToast(data.message);
+                }
+            } catch (err) {
+                console.error('Failed to save pairs:', err);
+            }
+        }
+
+        // Refresh charts every 30 seconds
+        setInterval(() => {
+            if (document.getElementById('tab-charts').classList.contains('active')) {
+                updateAllCharts();
+            }
+        }, 30000);
     </script>
 </body>
 </html>
@@ -1090,6 +1885,265 @@ async def save_settings(settings: dict):
         return {"success": True, "message": "Settings saved"}
     except Exception as e:
         return {"success": False, "message": str(e)}
+
+
+# Trading pairs cache
+trading_pairs_cache = {
+    "pairs": [],
+    "last_update": None,
+}
+
+# Multi-bot management (up to 10 bots)
+MAX_BOTS = 10
+bots_registry = {}  # bot_id -> bot_config
+
+
+@app.get("/api/bots")
+async def get_bots():
+    """Get all configured bots."""
+    return {"bots": list(bots_registry.values()), "max_bots": MAX_BOTS}
+
+
+@app.post("/api/bots")
+async def create_bot(config: dict):
+    """Create a new bot configuration."""
+    if len(bots_registry) >= MAX_BOTS:
+        return {"success": False, "message": f"Maximum {MAX_BOTS} bots allowed"}
+
+    import uuid
+    bot_id = str(uuid.uuid4())[:8]
+
+    bot_config = {
+        "id": bot_id,
+        "name": config.get("name", f"Bot {len(bots_registry) + 1}"),
+        "trading_pairs": config.get("trading_pairs", ["BTCUSDT"]),
+        "timeframe": config.get("timeframe", "15m"),
+        "risk_per_trade": config.get("risk_per_trade", 2.0),
+        "tp_risk_ratio": config.get("tp_risk_ratio", 2.0),
+        "sl_mode": config.get("sl_mode", "supertrend_line"),
+        "leverage": config.get("leverage", 10),
+        "max_positions": config.get("max_positions", 3),
+        "ema_enabled": config.get("ema_enabled", True),
+        "status": "stopped",
+        "created_at": datetime.now().isoformat(),
+    }
+
+    bots_registry[bot_id] = bot_config
+    add_log(f"[info    ] Bot created: {bot_config['name']} (ID: {bot_id})")
+
+    return {"success": True, "bot": bot_config}
+
+
+@app.put("/api/bots/{bot_id}")
+async def update_bot(bot_id: str, config: dict):
+    """Update a bot configuration."""
+    if bot_id not in bots_registry:
+        return {"success": False, "message": "Bot not found"}
+
+    bot = bots_registry[bot_id]
+
+    # Update allowed fields
+    if "name" in config:
+        bot["name"] = config["name"]
+    if "trading_pairs" in config:
+        bot["trading_pairs"] = config["trading_pairs"]
+    if "timeframe" in config:
+        bot["timeframe"] = config["timeframe"]
+    if "risk_per_trade" in config:
+        bot["risk_per_trade"] = float(config["risk_per_trade"])
+    if "tp_risk_ratio" in config:
+        bot["tp_risk_ratio"] = float(config["tp_risk_ratio"])
+    if "sl_mode" in config:
+        bot["sl_mode"] = config["sl_mode"]
+    if "leverage" in config:
+        bot["leverage"] = int(config["leverage"])
+    if "max_positions" in config:
+        bot["max_positions"] = int(config["max_positions"])
+    if "ema_enabled" in config:
+        bot["ema_enabled"] = config["ema_enabled"]
+
+    add_log(f"[info    ] Bot updated: {bot['name']} (ID: {bot_id})")
+
+    return {"success": True, "bot": bot}
+
+
+@app.delete("/api/bots/{bot_id}")
+async def delete_bot(bot_id: str):
+    """Delete a bot configuration."""
+    if bot_id not in bots_registry:
+        return {"success": False, "message": "Bot not found"}
+
+    bot = bots_registry[bot_id]
+    if bot.get("status") == "running":
+        return {"success": False, "message": "Cannot delete running bot. Stop it first."}
+
+    del bots_registry[bot_id]
+    add_log(f"[info    ] Bot deleted: {bot['name']} (ID: {bot_id})")
+
+    return {"success": True}
+
+
+@app.post("/api/bots/{bot_id}/start")
+async def start_specific_bot(bot_id: str):
+    """Start a specific bot."""
+    if bot_id not in bots_registry:
+        return {"success": False, "message": "Bot not found"}
+
+    bot = bots_registry[bot_id]
+    if bot.get("status") == "running":
+        return {"success": False, "message": "Bot is already running"}
+
+    # Update runtime settings with this bot's config
+    runtime_settings["trading_pairs"] = bot["trading_pairs"]
+    runtime_settings["timeframe"] = bot["timeframe"]
+    runtime_settings["risk_per_trade"] = bot["risk_per_trade"]
+    runtime_settings["tp_risk_ratio"] = bot["tp_risk_ratio"]
+    runtime_settings["sl_mode"] = bot["sl_mode"]
+    runtime_settings["leverage"] = bot["leverage"]
+    runtime_settings["max_open_positions"] = bot["max_positions"]
+    runtime_settings["ema_enabled"] = bot["ema_enabled"]
+
+    # Start the bot
+    start_callback = bot_state.get("start_callback")
+    if start_callback:
+        try:
+            await start_callback()
+            bot["status"] = "running"
+            return {"success": True, "message": f"Bot {bot['name']} started"}
+        except Exception as e:
+            return {"success": False, "message": str(e)}
+
+    return {"success": False, "message": "Start callback not configured"}
+
+
+@app.post("/api/bots/{bot_id}/stop")
+async def stop_specific_bot(bot_id: str):
+    """Stop a specific bot."""
+    if bot_id not in bots_registry:
+        return {"success": False, "message": "Bot not found"}
+
+    bot = bots_registry[bot_id]
+    if bot.get("status") != "running":
+        return {"success": False, "message": "Bot is not running"}
+
+    stop_callback = bot_state.get("stop_callback")
+    if stop_callback:
+        try:
+            await stop_callback()
+            bot["status"] = "stopped"
+            return {"success": True, "message": f"Bot {bot['name']} stopped"}
+        except Exception as e:
+            return {"success": False, "message": str(e)}
+
+    return {"success": False, "message": "Stop callback not configured"}
+
+
+@app.get("/api/trading-pairs")
+async def get_trading_pairs():
+    """Get available trading pairs from exchange."""
+    from datetime import datetime, timedelta
+
+    # Return cached data if fresh (less than 5 minutes old)
+    if trading_pairs_cache["pairs"] and trading_pairs_cache["last_update"]:
+        if datetime.now() - trading_pairs_cache["last_update"] < timedelta(minutes=5):
+            return {"pairs": trading_pairs_cache["pairs"]}
+
+    client = bot_state.get("client")
+    if not client:
+        # Return default pairs if no client
+        return {"pairs": [
+            {"symbol": "BTCUSDT", "base": "BTC", "quote": "USDT"},
+            {"symbol": "ETHUSDT", "base": "ETH", "quote": "USDT"},
+            {"symbol": "SOLUSDT", "base": "SOL", "quote": "USDT"},
+            {"symbol": "XRPUSDT", "base": "XRP", "quote": "USDT"},
+            {"symbol": "DOGEUSDT", "base": "DOGE", "quote": "USDT"},
+            {"symbol": "ADAUSDT", "base": "ADA", "quote": "USDT"},
+            {"symbol": "AVAXUSDT", "base": "AVAX", "quote": "USDT"},
+            {"symbol": "LINKUSDT", "base": "LINK", "quote": "USDT"},
+            {"symbol": "MATICUSDT", "base": "MATIC", "quote": "USDT"},
+            {"symbol": "LTCUSDT", "base": "LTC", "quote": "USDT"},
+        ]}
+
+    try:
+        pairs = client.get_trading_pairs()
+        result = []
+        for pair in pairs:
+            if pair.quote_asset == "USDT" and pair.status == "Trading":
+                result.append({
+                    "symbol": pair.symbol,
+                    "base": pair.base_asset,
+                    "quote": pair.quote_asset,
+                    "minQty": str(pair.min_order_qty),
+                    "maxLeverage": pair.max_leverage,
+                })
+
+        # Sort by symbol
+        result.sort(key=lambda x: x["symbol"])
+
+        # Cache the result
+        trading_pairs_cache["pairs"] = result
+        trading_pairs_cache["last_update"] = datetime.now()
+
+        return {"pairs": result}
+    except Exception as e:
+        logger.error("Failed to get trading pairs", error=str(e))
+        return {"pairs": [], "error": str(e)}
+
+
+@app.get("/api/klines/{symbol}")
+async def get_klines(symbol: str, interval: str = "15", limit: int = 100):
+    """Get kline/candlestick data for charts."""
+    client = bot_state.get("client")
+    if not client:
+        return {"error": "Not connected to exchange", "klines": []}
+
+    try:
+        df = client.get_klines(symbol=symbol, interval=interval, limit=limit)
+        if df.empty:
+            return {"klines": []}
+
+        klines = []
+        for idx, row in df.iterrows():
+            klines.append({
+                "time": int(idx.timestamp()),
+                "open": row["open"],
+                "high": row["high"],
+                "low": row["low"],
+                "close": row["close"],
+                "volume": row["volume"],
+            })
+
+        return {"klines": klines}
+    except Exception as e:
+        logger.error("Failed to get klines", symbol=symbol, error=str(e))
+        return {"klines": [], "error": str(e)}
+
+
+@app.get("/api/ticker/{symbol}")
+async def get_ticker(symbol: str):
+    """Get current ticker for a symbol."""
+    client = bot_state.get("client")
+    if not client:
+        return {"error": "Not connected to exchange"}
+
+    try:
+        ticker = client.get_ticker(symbol)
+        if not ticker:
+            return {"error": "Ticker not found"}
+
+        return {
+            "symbol": ticker.symbol,
+            "lastPrice": str(ticker.last_price),
+            "bidPrice": str(ticker.bid_price),
+            "askPrice": str(ticker.ask_price),
+            "high24h": str(ticker.high_24h),
+            "low24h": str(ticker.low_24h),
+            "volume24h": str(ticker.volume_24h),
+            "change24h": ticker.change_24h,
+        }
+    except Exception as e:
+        logger.error("Failed to get ticker", symbol=symbol, error=str(e))
+        return {"error": str(e)}
 
 
 @app.websocket("/ws/logs")
