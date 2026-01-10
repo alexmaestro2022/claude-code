@@ -294,16 +294,19 @@ class PositionSizer:
         position_value = result.position_value
         quantity = result.quantity
 
-        # Check max position percent
-        max_value = balance * Decimal(str(self.config.max_position_percent / 100))
-        if position_value > max_value:
-            ratio = max_value / position_value
-            position_value = max_value
-            quantity = quantity * ratio
-            logger.info(
-                "Position capped by max percent",
-                max_percent=self.config.max_position_percent,
-            )
+        # Skip max_position_percent check for fixed_amount mode
+        # In fixed_amount mode, we use the specified amount regardless of balance
+        if self.config.mode != "fixed_amount":
+            # Check max position percent
+            max_value = balance * Decimal(str(self.config.max_position_percent / 100))
+            if position_value > max_value:
+                ratio = max_value / position_value
+                position_value = max_value
+                quantity = quantity * ratio
+                logger.info(
+                    "Position capped by max percent",
+                    max_percent=self.config.max_position_percent,
+                )
 
         # Check min/max absolute limits
         if position_value < self.config.min_position_size:
