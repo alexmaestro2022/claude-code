@@ -85,6 +85,18 @@ async def main():
     strategy_config = create_strategy_config()
     engine_config = create_engine_config()
 
+    # Log important strategy settings for debugging
+    logger.info(
+        "Strategy configuration loaded",
+        sl_mode=strategy_config.sl_mode,
+        sl_supertrend_line=strategy_config.sl_supertrend_line,
+        sl_fixed_percent=strategy_config.sl_fixed_percent,
+        tp_mode=strategy_config.tp_mode,
+        tp_risk_ratio=strategy_config.tp_risk_ratio,
+        ema_enabled=strategy_config.ema_enabled,
+        trailing_enabled=strategy_config.trailing_enabled,
+    )
+
     # Initialize components
     client = BybitClient(bybit_config)
     strategy = TripleSuperTrendStrategy(strategy_config)
@@ -107,6 +119,11 @@ async def main():
             symbol=sig.symbol,
             type=sig.signal_type.value,
             price=sig.price,
+            stop_loss=sig.stop_loss,
+            take_profit=sig.take_profit,
+            sl_distance_pct=abs((sig.price - sig.stop_loss) / sig.price * 100) if sig.stop_loss else None,
+            tp_distance_pct=abs((sig.take_profit - sig.price) / sig.price * 100) if sig.take_profit else None,
+            rr_ratio=abs((sig.take_profit - sig.price) / (sig.price - sig.stop_loss)) if sig.stop_loss and sig.take_profit and sig.stop_loss != sig.price else None,
         )
 
     async def on_trade(trade_type, sig, order, **kwargs):

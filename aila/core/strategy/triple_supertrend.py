@@ -266,24 +266,50 @@ class TripleSuperTrendStrategy(BaseStrategy):
         Returns:
             Stop-loss price
         """
+        import structlog
+        logger = structlog.get_logger(__name__)
+
         entry_price = signal.price
         triple_st = self._indicators_data["triple_supertrend"]
 
         if self.config.sl_mode == "supertrend_line":
             # Use selected SuperTrend line
             line_map = {
-                1: triple_st.st1.supertrend.iloc[-1],
-                2: triple_st.st2.supertrend.iloc[-1],
-                3: triple_st.st3.supertrend.iloc[-1],
+                1: float(triple_st.st1.supertrend.iloc[-1]),
+                2: float(triple_st.st2.supertrend.iloc[-1]),
+                3: float(triple_st.st3.supertrend.iloc[-1]),
             }
-            sl_price = line_map.get(self.config.sl_supertrend_line, triple_st.st2.supertrend.iloc[-1])
+            sl_price = line_map.get(self.config.sl_supertrend_line, float(triple_st.st2.supertrend.iloc[-1]))
+
+            logger.info(
+                "SL calculation - SuperTrend mode",
+                entry_price=entry_price,
+                sl_line_number=self.config.sl_supertrend_line,
+                st1_line=line_map.get(1),
+                st2_line=line_map.get(2),
+                st3_line=line_map.get(3),
+                selected_sl_price=sl_price,
+                signal_side="long" if signal.is_long else "short",
+            )
 
             # Ensure stop-loss is on correct side
             if signal.is_long and sl_price >= entry_price:
                 # Use fixed percent as fallback
                 sl_price = entry_price * (1 - self.config.sl_fixed_percent / 100)
+                logger.warning(
+                    "SL fallback to fixed_percent for LONG",
+                    reason="SuperTrend line above entry",
+                    new_sl_price=sl_price,
+                    fixed_percent=self.config.sl_fixed_percent,
+                )
             elif signal.is_short and sl_price <= entry_price:
                 sl_price = entry_price * (1 + self.config.sl_fixed_percent / 100)
+                logger.warning(
+                    "SL fallback to fixed_percent for SHORT",
+                    reason="SuperTrend line below entry",
+                    new_sl_price=sl_price,
+                    fixed_percent=self.config.sl_fixed_percent,
+                )
 
             return sl_price
 
@@ -341,17 +367,38 @@ class TripleSuperTrendStrategy(BaseStrategy):
         Returns:
             Take-profit price (primary target)
         """
+        import structlog
+        logger = structlog.get_logger(__name__)
+
         entry_price = signal.price
         risk = abs(entry_price - stop_loss)
+
+        logger.info(
+            "TP calculation started",
+            entry_price=entry_price,
+            stop_loss=stop_loss,
+            risk=risk,
+            tp_mode=self.config.tp_mode,
+            tp_risk_ratio=self.config.tp_risk_ratio,
+            signal_side="long" if signal.is_long else "short",
+        )
 
         if self.config.tp_mode == "risk_ratio":
             # Risk-reward ratio based
             reward = risk * self.config.tp_risk_ratio
 
             if signal.is_long:
-                return entry_price + reward
+                tp_price = entry_price + reward
             else:
-                return entry_price - reward
+                tp_price = entry_price - reward
+
+            logger.info(
+                "TP calculation - risk_ratio mode",
+                reward=reward,
+                tp_price=tp_price,
+                actual_rr_ratio=reward / risk if risk > 0 else 0,
+            )
+            return tp_price
 
         elif self.config.tp_mode == "fixed_percent":
             # Fixed percentage from entry
