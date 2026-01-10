@@ -305,21 +305,25 @@ def main():
         print(f"  Mode: Auto-start")
     print(f"{'='*50}\n")
 
-    # Handle shutdown
-    def handle_shutdown(signum, frame):
-        print("\nShutdown signal received...")
-        bot_state["running"] = False
-        api_bot_state["running"] = False
-
-    signal.signal(signal.SIGINT, handle_shutdown)
-    signal.signal(signal.SIGTERM, handle_shutdown)
+    # Flag for shutdown
+    shutdown_flag = {"stop": False}
 
     # Run bot or keep server running
     async def keep_running():
         """Keep the server running without auto-starting bot."""
         add_log("[info    ] Web interface started. Use buttons to control bot.")
-        while True:
-            await asyncio.sleep(1)
+        while not shutdown_flag["stop"]:
+            await asyncio.sleep(0.5)
+
+    # Handle shutdown
+    def handle_shutdown(signum, frame):
+        print("\nShutdown signal received...")
+        shutdown_flag["stop"] = True
+        bot_state["running"] = False
+        api_bot_state["running"] = False
+
+    signal.signal(signal.SIGINT, handle_shutdown)
+    signal.signal(signal.SIGTERM, handle_shutdown)
 
     try:
         if args.no_autostart:
@@ -328,6 +332,8 @@ def main():
             asyncio.run(run_bot())
     except KeyboardInterrupt:
         pass
+    finally:
+        print("Exiting...")
 
 
 if __name__ == "__main__":
