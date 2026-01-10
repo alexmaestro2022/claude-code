@@ -734,77 +734,6 @@ DASHBOARD_HTML = r"""
 
         <!-- Dashboard Tab -->
         <div class="tab-content active" id="tab-dashboard">
-            <div class="controls">
-                <div class="control-group">
-                    <button class="btn btn-success btn-large" id="startBtn" onclick="startBot()">
-                        <span class="btn-icon">▶</span> <span data-i18n="startBot">Start Bot</span>
-                    </button>
-                    <button class="btn btn-danger btn-large" id="stopBtn" onclick="stopBot()" disabled>
-                        <span class="btn-icon">■</span> <span data-i18n="stopBot">Stop Bot</span>
-                    </button>
-                    <button class="btn btn-primary btn-large" onclick="toggleSettings()">
-                        <span class="btn-icon">⚙</span> <span data-i18n="settings">Settings</span>
-                    </button>
-                </div>
-            </div>
-
-            <div class="settings-panel" id="settingsPanel" style="display: none;">
-                <h3 data-i18n="strategySettings">Strategy Settings</h3>
-                <div class="settings-grid">
-                    <div class="setting-item">
-                        <label data-i18n="timeframe">Timeframe</label>
-                        <select id="timeframe">
-                            <option value="1m">1m</option>
-                            <option value="5m">5m</option>
-                            <option value="15m">15m</option>
-                            <option value="30m">30m</option>
-                            <option value="1h" selected>1h</option>
-                            <option value="4h">4h</option>
-                            <option value="1d">1d</option>
-                        </select>
-                    </div>
-                    <div class="setting-item">
-                        <label data-i18n="tradingPairs">Trading Pairs</label>
-                        <input type="text" id="tradingPairs" value="BTCUSDT,ETHUSDT" placeholder="BTCUSDT,ETHUSDT">
-                    </div>
-                    <div class="setting-item">
-                        <label data-i18n="riskPerTrade">Risk per Trade (%)</label>
-                        <input type="number" id="riskPerTrade" value="2" min="0.1" max="10" step="0.1">
-                    </div>
-                    <div class="setting-item">
-                        <label data-i18n="tpRatio">Take Profit Ratio (R:R)</label>
-                        <input type="number" id="tpRatio" value="2" min="1" max="10" step="0.5">
-                    </div>
-                    <div class="setting-item">
-                        <label data-i18n="slMode">Stop Loss Mode</label>
-                        <select id="slMode">
-                            <option value="supertrend_line" selected>SuperTrend Line</option>
-                            <option value="fixed_percent" data-i18n="fixedPercent">Fixed Percent</option>
-                            <option value="atr">ATR</option>
-                        </select>
-                    </div>
-                    <div class="setting-item">
-                        <label data-i18n="leverage">Leverage</label>
-                        <input type="number" id="leverage" value="10" min="1" max="100" step="1">
-                    </div>
-                    <div class="setting-item">
-                        <label data-i18n="maxPositions">Max Open Positions</label>
-                        <input type="number" id="maxPositions" value="3" min="1" max="10" step="1">
-                    </div>
-                    <div class="setting-item">
-                        <label data-i18n="emaFilter">EMA Filter</label>
-                        <select id="emaEnabled">
-                            <option value="true" selected data-i18n="enabled">Enabled</option>
-                            <option value="false" data-i18n="disabled">Disabled</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="settings-actions">
-                    <button class="btn btn-secondary" onclick="loadSettings()" data-i18n="reset">Reset</button>
-                    <button class="btn btn-primary" onclick="saveSettings()" data-i18n="saveSettings">Save Settings</button>
-                </div>
-            </div>
-
             <div class="cards">
                 <div class="card">
                     <div class="card-title" data-i18n="balance">Balance (USDT)</div>
@@ -821,6 +750,10 @@ DASHBOARD_HTML = r"""
                 <div class="card">
                     <div class="card-title" data-i18n="todayPnl">Today's PnL</div>
                     <div class="card-value" id="pnl">--</div>
+                </div>
+                <div class="card">
+                    <div class="card-title" data-i18n="activeBots">Active Bots</div>
+                    <div class="card-value" id="activeBots">0</div>
                 </div>
             </div>
 
@@ -968,6 +901,87 @@ DASHBOARD_HTML = r"""
         </div>
     </div>
 
+    <!-- Edit Bot Modal -->
+    <div class="modal" id="editBotModal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3 data-i18n="editBot">Edit Bot</h3>
+                <button class="modal-close" onclick="closeModal('editBotModal')">&times;</button>
+            </div>
+            <input type="hidden" id="editBotId">
+            <div class="settings-grid">
+                <div class="setting-item">
+                    <label data-i18n="botName">Bot Name</label>
+                    <input type="text" id="editBotName">
+                </div>
+                <div class="setting-item">
+                    <label data-i18n="tradingPair">Trading Pair</label>
+                    <select id="editBotPair"></select>
+                </div>
+                <div class="setting-item">
+                    <label data-i18n="timeframe">Timeframe</label>
+                    <select id="editBotTimeframe">
+                        <option value="1m">1m</option>
+                        <option value="3m">3m</option>
+                        <option value="5m">5m</option>
+                        <option value="15m">15m</option>
+                        <option value="30m">30m</option>
+                        <option value="1h">1h</option>
+                        <option value="2h">2h</option>
+                        <option value="4h">4h</option>
+                        <option value="1d">1d</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label data-i18n="leverage">Leverage</label>
+                    <input type="number" id="editBotLeverage" min="1" max="100">
+                </div>
+                <div class="setting-item">
+                    <label data-i18n="riskPerTrade">Risk per Trade (%)</label>
+                    <input type="number" id="editBotRisk" min="0.1" max="100" step="0.1">
+                </div>
+                <div class="setting-item">
+                    <label data-i18n="tpRatio">Take Profit (R:R)</label>
+                    <input type="number" id="editBotTpRatio" min="1" max="10" step="0.5">
+                </div>
+                <div class="setting-item">
+                    <label data-i18n="slMode">Stop Loss Mode</label>
+                    <select id="editBotSlMode">
+                        <option value="supertrend_line">SuperTrend Line</option>
+                        <option value="fixed_percent">Fixed Percent</option>
+                        <option value="atr">ATR</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label data-i18n="maxPositions">Max Positions</label>
+                    <input type="number" id="editBotMaxPositions" min="1" max="10">
+                </div>
+                <div class="setting-item">
+                    <label data-i18n="emaFilter">EMA 200 Filter</label>
+                    <select id="editBotEmaEnabled">
+                        <option value="true" data-i18n="enabled">Enabled</option>
+                        <option value="false" data-i18n="disabled">Disabled</option>
+                    </select>
+                </div>
+            </div>
+            <div class="settings-actions">
+                <button class="btn btn-secondary" onclick="closeModal('editBotModal')" data-i18n="cancel">Cancel</button>
+                <button class="btn btn-primary" onclick="saveEditBot()" data-i18n="save">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fullscreen Chart Modal -->
+    <div class="modal" id="fullscreenChartModal" style="background: rgba(0,0,0,0.95);">
+        <div class="modal-content" style="max-width: 95%; width: 95%; height: 90vh; padding: 15px;">
+            <div class="modal-header" style="margin-bottom: 10px;">
+                <h3 id="fullscreenChartTitle">Chart</h3>
+                <button class="modal-close" onclick="closeFullscreenChart()">&times;</button>
+            </div>
+            <div id="fullscreenChartContainer" style="height: calc(100% - 50px); width: 100%;"></div>
+        </div>
+    </div>
+
     <script>
         // Localization
         const i18n = {
@@ -1030,7 +1044,13 @@ DASHBOARD_HTML = r"""
                 applyPairs: 'Apply Selected Pairs',
                 noBots: 'No bots created yet. Click "Create Bot" to start.',
                 botCreated: 'Bot created successfully!',
-                botDeleted: 'Bot deleted successfully!'
+                botDeleted: 'Bot deleted successfully!',
+                editBot: 'Edit Bot',
+                save: 'Save',
+                edit: 'Edit',
+                activeBots: 'Active Bots',
+                botUpdated: 'Bot updated successfully!',
+                doubleClickChart: 'Double-click for fullscreen'
             },
             ru: {
                 connecting: 'Подключение...',
@@ -1091,7 +1111,13 @@ DASHBOARD_HTML = r"""
                 applyPairs: 'Применить выбранные пары',
                 noBots: 'Ботов пока нет. Нажмите "Создать бот" для начала.',
                 botCreated: 'Бот создан!',
-                botDeleted: 'Бот удален!'
+                botDeleted: 'Бот удален!',
+                editBot: 'Редактировать бот',
+                save: 'Сохранить',
+                edit: 'Редакт.',
+                activeBots: 'Активных ботов',
+                botUpdated: 'Бот обновлен!',
+                doubleClickChart: 'Двойной клик для полноэкранного режима'
             }
         };
 
@@ -1509,11 +1535,17 @@ DASHBOARD_HTML = r"""
             const grid = document.getElementById('botsGrid');
             if (botsData.length === 0) {
                 grid.innerHTML = '<p style="color: #888; text-align: center; padding: 40px;">' + t('noBots') + '</p>';
+                // Update active bots counter
+                document.getElementById('activeBots').textContent = '0';
                 return;
             }
 
+            // Update active bots counter
+            const activeBots = botsData.filter(b => b.status === 'running').length;
+            document.getElementById('activeBots').textContent = activeBots.toString();
+
             grid.innerHTML = botsData.map(bot => `
-                <div class="bot-card ${bot.status === 'running' ? 'running' : ''}" style="min-width: 400px;">
+                <div class="bot-card ${bot.status === 'running' ? 'running' : ''}" style="min-width: 400px;" data-bot-id="${bot.id}">
                     <div class="bot-header">
                         <span class="bot-name">${bot.name}</span>
                         <span class="bot-status ${bot.status}">${bot.status === 'running' ? t('running') : t('stopped')}</span>
@@ -1525,8 +1557,11 @@ DASHBOARD_HTML = r"""
                         <div><strong>EMA200:</strong> ${bot.ema_enabled ? '✓' : '✗'} | <strong>SL:</strong> ${bot.sl_mode}</div>
                     </div>
                     ${bot.status === 'running' ? `
-                        <div class="bot-chart-container" style="margin: 10px 0;">
+                        <div class="bot-chart-container" style="margin: 10px 0; cursor: pointer;" ondblclick="openFullscreenChart('${bot.id}')" title="${t('doubleClickChart')}">
                             <div class="chart-wrapper" id="bot-chart-${bot.id}" style="height: 200px;"></div>
+                            <div style="text-align: center; font-size: 11px; color: #666; margin-top: 5px;">
+                                ${t('doubleClickChart')}
+                            </div>
                         </div>
                     ` : ''}
                     <div class="bot-actions">
@@ -1534,6 +1569,7 @@ DASHBOARD_HTML = r"""
                             `<button class="btn btn-danger" onclick="stopSpecificBot('${bot.id}')">${t('stop')}</button>` :
                             `<button class="btn btn-success" onclick="startSpecificBot('${bot.id}')">${t('start')}</button>`
                         }
+                        <button class="btn btn-primary" onclick="showEditBotModal('${bot.id}')" ${bot.status === 'running' ? 'disabled' : ''}>${t('edit')}</button>
                         <button class="btn btn-secondary" onclick="deleteBot('${bot.id}')" ${bot.status === 'running' ? 'disabled' : ''}>${t('delete')}</button>
                     </div>
                 </div>
@@ -1730,6 +1766,213 @@ DASHBOARD_HTML = r"""
                 }
             } catch (err) {
                 console.error('Failed to delete bot:', err);
+            }
+        }
+
+        // Edit Bot Functions
+        async function showEditBotModal(botId) {
+            const bot = botsData.find(b => b.id === botId);
+            if (!bot) return;
+
+            // Load trading pairs into dropdown
+            try {
+                const response = await fetch('/api/trading-pairs');
+                const data = await response.json();
+                const select = document.getElementById('editBotPair');
+                select.innerHTML = '';
+
+                const pairs = data.pairs && data.pairs.length > 0 ? data.pairs :
+                    [{symbol:'BTCUSDT'},{symbol:'ETHUSDT'},{symbol:'SOLUSDT'},{symbol:'XRPUSDT'},{symbol:'DOGEUSDT'}];
+
+                pairs.forEach(pair => {
+                    const option = document.createElement('option');
+                    option.value = pair.symbol;
+                    option.textContent = pair.symbol;
+                    select.appendChild(option);
+                });
+            } catch (err) {
+                console.error('Failed to load pairs for edit modal:', err);
+            }
+
+            // Fill form with bot data
+            document.getElementById('editBotId').value = bot.id;
+            document.getElementById('editBotName').value = bot.name;
+            document.getElementById('editBotPair').value = Array.isArray(bot.trading_pairs) ? bot.trading_pairs[0] : bot.trading_pairs;
+            document.getElementById('editBotTimeframe').value = bot.timeframe;
+            document.getElementById('editBotLeverage').value = bot.leverage;
+            document.getElementById('editBotRisk').value = bot.risk_per_trade;
+            document.getElementById('editBotTpRatio').value = bot.tp_risk_ratio;
+            document.getElementById('editBotSlMode').value = bot.sl_mode;
+            document.getElementById('editBotMaxPositions').value = bot.max_positions;
+            document.getElementById('editBotEmaEnabled').value = bot.ema_enabled ? 'true' : 'false';
+
+            document.getElementById('editBotModal').classList.add('show');
+        }
+
+        async function saveEditBot() {
+            const botId = document.getElementById('editBotId').value;
+            const config = {
+                name: document.getElementById('editBotName').value,
+                trading_pairs: [document.getElementById('editBotPair').value],
+                timeframe: document.getElementById('editBotTimeframe').value,
+                leverage: parseInt(document.getElementById('editBotLeverage').value),
+                risk_per_trade: parseFloat(document.getElementById('editBotRisk').value),
+                tp_risk_ratio: parseFloat(document.getElementById('editBotTpRatio').value),
+                sl_mode: document.getElementById('editBotSlMode').value,
+                max_positions: parseInt(document.getElementById('editBotMaxPositions').value),
+                ema_enabled: document.getElementById('editBotEmaEnabled').value === 'true',
+            };
+
+            try {
+                const response = await fetch(`/api/bots/${botId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast(t('botUpdated'));
+                    closeModal('editBotModal');
+                    loadBots();
+                } else {
+                    showToast(data.message);
+                }
+            } catch (err) {
+                console.error('Failed to update bot:', err);
+            }
+        }
+
+        // Fullscreen Chart Functions
+        let fullscreenChart = null;
+
+        async function openFullscreenChart(botId) {
+            const bot = botsData.find(b => b.id === botId);
+            if (!bot) return;
+
+            const symbol = Array.isArray(bot.trading_pairs) ? bot.trading_pairs[0] : bot.trading_pairs;
+            document.getElementById('fullscreenChartTitle').textContent = `${bot.name} - ${symbol} (${bot.timeframe})`;
+
+            document.getElementById('fullscreenChartModal').classList.add('show');
+
+            // Wait for modal to be visible
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            const container = document.getElementById('fullscreenChartContainer');
+            container.innerHTML = '';
+
+            if (typeof LightweightCharts === 'undefined') {
+                container.innerHTML = '<p style="color: #888; text-align: center; padding: 40px;">Chart library not loaded</p>';
+                return;
+            }
+
+            fullscreenChart = LightweightCharts.createChart(container, {
+                width: container.clientWidth,
+                height: container.clientHeight,
+                layout: {
+                    background: { type: 'solid', color: '#1a1a2e' },
+                    textColor: '#888',
+                },
+                grid: {
+                    vertLines: { color: 'rgba(255, 255, 255, 0.05)' },
+                    horzLines: { color: 'rgba(255, 255, 255, 0.05)' },
+                },
+                rightPriceScale: { borderColor: 'rgba(255, 255, 255, 0.1)' },
+                timeScale: { borderColor: 'rgba(255, 255, 255, 0.1)', timeVisible: true, secondsVisible: false },
+            });
+
+            const candlestickSeries = fullscreenChart.addCandlestickSeries({
+                upColor: '#00ff88',
+                downColor: '#ff4444',
+                borderDownColor: '#ff4444',
+                borderUpColor: '#00ff88',
+                wickDownColor: '#ff4444',
+                wickUpColor: '#00ff88',
+            });
+
+            const tfMap = {'1m':'1','3m':'3','5m':'5','15m':'15','30m':'30','1h':'60','2h':'120','4h':'240','1d':'D'};
+            const interval = tfMap[bot.timeframe] || '15';
+
+            // Load klines
+            try {
+                const klinesResponse = await fetch(`/api/klines/${symbol}?interval=${interval}&limit=200`);
+                const klinesData = await klinesResponse.json();
+                if (klinesData.klines && klinesData.klines.length > 0) {
+                    candlestickSeries.setData(klinesData.klines);
+                }
+            } catch (err) {
+                console.error('Failed to load klines:', err);
+            }
+
+            // Load indicators
+            try {
+                const indResponse = await fetch(`/api/indicators/${symbol}?interval=${interval}&limit=200`);
+                const indData = await indResponse.json();
+
+                if (indData.indicators) {
+                    // EMA 200 (if enabled)
+                    if (bot.ema_enabled && indData.indicators.ema200 && indData.indicators.ema200.length > 0) {
+                        const emaSeries = fullscreenChart.addLineSeries({
+                            color: '#ffcc00',
+                            lineWidth: 2,
+                            title: 'EMA200',
+                        });
+                        emaSeries.setData(indData.indicators.ema200);
+                    }
+
+                    // SuperTrend 1
+                    if (indData.indicators.supertrend1 && indData.indicators.supertrend1.length > 0) {
+                        const st1Series = fullscreenChart.addLineSeries({
+                            color: '#00ff88',
+                            lineWidth: 2,
+                            title: 'ST1 (10, 1.0)',
+                        });
+                        st1Series.setData(indData.indicators.supertrend1.map(p => ({time: p.time, value: p.value})));
+                    }
+
+                    // SuperTrend 2
+                    if (indData.indicators.supertrend2 && indData.indicators.supertrend2.length > 0) {
+                        const st2Series = fullscreenChart.addLineSeries({
+                            color: '#00d4ff',
+                            lineWidth: 2,
+                            title: 'ST2 (11, 2.0)',
+                        });
+                        st2Series.setData(indData.indicators.supertrend2.map(p => ({time: p.time, value: p.value})));
+                    }
+
+                    // SuperTrend 3
+                    if (indData.indicators.supertrend3 && indData.indicators.supertrend3.length > 0) {
+                        const st3Series = fullscreenChart.addLineSeries({
+                            color: '#aa00ff',
+                            lineWidth: 2,
+                            title: 'ST3 (12, 3.0)',
+                        });
+                        st3Series.setData(indData.indicators.supertrend3.map(p => ({time: p.time, value: p.value})));
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to load indicators:', err);
+            }
+
+            fullscreenChart.timeScale().fitContent();
+
+            // Handle resize
+            const resizeObserver = new ResizeObserver(() => {
+                if (fullscreenChart) {
+                    fullscreenChart.applyOptions({
+                        width: container.clientWidth,
+                        height: container.clientHeight
+                    });
+                }
+            });
+            resizeObserver.observe(container);
+        }
+
+        function closeFullscreenChart() {
+            document.getElementById('fullscreenChartModal').classList.remove('show');
+            if (fullscreenChart) {
+                fullscreenChart.remove();
+                fullscreenChart = null;
             }
         }
 
