@@ -871,9 +871,35 @@ DASHBOARD_HTML = r"""
                         <option value="1w">1w</option>
                     </select>
                 </div>
+                <div class="setting-item" id="newPairInfoContainer" style="display: none;">
+                    <label data-i18n="pairInfo">Pair Info</label>
+                    <div id="newPairInfo" style="padding: 8px; background: rgba(0,255,136,0.1); border-radius: 5px; font-size: 12px;">
+                        <div><span data-i18n="minOrder">Min Order:</span> <span id="newPairMinOrder">-</span> USDT</div>
+                        <div><span data-i18n="maxLeverage">Max Leverage:</span> <span id="newPairMaxLeverage">-</span>x</div>
+                    </div>
+                </div>
                 <div class="setting-item">
                     <label data-i18n="leverage">Leverage</label>
-                    <input type="number" id="newBotLeverage" value="10" min="1" max="100">
+                    <select id="newBotLeverage" onchange="updateDepositInfo('new')">
+                        <option value="1">1x</option>
+                        <option value="2">2x</option>
+                        <option value="3">3x</option>
+                        <option value="5">5x</option>
+                        <option value="10" selected>10x</option>
+                        <option value="15">15x</option>
+                        <option value="20">20x</option>
+                        <option value="25">25x</option>
+                        <option value="50">50x</option>
+                        <option value="75">75x</option>
+                        <option value="100">100x</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label data-i18n="orderSize">Order Size (USDT)</label>
+                    <input type="number" id="newBotOrderSize" value="100" min="5" max="100000" step="1" oninput="updateDepositInfo('new')">
+                    <div id="newDepositInfo" style="margin-top: 5px; padding: 5px; background: rgba(255,204,0,0.1); border-radius: 3px; font-size: 11px; color: #ffcc00;">
+                        <span data-i18n="depositUsed">Deposit used:</span> <span id="newDepositUsed">10</span> USDT
+                    </div>
                 </div>
                 <div class="setting-item">
                     <label data-i18n="riskPerTrade">Risk per Trade (%)</label>
@@ -990,9 +1016,35 @@ DASHBOARD_HTML = r"""
                         <option value="1w">1w</option>
                     </select>
                 </div>
+                <div class="setting-item" id="editPairInfoContainer" style="display: none;">
+                    <label data-i18n="pairInfo">Pair Info</label>
+                    <div id="editPairInfo" style="padding: 8px; background: rgba(0,255,136,0.1); border-radius: 5px; font-size: 12px;">
+                        <div><span data-i18n="minOrder">Min Order:</span> <span id="editPairMinOrder">-</span> USDT</div>
+                        <div><span data-i18n="maxLeverage">Max Leverage:</span> <span id="editPairMaxLeverage">-</span>x</div>
+                    </div>
+                </div>
                 <div class="setting-item">
                     <label data-i18n="leverage">Leverage</label>
-                    <input type="number" id="editBotLeverage" min="1" max="100">
+                    <select id="editBotLeverage" onchange="updateDepositInfo('edit')">
+                        <option value="1">1x</option>
+                        <option value="2">2x</option>
+                        <option value="3">3x</option>
+                        <option value="5">5x</option>
+                        <option value="10">10x</option>
+                        <option value="15">15x</option>
+                        <option value="20">20x</option>
+                        <option value="25">25x</option>
+                        <option value="50">50x</option>
+                        <option value="75">75x</option>
+                        <option value="100">100x</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label data-i18n="orderSize">Order Size (USDT)</label>
+                    <input type="number" id="editBotOrderSize" value="100" min="5" max="100000" step="1" oninput="updateDepositInfo('edit')">
+                    <div id="editDepositInfo" style="margin-top: 5px; padding: 5px; background: rgba(255,204,0,0.1); border-radius: 3px; font-size: 11px; color: #ffcc00;">
+                        <span data-i18n="depositUsed">Deposit used:</span> <span id="editDepositUsed">10</span> USDT
+                    </div>
                 </div>
                 <div class="setting-item">
                     <label data-i18n="riskPerTrade">Risk per Trade (%)</label>
@@ -1107,6 +1159,11 @@ DASHBOARD_HTML = r"""
                 slPercent: 'SL Fixed Percent (%)',
                 slAtrMult: 'SL ATR Multiplier',
                 leverage: 'Leverage',
+                orderSize: 'Order Size (USDT)',
+                depositUsed: 'Deposit used:',
+                pairInfo: 'Pair Info',
+                minOrder: 'Min Order:',
+                maxLeverage: 'Max Leverage:',
                 maxPositions: 'Max Open Positions',
                 emaFilter: 'EMA Filter',
                 emaMode: 'EMA Filter Mode',
@@ -1183,6 +1240,11 @@ DASHBOARD_HTML = r"""
                 slPercent: 'SL фикс. процент (%)',
                 slAtrMult: 'SL ATR множитель',
                 leverage: 'Плечо',
+                orderSize: 'Размер ордера (USDT)',
+                depositUsed: 'Используется депозит:',
+                pairInfo: 'Информация о паре',
+                minOrder: 'Мин. ордер:',
+                maxLeverage: 'Макс. плечо:',
                 maxPositions: 'Макс. позиций',
                 emaFilter: 'EMA фильтр',
                 emaMode: 'Режим EMA фильтра',
@@ -1715,12 +1777,83 @@ DASHBOARD_HTML = r"""
             document.getElementById(prefix + 'BotPairSearch').value = symbol;
             document.getElementById(prefix + 'BotPair').value = symbol;
             document.getElementById(prefix + 'PairDropdown').style.display = 'none';
+            // Update pair info when pair is selected
+            updatePairInfo(prefix, symbol);
         }
 
         function clearPairSearch(prefix) {
             document.getElementById(prefix + 'BotPairSearch').value = '';
             document.getElementById(prefix + 'BotPair').value = '';
+            // Hide pair info when cleared
+            document.getElementById(prefix + 'PairInfoContainer').style.display = 'none';
             showPairDropdown(prefix);
+        }
+
+        // Update pair info display (min order, max leverage)
+        function updatePairInfo(prefix, symbol) {
+            const pair = allTradingPairs.find(p => p.symbol === symbol);
+            if (!pair) return;
+
+            // Show pair info container
+            const container = document.getElementById(prefix + 'PairInfoContainer');
+            if (container) container.style.display = 'block';
+
+            // Update min order
+            const minOrderEl = document.getElementById(prefix + 'PairMinOrder');
+            if (minOrderEl) minOrderEl.textContent = pair.minNotional || '5';
+
+            // Update max leverage
+            const maxLeverageEl = document.getElementById(prefix + 'PairMaxLeverage');
+            if (maxLeverageEl) maxLeverageEl.textContent = pair.maxLeverage || '100';
+
+            // Update leverage dropdown options based on max leverage
+            updateLeverageOptions(prefix, pair.maxLeverage || 100);
+
+            // Update deposit info
+            updateDepositInfo(prefix);
+        }
+
+        // Update leverage dropdown based on max leverage for the pair
+        function updateLeverageOptions(prefix, maxLeverage) {
+            const leverageSelect = document.getElementById(prefix + 'BotLeverage');
+            if (!leverageSelect) return;
+
+            const currentValue = parseInt(leverageSelect.value) || 10;
+            const leverageOptions = [1, 2, 3, 5, 10, 15, 20, 25, 50, 75, 100, 125, 150, 200];
+
+            // Clear and rebuild options
+            leverageSelect.innerHTML = '';
+            leverageOptions.forEach(lev => {
+                if (lev <= maxLeverage) {
+                    const option = document.createElement('option');
+                    option.value = lev;
+                    option.textContent = lev + 'x';
+                    if (lev === currentValue || (lev === 10 && currentValue > maxLeverage)) {
+                        option.selected = true;
+                    }
+                    leverageSelect.appendChild(option);
+                }
+            });
+
+            // If current value exceeds max, select the highest available
+            if (currentValue > maxLeverage) {
+                leverageSelect.value = leverageSelect.options[leverageSelect.options.length - 1].value;
+            }
+        }
+
+        // Calculate and display deposit used based on order size and leverage
+        function updateDepositInfo(prefix) {
+            const orderSizeEl = document.getElementById(prefix + 'BotOrderSize');
+            const leverageEl = document.getElementById(prefix + 'BotLeverage');
+            const depositUsedEl = document.getElementById(prefix + 'DepositUsed');
+
+            if (!orderSizeEl || !leverageEl || !depositUsedEl) return;
+
+            const orderSize = parseFloat(orderSizeEl.value) || 100;
+            const leverage = parseInt(leverageEl.value) || 10;
+            const depositUsed = (orderSize / leverage).toFixed(2);
+
+            depositUsedEl.textContent = depositUsed;
         }
 
         async function showCreateBotModal() {
@@ -1732,6 +1865,9 @@ DASHBOARD_HTML = r"""
             // Reset search field
             document.getElementById('newBotPairSearch').value = 'BTCUSDT';
             document.getElementById('newBotPair').value = 'BTCUSDT';
+
+            // Update pair info for default pair
+            updatePairInfo('new', 'BTCUSDT');
 
             document.getElementById('createBotModal').classList.add('show');
         }
@@ -2044,6 +2180,7 @@ DASHBOARD_HTML = r"""
                 trading_pairs: [selectedPair],
                 timeframe: document.getElementById('newBotTimeframe').value,
                 leverage: parseInt(document.getElementById('newBotLeverage').value),
+                order_size: parseFloat(document.getElementById('newBotOrderSize').value),
                 risk_per_trade: parseFloat(document.getElementById('newBotRisk').value),
                 tp_risk_ratio: parseFloat(document.getElementById('newBotTpRatio').value),
                 sl_mode: slMode,
@@ -2142,7 +2279,13 @@ DASHBOARD_HTML = r"""
             document.getElementById('editBotPairSearch').value = currentPair;
             document.getElementById('editBotPair').value = currentPair;
             document.getElementById('editBotTimeframe').value = bot.timeframe;
+
+            // Update pair info first (sets leverage options)
+            updatePairInfo('edit', currentPair);
+
+            // Then set values
             document.getElementById('editBotLeverage').value = bot.leverage;
+            document.getElementById('editBotOrderSize').value = bot.order_size || 100;
             document.getElementById('editBotRisk').value = bot.risk_per_trade;
             document.getElementById('editBotTpRatio').value = bot.tp_risk_ratio;
             document.getElementById('editBotSlMode').value = bot.sl_mode;
@@ -2159,6 +2302,9 @@ DASHBOARD_HTML = r"""
             // Toggle SL options visibility
             toggleSlOptions('edit');
 
+            // Update deposit info
+            updateDepositInfo('edit');
+
             document.getElementById('editBotModal').classList.add('show');
         }
 
@@ -2170,6 +2316,7 @@ DASHBOARD_HTML = r"""
                 trading_pairs: [document.getElementById('editBotPair').value],
                 timeframe: document.getElementById('editBotTimeframe').value,
                 leverage: parseInt(document.getElementById('editBotLeverage').value),
+                order_size: parseFloat(document.getElementById('editBotOrderSize').value),
                 risk_per_trade: parseFloat(document.getElementById('editBotRisk').value),
                 tp_risk_ratio: parseFloat(document.getElementById('editBotTpRatio').value),
                 sl_mode: slMode,
@@ -2986,7 +3133,9 @@ async def get_trading_pairs():
                             "base": pair.base_asset,
                             "quote": pair.quote_asset,
                             "minQty": str(pair.min_order_qty),
+                            "minNotional": str(getattr(pair, 'min_notional', '5')),
                             "maxLeverage": pair.max_leverage,
+                            "leverageStep": getattr(pair, 'leverage_step', 0.01),
                         })
 
             # Sort by symbol
@@ -3013,12 +3162,16 @@ async def get_trading_pairs():
                 result = []
                 for item in data.get("result", {}).get("list", []):
                     if item.get("quoteCoin") == "USDT" and item.get("status") == "Trading":
+                        lot_filter = item.get("lotSizeFilter", {})
+                        leverage_filter = item.get("leverageFilter", {})
                         result.append({
                             "symbol": item.get("symbol"),
                             "base": item.get("baseCoin"),
                             "quote": item.get("quoteCoin"),
-                            "minQty": item.get("lotSizeFilter", {}).get("minOrderQty", "0.001"),
-                            "maxLeverage": int(float(item.get("leverageFilter", {}).get("maxLeverage", "100"))),
+                            "minQty": lot_filter.get("minOrderQty", "0.001"),
+                            "minNotional": lot_filter.get("minNotionalValue", "5"),
+                            "maxLeverage": int(float(leverage_filter.get("maxLeverage", "100"))),
+                            "leverageStep": float(leverage_filter.get("leverageStep", "0.01")),
                         })
 
                 # Sort by symbol
