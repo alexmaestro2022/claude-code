@@ -1578,8 +1578,9 @@ DASHBOARD_HTML = r"""
                     ${bot.status === 'running' ? `
                         <div class="bot-chart-container" style="margin: 10px 0; cursor: pointer;" ondblclick="openFullscreenChart('${bot.id}')" title="${t('doubleClickChart')}">
                             <div class="chart-wrapper" id="bot-chart-${bot.id}" style="height: 200px;"></div>
-                            <div style="text-align: center; font-size: 11px; color: #666; margin-top: 5px;">
-                                ${t('doubleClickChart')}
+                            <div style="display: flex; justify-content: space-between; font-size: 11px; color: #666; margin-top: 5px;">
+                                <span>${t('doubleClickChart')}</span>
+                                <span class="update-time" style="color: #00ff88;">Loading...</span>
                             </div>
                         </div>
                     ` : ''}
@@ -1729,16 +1730,38 @@ DASHBOARD_HTML = r"""
         // Update chart data (for real-time updates)
         async function updateBotChartData(botId) {
             const chartData = botCharts[botId];
-            if (!chartData) return;
+            if (!chartData) {
+                console.log('No chart data for bot:', botId);
+                return;
+            }
 
             const { candlestickSeries, emaSeries, st1Series, st2Series, st3Series, symbol, interval, bot } = chartData;
+
+            // Show updating indicator
+            const chartContainer = document.getElementById('bot-chart-' + botId);
+            if (chartContainer) {
+                const updateIndicator = chartContainer.parentElement.querySelector('.update-time');
+                if (updateIndicator) {
+                    updateIndicator.textContent = 'Updating...';
+                }
+            }
 
             // Load klines
             try {
                 const klinesResponse = await fetch(`/api/klines/${symbol}?interval=${interval}&limit=100`);
                 const klinesData = await klinesResponse.json();
+                console.log(`Chart update for ${symbol}:`, klinesData.klines?.length || 0, 'candles');
                 if (klinesData.klines && klinesData.klines.length > 0) {
                     candlestickSeries.setData(klinesData.klines);
+                    // Update the last candle time display
+                    const lastCandle = klinesData.klines[klinesData.klines.length - 1];
+                    if (chartContainer) {
+                        const updateIndicator = chartContainer.parentElement.querySelector('.update-time');
+                        if (updateIndicator && lastCandle) {
+                            const now = new Date();
+                            updateIndicator.textContent = `Updated: ${now.toLocaleTimeString()} | Last: ${lastCandle.close.toFixed(2)}`;
+                        }
+                    }
                 }
             } catch (err) {
                 console.error('Failed to update klines:', err);
