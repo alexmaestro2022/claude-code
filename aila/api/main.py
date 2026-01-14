@@ -3711,20 +3711,10 @@ DASHBOARD_HTML = r"""
                 const pnlPercent = initialBalance > 0 ? (totalPnl / initialBalance * 100) : 0;
                 const pnlPercentSign = pnlPercent >= 0 ? '+' : '';
 
-                // Status indicator class
-                const indicatorClass = bot.status === 'error' ? 'error' : bot.status;
-
                 return `
                 <div class="bot-card ${bot.status === 'running' ? 'running' : ''} ${bot.status === 'starting' || bot.status === 'stopping' ? 'processing' : ''}" style="min-width: 380px;" data-bot-id="${bot.id}">
                     <div class="bot-header">
                         <span class="bot-name">${bot.name}</span>
-                        <span class="bot-status ${bot.status}">${
-                            bot.status === 'running' ? t('running') :
-                            bot.status === 'paused' ? t('paused') :
-                            bot.status === 'starting' ? t('starting') :
-                            bot.status === 'stopping' ? t('stopping') :
-                            t('stopped')
-                        }</span>
                     </div>
                     <div class="bot-details" style="font-size: 12px;">
                         <div><strong>${t('botMode')}:</strong> ${bot.bot_mode === 'auto_search' ? '<span style="color: #ffcc00;">' + t('autoSearchMode') + '</span>' : t('manualMode')} | <strong>${bot.bot_mode === 'auto_search' ? 'Max' : 'Pair'}:</strong> ${bot.bot_mode === 'auto_search' ? bot.max_trading_pairs || bot.max_simultaneous_orders || 1 : (Array.isArray(bot.trading_pairs) ? bot.trading_pairs[0] : bot.trading_pairs)}</div>
