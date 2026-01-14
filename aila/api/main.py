@@ -3454,6 +3454,7 @@ async def start_specific_bot(bot_id: str):
     # Leverage
     runtime_settings["leverage"] = bot["leverage"]
     runtime_settings["leverage_mode"] = bot.get("leverage_mode", "cross")
+    runtime_settings["margin_mode"] = bot.get("leverage_mode", "cross")  # alias for TradingEngineConfig
     runtime_settings["max_open_positions"] = bot["max_positions"]
     # EMA filter
     runtime_settings["ema_enabled"] = bot["ema_enabled"]
