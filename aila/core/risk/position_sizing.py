@@ -208,19 +208,26 @@ class PositionSizer:
         stop_loss_price: Decimal,
         leverage: int,
     ) -> PositionSizeResult:
-        """Calculate position size based on fixed amount."""
-        position_value = self.config.fixed_amount
-        notional_value = position_value * Decimal(str(leverage))
+        """Calculate position size based on fixed amount.
+
+        fixed_amount is the desired position value (notional), NOT margin.
+        Example: fixed_amount=10 USDT with 10x leverage = 10 USDT position, 1 USDT margin.
+        """
+        # fixed_amount is the notional position value
+        notional_value = self.config.fixed_amount
         quantity = notional_value / entry_price
 
-        # Calculate implied risk
+        # Margin required = notional / leverage
+        margin_value = notional_value / Decimal(str(leverage))
+
+        # Calculate implied risk based on position value
         stop_distance = abs(entry_price - stop_loss_price)
         stop_percent = stop_distance / entry_price
-        risk_amount = position_value * stop_percent
+        risk_amount = notional_value * stop_percent
 
         return PositionSizeResult(
             quantity=quantity,
-            position_value=position_value,
+            position_value=notional_value,  # Notional position value (matches min_position_size)
             risk_amount=risk_amount,
             risk_percent=float(stop_percent * 100),
             leverage_used=leverage,

@@ -17,10 +17,13 @@ from dataclasses import dataclass, field
 from typing import Any, Optional
 
 import pandas as pd
+import structlog
 
 from ..indicators import EMA, TripleSuperTrend
 from .base import BaseStrategy, StrategyConfig
 from .signals import Signal, SignalStrength, SignalType
+
+logger = structlog.get_logger(__name__)
 
 
 @dataclass
@@ -29,17 +32,20 @@ class TripleSuperTrendConfig(StrategyConfig):
 
     name: str = "TripleSuperTrend"
 
-    # SuperTrend 1 (slow)
-    st1_period: int = 12
-    st1_multiplier: float = 3.0
+    # SuperTrend 1 (fast)
+    st1_period: int = 10
+    st1_multiplier: float = 1.0
 
     # SuperTrend 2 (medium)
     st2_period: int = 11
     st2_multiplier: float = 2.0
 
-    # SuperTrend 3 (fast)
-    st3_period: int = 10
-    st3_multiplier: float = 1.0
+    # SuperTrend 3 (slow)
+    st3_period: int = 12
+    st3_multiplier: float = 3.0
+
+    # Early entry mode - enter when ST1 & ST2 confirmed, ST3 just turned
+    early_entry_enabled: bool = False
 
     # EMA filter
     ema_enabled: bool = True
@@ -66,8 +72,24 @@ class TripleSuperTrendConfig(StrategyConfig):
 
     # Trailing stop
     trailing_enabled: bool = True
-    trailing_activation: float = 1.0  # Activate after +1% profit
-    trailing_step: float = 0.5  # 0.5% trailing step
+    trailing_mode: str = "fix_percent"  # 'fix_percent' or 'st_line'
+    trailing_activation: float = 1.0  # Activate after +1% profit (for fix_percent mode)
+    trailing_step: float = 0.5  # 0.5% trailing step (for fix_percent mode)
+    trailing_st_line: int = 2  # 1 (fast), 2 (medium), 3 (slow) - for st_line mode
+    trailing_confirm_candles: int = 1  # Number of candles to confirm ST line move
+
+    # Partial take-profit settings
+    partial_tp_enabled: bool = True  # Enable partial TP at TP1 + SL move
+    partial_tp_close_percent: int = 50  # Close 50% of position at TP1
+    partial_tp_sl_move: str = "tp1"  # 'tp1' (move SL to TP1) or 'entry' (move SL to entry/breakeven)
+    partial_tp_sl_offset: float = 0.2  # Move SL offset % (only for tp1 mode)
+
+    # Trailing TP settings (for remaining position after partial TP)
+    trailing_tp_enabled: bool = False  # Enable trailing TP for remaining position
+    trailing_tp_mode: str = "st_line"  # 'st_line' or 'trailing_percent'
+    trailing_tp_st_line: int = 2  # 1 (fast), 2 (medium), 3 (slow) - for st_line mode
+    trailing_tp_activation: float = 0.5  # Activation % - for trailing_percent mode
+    trailing_tp_step: float = 1.0  # Step % - for trailing_percent mode
 
     # Allow custom parameters modification
     allow_custom_params: bool = True
@@ -155,13 +177,13 @@ class TripleSuperTrendStrategy(BaseStrategy):
         """
         Generate trading signal based on Triple SuperTrend + EMA.
 
-        LONG conditions:
-        - All three SuperTrends are bullish (green)
-        - Price > EMA200 (if EMA filter enabled in strict mode)
+        Standard mode:
+        - LONG: All three SuperTrends are bullish (green)
+        - SHORT: All three SuperTrends are bearish (red)
 
-        SHORT conditions:
-        - All three SuperTrends are bearish (red)
-        - Price < EMA200 (if EMA filter enabled in strict mode)
+        Early Entry mode:
+        - LONG: ST1 & ST2 already bullish, ST3 just turned bullish
+        - SHORT: ST1 & ST2 already bearish, ST3 just turned bearish
 
         Args:
             df: DataFrame with OHLCV data
@@ -175,74 +197,171 @@ class TripleSuperTrendStrategy(BaseStrategy):
         triple_st = indicators["triple_supertrend"]
         ema_result = indicators["ema"]
 
-        # Get combined SuperTrend direction
+        # Get individual SuperTrend directions (1=bullish/green, -1=bearish/red)
+        st1_dir_curr = int(triple_st.st1.direction.iloc[-1])
+        st2_dir_curr = int(triple_st.st2.direction.iloc[-1])
+        st3_dir_curr = int(triple_st.st3.direction.iloc[-1])
+
+        # Get SuperTrend line values
+        st1_value = float(triple_st.st1.supertrend.iloc[-1])
+        st2_value = float(triple_st.st2.supertrend.iloc[-1])
+        st3_value = float(triple_st.st3.supertrend.iloc[-1])
+
+        # Get previous candle directions (for early entry mode)
+        st1_dir_prev = int(triple_st.st1.direction.iloc[-2]) if len(triple_st.st1.direction) > 1 else 0
+        st2_dir_prev = int(triple_st.st2.direction.iloc[-2]) if len(triple_st.st2.direction) > 1 else 0
+        st3_dir_prev = int(triple_st.st3.direction.iloc[-2]) if len(triple_st.st3.direction) > 1 else 0
+
+        # Get combined direction
         st_direction = int(triple_st.combined_direction.iloc[-1])
 
-        # Check for signal change (new entry signal only on direction change)
-        if st_direction == self._prev_signal:
-            # No change in direction, no new entry signal
-            return Signal.no_signal(symbol, current_price)
+        # Get EMA value if enabled
+        ema_value = None
+        ema_trend = 0
+        if self.config.ema_enabled and ema_result is not None:
+            ema_value = float(ema_result.ema.iloc[-1])
+            ema_trend = int(ema_result.trend.iloc[-1])
 
-        # Update previous signal
+        # Helper function for direction display
+        def dir_str(d):
+            return "🟢" if d == 1 else ("🔴" if d == -1 else "⚪")
+
+        # Determine if we have a valid entry signal
+        signal_type = None  # None, 'long', or 'short'
+        entry_mode = "standard"
+        signal_reason = ""
+
+        if self.config.early_entry_enabled:
+            # Early Entry Mode: ST1 & ST2 confirmed, ST3 just turned
+            # LONG: ST1 & ST2 were bullish on previous candle, ST3 just became bullish
+            if (st1_dir_prev == 1 and st2_dir_prev == 1 and
+                st3_dir_prev != 1 and st3_dir_curr == 1):
+                signal_type = 'long'
+                entry_mode = "early_entry"
+                signal_reason = "ST1&ST2 were green, ST3 just turned green"
+
+            # SHORT: ST1 & ST2 were bearish on previous candle, ST3 just became bearish
+            elif (st1_dir_prev == -1 and st2_dir_prev == -1 and
+                  st3_dir_prev != -1 and st3_dir_curr == -1):
+                signal_type = 'short'
+                entry_mode = "early_entry"
+                signal_reason = "ST1&ST2 were red, ST3 just turned red"
+
+        else:
+            # Standard Mode: All three SuperTrends aligned, direction just changed
+            if st_direction != self._prev_signal:
+                if st_direction == 1:
+                    signal_type = 'long'
+                    signal_reason = "All 3 ST turned green (combined direction changed)"
+                elif st_direction == -1:
+                    signal_type = 'short'
+                    signal_reason = "All 3 ST turned red (combined direction changed)"
+
+        # Update previous signal tracking
         prev_signal = self._prev_signal
         self._prev_signal = st_direction
 
+        # No valid signal
+        if signal_type is None:
+            return Signal.no_signal(symbol, current_price)
+
         # Check EMA filter if enabled
         position_multiplier = 1.0
+        ema_filter_result = "passed"
         if self.config.ema_enabled and ema_result is not None:
-            ema_value = ema_result.ema.iloc[-1]
-            ema_trend = ema_result.trend.iloc[-1]
-
             if self.config.ema_filter_mode == "strict":
                 # Strict mode: only trade in direction of EMA
-                if st_direction == 1 and ema_trend != 1:
+                if signal_type == 'long' and ema_trend != 1:
+                    logger.info(
+                        "Signal REJECTED by EMA filter",
+                        symbol=symbol,
+                        signal_type=signal_type.upper(),
+                        ema_trend=dir_str(ema_trend),
+                        reason="Price below EMA200 for LONG"
+                    )
                     return Signal.no_signal(symbol, current_price)
-                if st_direction == -1 and ema_trend != -1:
+                if signal_type == 'short' and ema_trend != -1:
+                    logger.info(
+                        "Signal REJECTED by EMA filter",
+                        symbol=symbol,
+                        signal_type=signal_type.upper(),
+                        ema_trend=dir_str(ema_trend),
+                        reason="Price above EMA200 for SHORT"
+                    )
                     return Signal.no_signal(symbol, current_price)
             else:  # soft mode
                 # Soft mode: reduce position size when against EMA
-                if st_direction != ema_trend:
+                expected_trend = 1 if signal_type == 'long' else -1
+                if expected_trend != ema_trend:
                     position_multiplier = 0.5
+                    ema_filter_result = "soft (50% size)"
+
+        # Determine which SuperTrend triggered the signal
+        def get_st_marker(is_trigger):
+            return "🎯 ТРИГГЕР" if is_trigger else ""
+
+        # For early entry, ST3 is the trigger
+        st1_trigger = False
+        st2_trigger = False
+        st3_trigger = entry_mode == "early_entry"
+
+        # For standard mode, find which one changed last
+        if entry_mode == "standard":
+            if st1_dir_prev != st1_dir_curr:
+                st1_trigger = True
+            if st2_dir_prev != st2_dir_curr:
+                st2_trigger = True
+            if st3_dir_prev != st3_dir_curr:
+                st3_trigger = True
+
+        # Log signal in clean format
+        logger.info(
+            f"━━━ SIGNAL: {signal_type.upper()} ━━━ {symbol} @ {current_price:.6f}"
+        )
+        logger.info(
+            f"Mode: {entry_mode} | {signal_reason}"
+        )
+        logger.info(
+            f"ST1(10,1): {dir_str(st1_dir_curr)}←{dir_str(st1_dir_prev)} | "
+            f"ST2(11,2): {dir_str(st2_dir_curr)}←{dir_str(st2_dir_prev)} | "
+            f"ST3(12,3): {dir_str(st3_dir_curr)}←{dir_str(st3_dir_prev)} {get_st_marker(st3_trigger)}"
+        )
+        if self.config.ema_enabled:
+            logger.info(
+                f"EMA: {dir_str(ema_trend)} value={ema_value:.6f} | Filter: {ema_filter_result}"
+            )
 
         # Generate entry signal
-        if st_direction == 1:
-            # All SuperTrends bullish - LONG signal
-            signal = Signal.long(
+        metadata = {
+            "strategy": self.name,
+            "entry_mode": entry_mode,
+            "early_entry": self.config.early_entry_enabled,
+            "st1_direction": st1_dir_curr,
+            "st2_direction": st2_dir_curr,
+            "st3_direction": st3_dir_curr,
+            "st1_dir_prev": st1_dir_prev,
+            "st2_dir_prev": st2_dir_prev,
+            "st3_dir_prev": st3_dir_prev,
+            "ema_enabled": self.config.ema_enabled,
+            "prev_signal": prev_signal,
+        }
+
+        if signal_type == 'long':
+            return Signal.long(
                 symbol=symbol,
                 price=current_price,
                 strength=self._determine_signal_strength(triple_st),
                 position_size_multiplier=position_multiplier,
-                metadata={
-                    "strategy": self.name,
-                    "st1_direction": int(triple_st.st1.direction.iloc[-1]),
-                    "st2_direction": int(triple_st.st2.direction.iloc[-1]),
-                    "st3_direction": int(triple_st.st3.direction.iloc[-1]),
-                    "ema_enabled": self.config.ema_enabled,
-                    "prev_signal": prev_signal,
-                },
+                metadata=metadata,
             )
-            return signal
-
-        elif st_direction == -1:
-            # All SuperTrends bearish - SHORT signal
-            signal = Signal.short(
+        else:  # short
+            return Signal.short(
                 symbol=symbol,
                 price=current_price,
                 strength=self._determine_signal_strength(triple_st),
                 position_size_multiplier=position_multiplier,
-                metadata={
-                    "strategy": self.name,
-                    "st1_direction": int(triple_st.st1.direction.iloc[-1]),
-                    "st2_direction": int(triple_st.st2.direction.iloc[-1]),
-                    "st3_direction": int(triple_st.st3.direction.iloc[-1]),
-                    "ema_enabled": self.config.ema_enabled,
-                    "prev_signal": prev_signal,
-                },
+                metadata=metadata,
             )
-            return signal
-
-        # Mixed signals - no entry
-        return Signal.no_signal(symbol, current_price)
 
     def _determine_signal_strength(self, triple_st) -> SignalStrength:
         """Determine signal strength based on indicator confluence."""

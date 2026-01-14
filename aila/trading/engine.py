@@ -46,25 +46,10 @@ class TradingEngineConfig:
     paper_trading: bool = False
     order_size: float = 100.0  # Fixed order size in USDT
 
-    # Position sizing
-    position_sizing_mode: str = "fixed_amount"  # fixed_amount | risk_percent | kelly
-    risk_per_trade: float = 2.0  # % of balance to risk per trade (for risk_percent mode)
-
     # Safety
     max_daily_loss_percent: float = 5.0
-    max_weekly_loss_percent: float = 15.0  # Weekly loss limit
-    max_drawdown_percent: float = 20.0  # Max drawdown from peak
-    min_balance_usdt: float = 10.0  # Minimum balance to continue trading
     max_consecutive_losses: int = 3
     cooldown_after_loss_streak: int = 60  # minutes
-
-    # Break-even settings
-    breakeven_enabled: bool = False
-    breakeven_activation: float = 1.0  # % profit to activate break-even
-    breakeven_offset: float = 0.1  # % offset above entry for break-even SL
-
-    # Margin mode
-    margin_mode: str = "cross"  # cross | isolated
 
     # Execution
     use_market_orders: bool = True
@@ -141,16 +126,14 @@ class TradingEngine:
             self.trader = FuturesTrader(
                 client,
                 default_leverage=client.config.default_leverage,
-                margin_mode=self.config.margin_mode,
             )
         else:
             self.trader = SpotTrader(client)
 
-        # Risk management - use mode from config
+        # Risk management - use fixed_amount mode with order_size
         position_sizing_config = PositionSizingConfig(
-            mode=self.config.position_sizing_mode,
+            mode="fixed_amount",
             fixed_amount=Decimal(str(self.config.order_size)),
-            risk_per_trade=self.config.risk_per_trade,
             max_open_positions=strategy.config.max_open_positions,
         )
         self.position_sizer = PositionSizer(position_sizing_config)
@@ -989,68 +972,6 @@ class TradingEngine:
                                 position_data["partial_tp_executed"] = True
                                 current_sl = new_sl_at_tp  # Update for trailing logic
 
-                        # === BREAK-EVEN LOGIC ===
-                        breakeven_enabled = self.config.breakeven_enabled
-                        breakeven_executed = position_data.get("breakeven_executed", False)
-
-                        if breakeven_enabled and not breakeven_executed and entry_price > 0:
-                            breakeven_activation = self.config.breakeven_activation
-                            breakeven_offset = self.config.breakeven_offset
-
-                            # Calculate current profit %
-                            if side == "long":
-                                profit_pct = ((current_price - entry_price) / entry_price) * 100
-                            else:
-                                profit_pct = ((entry_price - current_price) / entry_price) * 100
-
-                            # Check if profit exceeds activation threshold
-                            if profit_pct >= breakeven_activation:
-                                # Calculate break-even SL with offset
-                                if side == "long":
-                                    new_breakeven_sl = entry_price * (1 + breakeven_offset / 100)
-                                    # Only move SL if new value is better (higher for long)
-                                    if new_breakeven_sl > current_sl:
-                                        logger.info(
-                                            f"Break-even activated",
-                                            symbol=symbol,
-                                            side=side,
-                                            profit_pct=f"{profit_pct:.2f}%",
-                                            old_sl=current_sl,
-                                            new_sl=new_breakeven_sl,
-                                        )
-                                        # Update SL on exchange
-                                        if not self.config.paper_trading:
-                                            if isinstance(self.trader, FuturesTrader):
-                                                try:
-                                                    self.trader.update_stop_loss(symbol, Decimal(str(new_breakeven_sl)))
-                                                except Exception as e:
-                                                    logger.error("Failed to update break-even SL", error=str(e))
-                                        position_data["stop_loss"] = new_breakeven_sl
-                                        position_data["breakeven_executed"] = True
-                                        current_sl = new_breakeven_sl
-                                else:
-                                    new_breakeven_sl = entry_price * (1 - breakeven_offset / 100)
-                                    # Only move SL if new value is better (lower for short)
-                                    if new_breakeven_sl < current_sl or current_sl == 0:
-                                        logger.info(
-                                            f"Break-even activated",
-                                            symbol=symbol,
-                                            side=side,
-                                            profit_pct=f"{profit_pct:.2f}%",
-                                            old_sl=current_sl,
-                                            new_sl=new_breakeven_sl,
-                                        )
-                                        # Update SL on exchange
-                                        if not self.config.paper_trading:
-                                            if isinstance(self.trader, FuturesTrader):
-                                                try:
-                                                    self.trader.update_stop_loss(symbol, Decimal(str(new_breakeven_sl)))
-                                                except Exception as e:
-                                                    logger.error("Failed to update break-even SL", error=str(e))
-                                        position_data["stop_loss"] = new_breakeven_sl
-                                        position_data["breakeven_executed"] = True
-                                        current_sl = new_breakeven_sl
-
                         # === TRAILING TP LOGIC === For remaining position after partial TP
                         trailing_tp_enabled = getattr(self.strategy.config, "trailing_tp_enabled", False)
                         partial_tp_executed = position_data.get("partial_tp_executed", False)
@@ -1286,25 +1207,13 @@ class TradingEngine:
                     minutes=self.config.cooldown_after_loss_streak
                 )
                 if datetime.utcnow() < cooldown_end:
-                    logger.warning("Cooldown active after loss streak", consecutive_losses=self.stats.consecutive_losses)
                     return False
                 else:
                     self.stats.consecutive_losses = 0
 
-        # Check daily loss limit (daily_pnl is in USDT)
+        # Check daily loss limit
         if float(self.stats.daily_pnl) <= -self.config.max_daily_loss_percent:
-            logger.warning("Daily loss limit reached", daily_pnl=float(self.stats.daily_pnl))
             return False
-
-        # Check minimum balance
-        try:
-            balance = self.client.get_balance("USDT")
-            current_balance = float(balance.total)
-            if current_balance < self.config.min_balance_usdt:
-                logger.warning("Balance below minimum", balance=current_balance, min_required=self.config.min_balance_usdt)
-                return False
-        except Exception as e:
-            logger.debug(f"Could not check balance: {e}")
 
         return True
 

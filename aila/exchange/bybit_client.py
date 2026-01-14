@@ -97,6 +97,13 @@ class BybitClient:
         )
     """
 
+    # Cache TTL constants (in seconds) - optimized for 600 req/5s limit
+    CACHE_TTL_TICKER = 1  # Ticker data cache - ultra fast
+    CACHE_TTL_BALANCE = 2  # Balance cache
+    CACHE_TTL_PAIRS = 300  # Trading pairs cache (5 minutes)
+    CACHE_TTL_POSITIONS = 1  # Positions cache - ultra fast
+    CACHE_TTL_KLINES = 1  # Klines cache - matches 1s scan interval
+
     def __init__(self, config: BybitConfig):
         """
         Initialize Bybit client.
@@ -111,6 +118,35 @@ class BybitClient:
         self._request_count: int = 0
         self._trading_pairs: dict[str, TradingPair] = {}
         self._is_connected: bool = False
+
+        # Cache storage: {key: (data, timestamp)}
+        self._cache: dict[str, tuple[Any, float]] = {}
+
+        # API stats tracking
+        self._total_requests: int = 0
+        self._requests_this_minute: int = 0
+        self._minute_start: float = time.time()
+        self._last_ping_ms: float = 0
+        self._api_rate_limit: int = 600  # Bybit limit: 600 requests per 5 seconds (per IP)
+
+    def _get_cached(self, key: str, ttl: float) -> Optional[Any]:
+        """Get cached data if not expired."""
+        if key in self._cache:
+            data, timestamp = self._cache[key]
+            if time.time() - timestamp < ttl:
+                return data
+        return None
+
+    def _set_cached(self, key: str, data: Any) -> None:
+        """Set cached data with current timestamp."""
+        self._cache[key] = (data, time.time())
+
+    def clear_cache(self, key: Optional[str] = None) -> None:
+        """Clear cache. If key provided, clear only that key."""
+        if key:
+            self._cache.pop(key, None)
+        else:
+            self._cache.clear()
 
     @property
     def http(self) -> HTTP:
@@ -168,9 +204,17 @@ class BybitClient:
         return self._is_connected
 
     def _rate_limit(self) -> None:
-        """Apply rate limiting."""
+        """Apply rate limiting and track API stats."""
         current_time = time.time()
         elapsed = current_time - self._last_request_time
+
+        # Track requests per 5 seconds (Bybit's rate limit window)
+        if current_time - self._minute_start >= 5:
+            self._requests_this_minute = 0  # Actually per 5 seconds now
+            self._minute_start = current_time
+
+        self._total_requests += 1
+        self._requests_this_minute += 1
 
         if elapsed < 1.0:
             self._request_count += 1
@@ -182,6 +226,32 @@ class BybitClient:
             self._request_count = 1
 
         self._last_request_time = time.time()
+
+    def get_api_stats(self) -> dict:
+        """Get API usage statistics."""
+        return {
+            "total_requests": self._total_requests,
+            "requests_this_minute": self._requests_this_minute,
+            "last_ping_ms": self._last_ping_ms,
+            "rate_limit": self._api_rate_limit,
+            "rate_usage_percent": min(100, (self._requests_this_minute / self._api_rate_limit) * 100),
+        }
+
+    def ping(self) -> float:
+        """
+        Measure API ping latency.
+
+        Returns:
+            Latency in milliseconds
+        """
+        start = time.time()
+        try:
+            # Use server time endpoint for ping
+            self.http.get_server_time()
+            self._last_ping_ms = (time.time() - start) * 1000
+        except Exception:
+            self._last_ping_ms = -1
+        return self._last_ping_ms
 
     def _handle_response(self, response: dict, operation: str) -> dict:
         """
@@ -222,16 +292,25 @@ class BybitClient:
         except Exception:
             return Decimal(default)
 
-    def get_balance(self, asset: str = "USDT") -> Balance:
+    def get_balance(self, asset: str = "USDT", use_cache: bool = True) -> Balance:
         """
         Get balance for a specific asset.
 
         Args:
             asset: Asset symbol (default: USDT)
+            use_cache: Whether to use cached data (default: True)
 
         Returns:
             Balance object
         """
+        cache_key = f"balance_{asset}"
+
+        # Check cache first
+        if use_cache:
+            cached = self._get_cached(cache_key, self.CACHE_TTL_BALANCE)
+            if cached is not None:
+                return cached
+
         self._rate_limit()
 
         response = self.http.get_wallet_balance(accountType="UNIFIED")
@@ -240,7 +319,7 @@ class BybitClient:
         for account in result.get("list", []):
             for coin in account.get("coin", []):
                 if coin.get("coin") == asset:
-                    return Balance(
+                    balance = Balance(
                         asset=asset,
                         total=self._safe_decimal(coin.get("walletBalance")),
                         available=self._safe_decimal(coin.get("availableToWithdraw")),
@@ -249,14 +328,18 @@ class BybitClient:
                         equity=self._safe_decimal(coin.get("equity")),
                         account_type=self.config.account_type,
                     )
+                    self._set_cached(cache_key, balance)
+                    return balance
 
         # Return zero balance if asset not found
-        return Balance(
+        zero_balance = Balance(
             asset=asset,
             total=Decimal("0"),
             available=Decimal("0"),
             account_type=self.config.account_type,
         )
+        self._set_cached(cache_key, zero_balance)
+        return zero_balance
 
     def get_all_balances(self) -> list[Balance]:
         """
@@ -374,6 +457,12 @@ class BybitClient:
         )
 
         logger.info("Order placed", order_id=order.order_id, symbol=symbol)
+
+        # Invalidate caches after order placement
+        self.clear_cache("positions_all")
+        self.clear_cache(f"positions_{symbol}")
+        self.clear_cache("balance_USDT")
+
         return order
 
     def cancel_order(self, symbol: str, order_id: str) -> bool:
@@ -422,6 +511,9 @@ class BybitClient:
         params = {"category": category}
         if symbol:
             params["symbol"] = symbol
+        else:
+            # Bybit requires either symbol or settleCoin for cancel_all
+            params["settleCoin"] = "USDT"
 
         response = self.http.cancel_all_orders(**params)
         result = self._handle_response(response, "cancel_all_orders")
@@ -513,18 +605,27 @@ class BybitClient:
 
     # ========== Position Methods ==========
 
-    def get_positions(self, symbol: Optional[str] = None) -> list[Position]:
+    def get_positions(self, symbol: Optional[str] = None, use_cache: bool = True) -> list[Position]:
         """
         Get open positions (futures only).
 
         Args:
             symbol: Optional symbol filter
+            use_cache: Whether to use cached data (default: True)
 
         Returns:
             List of Position objects
         """
         if self.config.account_type != AccountType.FUTURES:
             return []
+
+        cache_key = f"positions_{symbol or 'all'}"
+
+        # Check cache first
+        if use_cache:
+            cached = self._get_cached(cache_key, self.CACHE_TTL_POSITIONS)
+            if cached is not None:
+                return cached
 
         self._rate_limit()
 
@@ -541,11 +642,19 @@ class BybitClient:
             if size > 0:
                 positions.append(self._parse_position(pos))
 
+        self._set_cached(cache_key, positions)
         return positions
 
     def _parse_position(self, data: dict) -> Position:
         """Parse position data from API response."""
         side = PositionSide.LONG if data.get("side") == "Buy" else PositionSide.SHORT
+
+        # tradeMode can be int (0=cross, 1=isolated) or string
+        trade_mode = data.get("tradeMode", 0)
+        if isinstance(trade_mode, int):
+            margin_mode = MarginMode.CROSS if trade_mode == 0 else MarginMode.ISOLATED
+        else:
+            margin_mode = MarginMode(str(trade_mode).lower())
 
         return Position(
             symbol=data.get("symbol", ""),
@@ -553,7 +662,7 @@ class BybitClient:
             size=Decimal(str(data.get("size", "0"))),
             entry_price=Decimal(str(data.get("avgPrice", "0"))),
             leverage=int(float(data.get("leverage", 1))),
-            margin_mode=MarginMode(data.get("tradeMode", "cross").lower()),
+            margin_mode=margin_mode,
             unrealized_pnl=Decimal(str(data.get("unrealisedPnl", "0"))),
             realized_pnl=Decimal(str(data.get("cumRealisedPnl", "0"))),
             liquidation_price=Decimal(str(data.get("liqPrice", "0"))) if data.get("liqPrice") else None,
@@ -655,6 +764,7 @@ class BybitClient:
         limit: int = 200,
         start_time: Optional[int] = None,
         end_time: Optional[int] = None,
+        use_cache: bool = True,
     ) -> pd.DataFrame:
         """
         Get candlestick/kline data.
@@ -665,10 +775,18 @@ class BybitClient:
             limit: Number of candles to fetch (max 1000)
             start_time: Start timestamp in milliseconds
             end_time: End timestamp in milliseconds
+            use_cache: Use cached data if available (15s TTL)
 
         Returns:
             DataFrame with OHLCV data
         """
+        # Check cache first
+        cache_key = f"klines:{symbol}:{interval}:{limit}"
+        if use_cache:
+            cached = self._get_cached(cache_key, ttl=self.CACHE_TTL_KLINES)
+            if cached is not None:
+                return cached
+
         self._rate_limit()
 
         category = "linear" if self.config.account_type == AccountType.FUTURES else "spot"
@@ -710,18 +828,31 @@ class BybitClient:
 
         df.set_index("timestamp", inplace=True)
 
+        # Cache the result
+        if use_cache:
+            self._set_cached(cache_key, df)
+
         return df
 
-    def get_ticker(self, symbol: str) -> Optional[Ticker]:
+    def get_ticker(self, symbol: str, use_cache: bool = True) -> Optional[Ticker]:
         """
         Get current ticker for a symbol.
 
         Args:
             symbol: Trading pair symbol
+            use_cache: Whether to use cached data (default: True)
 
         Returns:
             Ticker object or None if not found
         """
+        cache_key = f"ticker_{symbol}"
+
+        # Check cache first
+        if use_cache:
+            cached = self._get_cached(cache_key, self.CACHE_TTL_TICKER)
+            if cached is not None:
+                return cached
+
         self._rate_limit()
 
         category = "linear" if self.config.account_type == AccountType.FUTURES else "spot"
@@ -734,7 +865,7 @@ class BybitClient:
             return None
 
         t = tickers[0]
-        return Ticker(
+        ticker = Ticker(
             symbol=symbol,
             last_price=Decimal(str(t.get("lastPrice", "0"))),
             bid_price=Decimal(str(t.get("bid1Price", "0"))),
@@ -745,6 +876,8 @@ class BybitClient:
             turnover_24h=Decimal(str(t.get("turnover24h", "0"))),
             change_24h=float(t.get("price24hPcnt", "0")) * 100,
         )
+        self._set_cached(cache_key, ticker)
+        return ticker
 
     def get_trading_pairs(self, reload: bool = False) -> list[TradingPair]:
         """
@@ -756,8 +889,17 @@ class BybitClient:
         Returns:
             List of TradingPair objects
         """
-        if self._trading_pairs and not reload:
-            return list(self._trading_pairs.values())
+        cache_key = "trading_pairs"
+
+        # Check cache first (unless reload is forced)
+        if not reload:
+            cached = self._get_cached(cache_key, self.CACHE_TTL_PAIRS)
+            if cached is not None:
+                return cached
+
+            # Also check in-memory pairs dict
+            if self._trading_pairs:
+                return list(self._trading_pairs.values())
 
         self._rate_limit()
 
@@ -782,6 +924,7 @@ class BybitClient:
             pairs.append(pair)
             self._trading_pairs[pair.symbol] = pair
 
+        self._set_cached(cache_key, pairs)
         return pairs
 
     def get_trading_pair(self, symbol: str) -> Optional[TradingPair]:
@@ -798,6 +941,61 @@ class BybitClient:
             self.get_trading_pairs()
 
         return self._trading_pairs.get(symbol)
+
+    # ========== PnL Methods ==========
+
+    def get_closed_pnl(
+        self,
+        symbol: Optional[str] = None,
+        limit: int = 50,
+        start_time: Optional[int] = None,
+    ) -> list[dict]:
+        """
+        Get closed PnL records.
+
+        Args:
+            symbol: Optional symbol filter
+            limit: Number of records to fetch (max 100)
+            start_time: Start timestamp in milliseconds
+
+        Returns:
+            List of closed PnL records with fields:
+            - symbol, orderId, side, qty, orderPrice, execType
+            - closedSize, cumEntryValue, avgEntryPrice
+            - cumExitValue, avgExitPrice, closedPnl
+            - createdTime, updatedTime
+        """
+        if self.config.account_type != AccountType.FUTURES:
+            return []
+
+        self._rate_limit()
+
+        params = {"category": "linear", "limit": min(limit, 100)}
+        if symbol:
+            params["symbol"] = symbol
+        if start_time:
+            params["startTime"] = start_time
+
+        response = self.http.get_closed_pnl(**params)
+        result = self._handle_response(response, "get_closed_pnl")
+
+        return result.get("list", [])
+
+    def get_symbol_closed_pnl(self, symbol: str, limit: int = 5) -> Optional[dict]:
+        """
+        Get most recent closed PnL for a specific symbol.
+
+        Args:
+            symbol: Trading pair symbol
+            limit: Number of records to check
+
+        Returns:
+            Most recent closed PnL record or None
+        """
+        records = self.get_closed_pnl(symbol=symbol, limit=limit)
+        if records:
+            return records[0]  # Most recent first
+        return None
 
     # ========== Helper Methods ==========
 
