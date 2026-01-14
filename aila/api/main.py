@@ -3717,10 +3717,7 @@ DASHBOARD_HTML = r"""
                 return `
                 <div class="bot-card ${bot.status === 'running' ? 'running' : ''} ${bot.status === 'starting' || bot.status === 'stopping' ? 'processing' : ''}" style="min-width: 380px;" data-bot-id="${bot.id}">
                     <div class="bot-header">
-                        <div style="display: flex; align-items: center;">
-                            <span class="status-indicator ${indicatorClass}"></span>
-                            <span class="bot-name">${bot.name}</span>
-                        </div>
+                        <span class="bot-name">${bot.name}</span>
                         <span class="bot-status ${bot.status}">${
                             bot.status === 'running' ? t('running') :
                             bot.status === 'paused' ? t('paused') :
@@ -3745,7 +3742,7 @@ DASHBOARD_HTML = r"""
                             </div>
                             <div style="text-align: center; flex: 1.5;">
                                 <div style="font-size: 18px; font-weight: bold; color: ${pnlColor};">
-                                    ${pnlSign}${totalPnl.toFixed(2)} <span style="font-size: 12px;">(${pnlPercentSign}${pnlPercent.toFixed(2)}%)</span>
+                                    ${pnlSign}${totalPnl.toFixed(2)} (${pnlPercentSign}${pnlPercent.toFixed(2)}%)
                                 </div>
                                 <div style="font-size: 10px; color: #888;">PnL</div>
                             </div>
