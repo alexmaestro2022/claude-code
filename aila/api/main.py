@@ -3254,6 +3254,27 @@ DASHBOARD_HTML = r"""
         // Update countdowns every second
         setInterval(updateAllBotCountdowns, 1000);
 
+        // Update bot runtime counters
+        function updateAllBotRuntimes() {
+            const runtimeElements = document.querySelectorAll('.bot-runtime');
+            const now = new Date();
+
+            runtimeElements.forEach(el => {
+                const startedAt = el.dataset.started;
+                if (!startedAt) return;
+
+                const startTime = new Date(startedAt);
+                const diff = Math.floor((now - startTime) / 1000);
+                const hours = Math.floor(diff / 3600);
+                const mins = Math.floor((diff % 3600) / 60);
+                const secs = diff % 60;
+                el.textContent = `${hours.toString().padStart(2,'0')}:${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
+            });
+        }
+
+        // Update runtimes every second
+        setInterval(updateAllBotRuntimes, 1000);
+
         // Tab Navigation
         function showTab(tabName) {
             // Hide all tabs
@@ -3622,8 +3643,32 @@ DASHBOARD_HTML = r"""
                 const pnlClass = totalPnl >= 0 ? 'positive' : 'negative';
                 const pnlSign = totalPnl >= 0 ? '+' : '';
 
+                // Calculate runtime
+                let runtimeStr = '--:--:--';
+                if (bot.started_at && (bot.status === 'running' || bot.status === 'paused')) {
+                    const startTime = new Date(bot.started_at);
+                    const now = new Date();
+                    const diff = Math.floor((now - startTime) / 1000);
+                    const hours = Math.floor(diff / 3600);
+                    const mins = Math.floor((diff % 3600) / 60);
+                    const secs = diff % 60;
+                    runtimeStr = `${hours.toString().padStart(2,'0')}:${mins.toString().padStart(2,'0')}:${secs.toString().padStart(2,'0')}`;
+                }
+
+                // Win rate
+                const winRate = bot.win_rate || 0;
+                const totalTrades = bot.total_trades || 0;
+                const winningTrades = bot.winning_trades || 0;
+                const losingTrades = bot.losing_trades || 0;
+
+                // Strategy settings display
+                const slModeDisplay = bot.sl_mode === 'supertrend_line' ? `ST${bot.sl_supertrend_line || 2}` : (bot.sl_mode === 'fixed_percent' ? `${bot.sl_fixed_percent}%` : 'ATR');
+                const trailingSl = bot.trailing_enabled ? (bot.trailing_mode === 'st_line' ? `ST${bot.trailing_st_line || 2}` : `${bot.trailing_activation}%`) : '✗';
+                const trailingTp = bot.trailing_tp_enabled ? (bot.trailing_tp_mode === 'st_line' ? `ST${bot.trailing_tp_st_line || 1}` : `${bot.trailing_tp_activation}%`) : '✗';
+                const partialTp = bot.partial_tp_enabled ? `${bot.partial_tp_close_percent}%` : '✗';
+
                 return `
-                <div class="bot-card ${bot.status === 'running' ? 'running' : ''} ${bot.status === 'starting' || bot.status === 'stopping' ? 'processing' : ''}" style="min-width: 350px;" data-bot-id="${bot.id}">
+                <div class="bot-card ${bot.status === 'running' ? 'running' : ''} ${bot.status === 'starting' || bot.status === 'stopping' ? 'processing' : ''}" style="min-width: 380px;" data-bot-id="${bot.id}">
                     <div class="bot-header">
                         <span class="bot-name">${bot.name}</span>
                         <span class="bot-status ${bot.status}">${
@@ -3634,31 +3679,45 @@ DASHBOARD_HTML = r"""
                             t('stopped')
                         }</span>
                     </div>
-                    <div class="bot-details">
-                        <div><strong>${t('botMode')}:</strong> ${bot.bot_mode === 'auto_search' ? '<span style="color: #ffcc00;">' + t('autoSearchMode') + '</span>' : t('manualMode')}</div>
-                        <div><strong>${bot.bot_mode === 'auto_search' ? t('maxTradingPairs') : t('tradingPair')}:</strong> ${bot.bot_mode === 'auto_search' ? bot.max_trading_pairs || bot.max_simultaneous_orders || 1 : (Array.isArray(bot.trading_pairs) ? bot.trading_pairs[0] : bot.trading_pairs)}</div>
-                        <div><strong>${t('timeframe')}:</strong> ${bot.timeframe} | <strong>${t('leverage')}:</strong> ${bot.leverage}x</div>
-                        <div><strong>TP:</strong> ${bot.tp_mode === 'fixed' ? bot.tp_fixed_percent + '%' : bot.tp_risk_ratio + ':1'} | <strong>Order:</strong> ${bot.order_size} USDT</div>
-                        <div><strong>EMA200:</strong> ${bot.ema_enabled ? '✓' : '✗'} | <strong>SL:</strong> ${bot.sl_mode}</div>
+                    <div class="bot-details" style="font-size: 12px;">
+                        <div><strong>${t('botMode')}:</strong> ${bot.bot_mode === 'auto_search' ? '<span style="color: #ffcc00;">' + t('autoSearchMode') + '</span>' : t('manualMode')} | <strong>${bot.bot_mode === 'auto_search' ? 'Max' : 'Pair'}:</strong> ${bot.bot_mode === 'auto_search' ? bot.max_trading_pairs || bot.max_simultaneous_orders || 1 : (Array.isArray(bot.trading_pairs) ? bot.trading_pairs[0] : bot.trading_pairs)}</div>
+                        <div><strong>TF:</strong> ${bot.timeframe} | <strong>Lev:</strong> ${bot.leverage}x | <strong>Order:</strong> ${bot.order_size} USDT | <strong>Margin:</strong> ${bot.leverage_mode || 'cross'}</div>
+                        <div><strong>TP:</strong> ${bot.tp_mode === 'fixed' ? bot.tp_fixed_percent + '%' : bot.tp_risk_ratio + ':1'} | <strong>SL:</strong> ${slModeDisplay} | <strong>EMA:</strong> ${bot.ema_enabled ? (bot.ema_filter_mode || 'strict') : '✗'}</div>
+                        <div><strong>Trail SL:</strong> ${trailingSl} | <strong>Trail TP:</strong> ${trailingTp} | <strong>Partial:</strong> ${partialTp}</div>
                     </div>
-                    ${bot.status === 'running' || bot.status === 'paused' ? `
-                        <div class="bot-stats" style="margin: 10px 0; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px;">
-                            <div style="display: flex; justify-content: space-between; align-items: center;">
-                                <div style="text-align: center;">
-                                    <div style="font-size: 24px; font-weight: bold; color: #00d4ff;">${openCount}</div>
-                                    <div style="font-size: 11px; color: #888;">${t('openPositions')}</div>
-                                </div>
-                                <div style="text-align: center;">
-                                    <div style="font-size: 24px; font-weight: bold;" class="${pnlClass}">${pnlSign}${totalPnl.toFixed(2)}</div>
-                                    <div style="font-size: 11px; color: #888;">${t('todayPnl')} (USDT)</div>
-                                </div>
-                                <div style="text-align: center;">
-                                    <span class="bot-countdown" data-timeframe="${bot.timeframe}" style="font-size: 18px; color: #ffcc00; font-weight: bold;">--:--</span>
-                                    <div style="font-size: 11px; color: #888;">Next Candle</div>
-                                </div>
+
+                    <!-- Stats block - always visible -->
+                    <div class="bot-stats" style="margin: 10px 0; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <div style="text-align: center; flex: 1;">
+                                <div style="font-size: 20px; font-weight: bold; color: #00d4ff;">${openCount}</div>
+                                <div style="font-size: 10px; color: #888;">Open</div>
+                            </div>
+                            <div style="text-align: center; flex: 1;">
+                                <div style="font-size: 20px; font-weight: bold;" class="${pnlClass}">${pnlSign}${totalPnl.toFixed(2)}</div>
+                                <div style="font-size: 10px; color: #888;">PnL USDT</div>
+                            </div>
+                            <div style="text-align: center; flex: 1;">
+                                <div style="font-size: 20px; font-weight: bold; color: ${winRate >= 50 ? '#00ff88' : '#ff4444'};">${winRate.toFixed(0)}%</div>
+                                <div style="font-size: 10px; color: #888;">Win Rate</div>
+                            </div>
+                            <div style="text-align: center; flex: 1;">
+                                <div style="font-size: 20px; font-weight: bold; color: #888;">${totalTrades}</div>
+                                <div style="font-size: 10px; color: #888;">Trades</div>
                             </div>
                         </div>
-                    ` : ''}
+                        ${bot.status === 'running' || bot.status === 'paused' ? `
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px;">
+                            <div style="font-size: 11px; color: #888;">
+                                <span style="color: #00ff88;">W:${winningTrades}</span> / <span style="color: #ff4444;">L:${losingTrades}</span>
+                            </div>
+                            <div style="font-size: 11px;">
+                                <span style="color: #ffcc00;" class="bot-runtime" data-started="${bot.started_at}">${runtimeStr}</span>
+                                <span style="color: #666;"> runtime</span>
+                            </div>
+                        </div>
+                        ` : ''}
+                    </div>
                     <div class="bot-actions">
                         ${bot.status === 'running' ?
                             `<button class="btn btn-danger" onclick="stopSpecificBot('${bot.id}')">${t('stop')}</button>
@@ -5265,7 +5324,7 @@ def update_position_pnl(symbol: str, current_price: float, pnl_usdt: float, pnl_
 
 
 def close_position_record(symbol: str, reason: str, pnl_usdt: float = None, pnl_percent: float = None):
-    """Mark position as closed."""
+    """Mark position as closed and update bot stats."""
     for pos_id, pos in positions_registry.items():
         if pos["symbol"] == symbol and pos["status"] == "open":
             pos["status"] = "closed"
@@ -5275,6 +5334,19 @@ def close_position_record(symbol: str, reason: str, pnl_usdt: float = None, pnl_
                 pos["pnl_usdt"] = pnl_usdt
             if pnl_percent is not None:
                 pos["pnl_percent"] = pnl_percent
+
+            # Update bot trading stats
+            bot_id = pos.get("bot_id")
+            if bot_id and bot_id in bots_registry:
+                bot = bots_registry[bot_id]
+                final_pnl = pnl_usdt if pnl_usdt is not None else pos.get("pnl_usdt", 0)
+                bot["total_trades"] = bot.get("total_trades", 0) + 1
+                bot["total_pnl_history"] = bot.get("total_pnl_history", 0) + final_pnl
+                if final_pnl >= 0:
+                    bot["winning_trades"] = bot.get("winning_trades", 0) + 1
+                else:
+                    bot["losing_trades"] = bot.get("losing_trades", 0) + 1
+
             return pos_id
     return None
 
@@ -5305,8 +5377,20 @@ async def get_bots():
         bot_id = bot["id"]
         # Add position stats
         open_positions = get_bot_open_positions(bot_id)
+        open_pnl = sum(p.get("pnl_usdt", 0) for p in open_positions)
         bot_copy["open_positions_count"] = len(open_positions)
-        bot_copy["total_pnl"] = sum(p.get("pnl_usdt", 0) for p in open_positions)
+        bot_copy["open_pnl"] = open_pnl
+
+        # Total PnL = closed positions history + open positions unrealized
+        history_pnl = bot.get("total_pnl_history", 0)
+        bot_copy["total_pnl"] = history_pnl + open_pnl
+        bot_copy["closed_pnl"] = history_pnl
+
+        # Win rate calculation
+        total_trades = bot.get("total_trades", 0)
+        winning_trades = bot.get("winning_trades", 0)
+        bot_copy["win_rate"] = (winning_trades / total_trades * 100) if total_trades > 0 else 0
+
         # Add engine status
         bot_copy["has_engine"] = bot_id in bot_engines
         bot_copy["has_client"] = bot_id in bot_clients
@@ -5391,6 +5475,13 @@ async def create_bot(config: dict):
         "max_loss_percent": config.get("max_loss_percent", 10),
         "status": "stopped",
         "created_at": datetime.now().isoformat(),
+        # Trading statistics (persistent)
+        "started_at": None,  # Set when bot starts
+        "total_trades": 0,
+        "winning_trades": 0,
+        "losing_trades": 0,
+        "total_pnl_history": 0.0,  # Accumulated PnL from closed positions
+        "initial_balance": 0.0,  # Balance when bot started (for % calculation)
     }
 
     bots_registry[bot_id] = bot_config
@@ -5647,6 +5738,7 @@ async def start_specific_bot(bot_id: str):
     if start_callback_for_bot:
         # New multi-bot architecture - use per-bot callback
         bot["status"] = "running"
+        bot["started_at"] = datetime.now().isoformat()
 
         async def do_start():
             try:
@@ -5662,6 +5754,7 @@ async def start_specific_bot(bot_id: str):
     elif start_callback:
         # Legacy single-bot mode - use global callback
         bot["status"] = "running"
+        bot["started_at"] = bot.get("started_at") or datetime.now().isoformat()
 
         async def do_start():
             try:
