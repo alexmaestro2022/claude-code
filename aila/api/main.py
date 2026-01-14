@@ -3711,9 +3711,13 @@ DASHBOARD_HTML = r"""
                 const pnlPercent = initialBalance > 0 ? (totalPnl / initialBalance * 100) : 0;
                 const pnlPercentSign = pnlPercent >= 0 ? '+' : '';
 
+                // Status indicator class
+                const indicatorClass = bot.status === 'error' ? 'error' : bot.status;
+
                 return `
                 <div class="bot-card ${bot.status === 'running' ? 'running' : ''} ${bot.status === 'starting' || bot.status === 'stopping' ? 'processing' : ''}" style="min-width: 380px;" data-bot-id="${bot.id}">
                     <div class="bot-header">
+                        <span class="status-indicator ${indicatorClass}"></span>
                         <span class="bot-name">${bot.name}</span>
                     </div>
                     <div class="bot-details" style="font-size: 12px;">
