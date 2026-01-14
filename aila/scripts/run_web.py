@@ -114,6 +114,74 @@ def create_bybit_config() -> BybitConfig:
     )
 
 
+def close_all_positions_on_startup():
+    """Close all open positions and cancel all orders on server startup.
+
+    This is a safety feature to prevent orphaned positions when the bot restarts.
+    All positions are closed at market price.
+    """
+    from aila.exchange.models import PositionSide
+
+    print("\n[STARTUP] Checking for open positions and orders...")
+    add_log("[info    ] Server startup - checking for orphaned positions...")
+
+    try:
+        # Create a temporary client for cleanup
+        bybit_config = create_bybit_config()
+        client = BybitClient(bybit_config)
+
+        if not client.connect():
+            print("[STARTUP] Could not connect to exchange, skipping cleanup")
+            add_log("[warning ] Could not connect to exchange for cleanup")
+            return
+
+        # Get all open positions
+        positions = client.get_positions()
+        open_positions = [p for p in positions if float(p.size) > 0]
+
+        if open_positions:
+            print(f"[STARTUP] Found {len(open_positions)} open position(s), closing at market...")
+            add_log(f"[warning ] Found {len(open_positions)} orphaned position(s), closing...")
+
+            for pos in open_positions:
+                try:
+                    # Determine side
+                    side_str = pos.side.upper() if hasattr(pos, 'side') and pos.side else "LONG"
+                    if side_str in ("BUY", "LONG"):
+                        side = PositionSide.LONG
+                    else:
+                        side = PositionSide.SHORT
+
+                    # Close position at market
+                    client.close_position(pos.symbol, side)
+                    add_log(f"[info    ] Closed orphaned position: {pos.symbol} {side_str} size={pos.size}")
+                    print(f"[STARTUP] Closed: {pos.symbol} {side_str} size={pos.size}")
+                except Exception as e:
+                    add_log(f"[error   ] Failed to close {pos.symbol}: {e}")
+                    print(f"[STARTUP] ERROR closing {pos.symbol}: {e}")
+        else:
+            print("[STARTUP] No open positions found")
+
+        # Cancel all open orders
+        try:
+            cancelled = client.cancel_all_orders()
+            if cancelled > 0:
+                print(f"[STARTUP] Cancelled {cancelled} open order(s)")
+                add_log(f"[info    ] Cancelled {cancelled} orphaned order(s)")
+            else:
+                print("[STARTUP] No open orders found")
+        except Exception as e:
+            add_log(f"[error   ] Failed to cancel orders: {e}")
+            print(f"[STARTUP] ERROR cancelling orders: {e}")
+
+        print("[STARTUP] Cleanup complete\n")
+        add_log("[info    ] Startup cleanup complete")
+
+    except Exception as e:
+        print(f"[STARTUP] ERROR during cleanup: {e}")
+        add_log(f"[error   ] Startup cleanup failed: {e}")
+
+
 def create_strategy_config() -> TripleSuperTrendConfig:
     """Create strategy configuration from runtime settings."""
     # For auto_search mode, use max_simultaneous_orders as max_open_positions
@@ -850,6 +918,9 @@ def main():
 
     # Sync settings on startup
     sync_runtime_settings()
+
+    # Close all orphaned positions and orders on startup (safety feature)
+    close_all_positions_on_startup()
 
     # Set up API callbacks
     # Legacy single-bot callbacks (for backwards compatibility)
