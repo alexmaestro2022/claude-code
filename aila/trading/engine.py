@@ -14,10 +14,10 @@ from typing import Any, Callable, Optional
 import pandas as pd
 import structlog
 
-from ..core.risk import PositionSizer, PositionSizingConfig, StopLossManager, TakeProfitManager
+from ..core.risk import PositionSizer, PositionSizingConfig, StopLossConfig, StopLossManager, TakeProfitManager
 from ..core.strategy import Signal, SignalType, TripleSuperTrendStrategy
 from ..exchange import BybitClient, FuturesTrader, SpotTrader
-from ..exchange.models import AccountType, Position
+from ..exchange.models import AccountType, MarginMode, Position
 
 logger = structlog.get_logger(__name__)
 
@@ -45,6 +45,18 @@ class TradingEngineConfig:
     auto_start: bool = False
     paper_trading: bool = False
     order_size: float = 100.0  # Fixed order size in USDT
+
+    # Position sizing settings
+    position_sizing_mode: str = "fixed_amount"  # fixed_amount | risk_percent | kelly
+    risk_per_trade: float = 2.0  # % of balance to risk (for risk_percent mode)
+
+    # Breakeven settings
+    breakeven_enabled: bool = False
+    breakeven_activation: float = 1.0  # % profit to move SL to entry
+    breakeven_offset: float = 0.1  # % above entry for buffer
+
+    # Margin mode
+    margin_mode: str = "cross"  # cross | isolated
 
     # Safety
     max_daily_loss_percent: float = 5.0
@@ -130,14 +142,22 @@ class TradingEngine:
         else:
             self.trader = SpotTrader(client)
 
-        # Risk management - use fixed_amount mode with order_size
+        # Risk management - use position_sizing_mode from config
         position_sizing_config = PositionSizingConfig(
-            mode="fixed_amount",
+            mode=self.config.position_sizing_mode,
             fixed_amount=Decimal(str(self.config.order_size)),
+            risk_per_trade=self.config.risk_per_trade,
             max_open_positions=strategy.config.max_open_positions,
         )
         self.position_sizer = PositionSizer(position_sizing_config)
-        self.stop_loss_manager = StopLossManager()
+
+        # Stop-loss manager with breakeven settings
+        stop_loss_config = StopLossConfig(
+            breakeven_enabled=self.config.breakeven_enabled,
+            breakeven_activation=self.config.breakeven_activation,
+            breakeven_offset=self.config.breakeven_offset,
+        )
+        self.stop_loss_manager = StopLossManager(stop_loss_config)
         self.take_profit_manager = TakeProfitManager()
 
         # State
@@ -557,6 +577,10 @@ class TradingEngine:
         """Execute entry order."""
         try:
             if isinstance(self.trader, FuturesTrader):
+                # Set margin mode before opening position
+                margin_mode = MarginMode(self.config.margin_mode)
+                self.trader.set_margin_mode(signal.symbol, margin_mode)
+
                 if signal.is_long:
                     order = self.trader.open_long(
                         symbol=signal.symbol,

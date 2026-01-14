@@ -213,8 +213,9 @@ def create_strategy_config_for_bot(bot_id: str) -> TripleSuperTrendConfig:
         sl_mode=bot_settings.get("sl_mode", settings.risk.sl_mode),
         sl_supertrend_line=bot_settings.get("sl_supertrend_line", settings.risk.sl_supertrend_line),
         sl_fixed_percent=bot_settings.get("sl_fixed_percent", settings.risk.sl_fixed_percent),
-        tp_mode=settings.risk.tp_mode,
+        tp_mode=bot_settings.get("tp_mode", settings.risk.tp_mode),
         tp_risk_ratio=bot_settings.get("tp_risk_ratio", settings.risk.tp_risk_ratio),
+        tp_fixed_percent=bot_settings.get("tp_fixed_percent", 2.0),
         trailing_enabled=bot_settings.get("trailing_enabled", settings.risk.trailing_enabled),
         trailing_mode=bot_settings.get("trailing_mode", "fix_percent"),
         trailing_activation=bot_settings.get("trailing_activation", settings.risk.trailing_activation),
@@ -240,6 +241,15 @@ def create_engine_config_for_bot(bot_id: str) -> TradingEngineConfig:
         max_daily_loss_percent=settings.risk.max_daily_loss_percent,
         paper_trading=not settings.is_production,
         order_size=bot_settings.get("order_size", 100.0),
+        # Position sizing settings
+        position_sizing_mode=bot_settings.get("position_sizing_mode", "fixed_amount"),
+        risk_per_trade=bot_settings.get("risk_per_trade", 2.0),
+        # Breakeven settings
+        breakeven_enabled=bot_settings.get("breakeven_enabled", False),
+        breakeven_activation=bot_settings.get("breakeven_activation", 1.0),
+        breakeven_offset=bot_settings.get("breakeven_offset", 0.1),
+        # Margin mode
+        margin_mode=bot_settings.get("margin_mode", "cross"),
     )
 
 

@@ -716,6 +716,44 @@ class BybitClient:
             logger.error("Failed to set leverage", symbol=symbol, error=str(e))
             return False
 
+    def set_margin_mode(self, symbol: str, margin_mode: MarginMode) -> bool:
+        """
+        Set margin mode for a symbol (futures only).
+
+        Args:
+            symbol: Trading pair symbol
+            margin_mode: CROSS or ISOLATED
+
+        Returns:
+            True if successful
+        """
+        if self.config.account_type != AccountType.FUTURES:
+            return False
+
+        self._rate_limit()
+
+        # tradeMode: 0=Cross, 1=Isolated
+        trade_mode = 0 if margin_mode == MarginMode.CROSS else 1
+
+        try:
+            response = self.http.switch_margin_mode(
+                category="linear",
+                symbol=symbol,
+                tradeMode=trade_mode,
+                buyLeverage=str(self.config.default_leverage),
+                sellLeverage=str(self.config.default_leverage),
+            )
+            self._handle_response(response, "set_margin_mode")
+            logger.info("Margin mode set", symbol=symbol, mode=margin_mode.value)
+            return True
+        except Exception as e:
+            # May fail if margin mode already set or position exists
+            error_str = str(e).lower()
+            if "margin mode is not modified" in error_str or "same mode" in error_str:
+                return True
+            logger.error("Failed to set margin mode", symbol=symbol, error=str(e))
+            return False
+
     def close_position(
         self,
         symbol: str,

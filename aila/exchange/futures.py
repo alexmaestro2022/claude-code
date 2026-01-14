@@ -299,6 +299,19 @@ class FuturesTrader:
         """
         return self.client.set_leverage(symbol, leverage)
 
+    def set_margin_mode(self, symbol: str, margin_mode: MarginMode) -> bool:
+        """
+        Set margin mode for a symbol.
+
+        Args:
+            symbol: Trading pair symbol
+            margin_mode: CROSS or ISOLATED
+
+        Returns:
+            True if successful
+        """
+        return self.client.set_margin_mode(symbol, margin_mode)
+
     def get_position(self, symbol: str) -> Optional[Position]:
         """
         Get current position for a symbol.

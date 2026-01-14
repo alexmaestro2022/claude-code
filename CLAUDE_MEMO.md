@@ -336,6 +336,9 @@ return Response(
 | Настройки не сохраняются | Нет в JS config | Добавить в createBot и saveEditBot |
 | Настройки не применяются | Нет в bot_settings | Добавить в start_bot |
 | UI поля не отображаются | Нет в HTML | Добавить в обе формы (new + edit) |
+| **Настройка в UI, но не работает в торговле** | Нет в TradingEngineConfig | Добавить поле + передать из run_web.py |
+| **Менеджер создаётся без конфига** | Нет config в __init__ | Создать config из TradingEngineConfig |
+| Поля не показываются в edit форме | Нет toggle вызова | Добавить toggle после установки значений |
 
 ---
 
@@ -432,7 +435,31 @@ WEB_PORT=8080
 
 > При конфликте информации - использовать ПОСЛЕДНЮЮ запись!
 
-### 2026-01-14 (сессия 4XrKU) - АУДИТ НАСТРОЕК
+### 2026-01-14 (сессия 4XrKU) - АУДИТ НАСТРОЕК (продолжение)
+
+#### КРИТИЧЕСКИЕ ИСПРАВЛЕНИЯ В ТОРГОВОЙ ЛОГИКЕ:
+- **[ИСПРАВЛЕНО]** breakeven_* настройки НЕ РАБОТАЛИ! StopLossManager создавался без конфига
+  - Добавлены поля в TradingEngineConfig: breakeven_enabled, breakeven_activation, breakeven_offset
+  - TradingEngine.__init__ теперь создаёт StopLossConfig и передаёт в StopLossManager
+  - run_web.py передаёт настройки из bot_settings
+- **[ИСПРАВЛЕНО]** position_sizing_mode НЕ РАБОТАЛ! Был hardcoded "fixed_amount"
+  - Добавлены поля в TradingEngineConfig: position_sizing_mode, risk_per_trade
+  - PositionSizingConfig теперь использует mode из конфига
+- **[ДОБАВЛЕНО]** set_margin_mode - функция для реальной установки margin mode на Bybit
+  - Добавлен метод BybitClient.set_margin_mode()
+  - Добавлен метод FuturesTrader.set_margin_mode()
+  - Добавлено поле margin_mode в TradingEngineConfig
+  - _execute_entry вызывает set_margin_mode перед открытием позиции
+- **[ПРОВЕРЕНО]** EMA фильтр (strict/soft) - работает корректно
+- **[ПРОВЕРЕНО]** Early Entry - работает корректно
+
+#### Файлы изменённые в этой части:
+- `aila/trading/engine.py` - TradingEngineConfig, импорт StopLossConfig/MarginMode, инициализация менеджеров
+- `aila/exchange/bybit_client.py` - добавлен set_margin_mode()
+- `aila/exchange/futures.py` - добавлен set_margin_mode()
+- `aila/scripts/run_web.py` - передача новых полей в create_engine_config_for_bot()
+
+#### ПЕРВАЯ ЧАСТЬ СЕССИИ:
 - **[ИСПРАВЛЕНО]** Проблема с загрузкой старого интерфейса - нужно брать main.py из ветки IODYI
 - **[ДОБАВЛЕНО]** Position Sizing Mode (fixed_amount / risk_percent / kelly)
 - **[ДОБАВЛЕНО]** Margin Mode (cross / isolated) с alias leverage_mode → margin_mode
@@ -449,6 +476,15 @@ WEB_PORT=8080
 - **[ВАЖНО]** main.py это монолит ~6000 строк - НЕ создавать отдельные файлы для фронтенда
 - **[УРОК]** При изменении UI всегда напоминать про Ctrl+Shift+R
 - **[УРОК]** При добавлении настроек с toggle - обязательно вызывать toggle при загрузке формы редактирования!
+
+#### УРОК: Как добавить настройку которая реально работает в торговле
+1. UI (main.py HTML) - input field в new и edit формах
+2. JavaScript (main.py JS) - createBot и saveEditBot, loadEditBot
+3. Backend (main.py Python) - create_bot и update_bot endpoints
+4. Bot Settings (main.py Python) - start_bot формирует bot_settings
+5. **TradingEngineConfig (engine.py)** - добавить поле!
+6. **run_web.py** - передать в create_engine_config_for_bot()
+7. **TradingEngine.__init__** - использовать config при создании менеджеров!
 
 ### 2026-01-13 (предыдущие сессии)
 - Создан полный UI интерфейс в ветке IODYI
