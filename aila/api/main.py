@@ -3252,6 +3252,93 @@ trading_pairs_cache = {
 # Multi-bot management (up to 10 bots)
 MAX_BOTS = 10
 bots_registry = {}  # bot_id -> bot_config
+bot_engines = {}  # bot_id -> TradingEngine instance
+bot_clients = {}  # bot_id -> BybitClient instance
+bot_runtime_settings = {}  # bot_id -> settings dict (per-bot runtime settings)
+
+# Trading positions registry - tracks positions per bot
+positions_registry = {}
+
+
+def get_running_bot_id():
+    """Get the ID of first currently running or paused bot."""
+    for bot_id, bot in bots_registry.items():
+        if bot.get("status") in ("running", "paused"):
+            return bot_id
+    return None
+
+
+def get_bot_for_symbol(symbol: str):
+    """Get the bot_id that is trading a specific symbol."""
+    for bot_id, bot in bots_registry.items():
+        if bot.get("status") not in ("running", "paused"):
+            continue
+        bot_pairs = bot.get("trading_pairs", [])
+        if bot.get("bot_mode") == "auto_search" or symbol in bot_pairs:
+            return bot_id
+    return None
+
+
+def get_bot_runtime_settings(bot_id: str):
+    """Get runtime settings for a specific bot."""
+    if bot_id in bot_runtime_settings:
+        return bot_runtime_settings[bot_id]
+    return runtime_settings
+
+
+def register_position(symbol: str, side: str, entry_price: float, size: float, sl: float, tp: float, bot_id: str = None):
+    """Register a new position opened by a bot."""
+    import uuid
+
+    if not bot_id:
+        bot_id = get_bot_for_symbol(symbol)
+    if not bot_id:
+        bot_id = get_running_bot_id()
+    if not bot_id:
+        return None
+
+    position_id = f"{symbol}_{str(uuid.uuid4())[:6]}"
+    positions_registry[position_id] = {
+        "id": position_id,
+        "bot_id": bot_id,
+        "symbol": symbol,
+        "side": side,
+        "size": size,
+        "entry_price": entry_price,
+        "current_price": entry_price,
+        "sl": sl,
+        "tp": tp,
+        "pnl_usdt": 0.0,
+        "pnl_percent": 0.0,
+        "status": "open",
+        "opened_at": datetime.now().isoformat(),
+        "closed_at": None,
+        "close_reason": None,
+    }
+    bot_name = bots_registry.get(bot_id, {}).get("name", bot_id)
+    add_log(f"[info    ] Position registered: {symbol} {side} @ {entry_price} (Bot: {bot_name})")
+    return position_id
+
+
+def close_position_record(symbol: str, reason: str, pnl_usdt: float = None, pnl_percent: float = None):
+    """Mark position as closed."""
+    for pos_id, pos in positions_registry.items():
+        if pos["symbol"] == symbol and pos["status"] == "open":
+            pos["status"] = "closed"
+            pos["closed_at"] = datetime.now().isoformat()
+            pos["close_reason"] = reason
+            if pnl_usdt is not None:
+                pos["pnl_usdt"] = pnl_usdt
+            if pnl_percent is not None:
+                pos["pnl_percent"] = pnl_percent
+            return pos_id
+    return None
+
+
+def get_bot_open_positions(bot_id: str):
+    """Get open positions for a specific bot."""
+    return [pos for pos in positions_registry.values()
+            if pos["bot_id"] == bot_id and pos["status"] == "open"]
 
 
 @app.get("/api/bots")
