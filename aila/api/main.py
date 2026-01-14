@@ -1417,8 +1417,8 @@ DASHBOARD_HTML = r"""
                     <div class="setting-compact">
                         <label data-i18n="leverageMode">Margin Mode</label>
                         <select id="newBotLeverageMode">
-                            <option value="cross" selected>Cross</option>
-                            <option value="isolated">Isolated</option>
+                            <option value="cross">Cross</option>
+                            <option value="isolated" selected>Isolated</option>
                         </select>
                     </div>
                 </div>
@@ -1483,7 +1483,7 @@ DASHBOARD_HTML = r"""
                     <div class="setting-inline" style="flex: 0 0 auto;">
                         <label data-i18n="trailingTp" style="min-width: 80px;">Trailing TP</label>
                         <label class="toggle-switch">
-                            <input type="checkbox" id="newBotTrailingTpEnabled" onchange="toggleTrailingTpOptions('new')">
+                            <input type="checkbox" id="newBotTrailingTpEnabled" onchange="toggleTrailingTpOptions('new')" checked>
                             <span class="toggle-slider"></span>
                         </label>
                         <span class="info-wrapper">
@@ -1492,7 +1492,7 @@ DASHBOARD_HTML = r"""
                         </span>
                     </div>
                 </div>
-                <div class="settings-row" id="newTrailingTpOptionsRow" style="display: none;">
+                <div class="settings-row" id="newTrailingTpOptionsRow" style="display: flex;">
                     <div class="setting-compact" id="newTrailingTpModeContainer">
                         <label data-i18n="trailingTpMode">Mode</label>
                         <select id="newBotTrailingTpMode" onchange="toggleTrailingTpMode('new')">
@@ -1503,8 +1503,8 @@ DASHBOARD_HTML = r"""
                     <div class="setting-compact" id="newTrailingTpStLineContainer">
                         <label data-i18n="trailingTpStLine">ST Line</label>
                         <select id="newBotTrailingTpStLine">
-                            <option value="1">Fast</option>
-                            <option value="2" selected>Medium</option>
+                            <option value="1" selected>Fast</option>
+                            <option value="2">Medium</option>
                             <option value="3">Slow</option>
                         </select>
                     </div>
@@ -1599,19 +1599,19 @@ DASHBOARD_HTML = r"""
                     <div class="setting-compact" id="newTrailingModeContainer">
                         <label data-i18n="trailingMode">Mode</label>
                         <select id="newBotTrailingMode" onchange="toggleTrailingMode('new')">
-                            <option value="fix_percent" selected>Fix %</option>
-                            <option value="st_line">ST Line</option>
+                            <option value="fix_percent">Fix %</option>
+                            <option value="st_line" selected>ST Line</option>
                         </select>
                     </div>
-                    <div class="setting-compact" id="newTrailingActivationContainer">
+                    <div class="setting-compact" id="newTrailingActivationContainer" style="display: none;">
                         <label data-i18n="trailingActivation">Activation %</label>
                         <input type="number" id="newBotTrailingActivation" value="1.0" min="0.5" max="5" step="0.1">
                     </div>
-                    <div class="setting-compact" id="newTrailingStepContainer">
+                    <div class="setting-compact" id="newTrailingStepContainer" style="display: none;">
                         <label data-i18n="trailingStep">Step %</label>
                         <input type="number" id="newBotTrailingStep" value="0.5" min="0.1" max="2" step="0.1">
                     </div>
-                    <div class="setting-compact" id="newTrailingStLineContainer" style="display: none;">
+                    <div class="setting-compact" id="newTrailingStLineContainer">
                         <label data-i18n="trailingStLine">ST Line</label>
                         <select id="newBotTrailingStLine">
                             <option value="1">Fast</option>
@@ -1619,7 +1619,7 @@ DASHBOARD_HTML = r"""
                             <option value="3">Slow</option>
                         </select>
                     </div>
-                    <div class="setting-compact" id="newTrailingConfirmContainer" style="display: none;">
+                    <div class="setting-compact" id="newTrailingConfirmContainer">
                         <label data-i18n="trailingConfirm">Confirm Candles</label>
                         <select id="newBotTrailingConfirm">
                             <option value="1" selected>1</option>
@@ -2734,7 +2734,7 @@ DASHBOARD_HTML = r"""
             document.getElementById('newBotSlPercent').value = '2';
             document.getElementById('newBotSlAtrMult').value = '1.5';
             document.getElementById('newBotTrailingEnabled').checked = true;
-            document.getElementById('newBotTrailingMode').value = 'fix_percent';
+            document.getElementById('newBotTrailingMode').value = 'st_line';
             document.getElementById('newBotTrailingActivation').value = '1.0';
             document.getElementById('newBotTrailingStep').value = '0.5';
             document.getElementById('newBotTrailingStLine').value = '2';
@@ -2743,11 +2743,12 @@ DASHBOARD_HTML = r"""
             document.getElementById('newBotPartialTpClose').value = '50';
             document.getElementById('newBotPartialTpSlMove').value = 'tp1';
             document.getElementById('newBotPartialTpOffset').value = '0.2';
-            document.getElementById('newBotTrailingTpEnabled').checked = false;
+            document.getElementById('newBotTrailingTpEnabled').checked = true;
             document.getElementById('newBotTrailingTpMode').value = 'st_line';
-            document.getElementById('newBotTrailingTpStLine').value = '2';
+            document.getElementById('newBotTrailingTpStLine').value = '1';
             document.getElementById('newBotTrailingTpActivation').value = '0.5';
             document.getElementById('newBotTrailingTpStep').value = '1.0';
+            document.getElementById('newBotLeverageMode').value = 'isolated';
             document.getElementById('newBotEarlyEntry').checked = false;
             document.getElementById('newBotEmaEnabled').checked = true;
             document.getElementById('newBotEmaMode').value = 'strict';
