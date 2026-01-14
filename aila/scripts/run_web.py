@@ -312,10 +312,6 @@ def create_engine_config_for_bot(bot_id: str) -> TradingEngineConfig:
         # Position sizing settings
         position_sizing_mode=bot_settings.get("position_sizing_mode", "fixed_amount"),
         risk_per_trade=bot_settings.get("risk_per_trade", 2.0),
-        # Breakeven settings
-        breakeven_enabled=bot_settings.get("breakeven_enabled", False),
-        breakeven_activation=bot_settings.get("breakeven_activation", 1.0),
-        breakeven_offset=bot_settings.get("breakeven_offset", 0.1),
         # Margin mode
         margin_mode=bot_settings.get("margin_mode", "cross"),
     )

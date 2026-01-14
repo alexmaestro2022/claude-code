@@ -50,11 +50,6 @@ class TradingEngineConfig:
     position_sizing_mode: str = "fixed_amount"  # fixed_amount | risk_percent | kelly
     risk_per_trade: float = 2.0  # % of balance to risk (for risk_percent mode)
 
-    # Breakeven settings
-    breakeven_enabled: bool = False
-    breakeven_activation: float = 1.0  # % profit to move SL to entry
-    breakeven_offset: float = 0.1  # % above entry for buffer
-
     # Margin mode
     margin_mode: str = "cross"  # cross | isolated
 
@@ -151,12 +146,8 @@ class TradingEngine:
         )
         self.position_sizer = PositionSizer(position_sizing_config)
 
-        # Stop-loss manager with breakeven settings
-        stop_loss_config = StopLossConfig(
-            breakeven_enabled=self.config.breakeven_enabled,
-            breakeven_activation=self.config.breakeven_activation,
-            breakeven_offset=self.config.breakeven_offset,
-        )
+        # Stop-loss manager
+        stop_loss_config = StopLossConfig()
         self.stop_loss_manager = StopLossManager(stop_loss_config)
         self.take_profit_manager = TakeProfitManager()
 

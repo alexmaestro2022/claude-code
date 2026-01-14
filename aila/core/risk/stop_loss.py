@@ -35,11 +35,6 @@ class StopLossConfig:
     trailing_activation: float = 1.0  # % profit to activate
     trailing_step: float = 0.5  # % trailing step
 
-    # Break-even
-    breakeven_enabled: bool = False
-    breakeven_activation: float = 1.0  # % profit to move SL to entry
-    breakeven_offset: float = 0.1  # % above entry for buffer
-
     # Safety
     max_stop_distance_percent: float = 10.0  # Max allowed SL distance
 
@@ -52,7 +47,6 @@ class StopLossLevel:
     distance_percent: float
     mode: str
     is_trailing: bool = False
-    is_breakeven: bool = False
 
 
 class StopLossManager:
@@ -309,75 +303,6 @@ class StopLossManager:
             distance_percent=distance_percent,
             mode=self.config.mode,
             is_trailing=new_stop != current_stop,
-        )
-
-    def calculate_breakeven_stop(
-        self,
-        side: str,
-        entry_price: Decimal,
-        current_price: Decimal,
-        current_stop: Decimal,
-    ) -> StopLossLevel:
-        """
-        Check and calculate break-even stop.
-
-        Args:
-            side: Position side ('long' or 'short')
-            entry_price: Original entry price
-            current_price: Current market price
-            current_stop: Current stop-loss price
-
-        Returns:
-            StopLossLevel (possibly moved to breakeven)
-        """
-        if not self.config.breakeven_enabled:
-            return StopLossLevel(
-                price=current_stop,
-                distance_percent=abs(float((current_price - current_stop) / current_price)) * 100,
-                mode=self.config.mode,
-            )
-
-        # Calculate profit percentage
-        if side == "long":
-            profit_percent = float((current_price - entry_price) / entry_price) * 100
-        else:
-            profit_percent = float((entry_price - current_price) / entry_price) * 100
-
-        new_stop = current_stop
-        is_breakeven = False
-
-        # Check if break-even should be applied
-        if profit_percent >= self.config.breakeven_activation:
-            offset = entry_price * Decimal(str(self.config.breakeven_offset / 100))
-
-            if side == "long":
-                breakeven_stop = entry_price + offset
-                if breakeven_stop > current_stop:
-                    new_stop = breakeven_stop
-                    is_breakeven = True
-                    logger.info(
-                        "Stop moved to breakeven (long)",
-                        entry=str(entry_price),
-                        new_stop=str(new_stop),
-                    )
-            else:
-                breakeven_stop = entry_price - offset
-                if breakeven_stop < current_stop:
-                    new_stop = breakeven_stop
-                    is_breakeven = True
-                    logger.info(
-                        "Stop moved to breakeven (short)",
-                        entry=str(entry_price),
-                        new_stop=str(new_stop),
-                    )
-
-        distance_percent = abs(float((current_price - new_stop) / current_price)) * 100
-
-        return StopLossLevel(
-            price=new_stop,
-            distance_percent=distance_percent,
-            mode=self.config.mode,
-            is_breakeven=is_breakeven,
         )
 
     def should_trigger_stop(

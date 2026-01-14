@@ -945,11 +945,6 @@ DASHBOARD_HTML = r"""
             border-color: rgba(255,204,0,0.3);
         }
         .block-profit h4 { color: #ffcc00; }
-        .block-breakeven {
-            background: rgba(0,212,255,0.08);
-            border-color: rgba(0,212,255,0.3);
-        }
-        .block-breakeven h4 { color: #00d4ff; }
         .block-auto {
             background: rgba(255,204,0,0.08);
             border-color: rgba(255,204,0,0.3);
@@ -1460,30 +1455,6 @@ DASHBOARD_HTML = r"""
                 </div>
             </div>
 
-            <!-- Break-even Block -->
-            <div class="settings-block block-breakeven">
-                <h4><span class="icon">🎯</span> <span data-i18n="breakeven">Break-even</span></h4>
-                <div class="settings-row">
-                    <div class="setting-inline" style="flex: 0 0 auto;">
-                        <label data-i18n="breakevenEnabled" style="min-width: 80px;">Break-even</label>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="newBotBreakevenEnabled" onchange="toggleBreakevenOptions('new')">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                </div>
-                <div class="settings-row" id="newBreakevenOptionsRow" style="display: none;">
-                    <div class="setting-compact">
-                        <label data-i18n="breakevenActivation">Activation (%)</label>
-                        <input type="number" id="newBotBreakevenActivation" value="1.0" min="0.1" max="10" step="0.1">
-                    </div>
-                    <div class="setting-compact">
-                        <label data-i18n="breakevenOffset">Offset (%)</label>
-                        <input type="number" id="newBotBreakevenOffset" value="0.1" min="0" max="5" step="0.1">
-                    </div>
-                </div>
-            </div>
-
             <!-- Take Profit Block -->
             <div class="settings-block block-profit">
                 <h4><span class="icon">💰</span> <span data-i18n="takeProfitSettings">Take Profit</span></h4>
@@ -1895,30 +1866,6 @@ DASHBOARD_HTML = r"""
                 </div>
             </div>
 
-            <!-- Break-even Block -->
-            <div class="settings-block block-breakeven">
-                <h4><span class="icon">🎯</span> <span data-i18n="breakeven">Break-even</span></h4>
-                <div class="settings-row">
-                    <div class="setting-inline" style="flex: 0 0 auto;">
-                        <label data-i18n="breakevenEnabled" style="min-width: 80px;">Break-even</label>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="editBotBreakevenEnabled" onchange="toggleBreakevenOptions('edit')">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                </div>
-                <div class="settings-row" id="editBreakevenOptionsRow" style="display: none;">
-                    <div class="setting-compact">
-                        <label data-i18n="breakevenActivation">Activation (%)</label>
-                        <input type="number" id="editBotBreakevenActivation" value="1.0" min="0.1" max="10" step="0.1">
-                    </div>
-                    <div class="setting-compact">
-                        <label data-i18n="breakevenOffset">Offset (%)</label>
-                        <input type="number" id="editBotBreakevenOffset" value="0.1" min="0" max="5" step="0.1">
-                    </div>
-                </div>
-            </div>
-
             <!-- Take Profit Block -->
             <div class="settings-block block-profit">
                 <h4><span class="icon">💰</span> <span data-i18n="takeProfitSettings">Take Profit</span></h4>
@@ -2247,10 +2194,6 @@ DASHBOARD_HTML = r"""
                 positionSizingMode: 'Position Sizing',
                 riskPerTrade: 'Risk per Trade (%)',
                 leverageMode: 'Margin Mode',
-                breakeven: 'Break-even',
-                breakevenEnabled: 'Break-even',
-                breakevenActivation: 'Activation (%)',
-                breakevenOffset: 'Offset (%)',
                 depositUsed: 'Deposit used:',
                 pairInfo: 'Pair Info',
                 minOrder: 'Min Order:',
@@ -2381,10 +2324,6 @@ DASHBOARD_HTML = r"""
                 positionSizingMode: 'Размер позиции',
                 riskPerTrade: 'Риск на сделку (%)',
                 leverageMode: 'Режим маржи',
-                breakeven: 'Безубыток',
-                breakevenEnabled: 'Безубыток',
-                breakevenActivation: 'Активация (%)',
-                breakevenOffset: 'Отступ (%)',
                 depositUsed: 'Используется депозит:',
                 pairInfo: 'Информация о паре',
                 minOrder: 'Мин. ордер:',
@@ -2642,13 +2581,6 @@ DASHBOARD_HTML = r"""
             if (trailingTpEnabled) {
                 toggleTrailingTpMode(prefix);
             }
-        }
-
-        function toggleBreakevenOptions(prefix) {
-            const breakevenEnabled = document.getElementById(prefix + 'BotBreakevenEnabled').checked;
-            const optionsRow = document.getElementById(prefix + 'BreakevenOptionsRow');
-
-            if (optionsRow) optionsRow.style.display = breakevenEnabled ? 'flex' : 'none';
         }
 
         function toggleRiskPercentInput(prefix) {
@@ -4039,9 +3971,6 @@ DASHBOARD_HTML = r"""
                 position_sizing_mode: document.getElementById('newBotPositionSizingMode').value,
                 risk_per_trade: parseFloat(document.getElementById('newBotRiskPerTrade').value),
                 leverage_mode: document.getElementById('newBotLeverageMode').value,
-                breakeven_enabled: document.getElementById('newBotBreakevenEnabled').checked,
-                breakeven_activation: parseFloat(document.getElementById('newBotBreakevenActivation').value),
-                breakeven_offset: parseFloat(document.getElementById('newBotBreakevenOffset').value),
                 tp_mode: tpMode,
                 tp_risk_ratio: parseFloat(document.getElementById('newBotTpRatio').value),
                 tp_fixed_percent: parseFloat(document.getElementById('newBotTpPercent').value) || 2,
@@ -4244,10 +4173,6 @@ DASHBOARD_HTML = r"""
             document.getElementById('editBotRiskPerTrade').value = bot.risk_per_trade || 2;
             toggleRiskPercentInput('edit');
             document.getElementById('editBotLeverageMode').value = bot.leverage_mode || 'cross';
-            document.getElementById('editBotBreakevenEnabled').checked = bot.breakeven_enabled || false;
-            document.getElementById('editBotBreakevenActivation').value = bot.breakeven_activation || 1.0;
-            document.getElementById('editBotBreakevenOffset').value = bot.breakeven_offset || 0.1;
-            toggleBreakevenOptions('edit');
 
             // TP Mode and value
             const tpMode = bot.tp_mode || 'rr';
@@ -4338,9 +4263,6 @@ DASHBOARD_HTML = r"""
                 position_sizing_mode: document.getElementById('editBotPositionSizingMode').value,
                 risk_per_trade: parseFloat(document.getElementById('editBotRiskPerTrade').value),
                 leverage_mode: document.getElementById('editBotLeverageMode').value,
-                breakeven_enabled: document.getElementById('editBotBreakevenEnabled').checked,
-                breakeven_activation: parseFloat(document.getElementById('editBotBreakevenActivation').value),
-                breakeven_offset: parseFloat(document.getElementById('editBotBreakevenOffset').value),
                 tp_mode: tpMode,
                 tp_risk_ratio: parseFloat(document.getElementById('editBotTpRatio').value),
                 tp_fixed_percent: parseFloat(document.getElementById('editBotTpPercent').value) || 2,
@@ -5480,9 +5402,6 @@ async def create_bot(config: dict):
         "order_size": config.get("order_size", 100.0),
         "position_sizing_mode": config.get("position_sizing_mode", "fixed_amount"),
         "leverage_mode": config.get("leverage_mode", "cross"),
-        "breakeven_enabled": config.get("breakeven_enabled", False),
-        "breakeven_activation": config.get("breakeven_activation", 1.0),
-        "breakeven_offset": config.get("breakeven_offset", 0.1),
         "max_positions": config.get("max_positions", 3),
         "ema_enabled": config.get("ema_enabled", True),
         "ema_filter_mode": config.get("ema_filter_mode", "strict"),
@@ -5578,12 +5497,6 @@ async def update_bot(bot_id: str, config: dict):
         bot["position_sizing_mode"] = config["position_sizing_mode"]
     if "leverage_mode" in config:
         bot["leverage_mode"] = config["leverage_mode"]
-    if "breakeven_enabled" in config:
-        bot["breakeven_enabled"] = config["breakeven_enabled"]
-    if "breakeven_activation" in config:
-        bot["breakeven_activation"] = float(config["breakeven_activation"])
-    if "breakeven_offset" in config:
-        bot["breakeven_offset"] = float(config["breakeven_offset"])
     if "max_positions" in config:
         bot["max_positions"] = int(config["max_positions"])
     if "ema_enabled" in config:
@@ -5732,9 +5645,6 @@ async def start_specific_bot(bot_id: str):
     bot_settings["position_sizing_mode"] = bot.get("position_sizing_mode", "fixed_amount")
     bot_settings["leverage_mode"] = bot.get("leverage_mode", "cross")
     bot_settings["margin_mode"] = bot.get("leverage_mode", "cross")  # alias for TradingEngineConfig
-    bot_settings["breakeven_enabled"] = bot.get("breakeven_enabled", False)
-    bot_settings["breakeven_activation"] = bot.get("breakeven_activation", 1.0)
-    bot_settings["breakeven_offset"] = bot.get("breakeven_offset", 0.1)
     bot_settings["max_open_positions"] = bot["max_positions"]
     bot_settings["ema_enabled"] = bot["ema_enabled"]
     bot_settings["ema_filter_mode"] = bot.get("ema_filter_mode", "strict")
@@ -5964,9 +5874,6 @@ async def resume_specific_bot(bot_id: str):
     bot_settings["position_sizing_mode"] = bot.get("position_sizing_mode", "fixed_amount")
     bot_settings["leverage_mode"] = bot.get("leverage_mode", "cross")
     bot_settings["margin_mode"] = bot.get("leverage_mode", "cross")  # alias for TradingEngineConfig
-    bot_settings["breakeven_enabled"] = bot.get("breakeven_enabled", False)
-    bot_settings["breakeven_activation"] = bot.get("breakeven_activation", 1.0)
-    bot_settings["breakeven_offset"] = bot.get("breakeven_offset", 0.1)
     bot_settings["max_open_positions"] = bot["max_positions"]
     bot_settings["ema_enabled"] = bot["ema_enabled"]
     bot_settings["ema_filter_mode"] = bot.get("ema_filter_mode", "strict")
