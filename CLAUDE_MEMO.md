@@ -432,15 +432,23 @@ WEB_PORT=8080
 
 > При конфликте информации - использовать ПОСЛЕДНЮЮ запись!
 
-### 2026-01-14 (сессия 4XrKU)
+### 2026-01-14 (сессия 4XrKU) - АУДИТ НАСТРОЕК
 - **[ИСПРАВЛЕНО]** Проблема с загрузкой старого интерфейса - нужно брать main.py из ветки IODYI
 - **[ДОБАВЛЕНО]** Position Sizing Mode (fixed_amount / risk_percent / kelly)
 - **[ДОБАВЛЕНО]** Margin Mode (cross / isolated) с alias leverage_mode → margin_mode
 - **[ДОБАВЛЕНО]** Break-even настройки (enabled, activation %, offset %)
 - **[ДОБАВЛЕНО]** Cache-Control заголовки для предотвращения кэширования браузера
+- **[ИСПРАВЛЕНО]** Risk % - добавлено поле risk_per_trade (было в backend, не было в UI)
+- **[ИСПРАВЛЕНО]** Trailing TP, Partial TP, tp_mode, tp_fixed_percent - добавлены в create_bot/update_bot
+- **[ИСПРАВЛЕНО]** Отсутствовали toggle вызовы при редактировании бота:
+  - toggleSlOptions('edit') - для показа правильных полей SL
+  - toggleTrailingOptions('edit') - для Trailing SL опций
+  - toggleTrailingTpOptions('edit') - для Trailing TP опций
+  - toggleRiskPercentInput('edit') - для поля Risk %
 - **[ВАЖНО]** Сессионные ветки могут иметь устаревший main.py - всегда начинать с IODYI
 - **[ВАЖНО]** main.py это монолит ~6000 строк - НЕ создавать отдельные файлы для фронтенда
 - **[УРОК]** При изменении UI всегда напоминать про Ctrl+Shift+R
+- **[УРОК]** При добавлении настроек с toggle - обязательно вызывать toggle при загрузке формы редактирования!
 
 ### 2026-01-13 (предыдущие сессии)
 - Создан полный UI интерфейс в ветке IODYI
