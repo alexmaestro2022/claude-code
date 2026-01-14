@@ -1725,7 +1725,7 @@ DASHBOARD_HTML = r"""
             <div class="settings-actions">
                 <button class="btn btn-secondary" onclick="closeModal('createBotModal')" data-i18n="cancel">Cancel</button>
                 <button class="btn-reset" onclick="resetCreateBotForm()" title="Reset" style="margin-left: auto; margin-right: 10px;">↺</button>
-                <button class="btn btn-primary" onclick="createBot()" data-i18n="create">Create</button>
+                <button id="createBotBtn" class="btn btn-primary" onclick="createBot()" data-i18n="create">Create</button>
             </div>
         </div>
     </div>
@@ -2160,7 +2160,7 @@ DASHBOARD_HTML = r"""
             <div class="settings-actions">
                 <button class="btn btn-secondary" onclick="closeModal('editBotModal')" data-i18n="cancel">Cancel</button>
                 <button class="btn-reset" onclick="resetEditBotForm()" title="Reset" style="margin-left: auto; margin-right: 10px;">↺</button>
-                <button class="btn btn-primary" onclick="saveEditBot()" data-i18n="save">Save</button>
+                <button id="saveEditBotBtn" class="btn btn-primary" onclick="saveEditBot()" data-i18n="save">Save</button>
             </div>
         </div>
     </div>
@@ -3915,6 +3915,12 @@ DASHBOARD_HTML = r"""
         }
 
         async function createBot() {
+            // Prevent double-click - disable button immediately
+            const createBtn = document.getElementById('createBotBtn');
+            if (createBtn.disabled) return; // Already processing
+            createBtn.disabled = true;
+            createBtn.textContent = '...';
+
             const botMode = document.getElementById('newBotMode').value;
             const selectedPair = document.getElementById('newBotPair').value;
             const slMode = document.getElementById('newBotSlMode').value;
@@ -3989,6 +3995,11 @@ DASHBOARD_HTML = r"""
                 }
             } catch (err) {
                 console.error('Failed to create bot:', err);
+                showToast('Error creating bot');
+            } finally {
+                // Re-enable button
+                createBtn.disabled = false;
+                createBtn.textContent = t('create');
             }
         }
 
@@ -4203,6 +4214,12 @@ DASHBOARD_HTML = r"""
         }
 
         async function saveEditBot() {
+            // Prevent double-click - disable button immediately
+            const saveBtn = document.getElementById('saveEditBotBtn');
+            if (saveBtn.disabled) return; // Already processing
+            saveBtn.disabled = true;
+            saveBtn.textContent = '...';
+
             const botId = document.getElementById('editBotId').value;
             const botMode = document.getElementById('editBotMode').value;
             const slMode = document.getElementById('editBotSlMode').value;
@@ -4277,6 +4294,11 @@ DASHBOARD_HTML = r"""
                 }
             } catch (err) {
                 console.error('Failed to update bot:', err);
+                showToast('Error updating bot');
+            } finally {
+                // Re-enable button
+                saveBtn.disabled = false;
+                saveBtn.textContent = t('save');
             }
         }
 
