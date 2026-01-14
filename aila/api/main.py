@@ -1650,8 +1650,8 @@ DASHBOARD_HTML = r"""
                     <div class="setting-compact" id="newTrailingStLineContainer">
                         <label data-i18n="trailingStLine">ST Line</label>
                         <select id="newBotTrailingStLine">
-                            <option value="1">Fast</option>
-                            <option value="2" selected>Medium</option>
+                            <option value="1" selected>Fast</option>
+                            <option value="2">Medium</option>
                             <option value="3">Slow</option>
                         </select>
                     </div>
@@ -2773,7 +2773,7 @@ DASHBOARD_HTML = r"""
             document.getElementById('newBotTrailingMode').value = 'st_line';
             document.getElementById('newBotTrailingActivation').value = '1.0';
             document.getElementById('newBotTrailingStep').value = '0.5';
-            document.getElementById('newBotTrailingStLine').value = '2';
+            document.getElementById('newBotTrailingStLine').value = '1';
             document.getElementById('newBotTrailingConfirm').value = '1';
             document.getElementById('newBotPartialTpEnabled').checked = true;
             document.getElementById('newBotPartialTpClose').value = '50';
