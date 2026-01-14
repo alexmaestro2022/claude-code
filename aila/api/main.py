@@ -531,7 +531,7 @@ DASHBOARD_HTML = r"""
 
         .bot-header {
             display: flex;
-            justify-content: space-between;
+            justify-content: flex-start;
             align-items: center;
             margin-bottom: 15px;
         }
