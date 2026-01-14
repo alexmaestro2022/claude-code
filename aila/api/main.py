@@ -6041,7 +6041,10 @@ def sync_positions_from_exchange():
         for ex_pos in exchange_positions:
             if float(ex_pos.size) > 0:
                 # Normalize side to uppercase for comparison
-                side = ex_pos.side.upper() if hasattr(ex_pos, 'side') and ex_pos.side else "LONG"
+                if hasattr(ex_pos, 'side') and ex_pos.side:
+                    side = ex_pos.side.name if hasattr(ex_pos.side, 'name') else str(ex_pos.side).upper()
+                else:
+                    side = "LONG"
                 # Handle Bybit side naming: "Buy" = LONG, "Sell" = SHORT
                 if side in ("BUY", "LONG"):
                     side = "LONG"
@@ -6069,7 +6072,10 @@ def sync_positions_from_exchange():
             for ex_pos in exchange_positions:
                 if ex_pos.symbol == symbol and float(ex_pos.size) > 0:
                     # Check side matches
-                    ex_side = ex_pos.side.upper() if hasattr(ex_pos, 'side') and ex_pos.side else "LONG"
+                    if hasattr(ex_pos, 'side') and ex_pos.side:
+                        ex_side = ex_pos.side.name if hasattr(ex_pos.side, 'name') else str(ex_pos.side).upper()
+                    else:
+                        ex_side = "LONG"
                     if ex_side in ("BUY", "LONG"):
                         ex_side = "LONG"
                     elif ex_side in ("SELL", "SHORT"):

@@ -901,10 +901,10 @@ class TradingEngine:
                         # Update last candle time
                         last_candle_time[symbol] = current_candle_time
 
-                        current_sl = position_data.get("stop_loss", 0)
+                        current_sl = position_data.get("stop_loss") or 0
                         side = position_data["side"]
-                        entry_price = position_data.get("entry_price", 0)
-                        take_profit = position_data.get("take_profit", 0)
+                        entry_price = position_data.get("entry_price") or 0
+                        take_profit = position_data.get("take_profit") or 0
                         current_price = float(df["close"].iloc[-2])  # Last closed candle price
 
                         # === PARTIAL TP LOGIC ===
