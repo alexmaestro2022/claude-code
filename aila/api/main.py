@@ -2974,10 +2974,10 @@ DASHBOARD_HTML = r"""
         setInterval(fetchStats, 5000);
 
         // Refresh positions every 2 seconds for real-time PnL updates
-        setInterval(loadAllPositions, 2000);
+        setInterval(loadAllPositions, 1500);
 
-        // Regular bot refresh every 3 seconds
-        setInterval(loadBots, 3000);
+        // Regular bot refresh every 1.5 seconds for real-time PnL
+        setInterval(loadBots, 1500);
 
         // API stats refresh every 10 seconds
         async function updateApiStats() {
@@ -5371,6 +5371,9 @@ def get_bot_total_pnl(bot_id: str):
 @app.get("/api/bots")
 async def get_bots():
     """Get all configured bots with position stats."""
+    # Sync positions with exchange to get fresh PnL
+    sync_positions_from_exchange()
+
     bots_with_stats = []
     for bot in bots_registry.values():
         bot_copy = dict(bot)
