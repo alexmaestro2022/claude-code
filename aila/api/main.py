@@ -3805,6 +3805,82 @@ class WebLogHandler:
         return event_dict
 
 
+# ============== Log Messages ==============
+LOG_MESSAGES = {
+    "en": {
+        "trade_open": "[TRADE_OPEN] Position opened: {symbol} {side} qty={qty} entry={entry} SL={sl} TP={tp}",
+        "trade_close_profit": "[TRADE_PROFIT] Position closed: {symbol} PnL: +{pnl:.2f}% (+{pnl_usdt:.2f} USDT)",
+        "trade_close_loss": "[TRADE_LOSS] Position closed: {symbol} PnL: {pnl:.2f}% ({pnl_usdt:.2f} USDT)",
+        "bot_started": "Bot started",
+        "bot_stopped": "Bot stopped",
+        "scanning_pairs": "Scanning {count} pairs...",
+        "scan_complete": "Scan #{num} complete  signals={signals} positions={positions}",
+        "signal_found": "Signal: {symbol} {side} price={price}",
+        "order_placed": "Order placed: {symbol} {side} qty={qty}",
+        "order_failed": "Order failed: {symbol} - {error}",
+        "insufficient_balance": "Insufficient balance for order",
+        "starting_engine": "Starting trading engine",
+        "engine_started": "Trading engine started",
+        "connected": "Connected to Bybit API",
+        "balance": "Balance: {balance} USDT",
+        "starting_bot": "Starting AILA Trading Bot...",
+        "mode_auto": "Mode: AUTO SEARCH - scanning {pairs} pairs, max orders={max_orders}",
+        "mode_manual": "Mode: MANUAL - trading {pairs} pairs",
+        "config_info": "Config: timeframe={tf} leverage={lev}x ema={ema} order_size={size} USDT",
+        "strategy_info": "Strategy: tp_ratio={tp} sl_mode={sl} risk={risk}%",
+        "bot_running": "Bot running",
+        "position_opened": "Position OPENED: {symbol} {side} qty={qty} @ {price}",
+        "position_closed": "Position CLOSED: {symbol} PnL={pnl}",
+    },
+    "ru": {
+        "trade_open": "[ОТКРЫТИЕ] Позиция открыта: {symbol} {side} кол-во={qty} вход={entry} SL={sl} TP={tp}",
+        "trade_close_profit": "[ПРИБЫЛЬ] Позиция закрыта: {symbol} PnL: +{pnl:.2f}% (+{pnl_usdt:.2f} USDT)",
+        "trade_close_loss": "[УБЫТОК] Позиция закрыта: {symbol} PnL: {pnl:.2f}% ({pnl_usdt:.2f} USDT)",
+        "bot_started": "Бот запущен",
+        "bot_stopped": "Бот остановлен",
+        "scanning_pairs": "Сканирование {count} пар...",
+        "scan_complete": "Скан #{num} завершён  сигналов={signals} позиций={positions}",
+        "signal_found": "Сигнал: {symbol} {side} цена={price}",
+        "order_placed": "Ордер размещён: {symbol} {side} кол-во={qty}",
+        "order_failed": "Ошибка ордера: {symbol} - {error}",
+        "insufficient_balance": "Недостаточно баланса для ордера",
+        "starting_engine": "Запуск торгового движка",
+        "engine_started": "Торговый движок запущен",
+        "connected": "Подключено к Bybit API",
+        "balance": "Баланс: {balance} USDT",
+        "starting_bot": "Запуск AILA Trading Bot...",
+        "mode_auto": "Режим: АВТОПОИСК - сканирование {pairs} пар, макс ордеров={max_orders}",
+        "mode_manual": "Режим: РУЧНОЙ - торговля {pairs} парами",
+        "config_info": "Конфиг: таймфрейм={tf} плечо={lev}x ema={ema} размер={size} USDT",
+        "strategy_info": "Стратегия: tp_ratio={tp} sl_mode={sl} риск={risk}%",
+        "bot_running": "Бот работает",
+        "position_opened": "Позиция ОТКРЫТА: {symbol} {side} кол-во={qty} @ {price}",
+        "position_closed": "Позиция ЗАКРЫТА: {symbol} PnL={pnl}",
+    },
+}
+
+
+def get_log_message(key: str, **kwargs) -> str:
+    """Get log message in current language."""
+    lang = runtime_settings.get("language", "en")
+    messages = LOG_MESSAGES.get(lang, LOG_MESSAGES["en"])
+    template = messages.get(key, LOG_MESSAGES["en"].get(key, key))
+    try:
+        return template.format(**kwargs)
+    except Exception:
+        return template
+
+
+@app.post("/api/language")
+async def set_language(data: dict):
+    """Set the log language."""
+    lang = data.get("language", "en")
+    if lang in ("en", "ru"):
+        runtime_settings["language"] = lang
+        return {"success": True, "language": lang}
+    return {"success": False, "message": "Invalid language"}
+
+
 def run_web_server(host: str = "0.0.0.0", port: int = 8080):
     """Run the web server."""
     import uvicorn
