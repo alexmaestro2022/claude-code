@@ -940,6 +940,11 @@ DASHBOARD_HTML = r"""
             border-color: rgba(0,255,136,0.3);
         }
         .block-filters h4 { color: #00ff88; }
+        .block-signal {
+            background: rgba(0,212,255,0.08);
+            border-color: rgba(0,212,255,0.3);
+        }
+        .block-signal h4 { color: #00d4ff; }
         .block-profit {
             background: rgba(255,204,0,0.08);
             border-color: rgba(255,204,0,0.3);
@@ -1635,13 +1640,49 @@ DASHBOARD_HTML = r"""
                         </select>
                     </div>
                 </div>
+            </div>
+
+            <!-- Signal Entry Block -->
+            <div class="settings-block block-signal">
+                <h4><span class="icon">📊</span> <span data-i18n="signalEntry">Signal Entry</span></h4>
                 <div class="settings-row">
-                    <div class="setting-inline">
-                        <label data-i18n="earlyEntry">Early Entry (ST3)</label>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="newBotEarlyEntry">
-                            <span class="toggle-slider"></span>
-                        </label>
+                    <div class="setting-compact">
+                        <label>ST1 (Slow)</label>
+                        <select id="newBotSt1Role" onchange="updateSignalPreview('new')">
+                            <option value="off">❌ Выкл</option>
+                            <option value="confirm" selected>🟢 Подтв</option>
+                            <option value="trigger">🎯 Триггер</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact">
+                        <label>ST2 (Medium)</label>
+                        <select id="newBotSt2Role" onchange="updateSignalPreview('new')">
+                            <option value="off">❌ Выкл</option>
+                            <option value="confirm" selected>🟢 Подтв</option>
+                            <option value="trigger">🎯 Триггер</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact">
+                        <label>ST3 (Fast)</label>
+                        <select id="newBotSt3Role" onchange="updateSignalPreview('new')">
+                            <option value="off">❌ Выкл</option>
+                            <option value="confirm">🟢 Подтв</option>
+                            <option value="trigger" selected>🎯 Триггер</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="settings-row">
+                    <div class="setting-compact">
+                        <label data-i18n="triggerConfirmCandles">Trigger Confirm</label>
+                        <select id="newBotTriggerConfirmCandles">
+                            <option value="1" selected>1 свеча</option>
+                            <option value="2">2 свечи</option>
+                            <option value="3">3 свечи</option>
+                        </select>
+                    </div>
+                    <div class="signal-preview" id="newSignalPreview" style="flex: 2; padding: 8px; background: rgba(0,212,255,0.1); border-radius: 5px; font-size: 12px;">
+                        <div style="color: #888;">📋 ST1🟢 + ST2🟢 + ST3🎯</div>
+                        <div style="color: #00d4ff;">💡 Вход когда ST3 разворачивается</div>
                     </div>
                 </div>
             </div>
@@ -2046,13 +2087,49 @@ DASHBOARD_HTML = r"""
                         </select>
                     </div>
                 </div>
+            </div>
+
+            <!-- Signal Entry Block -->
+            <div class="settings-block block-signal">
+                <h4><span class="icon">📊</span> <span data-i18n="signalEntry">Signal Entry</span></h4>
                 <div class="settings-row">
-                    <div class="setting-inline">
-                        <label data-i18n="earlyEntry">Early Entry (ST3)</label>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="editBotEarlyEntry">
-                            <span class="toggle-slider"></span>
-                        </label>
+                    <div class="setting-compact">
+                        <label>ST1 (Slow)</label>
+                        <select id="editBotSt1Role" onchange="updateSignalPreview('edit')">
+                            <option value="off">❌ Выкл</option>
+                            <option value="confirm" selected>🟢 Подтв</option>
+                            <option value="trigger">🎯 Триггер</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact">
+                        <label>ST2 (Medium)</label>
+                        <select id="editBotSt2Role" onchange="updateSignalPreview('edit')">
+                            <option value="off">❌ Выкл</option>
+                            <option value="confirm" selected>🟢 Подтв</option>
+                            <option value="trigger">🎯 Триггер</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact">
+                        <label>ST3 (Fast)</label>
+                        <select id="editBotSt3Role" onchange="updateSignalPreview('edit')">
+                            <option value="off">❌ Выкл</option>
+                            <option value="confirm">🟢 Подтв</option>
+                            <option value="trigger" selected>🎯 Триггер</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="settings-row">
+                    <div class="setting-compact">
+                        <label data-i18n="triggerConfirmCandles">Trigger Confirm</label>
+                        <select id="editBotTriggerConfirmCandles">
+                            <option value="1" selected>1 свеча</option>
+                            <option value="2">2 свечи</option>
+                            <option value="3">3 свечи</option>
+                        </select>
+                    </div>
+                    <div class="signal-preview" id="editSignalPreview" style="flex: 2; padding: 8px; background: rgba(0,212,255,0.1); border-radius: 5px; font-size: 12px;">
+                        <div style="color: #888;">📋 ST1🟢 + ST2🟢 + ST3🎯</div>
+                        <div style="color: #00d4ff;">💡 Вход когда ST3 разворачивается</div>
                     </div>
                 </div>
             </div>
@@ -2295,7 +2372,9 @@ DASHBOARD_HTML = r"""
                 maxLossHint: 'Bot stops when loss reaches this % of allocated balance',
                 basicSettings: 'Basic',
                 riskManagement: 'Risk Management',
-                signalFilters: 'Signal Filters'
+                signalFilters: 'Signal Filters',
+                signalEntry: 'Signal Entry',
+                triggerConfirmCandles: 'Trigger Confirm'
             },
             ru: {
                 connecting: 'Подключение...',
@@ -2425,7 +2504,9 @@ DASHBOARD_HTML = r"""
                 maxLossHint: 'Бот остановится когда убыток достигнет этого % от выделенного баланса',
                 basicSettings: 'Основное',
                 riskManagement: 'Риск-менеджмент',
-                signalFilters: 'Фильтры сигналов'
+                signalFilters: 'Фильтры сигналов',
+                signalEntry: 'Сигнал входа',
+                triggerConfirmCandles: 'Подтв. триггера'
             }
         };
 
@@ -2514,6 +2595,72 @@ DASHBOARD_HTML = r"""
             const emaModeContainer = document.getElementById(prefix + 'EmaModeContainer');
             if (emaModeContainer) {
                 emaModeContainer.style.display = emaEnabled ? 'flex' : 'none';
+            }
+        }
+
+        // Signal Entry configuration
+        function updateSignalPreview(prefix) {
+            const st1Role = document.getElementById(prefix + 'BotSt1Role').value;
+            const st2Role = document.getElementById(prefix + 'BotSt2Role').value;
+            const st3Role = document.getElementById(prefix + 'BotSt3Role').value;
+            const previewEl = document.getElementById(prefix + 'SignalPreview');
+
+            // Count triggers
+            const roles = [st1Role, st2Role, st3Role];
+            const triggerCount = roles.filter(r => r === 'trigger').length;
+            const activeCount = roles.filter(r => r !== 'off').length;
+
+            // If more than one trigger, reset others to confirm
+            if (triggerCount > 1) {
+                // Find which one was just changed to trigger and keep it
+                const selects = [
+                    document.getElementById(prefix + 'BotSt1Role'),
+                    document.getElementById(prefix + 'BotSt2Role'),
+                    document.getElementById(prefix + 'BotSt3Role')
+                ];
+                let foundTrigger = false;
+                selects.forEach((sel, i) => {
+                    if (sel.value === 'trigger') {
+                        if (foundTrigger) {
+                            sel.value = 'confirm';
+                        } else {
+                            foundTrigger = true;
+                        }
+                    }
+                });
+                // Recursively update preview
+                updateSignalPreview(prefix);
+                return;
+            }
+
+            // Build preview text
+            const roleIcons = { off: '❌', confirm: '🟢', trigger: '🎯' };
+            const stNames = ['ST1', 'ST2', 'ST3'];
+            const activeLines = [];
+            let triggerName = '';
+
+            roles.forEach((role, i) => {
+                if (role !== 'off') {
+                    activeLines.push(stNames[i] + roleIcons[role]);
+                    if (role === 'trigger') triggerName = stNames[i];
+                }
+            });
+
+            if (previewEl) {
+                if (activeCount === 0) {
+                    previewEl.innerHTML = `
+                        <div style="color: #ff4444;">⚠️ Выберите хотя бы одну линию</div>
+                    `;
+                } else if (triggerCount === 0) {
+                    previewEl.innerHTML = `
+                        <div style="color: #ff4444;">⚠️ Выберите триггер (🎯)</div>
+                    `;
+                } else {
+                    previewEl.innerHTML = `
+                        <div style="color: #888;">📋 ${activeLines.join(' + ')}</div>
+                        <div style="color: #00d4ff;">💡 Вход когда ${triggerName} разворачивается</div>
+                    `;
+                }
             }
         }
 
@@ -3995,7 +4142,11 @@ DASHBOARD_HTML = r"""
                 trailing_tp_st_line: parseInt(document.getElementById('newBotTrailingTpStLine').value),
                 trailing_tp_activation: parseFloat(document.getElementById('newBotTrailingTpActivation').value),
                 trailing_tp_step: parseFloat(document.getElementById('newBotTrailingTpStep').value),
-                early_entry_enabled: document.getElementById('newBotEarlyEntry').checked,
+                // Signal Entry settings
+                st1_role: document.getElementById('newBotSt1Role').value,
+                st2_role: document.getElementById('newBotSt2Role').value,
+                st3_role: document.getElementById('newBotSt3Role').value,
+                trigger_confirm_candles: parseInt(document.getElementById('newBotTriggerConfirmCandles').value),
                 // Asset filters
                 filter_min_volume: parseMoneyValue(document.getElementById('newBotMinVolume').value),
                 filter_max_volume: parseMoneyValue(document.getElementById('newBotMaxVolume').value),
@@ -4205,7 +4356,13 @@ DASHBOARD_HTML = r"""
             document.getElementById('editBotTrailingTpActivation').value = bot.trailing_tp_activation || 0.5;
             document.getElementById('editBotTrailingTpStep').value = bot.trailing_tp_step || 1.0;
             toggleTrailingTpOptions('edit');
-            document.getElementById('editBotEarlyEntry').checked = bot.early_entry_enabled || false;
+
+            // Signal Entry settings
+            document.getElementById('editBotSt1Role').value = bot.st1_role || 'confirm';
+            document.getElementById('editBotSt2Role').value = bot.st2_role || 'confirm';
+            document.getElementById('editBotSt3Role').value = bot.st3_role || 'trigger';
+            document.getElementById('editBotTriggerConfirmCandles').value = bot.trigger_confirm_candles || 1;
+            updateSignalPreview('edit');
 
             // Asset filters
             document.getElementById('editBotMinVolume').value = (bot.filter_min_volume || 3000000).toLocaleString('en-US');
@@ -4287,7 +4444,11 @@ DASHBOARD_HTML = r"""
                 trailing_tp_st_line: parseInt(document.getElementById('editBotTrailingTpStLine').value),
                 trailing_tp_activation: parseFloat(document.getElementById('editBotTrailingTpActivation').value),
                 trailing_tp_step: parseFloat(document.getElementById('editBotTrailingTpStep').value),
-                early_entry_enabled: document.getElementById('editBotEarlyEntry').checked,
+                // Signal Entry settings
+                st1_role: document.getElementById('editBotSt1Role').value,
+                st2_role: document.getElementById('editBotSt2Role').value,
+                st3_role: document.getElementById('editBotSt3Role').value,
+                trigger_confirm_candles: parseInt(document.getElementById('editBotTriggerConfirmCandles').value),
                 // Asset filters
                 filter_min_volume: parseMoneyValue(document.getElementById('editBotMinVolume').value),
                 filter_max_volume: parseMoneyValue(document.getElementById('editBotMaxVolume').value),
@@ -5435,7 +5596,10 @@ async def create_bot(config: dict):
         "filter_volatility_period": config.get("filter_volatility_period", 0),
         "filter_min_volatility": config.get("filter_min_volatility", 0),
         "filter_max_volatility": config.get("filter_max_volatility", 0),
-        "early_entry_enabled": config.get("early_entry_enabled", False),
+        "st1_role": config.get("st1_role", "confirm"),
+        "st2_role": config.get("st2_role", "confirm"),
+        "st3_role": config.get("st3_role", "trigger"),
+        "trigger_confirm_candles": config.get("trigger_confirm_candles", 1),
         "balance_usage_percent": config.get("balance_usage_percent", 100),
         "max_loss_percent": config.get("max_loss_percent", 10),
         "status": "stopped",
@@ -5559,8 +5723,14 @@ async def update_bot(bot_id: str, config: dict):
         bot["filter_min_volatility"] = float(config["filter_min_volatility"])
     if "filter_max_volatility" in config:
         bot["filter_max_volatility"] = float(config["filter_max_volatility"])
-    if "early_entry_enabled" in config:
-        bot["early_entry_enabled"] = bool(config["early_entry_enabled"])
+    if "st1_role" in config:
+        bot["st1_role"] = config["st1_role"]
+    if "st2_role" in config:
+        bot["st2_role"] = config["st2_role"]
+    if "st3_role" in config:
+        bot["st3_role"] = config["st3_role"]
+    if "trigger_confirm_candles" in config:
+        bot["trigger_confirm_candles"] = int(config["trigger_confirm_candles"])
     if "balance_usage_percent" in config:
         bot["balance_usage_percent"] = float(config["balance_usage_percent"])
     if "max_loss_percent" in config:
@@ -5667,7 +5837,10 @@ async def start_specific_bot(bot_id: str):
     bot_settings["filter_volatility_period"] = bot.get("filter_volatility_period", 0)
     bot_settings["filter_min_volatility"] = bot.get("filter_min_volatility", 0)
     bot_settings["filter_max_volatility"] = bot.get("filter_max_volatility", 0)
-    bot_settings["early_entry_enabled"] = bot.get("early_entry_enabled", False)
+    bot_settings["st1_role"] = bot.get("st1_role", "confirm")
+    bot_settings["st2_role"] = bot.get("st2_role", "confirm")
+    bot_settings["st3_role"] = bot.get("st3_role", "trigger")
+    bot_settings["trigger_confirm_candles"] = bot.get("trigger_confirm_candles", 1)
     # Partial TP settings
     bot_settings["partial_tp_enabled"] = bot.get("partial_tp_enabled", True)
     bot_settings["partial_tp_close_percent"] = bot.get("partial_tp_close_percent", 50)
@@ -5896,7 +6069,11 @@ async def resume_specific_bot(bot_id: str):
     bot_settings["filter_volatility_period"] = bot.get("filter_volatility_period", 0)
     bot_settings["filter_min_volatility"] = bot.get("filter_min_volatility", 0)
     bot_settings["filter_max_volatility"] = bot.get("filter_max_volatility", 0)
-    bot_settings["early_entry_enabled"] = bot.get("early_entry_enabled", False)
+    # Signal Entry configuration
+    bot_settings["st1_role"] = bot.get("st1_role", "confirm")
+    bot_settings["st2_role"] = bot.get("st2_role", "confirm")
+    bot_settings["st3_role"] = bot.get("st3_role", "trigger")
+    bot_settings["trigger_confirm_candles"] = bot.get("trigger_confirm_candles", 1)
     bot_settings["paused"] = False
 
     # Store updated per-bot settings

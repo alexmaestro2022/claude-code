@@ -196,8 +196,11 @@ def create_strategy_config() -> TripleSuperTrendConfig:
         st2_multiplier=settings.strategy.st2_multiplier,
         st3_period=settings.strategy.st3_period,
         st3_multiplier=settings.strategy.st3_multiplier,
-        # Early entry mode - enter at trend start when ST3 just turns
-        early_entry_enabled=runtime_settings.get("early_entry_enabled", False),
+        # Signal Entry configuration
+        st1_role=runtime_settings.get("st1_role", "confirm"),
+        st2_role=runtime_settings.get("st2_role", "confirm"),
+        st3_role=runtime_settings.get("st3_role", "trigger"),
+        trigger_confirm_candles=runtime_settings.get("trigger_confirm_candles", 1),
         # Use runtime settings instead of config file
         ema_enabled=runtime_settings.get("ema_enabled", settings.strategy.ema_enabled),
         ema_period=settings.strategy.ema_period,
@@ -269,7 +272,11 @@ def create_strategy_config_for_bot(bot_id: str) -> TripleSuperTrendConfig:
         st2_multiplier=settings.strategy.st2_multiplier,
         st3_period=settings.strategy.st3_period,
         st3_multiplier=settings.strategy.st3_multiplier,
-        early_entry_enabled=bot_settings.get("early_entry_enabled", False),
+        # Signal Entry configuration
+        st1_role=bot_settings.get("st1_role", "confirm"),
+        st2_role=bot_settings.get("st2_role", "confirm"),
+        st3_role=bot_settings.get("st3_role", "trigger"),
+        trigger_confirm_candles=bot_settings.get("trigger_confirm_candles", 1),
         ema_enabled=bot_settings.get("ema_enabled", settings.strategy.ema_enabled),
         ema_period=settings.strategy.ema_period,
         ema_filter_mode=bot_settings.get("ema_filter_mode", settings.strategy.ema_filter_mode),
@@ -861,7 +868,11 @@ def update_engine_settings():
     engine.strategy.config.trailing_tp_st_line = runtime_settings.get("trailing_tp_st_line", 2)
     engine.strategy.config.trailing_tp_activation = runtime_settings.get("trailing_tp_activation", 0.5)
     engine.strategy.config.trailing_tp_step = runtime_settings.get("trailing_tp_step", 1.0)
-    engine.strategy.config.early_entry_enabled = runtime_settings.get("early_entry_enabled", False)
+    # Signal Entry configuration
+    engine.strategy.config.st1_role = runtime_settings.get("st1_role", "confirm")
+    engine.strategy.config.st2_role = runtime_settings.get("st2_role", "confirm")
+    engine.strategy.config.st3_role = runtime_settings.get("st3_role", "trigger")
+    engine.strategy.config.trigger_confirm_candles = runtime_settings.get("trigger_confirm_candles", 1)
     engine.strategy.config.ema_enabled = runtime_settings.get("ema_enabled", True)
     engine.strategy.config.ema_filter_mode = runtime_settings.get("ema_filter_mode", "strict")
 

@@ -44,8 +44,12 @@ class TripleSuperTrendConfig(StrategyConfig):
     st3_period: int = 12
     st3_multiplier: float = 3.0
 
-    # Early entry mode - enter when ST1 & ST2 confirmed, ST3 just turned
-    early_entry_enabled: bool = False
+    # Signal Entry configuration
+    # Roles: 'off' = not used, 'confirm' = must be in direction, 'trigger' = must just turn
+    st1_role: str = "confirm"  # ST1 (slow) role
+    st2_role: str = "confirm"  # ST2 (medium) role
+    st3_role: str = "trigger"  # ST3 (fast) role - trigger by default
+    trigger_confirm_candles: int = 1  # Number of candles to confirm trigger
 
     # EMA filter
     ema_enabled: bool = True
@@ -226,36 +230,79 @@ class TripleSuperTrendStrategy(BaseStrategy):
         def dir_str(d):
             return "🟢" if d == 1 else ("🔴" if d == -1 else "⚪")
 
-        # Determine if we have a valid entry signal
+        # Determine if we have a valid entry signal using new role-based configuration
         signal_type = None  # None, 'long', or 'short'
-        entry_mode = "standard"
+        entry_mode = "custom"
         signal_reason = ""
 
-        if self.config.early_entry_enabled:
-            # Early Entry Mode: ST1 & ST2 confirmed, ST3 just turned
-            # LONG: ST1 & ST2 were bullish on previous candle, ST3 just became bullish
-            if (st1_dir_prev == 1 and st2_dir_prev == 1 and
-                st3_dir_prev != 1 and st3_dir_curr == 1):
-                signal_type = 'long'
-                entry_mode = "early_entry"
-                signal_reason = "ST1&ST2 were green, ST3 just turned green"
+        # Get roles for each ST line
+        roles = {
+            'st1': self.config.st1_role,
+            'st2': self.config.st2_role,
+            'st3': self.config.st3_role,
+        }
+        directions_curr = {'st1': st1_dir_curr, 'st2': st2_dir_curr, 'st3': st3_dir_curr}
+        directions_prev = {'st1': st1_dir_prev, 'st2': st2_dir_prev, 'st3': st3_dir_prev}
 
-            # SHORT: ST1 & ST2 were bearish on previous candle, ST3 just became bearish
-            elif (st1_dir_prev == -1 and st2_dir_prev == -1 and
-                  st3_dir_prev != -1 and st3_dir_curr == -1):
-                signal_type = 'short'
-                entry_mode = "early_entry"
-                signal_reason = "ST1&ST2 were red, ST3 just turned red"
+        # Find the trigger line
+        trigger_line = None
+        for line, role in roles.items():
+            if role == 'trigger':
+                trigger_line = line
+                break
 
-        else:
-            # Standard Mode: All three SuperTrends aligned, direction just changed
-            if st_direction != self._prev_signal:
-                if st_direction == 1:
-                    signal_type = 'long'
-                    signal_reason = "All 3 ST turned green (combined direction changed)"
-                elif st_direction == -1:
-                    signal_type = 'short'
-                    signal_reason = "All 3 ST turned red (combined direction changed)"
+        # Check if we have at least one active line and a trigger
+        active_lines = [line for line, role in roles.items() if role != 'off']
+        if not active_lines or trigger_line is None:
+            return Signal.no_signal(symbol, current_price)
+
+        # Check for LONG signal
+        def check_signal(target_dir):
+            """Check if signal conditions are met for given direction (1=long, -1=short)"""
+            # 1. Check trigger: must have just turned to target direction
+            trigger_curr = directions_curr[trigger_line]
+            trigger_prev = directions_prev[trigger_line]
+
+            if trigger_curr != target_dir or trigger_prev == target_dir:
+                return False  # Trigger didn't just turn
+
+            # 2. Check confirm lines: must already be in target direction
+            for line, role in roles.items():
+                if role == 'confirm':
+                    if directions_prev[line] != target_dir:
+                        return False  # Confirm line was not in direction
+
+            # 3. Optional: Check trigger confirmation candles
+            confirm_candles = self.config.trigger_confirm_candles
+            if confirm_candles > 1:
+                # Need more candles to confirm - check historical data
+                trigger_dirs = {
+                    'st1': triple_st.st1.direction,
+                    'st2': triple_st.st2.direction,
+                    'st3': triple_st.st3.direction,
+                }
+                trigger_history = trigger_dirs[trigger_line]
+                # Check if trigger has been in target direction for required candles
+                for i in range(1, confirm_candles):
+                    idx = -1 - i  # -2, -3, etc. (current is -1)
+                    if abs(idx) > len(trigger_history):
+                        return False
+                    if int(trigger_history.iloc[idx]) != target_dir:
+                        return False
+
+            return True
+
+        # Check LONG and SHORT
+        if check_signal(1):
+            signal_type = 'long'
+            active_str = ' + '.join([f"{l.upper()}{'🎯' if roles[l]=='trigger' else '🟢'}"
+                                     for l in active_lines])
+            signal_reason = f"{active_str} → {trigger_line.upper()} triggered LONG"
+        elif check_signal(-1):
+            signal_type = 'short'
+            active_str = ' + '.join([f"{l.upper()}{'🎯' if roles[l]=='trigger' else '🔴'}"
+                                     for l in active_lines])
+            signal_reason = f"{active_str} → {trigger_line.upper()} triggered SHORT"
 
         # Update previous signal tracking
         prev_signal = self._prev_signal
@@ -300,19 +347,10 @@ class TripleSuperTrendStrategy(BaseStrategy):
         def get_st_marker(is_trigger):
             return "🎯 ТРИГГЕР" if is_trigger else ""
 
-        # For early entry, ST3 is the trigger
-        st1_trigger = False
-        st2_trigger = False
-        st3_trigger = entry_mode == "early_entry"
-
-        # For standard mode, find which one changed last
-        if entry_mode == "standard":
-            if st1_dir_prev != st1_dir_curr:
-                st1_trigger = True
-            if st2_dir_prev != st2_dir_curr:
-                st2_trigger = True
-            if st3_dir_prev != st3_dir_curr:
-                st3_trigger = True
+        # Determine which ST line is the trigger based on roles
+        st1_trigger = roles['st1'] == 'trigger'
+        st2_trigger = roles['st2'] == 'trigger'
+        st3_trigger = roles['st3'] == 'trigger'
 
         # Log signal in clean format
         logger.info(
@@ -335,7 +373,10 @@ class TripleSuperTrendStrategy(BaseStrategy):
         metadata = {
             "strategy": self.name,
             "entry_mode": entry_mode,
-            "early_entry": self.config.early_entry_enabled,
+            "st1_role": self.config.st1_role,
+            "st2_role": self.config.st2_role,
+            "st3_role": self.config.st3_role,
+            "trigger_line": trigger_line,
             "st1_direction": st1_dir_curr,
             "st2_direction": st2_dir_curr,
             "st3_direction": st3_dir_curr,
