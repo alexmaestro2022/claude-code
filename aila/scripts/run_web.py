@@ -41,10 +41,27 @@ def sync_runtime_settings():
     runtime_settings["trading_pairs"] = settings.strategy.trading_pairs
     runtime_settings["risk_per_trade"] = settings.risk.risk_per_trade
     runtime_settings["tp_risk_ratio"] = settings.risk.tp_risk_ratio
+    runtime_settings["tp_mode"] = settings.risk.tp_mode
+    runtime_settings["tp_fixed_percent"] = settings.risk.tp_fixed_percent
     runtime_settings["sl_mode"] = settings.risk.sl_mode
+    runtime_settings["sl_atr_multiplier"] = settings.risk.sl_atr_multiplier
     runtime_settings["leverage"] = settings.futures.default_leverage
+    runtime_settings["leverage_mode"] = settings.futures.leverage_mode
     runtime_settings["max_open_positions"] = settings.risk.max_open_positions
     runtime_settings["ema_enabled"] = settings.strategy.ema_enabled
+    # Position sizing
+    runtime_settings["position_sizing_mode"] = settings.risk.position_sizing_mode
+    # Safety limits
+    runtime_settings["max_daily_loss_percent"] = settings.risk.max_daily_loss_percent
+    runtime_settings["max_weekly_loss_percent"] = settings.risk.max_weekly_loss_percent
+    runtime_settings["max_drawdown_percent"] = settings.risk.max_drawdown_percent
+    runtime_settings["min_balance_usdt"] = settings.risk.min_balance_usdt
+    # Break-even
+    runtime_settings["breakeven_enabled"] = settings.risk.breakeven_enabled
+    runtime_settings["breakeven_activation"] = settings.risk.breakeven_activation
+    runtime_settings["breakeven_offset"] = settings.risk.breakeven_offset
+    # Trailing mode
+    runtime_settings["trailing_mode"] = settings.risk.trailing_mode
 
 
 def create_bybit_config() -> BybitConfig:
@@ -81,11 +98,16 @@ def create_strategy_config() -> TripleSuperTrendConfig:
         risk_per_trade=runtime_settings.get("risk_per_trade", settings.risk.risk_per_trade),
         max_position_percent=settings.risk.max_position_percent,
         max_open_positions=max_positions,
+        # Stop-loss settings
         sl_mode=runtime_settings.get("sl_mode", settings.risk.sl_mode),
         sl_supertrend_line=runtime_settings.get("sl_supertrend_line", settings.risk.sl_supertrend_line),
         sl_fixed_percent=runtime_settings.get("sl_fixed_percent", settings.risk.sl_fixed_percent),
-        tp_mode=settings.risk.tp_mode,
+        sl_atr_multiplier=runtime_settings.get("sl_atr_multiplier", settings.risk.sl_atr_multiplier),
+        # Take-profit settings - now from runtime_settings
+        tp_mode=runtime_settings.get("tp_mode", settings.risk.tp_mode),
         tp_risk_ratio=runtime_settings.get("tp_risk_ratio", settings.risk.tp_risk_ratio),
+        tp_fixed_percent=runtime_settings.get("tp_fixed_percent", settings.risk.tp_fixed_percent),
+        # Trailing settings
         trailing_enabled=runtime_settings.get("trailing_enabled", settings.risk.trailing_enabled),
         trailing_activation=runtime_settings.get("trailing_activation", settings.risk.trailing_activation),
         trailing_step=runtime_settings.get("trailing_step", settings.risk.trailing_step),
@@ -95,9 +117,28 @@ def create_strategy_config() -> TripleSuperTrendConfig:
 def create_engine_config() -> TradingEngineConfig:
     """Create trading engine configuration."""
     return TradingEngineConfig(
-        max_daily_loss_percent=settings.risk.max_daily_loss_percent,
+        # Trading settings
         paper_trading=not settings.is_production,
         order_size=runtime_settings.get("order_size", 100.0),
+        # Position sizing
+        position_sizing_mode=runtime_settings.get("position_sizing_mode", "fixed_amount"),
+        risk_per_trade=runtime_settings.get("risk_per_trade", 2.0),
+        # Safety limits
+        max_daily_loss_percent=runtime_settings.get("max_daily_loss_percent", settings.risk.max_daily_loss_percent),
+        max_weekly_loss_percent=runtime_settings.get("max_weekly_loss_percent", 10.0),
+        max_drawdown_percent=runtime_settings.get("max_drawdown_percent", 15.0),
+        min_balance_usdt=runtime_settings.get("min_balance_usdt", 100.0),
+        # Trailing stop settings
+        trailing_enabled=runtime_settings.get("trailing_enabled", True),
+        trailing_mode=runtime_settings.get("trailing_mode", "supertrend"),
+        trailing_activation=runtime_settings.get("trailing_activation", 1.0),
+        trailing_step=runtime_settings.get("trailing_step", 0.5),
+        # Break-even settings
+        breakeven_enabled=runtime_settings.get("breakeven_enabled", False),
+        breakeven_activation=runtime_settings.get("breakeven_activation", 1.0),
+        breakeven_offset=runtime_settings.get("breakeven_offset", 0.1),
+        # Leverage mode
+        leverage_mode=runtime_settings.get("leverage_mode", "cross"),
     )
 
 

@@ -105,14 +105,21 @@ class RiskSettings(BaseSettings):
     tp_fixed_percent: float = 4.0
 
     # Position sizing
+    position_sizing_mode: str = "fixed_amount"  # fixed_amount | risk_percent | kelly
     risk_per_trade: float = 2.0
     max_position_percent: float = 20.0
     max_open_positions: int = 3
 
     # Trailing stop
     trailing_enabled: bool = True
+    trailing_mode: str = "supertrend"  # supertrend | percent
     trailing_activation: float = 1.0
     trailing_step: float = 0.5
+
+    # Break-even
+    breakeven_enabled: bool = False
+    breakeven_activation: float = 1.0  # % profit to move SL to entry
+    breakeven_offset: float = 0.1  # % above entry for buffer
 
     # Safety limits
     max_daily_loss_percent: float = 5.0

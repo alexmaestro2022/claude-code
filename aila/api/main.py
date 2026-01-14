@@ -916,12 +916,31 @@ DASHBOARD_HTML = r"""
                     </div>
                 </div>
                 <div class="setting-item">
+                    <label data-i18n="positionSizingMode">Position Sizing Mode</label>
+                    <select id="newBotPositionSizingMode" onchange="togglePositionSizingOptions('new')">
+                        <option value="fixed_amount" selected data-i18n="fixedAmount">Fixed Amount</option>
+                        <option value="risk_percent" data-i18n="riskPercent">Risk Percent</option>
+                        <option value="kelly" data-i18n="kellyCriterion">Kelly Criterion</option>
+                    </select>
+                </div>
+                <div class="setting-item" id="newRiskPercentContainer" style="display: none;">
                     <label data-i18n="riskPerTrade">Risk per Trade (%)</label>
                     <input type="number" id="newBotRisk" value="2" min="0.1" max="10" step="0.1">
                 </div>
                 <div class="setting-item">
+                    <label data-i18n="tpMode">Take Profit Mode</label>
+                    <select id="newBotTpMode" onchange="toggleTpOptions('new')">
+                        <option value="risk_ratio" selected data-i18n="riskRatio">Risk:Reward Ratio</option>
+                        <option value="fixed_percent" data-i18n="fixedPercent">Fixed Percent</option>
+                    </select>
+                </div>
+                <div class="setting-item" id="newTpRatioContainer">
                     <label data-i18n="tpRatio">Take Profit (R:R)</label>
                     <input type="number" id="newBotTpRatio" value="2" min="1" max="10" step="0.5">
+                </div>
+                <div class="setting-item" id="newTpPercentContainer" style="display: none;">
+                    <label data-i18n="tpPercent">Take Profit (%)</label>
+                    <input type="number" id="newBotTpPercent" value="4" min="0.5" max="20" step="0.5">
                 </div>
                 <div class="setting-item">
                     <label data-i18n="slMode">Stop Loss Mode</label>
@@ -966,19 +985,52 @@ DASHBOARD_HTML = r"""
                     </select>
                 </div>
                 <div class="setting-item">
+                    <label data-i18n="leverageMode">Leverage Mode</label>
+                    <select id="newBotLeverageMode">
+                        <option value="cross" selected data-i18n="crossMargin">Cross Margin</option>
+                        <option value="isolated" data-i18n="isolatedMargin">Isolated Margin</option>
+                    </select>
+                </div>
+                <div class="setting-item">
                     <label data-i18n="trailingStop">Trailing Stop</label>
-                    <select id="newBotTrailingEnabled">
+                    <select id="newBotTrailingEnabled" onchange="toggleTrailingOptions('new')">
                         <option value="true" selected data-i18n="enabled">Enabled</option>
                         <option value="false" data-i18n="disabled">Disabled</option>
                     </select>
                 </div>
-                <div class="setting-item">
-                    <label data-i18n="trailingActivation">Trailing Activation (%)</label>
-                    <input type="number" id="newBotTrailingActivation" value="1.0" min="0.5" max="5" step="0.1">
+                <div id="newTrailingOptionsContainer">
+                    <div class="setting-item">
+                        <label data-i18n="trailingMode">Trailing Mode</label>
+                        <select id="newBotTrailingMode" onchange="toggleTrailingModeOptions('new')">
+                            <option value="supertrend" selected data-i18n="superTrendBased">SuperTrend Based</option>
+                            <option value="percent" data-i18n="percentBased">Percent Based</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label data-i18n="trailingActivation">Trailing Activation (%)</label>
+                        <input type="number" id="newBotTrailingActivation" value="1.0" min="0.1" max="10" step="0.1">
+                    </div>
+                    <div class="setting-item" id="newTrailingStepContainer" style="display: none;">
+                        <label data-i18n="trailingStep">Trailing Step (%)</label>
+                        <input type="number" id="newBotTrailingStep" value="0.5" min="0.1" max="5" step="0.1">
+                    </div>
                 </div>
                 <div class="setting-item">
-                    <label data-i18n="trailingStep">Trailing Step (%)</label>
-                    <input type="number" id="newBotTrailingStep" value="0.5" min="0.1" max="2" step="0.1">
+                    <label data-i18n="breakeven">Break-even</label>
+                    <select id="newBotBreakevenEnabled" onchange="toggleBreakevenOptions('new')">
+                        <option value="false" selected data-i18n="disabled">Disabled</option>
+                        <option value="true" data-i18n="enabled">Enabled</option>
+                    </select>
+                </div>
+                <div id="newBreakevenOptionsContainer" style="display: none;">
+                    <div class="setting-item">
+                        <label data-i18n="breakevenActivation">Break-even Activation (%)</label>
+                        <input type="number" id="newBotBreakevenActivation" value="1.0" min="0.5" max="5" step="0.1">
+                    </div>
+                    <div class="setting-item">
+                        <label data-i18n="breakevenOffset">Break-even Offset (%)</label>
+                        <input type="number" id="newBotBreakevenOffset" value="0.1" min="0" max="1" step="0.05">
+                    </div>
                 </div>
             </div>
             <div class="settings-actions">
@@ -1075,12 +1127,31 @@ DASHBOARD_HTML = r"""
                     </div>
                 </div>
                 <div class="setting-item">
+                    <label data-i18n="positionSizingMode">Position Sizing Mode</label>
+                    <select id="editBotPositionSizingMode" onchange="togglePositionSizingOptions('edit')">
+                        <option value="fixed_amount" data-i18n="fixedAmount">Fixed Amount</option>
+                        <option value="risk_percent" data-i18n="riskPercent">Risk Percent</option>
+                        <option value="kelly" data-i18n="kellyCriterion">Kelly Criterion</option>
+                    </select>
+                </div>
+                <div class="setting-item" id="editRiskPercentContainer" style="display: none;">
                     <label data-i18n="riskPerTrade">Risk per Trade (%)</label>
                     <input type="number" id="editBotRisk" min="0.1" max="100" step="0.1">
                 </div>
                 <div class="setting-item">
+                    <label data-i18n="tpMode">Take Profit Mode</label>
+                    <select id="editBotTpMode" onchange="toggleTpOptions('edit')">
+                        <option value="risk_ratio" data-i18n="riskRatio">Risk:Reward Ratio</option>
+                        <option value="fixed_percent" data-i18n="fixedPercent">Fixed Percent</option>
+                    </select>
+                </div>
+                <div class="setting-item" id="editTpRatioContainer">
                     <label data-i18n="tpRatio">Take Profit (R:R)</label>
                     <input type="number" id="editBotTpRatio" min="1" max="10" step="0.5">
+                </div>
+                <div class="setting-item" id="editTpPercentContainer" style="display: none;">
+                    <label data-i18n="tpPercent">Take Profit (%)</label>
+                    <input type="number" id="editBotTpPercent" value="4" min="0.5" max="20" step="0.5">
                 </div>
                 <div class="setting-item">
                     <label data-i18n="slMode">Stop Loss Mode</label>
@@ -1125,19 +1196,52 @@ DASHBOARD_HTML = r"""
                     </select>
                 </div>
                 <div class="setting-item">
+                    <label data-i18n="leverageMode">Leverage Mode</label>
+                    <select id="editBotLeverageMode">
+                        <option value="cross" data-i18n="crossMargin">Cross Margin</option>
+                        <option value="isolated" data-i18n="isolatedMargin">Isolated Margin</option>
+                    </select>
+                </div>
+                <div class="setting-item">
                     <label data-i18n="trailingStop">Trailing Stop</label>
-                    <select id="editBotTrailingEnabled">
+                    <select id="editBotTrailingEnabled" onchange="toggleTrailingOptions('edit')">
                         <option value="true" data-i18n="enabled">Enabled</option>
                         <option value="false" data-i18n="disabled">Disabled</option>
                     </select>
                 </div>
-                <div class="setting-item">
-                    <label data-i18n="trailingActivation">Trailing Activation (%)</label>
-                    <input type="number" id="editBotTrailingActivation" value="1.0" min="0.5" max="5" step="0.1">
+                <div id="editTrailingOptionsContainer">
+                    <div class="setting-item">
+                        <label data-i18n="trailingMode">Trailing Mode</label>
+                        <select id="editBotTrailingMode" onchange="toggleTrailingModeOptions('edit')">
+                            <option value="supertrend" data-i18n="superTrendBased">SuperTrend Based</option>
+                            <option value="percent" data-i18n="percentBased">Percent Based</option>
+                        </select>
+                    </div>
+                    <div class="setting-item">
+                        <label data-i18n="trailingActivation">Trailing Activation (%)</label>
+                        <input type="number" id="editBotTrailingActivation" value="1.0" min="0.1" max="10" step="0.1">
+                    </div>
+                    <div class="setting-item" id="editTrailingStepContainer" style="display: none;">
+                        <label data-i18n="trailingStep">Trailing Step (%)</label>
+                        <input type="number" id="editBotTrailingStep" value="0.5" min="0.1" max="5" step="0.1">
+                    </div>
                 </div>
                 <div class="setting-item">
-                    <label data-i18n="trailingStep">Trailing Step (%)</label>
-                    <input type="number" id="editBotTrailingStep" value="0.5" min="0.1" max="2" step="0.1">
+                    <label data-i18n="breakeven">Break-even</label>
+                    <select id="editBotBreakevenEnabled" onchange="toggleBreakevenOptions('edit')">
+                        <option value="false" data-i18n="disabled">Disabled</option>
+                        <option value="true" data-i18n="enabled">Enabled</option>
+                    </select>
+                </div>
+                <div id="editBreakevenOptionsContainer" style="display: none;">
+                    <div class="setting-item">
+                        <label data-i18n="breakevenActivation">Break-even Activation (%)</label>
+                        <input type="number" id="editBotBreakevenActivation" value="1.0" min="0.5" max="5" step="0.1">
+                    </div>
+                    <div class="setting-item">
+                        <label data-i18n="breakevenOffset">Break-even Offset (%)</label>
+                        <input type="number" id="editBotBreakevenOffset" value="0.1" min="0" max="1" step="0.05">
+                    </div>
                 </div>
             </div>
             <div class="settings-actions">
@@ -1198,8 +1302,24 @@ DASHBOARD_HTML = r"""
                 strict: 'Strict',
                 soft: 'Soft (50% size)',
                 trailingStop: 'Trailing Stop',
+                trailingMode: 'Trailing Mode',
                 trailingActivation: 'Trailing Activation (%)',
                 trailingStep: 'Trailing Step (%)',
+                superTrendBased: 'SuperTrend Based',
+                percentBased: 'Percent Based',
+                positionSizingMode: 'Position Sizing Mode',
+                fixedAmount: 'Fixed Amount',
+                riskPercent: 'Risk Percent',
+                kellyCriterion: 'Kelly Criterion',
+                tpMode: 'Take Profit Mode',
+                riskRatio: 'Risk:Reward Ratio',
+                tpPercent: 'Take Profit (%)',
+                leverageMode: 'Leverage Mode',
+                crossMargin: 'Cross Margin',
+                isolatedMargin: 'Isolated Margin',
+                breakeven: 'Break-even',
+                breakevenActivation: 'Break-even Activation (%)',
+                breakevenOffset: 'Break-even Offset (%)',
                 enabled: 'Enabled',
                 disabled: 'Disabled',
                 fixedPercent: 'Fixed Percent',
@@ -1284,8 +1404,24 @@ DASHBOARD_HTML = r"""
                 strict: 'Строгий',
                 soft: 'Мягкий (50% размер)',
                 trailingStop: 'Трейлинг-стоп',
+                trailingMode: 'Режим трейлинга',
                 trailingActivation: 'Активация трейлинга (%)',
                 trailingStep: 'Шаг трейлинга (%)',
+                superTrendBased: 'По SuperTrend',
+                percentBased: 'По проценту',
+                positionSizingMode: 'Режим размера позиции',
+                fixedAmount: 'Фикс. сумма',
+                riskPercent: 'Процент риска',
+                kellyCriterion: 'Критерий Келли',
+                tpMode: 'Режим Take Profit',
+                riskRatio: 'Соотношение R:R',
+                tpPercent: 'Take Profit (%)',
+                leverageMode: 'Режим маржи',
+                crossMargin: 'Кросс-маржа',
+                isolatedMargin: 'Изолир. маржа',
+                breakeven: 'Безубыток',
+                breakevenActivation: 'Активация безубытка (%)',
+                breakevenOffset: 'Отступ безубытка (%)',
                 enabled: 'Включен',
                 disabled: 'Выключен',
                 fixedPercent: 'Фикс. процент',
@@ -2232,6 +2368,56 @@ DASHBOARD_HTML = r"""
             atrContainer.style.display = slMode === 'atr' ? 'block' : 'none';
         }
 
+        // Toggle Position Sizing options based on selected mode
+        function togglePositionSizingOptions(prefix) {
+            const mode = document.getElementById(prefix + 'BotPositionSizingMode').value;
+            const riskContainer = document.getElementById(prefix + 'RiskPercentContainer');
+            const orderSizeItem = document.getElementById(prefix + 'BotOrderSize');
+
+            // Show order size for fixed_amount, hide for risk-based modes
+            if (orderSizeItem) {
+                orderSizeItem.parentElement.style.display = mode === 'fixed_amount' ? 'block' : 'none';
+            }
+            // Show risk percent for risk_percent and kelly modes
+            if (riskContainer) {
+                riskContainer.style.display = (mode === 'risk_percent' || mode === 'kelly') ? 'block' : 'none';
+            }
+        }
+
+        // Toggle TP options based on selected mode
+        function toggleTpOptions(prefix) {
+            const tpMode = document.getElementById(prefix + 'BotTpMode').value;
+            const ratioContainer = document.getElementById(prefix + 'TpRatioContainer');
+            const percentContainer = document.getElementById(prefix + 'TpPercentContainer');
+
+            if (ratioContainer) ratioContainer.style.display = tpMode === 'risk_ratio' ? 'block' : 'none';
+            if (percentContainer) percentContainer.style.display = tpMode === 'fixed_percent' ? 'block' : 'none';
+        }
+
+        // Toggle Trailing options based on enabled/disabled
+        function toggleTrailingOptions(prefix) {
+            const enabled = document.getElementById(prefix + 'BotTrailingEnabled').value === 'true';
+            const optionsContainer = document.getElementById(prefix + 'TrailingOptionsContainer');
+
+            if (optionsContainer) optionsContainer.style.display = enabled ? 'block' : 'none';
+        }
+
+        // Toggle Trailing Mode options (step only for percent mode)
+        function toggleTrailingModeOptions(prefix) {
+            const mode = document.getElementById(prefix + 'BotTrailingMode').value;
+            const stepContainer = document.getElementById(prefix + 'TrailingStepContainer');
+
+            if (stepContainer) stepContainer.style.display = mode === 'percent' ? 'block' : 'none';
+        }
+
+        // Toggle Break-even options based on enabled/disabled
+        function toggleBreakevenOptions(prefix) {
+            const enabled = document.getElementById(prefix + 'BotBreakevenEnabled').value === 'true';
+            const optionsContainer = document.getElementById(prefix + 'BreakevenOptionsContainer');
+
+            if (optionsContainer) optionsContainer.style.display = enabled ? 'block' : 'none';
+        }
+
         async function createBot() {
             const botMode = document.getElementById('newBotMode').value;
             const selectedPair = document.getElementById('newBotPair').value;
@@ -2243,9 +2429,13 @@ DASHBOARD_HTML = r"""
                 max_simultaneous_orders: parseInt(document.getElementById('newBotMaxOrders').value) || 3,
                 timeframe: document.getElementById('newBotTimeframe').value,
                 leverage: parseInt(document.getElementById('newBotLeverage').value),
+                leverage_mode: document.getElementById('newBotLeverageMode').value,
                 order_size: parseFloat(document.getElementById('newBotOrderSize').value),
+                position_sizing_mode: document.getElementById('newBotPositionSizingMode').value,
                 risk_per_trade: parseFloat(document.getElementById('newBotRisk').value),
+                tp_mode: document.getElementById('newBotTpMode').value,
                 tp_risk_ratio: parseFloat(document.getElementById('newBotTpRatio').value),
+                tp_fixed_percent: parseFloat(document.getElementById('newBotTpPercent').value),
                 sl_mode: slMode,
                 sl_supertrend_line: parseInt(document.getElementById('newBotSlLine').value),
                 sl_fixed_percent: parseFloat(document.getElementById('newBotSlPercent').value),
@@ -2254,8 +2444,12 @@ DASHBOARD_HTML = r"""
                 ema_enabled: document.getElementById('newBotEmaEnabled').value === 'true',
                 ema_filter_mode: document.getElementById('newBotEmaMode').value,
                 trailing_enabled: document.getElementById('newBotTrailingEnabled').value === 'true',
+                trailing_mode: document.getElementById('newBotTrailingMode').value,
                 trailing_activation: parseFloat(document.getElementById('newBotTrailingActivation').value),
                 trailing_step: parseFloat(document.getElementById('newBotTrailingStep').value),
+                breakeven_enabled: document.getElementById('newBotBreakevenEnabled').value === 'true',
+                breakeven_activation: parseFloat(document.getElementById('newBotBreakevenActivation').value),
+                breakeven_offset: parseFloat(document.getElementById('newBotBreakevenOffset').value),
             };
 
             try {
@@ -2355,9 +2549,13 @@ DASHBOARD_HTML = r"""
 
             // Then set values
             document.getElementById('editBotLeverage').value = bot.leverage;
+            document.getElementById('editBotLeverageMode').value = bot.leverage_mode || 'cross';
             document.getElementById('editBotOrderSize').value = bot.order_size || 100;
+            document.getElementById('editBotPositionSizingMode').value = bot.position_sizing_mode || 'fixed_amount';
             document.getElementById('editBotRisk').value = bot.risk_per_trade;
+            document.getElementById('editBotTpMode').value = bot.tp_mode || 'risk_ratio';
             document.getElementById('editBotTpRatio').value = bot.tp_risk_ratio;
+            document.getElementById('editBotTpPercent').value = bot.tp_fixed_percent || 4;
             document.getElementById('editBotSlMode').value = bot.sl_mode;
             document.getElementById('editBotSlLine').value = bot.sl_supertrend_line || 2;
             document.getElementById('editBotSlPercent').value = bot.sl_fixed_percent || 2;
@@ -2366,11 +2564,20 @@ DASHBOARD_HTML = r"""
             document.getElementById('editBotEmaEnabled').value = bot.ema_enabled ? 'true' : 'false';
             document.getElementById('editBotEmaMode').value = bot.ema_filter_mode || 'strict';
             document.getElementById('editBotTrailingEnabled').value = bot.trailing_enabled !== false ? 'true' : 'false';
+            document.getElementById('editBotTrailingMode').value = bot.trailing_mode || 'supertrend';
             document.getElementById('editBotTrailingActivation').value = bot.trailing_activation || 1.0;
             document.getElementById('editBotTrailingStep').value = bot.trailing_step || 0.5;
+            document.getElementById('editBotBreakevenEnabled').value = bot.breakeven_enabled ? 'true' : 'false';
+            document.getElementById('editBotBreakevenActivation').value = bot.breakeven_activation || 1.0;
+            document.getElementById('editBotBreakevenOffset').value = bot.breakeven_offset || 0.1;
 
-            // Toggle SL options visibility
+            // Toggle options visibility
             toggleSlOptions('edit');
+            togglePositionSizingOptions('edit');
+            toggleTpOptions('edit');
+            toggleTrailingOptions('edit');
+            toggleTrailingModeOptions('edit');
+            toggleBreakevenOptions('edit');
 
             // Update deposit info
             updateDepositInfo('edit');
@@ -2389,9 +2596,13 @@ DASHBOARD_HTML = r"""
                 max_simultaneous_orders: parseInt(document.getElementById('editBotMaxOrders').value) || 3,
                 timeframe: document.getElementById('editBotTimeframe').value,
                 leverage: parseInt(document.getElementById('editBotLeverage').value),
+                leverage_mode: document.getElementById('editBotLeverageMode').value,
                 order_size: parseFloat(document.getElementById('editBotOrderSize').value),
+                position_sizing_mode: document.getElementById('editBotPositionSizingMode').value,
                 risk_per_trade: parseFloat(document.getElementById('editBotRisk').value),
+                tp_mode: document.getElementById('editBotTpMode').value,
                 tp_risk_ratio: parseFloat(document.getElementById('editBotTpRatio').value),
+                tp_fixed_percent: parseFloat(document.getElementById('editBotTpPercent').value),
                 sl_mode: slMode,
                 sl_supertrend_line: parseInt(document.getElementById('editBotSlLine').value),
                 sl_fixed_percent: parseFloat(document.getElementById('editBotSlPercent').value),
@@ -2400,8 +2611,12 @@ DASHBOARD_HTML = r"""
                 ema_enabled: document.getElementById('editBotEmaEnabled').value === 'true',
                 ema_filter_mode: document.getElementById('editBotEmaMode').value,
                 trailing_enabled: document.getElementById('editBotTrailingEnabled').value === 'true',
+                trailing_mode: document.getElementById('editBotTrailingMode').value,
                 trailing_activation: parseFloat(document.getElementById('editBotTrailingActivation').value),
                 trailing_step: parseFloat(document.getElementById('editBotTrailingStep').value),
+                breakeven_enabled: document.getElementById('editBotBreakevenEnabled').value === 'true',
+                breakeven_activation: parseFloat(document.getElementById('editBotBreakevenActivation').value),
+                breakeven_offset: parseFloat(document.getElementById('editBotBreakevenOffset').value),
             };
 
             try {
@@ -3061,20 +3276,35 @@ async def create_bot(config: dict):
         "trading_pairs": config.get("trading_pairs", ["BTCUSDT"]),
         "max_simultaneous_orders": config.get("max_simultaneous_orders", 3),
         "timeframe": config.get("timeframe", "15m"),
+        # Position sizing
+        "position_sizing_mode": config.get("position_sizing_mode", "fixed_amount"),
         "risk_per_trade": config.get("risk_per_trade", 2.0),
+        "order_size": config.get("order_size", 100.0),
+        # Take profit
+        "tp_mode": config.get("tp_mode", "risk_ratio"),
         "tp_risk_ratio": config.get("tp_risk_ratio", 2.0),
+        "tp_fixed_percent": config.get("tp_fixed_percent", 4.0),
+        # Stop loss
         "sl_mode": config.get("sl_mode", "supertrend_line"),
         "sl_supertrend_line": config.get("sl_supertrend_line", 2),
         "sl_fixed_percent": config.get("sl_fixed_percent", 2.0),
         "sl_atr_multiplier": config.get("sl_atr_multiplier", 1.5),
+        # Leverage
         "leverage": config.get("leverage", 10),
-        "order_size": config.get("order_size", 100.0),
+        "leverage_mode": config.get("leverage_mode", "cross"),
         "max_positions": config.get("max_positions", 3),
+        # EMA filter
         "ema_enabled": config.get("ema_enabled", True),
         "ema_filter_mode": config.get("ema_filter_mode", "strict"),
+        # Trailing stop
         "trailing_enabled": config.get("trailing_enabled", True),
+        "trailing_mode": config.get("trailing_mode", "supertrend"),
         "trailing_activation": config.get("trailing_activation", 1.0),
         "trailing_step": config.get("trailing_step", 0.5),
+        # Break-even
+        "breakeven_enabled": config.get("breakeven_enabled", False),
+        "breakeven_activation": config.get("breakeven_activation", 1.0),
+        "breakeven_offset": config.get("breakeven_offset", 0.1),
         "status": "stopped",
         "created_at": datetime.now().isoformat(),
     }
@@ -3104,10 +3334,21 @@ async def update_bot(bot_id: str, config: dict):
         bot["max_simultaneous_orders"] = int(config["max_simultaneous_orders"])
     if "timeframe" in config:
         bot["timeframe"] = config["timeframe"]
+    # Position sizing
+    if "position_sizing_mode" in config:
+        bot["position_sizing_mode"] = config["position_sizing_mode"]
     if "risk_per_trade" in config:
         bot["risk_per_trade"] = float(config["risk_per_trade"])
+    if "order_size" in config:
+        bot["order_size"] = float(config["order_size"])
+    # Take profit
+    if "tp_mode" in config:
+        bot["tp_mode"] = config["tp_mode"]
     if "tp_risk_ratio" in config:
         bot["tp_risk_ratio"] = float(config["tp_risk_ratio"])
+    if "tp_fixed_percent" in config:
+        bot["tp_fixed_percent"] = float(config["tp_fixed_percent"])
+    # Stop loss
     if "sl_mode" in config:
         bot["sl_mode"] = config["sl_mode"]
     if "sl_supertrend_line" in config:
@@ -3116,22 +3357,34 @@ async def update_bot(bot_id: str, config: dict):
         bot["sl_fixed_percent"] = float(config["sl_fixed_percent"])
     if "sl_atr_multiplier" in config:
         bot["sl_atr_multiplier"] = float(config["sl_atr_multiplier"])
+    # Leverage
     if "leverage" in config:
         bot["leverage"] = int(config["leverage"])
-    if "order_size" in config:
-        bot["order_size"] = float(config["order_size"])
+    if "leverage_mode" in config:
+        bot["leverage_mode"] = config["leverage_mode"]
     if "max_positions" in config:
         bot["max_positions"] = int(config["max_positions"])
+    # EMA filter
     if "ema_enabled" in config:
         bot["ema_enabled"] = config["ema_enabled"]
     if "ema_filter_mode" in config:
         bot["ema_filter_mode"] = config["ema_filter_mode"]
+    # Trailing stop
     if "trailing_enabled" in config:
         bot["trailing_enabled"] = config["trailing_enabled"]
+    if "trailing_mode" in config:
+        bot["trailing_mode"] = config["trailing_mode"]
     if "trailing_activation" in config:
         bot["trailing_activation"] = float(config["trailing_activation"])
     if "trailing_step" in config:
         bot["trailing_step"] = float(config["trailing_step"])
+    # Break-even
+    if "breakeven_enabled" in config:
+        bot["breakeven_enabled"] = config["breakeven_enabled"]
+    if "breakeven_activation" in config:
+        bot["breakeven_activation"] = float(config["breakeven_activation"])
+    if "breakeven_offset" in config:
+        bot["breakeven_offset"] = float(config["breakeven_offset"])
 
     add_log(f"[info    ] Bot updated: {bot['name']} (ID: {bot_id})")
 
@@ -3185,20 +3438,35 @@ async def start_specific_bot(bot_id: str):
         runtime_settings["auto_search_active"] = False
 
     runtime_settings["timeframe"] = bot["timeframe"]
+    # Position sizing
+    runtime_settings["position_sizing_mode"] = bot.get("position_sizing_mode", "fixed_amount")
     runtime_settings["risk_per_trade"] = bot["risk_per_trade"]
+    runtime_settings["order_size"] = bot.get("order_size", 100.0)
+    # Take profit
+    runtime_settings["tp_mode"] = bot.get("tp_mode", "risk_ratio")
     runtime_settings["tp_risk_ratio"] = bot["tp_risk_ratio"]
+    runtime_settings["tp_fixed_percent"] = bot.get("tp_fixed_percent", 4.0)
+    # Stop loss
     runtime_settings["sl_mode"] = bot["sl_mode"]
     runtime_settings["sl_supertrend_line"] = bot.get("sl_supertrend_line", 2)
     runtime_settings["sl_fixed_percent"] = bot.get("sl_fixed_percent", 2.0)
     runtime_settings["sl_atr_multiplier"] = bot.get("sl_atr_multiplier", 1.5)
+    # Leverage
     runtime_settings["leverage"] = bot["leverage"]
-    runtime_settings["order_size"] = bot.get("order_size", 100.0)
+    runtime_settings["leverage_mode"] = bot.get("leverage_mode", "cross")
     runtime_settings["max_open_positions"] = bot["max_positions"]
+    # EMA filter
     runtime_settings["ema_enabled"] = bot["ema_enabled"]
     runtime_settings["ema_filter_mode"] = bot.get("ema_filter_mode", "strict")
+    # Trailing stop
     runtime_settings["trailing_enabled"] = bot.get("trailing_enabled", True)
+    runtime_settings["trailing_mode"] = bot.get("trailing_mode", "supertrend")
     runtime_settings["trailing_activation"] = bot.get("trailing_activation", 1.0)
     runtime_settings["trailing_step"] = bot.get("trailing_step", 0.5)
+    # Break-even
+    runtime_settings["breakeven_enabled"] = bot.get("breakeven_enabled", False)
+    runtime_settings["breakeven_activation"] = bot.get("breakeven_activation", 1.0)
+    runtime_settings["breakeven_offset"] = bot.get("breakeven_offset", 0.1)
 
     # Start the bot
     start_callback = bot_state.get("start_callback")

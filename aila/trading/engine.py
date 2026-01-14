@@ -45,10 +45,31 @@ class TradingEngineConfig:
     paper_trading: bool = False
     order_size: float = 100.0  # Fixed order size in USDT
 
+    # Position sizing
+    position_sizing_mode: str = "fixed_amount"  # fixed_amount | risk_percent | kelly
+    risk_per_trade: float = 2.0  # % of balance to risk (for risk_percent mode)
+
     # Safety
     max_daily_loss_percent: float = 5.0
+    max_weekly_loss_percent: float = 10.0
+    max_drawdown_percent: float = 15.0
+    min_balance_usdt: float = 100.0
     max_consecutive_losses: int = 3
     cooldown_after_loss_streak: int = 60  # minutes
+
+    # Trailing stop settings
+    trailing_enabled: bool = True
+    trailing_mode: str = "supertrend"  # supertrend | percent
+    trailing_activation: float = 1.0  # % profit to activate
+    trailing_step: float = 0.5  # % trailing step
+
+    # Break-even settings
+    breakeven_enabled: bool = False
+    breakeven_activation: float = 1.0  # % profit to move SL to entry
+    breakeven_offset: float = 0.1  # % above entry for buffer
+
+    # Leverage mode
+    leverage_mode: str = "cross"  # cross | isolated
 
     # Execution
     use_market_orders: bool = True
@@ -129,15 +150,23 @@ class TradingEngine:
         else:
             self.trader = SpotTrader(client)
 
-        # Risk management - use fixed_amount mode with order_size
+        # Risk management - use mode from config
         position_sizing_config = PositionSizingConfig(
-            mode="fixed_amount",
+            mode=self.config.position_sizing_mode,
             fixed_amount=Decimal(str(self.config.order_size)),
+            risk_per_trade=self.config.risk_per_trade,
             max_open_positions=strategy.config.max_open_positions,
         )
         self.position_sizer = PositionSizer(position_sizing_config)
         self.stop_loss_manager = StopLossManager()
         self.take_profit_manager = TakeProfitManager()
+
+        # Track highest/lowest prices for trailing stop
+        self._highest_prices: dict[str, float] = {}
+        self._lowest_prices: dict[str, float] = {}
+        self._initial_balance: Optional[Decimal] = None
+        self._week_start_balance: Optional[Decimal] = None
+        self._week_start_time: Optional[datetime] = None
 
         # State
         self.state = EngineState.STOPPED
@@ -173,6 +202,27 @@ class TradingEngine:
             if not self.client.is_connected:
                 if not self.client.connect():
                     raise Exception("Failed to connect to exchange")
+
+            # Initialize balances for safety checks
+            try:
+                balance = self.client.get_balance("USDT")
+                self._initial_balance = balance.total
+                self._week_start_balance = balance.total
+                self._week_start_time = datetime.utcnow()
+                logger.info("Initial balance recorded", balance=str(balance.total))
+            except Exception as e:
+                logger.warning("Could not get initial balance", error=str(e))
+                self._initial_balance = None
+
+            # Set margin mode if using futures
+            if isinstance(self.trader, FuturesTrader) and hasattr(self.client, 'set_margin_mode'):
+                try:
+                    from ..exchange.models import MarginMode
+                    margin_mode = MarginMode(self.config.leverage_mode)
+                    # Note: margin mode is usually set per-symbol on first trade
+                    logger.info("Leverage mode configured", mode=self.config.leverage_mode)
+                except Exception as e:
+                    logger.warning("Could not set margin mode", error=str(e))
 
             # Initialize state
             self.stats = EngineStats(start_time=datetime.utcnow())
@@ -454,7 +504,7 @@ class TradingEngine:
             await self._close_position(symbol, reason="engine_stop")
 
     async def _position_monitoring_loop(self) -> None:
-        """Monitor positions for SL/TP updates based on SuperTrend line."""
+        """Monitor positions for SL/TP updates based on trailing mode settings."""
         # Track last candle close time for each symbol
         last_candle_time: dict[str, datetime] = {}
 
@@ -462,70 +512,117 @@ class TradingEngine:
             try:
                 for symbol, position_data in list(self._active_positions.items()):
                     try:
-                        # Get candle data to check for new closed candle
-                        df = self.client.get_klines(
-                            symbol=symbol,
-                            interval=self._timeframe_to_interval(self.strategy.timeframe),
-                            limit=250,
-                        )
-
-                        if df.empty or len(df) < 50:
+                        # Get current price
+                        ticker = self.client.get_ticker(symbol)
+                        if not ticker:
                             continue
+                        current_price = float(ticker.last_price)
 
-                        # Get the last closed candle time (second to last row, as last is still forming)
-                        current_candle_time = df.index[-2] if len(df) > 1 else df.index[-1]
-
-                        # Check if a new candle has closed
-                        prev_candle_time = last_candle_time.get(symbol)
-                        if prev_candle_time is not None and current_candle_time <= prev_candle_time:
-                            # No new candle closed, skip
-                            continue
-
-                        # Update last candle time
-                        last_candle_time[symbol] = current_candle_time
-
-                        # Calculate SuperTrend indicators
-                        indicators = self.strategy.calculate_indicators(df)
-                        triple_st = indicators.get("triple_supertrend")
-
-                        if not triple_st:
-                            continue
-
-                        # Get the SL SuperTrend line value based on settings
-                        sl_line = self.strategy.config.sl_supertrend_line
-                        line_map = {
-                            1: triple_st.st1.supertrend,
-                            2: triple_st.st2.supertrend,
-                            3: triple_st.st3.supertrend,
-                        }
-                        st_line = line_map.get(sl_line, triple_st.st2.supertrend)
-                        new_sl_price = float(st_line.iloc[-2])  # Use closed candle value
-
+                        entry_price = position_data["entry_price"]
                         current_sl = position_data.get("stop_loss", 0)
                         side = position_data["side"]
 
-                        # Only move SL in profit direction (trailing stop behavior)
-                        should_update = False
+                        # Track highest/lowest prices for trailing
                         if side == "long":
-                            # For long: only move SL up (higher)
-                            if new_sl_price > current_sl:
-                                should_update = True
+                            if symbol not in self._highest_prices or current_price > self._highest_prices[symbol]:
+                                self._highest_prices[symbol] = current_price
                         else:
-                            # For short: only move SL down (lower)
-                            if new_sl_price < current_sl or current_sl == 0:
-                                should_update = True
+                            if symbol not in self._lowest_prices or current_price < self._lowest_prices[symbol]:
+                                self._lowest_prices[symbol] = current_price
 
-                        if should_update:
+                        # Calculate profit percentage
+                        if side == "long":
+                            profit_percent = (current_price - entry_price) / entry_price * 100
+                        else:
+                            profit_percent = (entry_price - current_price) / entry_price * 100
+
+                        new_sl_price = current_sl
+                        update_reason = ""
+
+                        # Check break-even first (if enabled)
+                        if self.config.breakeven_enabled and not position_data.get("breakeven_applied"):
+                            if profit_percent >= self.config.breakeven_activation:
+                                # Move SL to break-even + offset
+                                offset = entry_price * (self.config.breakeven_offset / 100)
+                                if side == "long":
+                                    breakeven_sl = entry_price + offset
+                                    if breakeven_sl > current_sl:
+                                        new_sl_price = breakeven_sl
+                                        update_reason = "break-even"
+                                        position_data["breakeven_applied"] = True
+                                else:
+                                    breakeven_sl = entry_price - offset
+                                    if breakeven_sl < current_sl or current_sl == 0:
+                                        new_sl_price = breakeven_sl
+                                        update_reason = "break-even"
+                                        position_data["breakeven_applied"] = True
+
+                        # Then check trailing stop (if enabled and profit meets activation)
+                        if self.config.trailing_enabled and profit_percent >= self.config.trailing_activation:
+                            if self.config.trailing_mode == "supertrend":
+                                # SuperTrend-based trailing - check on new candle close
+                                df = self.client.get_klines(
+                                    symbol=symbol,
+                                    interval=self._timeframe_to_interval(self.strategy.timeframe),
+                                    limit=250,
+                                )
+
+                                if not df.empty and len(df) >= 50:
+                                    current_candle_time = df.index[-2] if len(df) > 1 else df.index[-1]
+                                    prev_candle_time = last_candle_time.get(symbol)
+
+                                    if prev_candle_time is None or current_candle_time > prev_candle_time:
+                                        last_candle_time[symbol] = current_candle_time
+
+                                        indicators = self.strategy.calculate_indicators(df)
+                                        triple_st = indicators.get("triple_supertrend")
+
+                                        if triple_st:
+                                            sl_line = self.strategy.config.sl_supertrend_line
+                                            line_map = {
+                                                1: triple_st.st1.supertrend,
+                                                2: triple_st.st2.supertrend,
+                                                3: triple_st.st3.supertrend,
+                                            }
+                                            st_line = line_map.get(sl_line, triple_st.st2.supertrend)
+                                            st_sl_price = float(st_line.iloc[-2])
+
+                                            if side == "long" and st_sl_price > new_sl_price:
+                                                new_sl_price = st_sl_price
+                                                update_reason = f"trailing SuperTrend line {sl_line}"
+                                            elif side == "short" and (st_sl_price < new_sl_price or new_sl_price == 0):
+                                                new_sl_price = st_sl_price
+                                                update_reason = f"trailing SuperTrend line {sl_line}"
+
+                            elif self.config.trailing_mode == "percent":
+                                # Percentage-based trailing
+                                trailing_distance = self.config.trailing_step / 100
+
+                                if side == "long":
+                                    reference_price = self._highest_prices.get(symbol, current_price)
+                                    potential_sl = reference_price * (1 - trailing_distance)
+                                    if potential_sl > new_sl_price:
+                                        new_sl_price = potential_sl
+                                        update_reason = f"trailing {self.config.trailing_step}%"
+                                else:
+                                    reference_price = self._lowest_prices.get(symbol, current_price)
+                                    potential_sl = reference_price * (1 + trailing_distance)
+                                    if potential_sl < new_sl_price or new_sl_price == 0:
+                                        new_sl_price = potential_sl
+                                        update_reason = f"trailing {self.config.trailing_step}%"
+
+                        # Update SL if changed
+                        if new_sl_price != current_sl and update_reason:
                             logger.info(
-                                "Updating SL to SuperTrend line",
+                                "Updating stop-loss",
                                 symbol=symbol,
                                 side=side,
+                                reason=update_reason,
                                 old_sl=current_sl,
                                 new_sl=new_sl_price,
-                                st_line=sl_line,
+                                profit_percent=round(profit_percent, 2),
                             )
 
-                            # Update on exchange if not paper trading
                             if not self.config.paper_trading:
                                 if isinstance(self.trader, FuturesTrader):
                                     try:
@@ -533,7 +630,6 @@ class TradingEngine:
                                     except Exception as e:
                                         logger.error("Failed to update SL on exchange", error=str(e))
 
-                            # Update local position data
                             position_data["stop_loss"] = new_sl_price
 
                     except Exception as e:
@@ -556,13 +652,76 @@ class TradingEngine:
                     minutes=self.config.cooldown_after_loss_streak
                 )
                 if datetime.utcnow() < cooldown_end:
+                    logger.warning(
+                        "Trading paused - consecutive losses cooldown",
+                        losses=self.stats.consecutive_losses,
+                        cooldown_end=cooldown_end.isoformat(),
+                    )
                     return False
                 else:
                     self.stats.consecutive_losses = 0
 
         # Check daily loss limit
         if float(self.stats.daily_pnl) <= -self.config.max_daily_loss_percent:
+            logger.warning(
+                "Trading paused - daily loss limit reached",
+                daily_pnl=float(self.stats.daily_pnl),
+                limit=self.config.max_daily_loss_percent,
+            )
             return False
+
+        # Check weekly loss limit
+        if self._week_start_balance is not None:
+            try:
+                current_balance = self.client.get_balance("USDT").total
+                weekly_pnl_percent = float((current_balance - self._week_start_balance) / self._week_start_balance * 100)
+
+                # Reset weekly tracking if new week started
+                if self._week_start_time:
+                    days_since_start = (datetime.utcnow() - self._week_start_time).days
+                    if days_since_start >= 7:
+                        self._week_start_balance = current_balance
+                        self._week_start_time = datetime.utcnow()
+                        weekly_pnl_percent = 0.0
+
+                if weekly_pnl_percent <= -self.config.max_weekly_loss_percent:
+                    logger.warning(
+                        "Trading paused - weekly loss limit reached",
+                        weekly_pnl=weekly_pnl_percent,
+                        limit=self.config.max_weekly_loss_percent,
+                    )
+                    return False
+            except Exception:
+                pass  # Continue if can't check
+
+        # Check max drawdown from initial balance
+        if self._initial_balance is not None:
+            try:
+                current_balance = self.client.get_balance("USDT").total
+                drawdown_percent = float((self._initial_balance - current_balance) / self._initial_balance * 100)
+
+                if drawdown_percent >= self.config.max_drawdown_percent:
+                    logger.warning(
+                        "Trading paused - max drawdown reached",
+                        drawdown=drawdown_percent,
+                        limit=self.config.max_drawdown_percent,
+                    )
+                    return False
+            except Exception:
+                pass  # Continue if can't check
+
+        # Check minimum balance
+        try:
+            current_balance = self.client.get_balance("USDT").available
+            if float(current_balance) < self.config.min_balance_usdt:
+                logger.warning(
+                    "Trading paused - below minimum balance",
+                    balance=float(current_balance),
+                    min_required=self.config.min_balance_usdt,
+                )
+                return False
+        except Exception:
+            pass  # Continue if can't check
 
         return True
 
