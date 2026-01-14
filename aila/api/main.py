@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -80,7 +80,10 @@ DASHBOARD_HTML = r"""
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AILA Trading Bot</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>AILA Trading Bot v2.1</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         * {
@@ -3128,7 +3131,15 @@ DASHBOARD_HTML = r"""
 @app.get("/", response_class=HTMLResponse)
 async def dashboard():
     """Serve the main dashboard."""
-    return DASHBOARD_HTML
+    return Response(
+        content=DASHBOARD_HTML,
+        media_type="text/html",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        }
+    )
 
 
 @app.get("/api/stats")
