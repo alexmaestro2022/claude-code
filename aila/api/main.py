@@ -1356,7 +1356,7 @@ DASHBOARD_HTML = r"""
                         </select>
                     </div>
                 </div>
-                <div class="settings-row" id="newPairContainer">
+                <div class="settings-row" id="newPairContainer" style="display: none;">
                     <div class="setting-compact" style="position: relative;">
                         <label data-i18n="tradingPair">Trading Pair</label>
                         <input type="text" id="newBotPairSearch" placeholder="BTCUSDT" oninput="filterTradingPairs('new')" onfocus="showPairDropdown('new')" autocomplete="off">
@@ -1364,7 +1364,7 @@ DASHBOARD_HTML = r"""
                         <input type="hidden" id="newBotPair" value="BTCUSDT">
                     </div>
                 </div>
-                <div class="settings-row" id="newMaxPairsContainer" style="display: none;">
+                <div class="settings-row" id="newMaxPairsContainer">
                     <div class="setting-compact">
                         <label data-i18n="maxTradingPairs">Max Trading Pairs</label>
                         <input type="number" id="newBotMaxPairs" value="1" min="1" max="20">
@@ -1697,7 +1697,7 @@ DASHBOARD_HTML = r"""
             </div>
 
             <!-- Asset Filters (only for auto mode) -->
-            <div id="newAssetFiltersContainer" style="display: none;">
+            <div id="newAssetFiltersContainer">
                 <div class="settings-block block-auto">
                     <div class="block-header">
                         <h4><span class="icon">🔍</span> <span data-i18n="assetFilters">Asset Filters</span></h4>
