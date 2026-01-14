@@ -5337,7 +5337,8 @@ async def create_bot(config: dict):
         "name": config.get("name", f"Bot {len(bots_registry) + 1}"),
         "bot_mode": config.get("bot_mode", "manual"),
         "trading_pairs": config.get("trading_pairs", ["BTCUSDT"]),
-        "max_simultaneous_orders": config.get("max_simultaneous_orders", 3),
+        # max_trading_pairs from JS maps to max_simultaneous_orders
+        "max_simultaneous_orders": config.get("max_trading_pairs", config.get("max_simultaneous_orders", 1)),
         "timeframe": config.get("timeframe", "15m"),
         "risk_per_trade": config.get("risk_per_trade", 2.0),
         "tp_risk_ratio": config.get("tp_risk_ratio", 2.0),
@@ -5413,7 +5414,10 @@ async def update_bot(bot_id: str, config: dict):
         bot["bot_mode"] = config["bot_mode"]
     if "trading_pairs" in config:
         bot["trading_pairs"] = config["trading_pairs"]
-    if "max_simultaneous_orders" in config:
+    # max_trading_pairs from JS maps to max_simultaneous_orders
+    if "max_trading_pairs" in config:
+        bot["max_simultaneous_orders"] = int(config["max_trading_pairs"])
+    elif "max_simultaneous_orders" in config:
         bot["max_simultaneous_orders"] = int(config["max_simultaneous_orders"])
     if "timeframe" in config:
         bot["timeframe"] = config["timeframe"]
@@ -5551,7 +5555,7 @@ async def start_specific_bot(bot_id: str):
     bot_settings = {}
 
     bot_settings["bot_mode"] = bot.get("bot_mode", "manual")
-    bot_settings["max_simultaneous_orders"] = bot.get("max_simultaneous_orders", 3)
+    bot_settings["max_simultaneous_orders"] = bot.get("max_simultaneous_orders", 1)
 
     # For auto_search mode, get all trading pairs
     if bot.get("bot_mode") == "auto_search":
@@ -5808,7 +5812,7 @@ async def resume_specific_bot(bot_id: str):
     # Update per-bot settings from bot config
     bot_settings = bot_runtime_settings.get(bot_id, {})
     bot_settings["bot_mode"] = bot.get("bot_mode", "manual")
-    bot_settings["max_simultaneous_orders"] = bot.get("max_simultaneous_orders", 3)
+    bot_settings["max_simultaneous_orders"] = bot.get("max_simultaneous_orders", 1)
     bot_settings["timeframe"] = bot["timeframe"]
     bot_settings["risk_per_trade"] = bot["risk_per_trade"]
     bot_settings["tp_risk_ratio"] = bot["tp_risk_ratio"]

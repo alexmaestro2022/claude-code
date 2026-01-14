@@ -119,7 +119,7 @@ def create_strategy_config() -> TripleSuperTrendConfig:
     # For auto_search mode, use max_simultaneous_orders as max_open_positions
     max_positions = runtime_settings.get("max_open_positions", settings.risk.max_open_positions)
     if runtime_settings.get("auto_search_active"):
-        max_positions = runtime_settings.get("max_simultaneous_orders", 3)
+        max_positions = runtime_settings.get("max_simultaneous_orders", 1)
 
     return TripleSuperTrendConfig(
         st1_period=settings.strategy.st1_period,
@@ -192,7 +192,7 @@ def create_strategy_config_for_bot(bot_id: str) -> TripleSuperTrendConfig:
     # For auto_search mode, use max_simultaneous_orders as max_open_positions
     max_positions = bot_settings.get("max_open_positions", settings.risk.max_open_positions)
     if bot_settings.get("auto_search_active"):
-        max_positions = bot_settings.get("max_simultaneous_orders", 3)
+        max_positions = bot_settings.get("max_simultaneous_orders", 1)
 
     return TripleSuperTrendConfig(
         st1_period=settings.strategy.st1_period,
@@ -279,7 +279,7 @@ async def start_trading_for_bot(bot_id: str):
     auto_search = bot_settings.get("auto_search_active", False)
 
     if auto_search:
-        max_orders = bot_settings.get("max_simultaneous_orders", 3)
+        max_orders = bot_settings.get("max_simultaneous_orders", 1)
         add_log(f"[info    ] [{bot_name}] Mode: AUTO SEARCH - {len(pairs)} pairs, max orders={max_orders}")
     else:
         add_log(f"[info    ] [{bot_name}] Mode: MANUAL - {len(pairs)} pairs")
@@ -605,7 +605,7 @@ async def start_trading():
     auto_search = runtime_settings.get("auto_search_active", False)
 
     if auto_search:
-        max_orders = runtime_settings.get("max_simultaneous_orders", 3)
+        max_orders = runtime_settings.get("max_simultaneous_orders", 1)
         add_log(f"[info    ] {get_log_message('mode_auto', pairs=len(pairs), max_orders=max_orders)}")
     else:
         add_log(f"[info    ] {get_log_message('mode_manual', pairs=len(pairs))}")
@@ -772,7 +772,7 @@ def update_engine_settings():
 
     # Update strategy config with new settings
     if runtime_settings.get("auto_search_active"):
-        max_positions = runtime_settings.get("max_simultaneous_orders", 3)
+        max_positions = runtime_settings.get("max_simultaneous_orders", 1)
     else:
         max_positions = runtime_settings.get("max_open_positions", 1)
 
