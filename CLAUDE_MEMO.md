@@ -320,7 +320,7 @@ return Response(
 - Position Sizing Mode (fixed_amount / risk_percent / kelly)
 - Margin Mode (cross / isolated)
 - Фильтры авто-торговли (Vol 24h, Price, Change %, Volatility)
-- Ранний вход (вход в начале тренда)
+- **Signal Entry** - гибкая конфигурация ролей ST линий (off/confirm/trigger)
 - Trailing SL, Partial TP, Trailing TP
 - Multi-bot архитектура (до 10 ботов)
 
@@ -434,6 +434,28 @@ WEB_PORT=8080
 
 > При конфликте информации - использовать ПОСЛЕДНЮЮ запись!
 
+### 2026-01-14 (сессия 4XrKU) - SIGNAL ENTRY FEATURE
+
+#### SIGNAL ENTRY - НОВАЯ СИСТЕМА СИГНАЛОВ:
+- **[ДОБАВЛЕНО]** Signal Entry блок в UI с конфигурацией ролей ST линий:
+  - ST1 (Slow), ST2 (Medium), ST3 (Fast) - каждая с dropdown
+  - Роли: ❌ Выкл (off), 🟢 Подтв (confirm), 🎯 Триггер (trigger)
+  - Только ОДИН триггер разрешён
+  - Подтверждение триггера свечами (1-3)
+- **[УДАЛЕНО]** early_entry_enabled - заменено на гибкую систему ролей
+- **[ЛОГИКА]** Генерация сигнала:
+  - Триггер: линия должна "только что развернуться" (prev != target, curr == target)
+  - Подтверждение: линии должны УЖЕ быть в направлении (prev == target)
+  - EMA фильтр работает ПОСЛЕ определения сигнала (strict/soft)
+- **[ПО УМОЛЧАНИЮ]** ST1=confirm, ST2=confirm, ST3=trigger (как старый early_entry)
+
+#### Файлы изменённые:
+- `aila/api/main.py` - UI блок Signal Entry, CSS, JS, endpoints
+- `aila/core/strategy/triple_supertrend.py` - новые поля в config + логика сигнала
+- `aila/scripts/run_web.py` - передача st1_role, st2_role, st3_role, trigger_confirm_candles
+
+---
+
 ### 2026-01-14 (сессия 4XrKU) - ПРОДОЛЖЕНИЕ
 
 #### UI ИЗМЕНЕНИЯ:
@@ -526,6 +548,7 @@ WEB_PORT=8080
 ---
 
 **Последнее обновление:** 2026-01-14
-**Текущая версия UI:** v2.2
+**Текущая версия UI:** v2.3
 **Последняя сессия:** claude/start-new-session-4XrKU
+**Signal Entry:** Новая гибкая система ролей ST линий (заменила early_entry)
 **Breakeven:** УДАЛЁН (использовать Partial TP с mode="entry")
