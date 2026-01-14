@@ -581,6 +581,42 @@ DASHBOARD_HTML = r"""
             50% { opacity: 0.5; }
         }
 
+        /* Blinking status indicator */
+        @keyframes blink {
+            0%, 100% { opacity: 1; box-shadow: 0 0 8px currentColor; }
+            50% { opacity: 0.4; box-shadow: 0 0 2px currentColor; }
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+            animation: blink 1s infinite;
+        }
+
+        .status-indicator.running {
+            background: #00ff88;
+            color: #00ff88;
+        }
+
+        .status-indicator.paused {
+            background: #ffcc00;
+            color: #ffcc00;
+        }
+
+        .status-indicator.error, .status-indicator.stopping {
+            background: #ff4444;
+            color: #ff4444;
+        }
+
+        .status-indicator.stopped, .status-indicator.starting {
+            background: #888;
+            color: #888;
+            animation: none;
+        }
+
         .bot-card.processing {
             opacity: 0.8;
             pointer-events: none;
@@ -3667,10 +3703,24 @@ DASHBOARD_HTML = r"""
                 const trailingTp = bot.trailing_tp_enabled ? (bot.trailing_tp_mode === 'st_line' ? `ST${bot.trailing_tp_st_line || 1}` : `${bot.trailing_tp_activation}%`) : '✗';
                 const partialTp = bot.partial_tp_enabled ? `${bot.partial_tp_close_percent}%` : '✗';
 
+                // PnL color: green if positive, red if negative, white if zero
+                const pnlColor = totalPnl > 0 ? '#00ff88' : (totalPnl < 0 ? '#ff4444' : '#ffffff');
+
+                // Calculate PnL percentage (based on initial balance or order_size * leverage as estimate)
+                const initialBalance = bot.initial_balance || (bot.order_size * (bot.leverage || 10));
+                const pnlPercent = initialBalance > 0 ? (totalPnl / initialBalance * 100) : 0;
+                const pnlPercentSign = pnlPercent >= 0 ? '+' : '';
+
+                // Status indicator class
+                const indicatorClass = bot.status === 'error' ? 'error' : bot.status;
+
                 return `
                 <div class="bot-card ${bot.status === 'running' ? 'running' : ''} ${bot.status === 'starting' || bot.status === 'stopping' ? 'processing' : ''}" style="min-width: 380px;" data-bot-id="${bot.id}">
                     <div class="bot-header">
-                        <span class="bot-name">${bot.name}</span>
+                        <div style="display: flex; align-items: center;">
+                            <span class="status-indicator ${indicatorClass}"></span>
+                            <span class="bot-name">${bot.name}</span>
+                        </div>
                         <span class="bot-status ${bot.status}">${
                             bot.status === 'running' ? t('running') :
                             bot.status === 'paused' ? t('paused') :
@@ -3693,12 +3743,14 @@ DASHBOARD_HTML = r"""
                                 <div style="font-size: 20px; font-weight: bold; color: #00d4ff;">${openCount}</div>
                                 <div style="font-size: 10px; color: #888;">Open</div>
                             </div>
-                            <div style="text-align: center; flex: 1;">
-                                <div style="font-size: 20px; font-weight: bold;" class="${pnlClass}">${pnlSign}${totalPnl.toFixed(2)}</div>
-                                <div style="font-size: 10px; color: #888;">PnL USDT</div>
+                            <div style="text-align: center; flex: 1.5;">
+                                <div style="font-size: 18px; font-weight: bold; color: ${pnlColor};">
+                                    ${pnlSign}${totalPnl.toFixed(2)} <span style="font-size: 12px;">(${pnlPercentSign}${pnlPercent.toFixed(2)}%)</span>
+                                </div>
+                                <div style="font-size: 10px; color: #888;">PnL</div>
                             </div>
                             <div style="text-align: center; flex: 1;">
-                                <div style="font-size: 20px; font-weight: bold; color: ${winRate >= 50 ? '#00ff88' : '#ff4444'};">${winRate.toFixed(0)}%</div>
+                                <div style="font-size: 20px; font-weight: bold; color: ${winRate >= 50 ? '#00ff88' : (winRate > 0 ? '#ff4444' : '#888')};">${winRate.toFixed(0)}%</div>
                                 <div style="font-size: 10px; color: #888;">Win Rate</div>
                             </div>
                             <div style="text-align: center; flex: 1;">
