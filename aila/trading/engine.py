@@ -36,9 +36,10 @@ class EngineState(Enum):
 class TradingEngineConfig:
     """Configuration for trading engine."""
 
-    # Update intervals
+    # Update intervals (optimized for Bybit 600 req/5s limit)
     candle_update_interval: int = 60  # seconds
-    position_check_interval: int = 10  # seconds
+    position_check_interval: int = 1  # seconds - ultra fast position monitoring
+    scan_interval: int = 1  # seconds between scans - ultra fast (safe for <50 pairs)
 
     # Trading settings
     auto_start: bool = False
@@ -47,29 +48,23 @@ class TradingEngineConfig:
 
     # Position sizing
     position_sizing_mode: str = "fixed_amount"  # fixed_amount | risk_percent | kelly
-    risk_per_trade: float = 2.0  # % of balance to risk (for risk_percent mode)
+    risk_per_trade: float = 2.0  # % of balance to risk per trade (for risk_percent mode)
 
     # Safety
     max_daily_loss_percent: float = 5.0
-    max_weekly_loss_percent: float = 10.0
-    max_drawdown_percent: float = 15.0
-    min_balance_usdt: float = 100.0
+    max_weekly_loss_percent: float = 15.0  # Weekly loss limit
+    max_drawdown_percent: float = 20.0  # Max drawdown from peak
+    min_balance_usdt: float = 10.0  # Minimum balance to continue trading
     max_consecutive_losses: int = 3
     cooldown_after_loss_streak: int = 60  # minutes
 
-    # Trailing stop settings
-    trailing_enabled: bool = True
-    trailing_mode: str = "supertrend"  # supertrend | percent
-    trailing_activation: float = 1.0  # % profit to activate
-    trailing_step: float = 0.5  # % trailing step
-
     # Break-even settings
     breakeven_enabled: bool = False
-    breakeven_activation: float = 1.0  # % profit to move SL to entry
-    breakeven_offset: float = 0.1  # % above entry for buffer
+    breakeven_activation: float = 1.0  # % profit to activate break-even
+    breakeven_offset: float = 0.1  # % offset above entry for break-even SL
 
-    # Leverage mode
-    leverage_mode: str = "cross"  # cross | isolated
+    # Margin mode
+    margin_mode: str = "cross"  # cross | isolated
 
     # Execution
     use_market_orders: bool = True
@@ -146,6 +141,7 @@ class TradingEngine:
             self.trader = FuturesTrader(
                 client,
                 default_leverage=client.config.default_leverage,
+                margin_mode=self.config.margin_mode,
             )
         else:
             self.trader = SpotTrader(client)
@@ -161,18 +157,14 @@ class TradingEngine:
         self.stop_loss_manager = StopLossManager()
         self.take_profit_manager = TakeProfitManager()
 
-        # Track highest/lowest prices for trailing stop
-        self._highest_prices: dict[str, float] = {}
-        self._lowest_prices: dict[str, float] = {}
-        self._initial_balance: Optional[Decimal] = None
-        self._week_start_balance: Optional[Decimal] = None
-        self._week_start_time: Optional[datetime] = None
-
         # State
         self.state = EngineState.STOPPED
         self.stats = EngineStats()
         self._active_positions: dict[str, dict] = {}
         self._pending_signals: dict[str, Signal] = {}
+
+        # API-centric position tracking
+        self._last_api_positions: dict[str, dict] = {}  # symbol -> position data from API
 
         # Tasks
         self._main_task: Optional[asyncio.Task] = None
@@ -182,6 +174,12 @@ class TradingEngine:
         self._on_signal_callbacks: list[Callable] = []
         self._on_trade_callbacks: list[Callable] = []
         self._on_error_callbacks: list[Callable] = []
+
+        # Pause flag - when True, skip scanning but keep monitoring positions
+        self.paused = False
+
+        # Stop flag - when True, all tasks should exit immediately
+        self._stop_requested = False
 
     async def start(self) -> bool:
         """
@@ -194,6 +192,8 @@ class TradingEngine:
             logger.warning("Engine already running", state=self.state.value)
             return False
 
+        # Reset stop flag before starting
+        self._stop_requested = False
         self.state = EngineState.STARTING
         logger.info("Starting trading engine")
 
@@ -203,29 +203,11 @@ class TradingEngine:
                 if not self.client.connect():
                     raise Exception("Failed to connect to exchange")
 
-            # Initialize balances for safety checks
-            try:
-                balance = self.client.get_balance("USDT")
-                self._initial_balance = balance.total
-                self._week_start_balance = balance.total
-                self._week_start_time = datetime.utcnow()
-                logger.info("Initial balance recorded", balance=str(balance.total))
-            except Exception as e:
-                logger.warning("Could not get initial balance", error=str(e))
-                self._initial_balance = None
-
-            # Set margin mode if using futures
-            if isinstance(self.trader, FuturesTrader) and hasattr(self.client, 'set_margin_mode'):
-                try:
-                    from ..exchange.models import MarginMode
-                    margin_mode = MarginMode(self.config.leverage_mode)
-                    # Note: margin mode is usually set per-symbol on first trade
-                    logger.info("Leverage mode configured", mode=self.config.leverage_mode)
-                except Exception as e:
-                    logger.warning("Could not set margin mode", error=str(e))
-
             # Initialize state
             self.stats = EngineStats(start_time=datetime.utcnow())
+
+            # Sync existing positions from API at startup
+            await self._sync_positions_from_api()
 
             # Start main loop
             self._main_task = asyncio.create_task(self._main_loop())
@@ -251,47 +233,112 @@ class TradingEngine:
         if self.state == EngineState.STOPPED:
             return
 
+        # Set stop flag FIRST - this makes loops exit immediately
+        self._stop_requested = True
         self.state = EngineState.STOPPING
-        logger.info("Stopping trading engine")
+        logger.info("Stopping trading engine - stop_requested=True")
 
         # Close positions if requested
         if close_positions:
             await self._close_all_positions()
 
-        # Cancel tasks
-        if self._main_task:
+        # Cancel tasks with proper timeout (no shield - we want them to actually cancel!)
+        if self._main_task and not self._main_task.done():
             self._main_task.cancel()
             try:
-                await self._main_task
-            except asyncio.CancelledError:
+                await asyncio.wait_for(self._main_task, timeout=3.0)
+            except (asyncio.CancelledError, asyncio.TimeoutError):
+                logger.warning("Main task cancel timeout - forcing")
+            except Exception:
                 pass
 
-        if self._position_task:
+        if self._position_task and not self._position_task.done():
             self._position_task.cancel()
             try:
-                await self._position_task
-            except asyncio.CancelledError:
+                await asyncio.wait_for(self._position_task, timeout=3.0)
+            except (asyncio.CancelledError, asyncio.TimeoutError):
+                logger.warning("Position task cancel timeout - forcing")
+            except Exception:
                 pass
 
+        # Clear active positions tracking
+        self._active_positions.clear()
+
         self.state = EngineState.STOPPED
+        self._stop_requested = False  # Reset for next start
         logger.info("Trading engine stopped", stats=self.stats)
 
     async def _main_loop(self) -> None:
-        """Main trading loop."""
-        while self.state == EngineState.RUNNING:
+        """Main trading loop with smart scanning."""
+        scan_count = 0
+        while self.state == EngineState.RUNNING and not self._stop_requested:
             try:
+                # Check stop flag at start of each iteration
+                if self._stop_requested:
+                    logger.info("Main loop: stop requested, exiting")
+                    break
+
+                # Check if paused - skip scanning but continue loop for position monitoring
+                if self.paused:
+                    await asyncio.sleep(1)
+                    continue
+
+                # Check if we need to scan (not at max positions)
+                max_positions = self.strategy.config.max_open_positions
+                current_positions = len(self._active_positions)
+
+                if current_positions >= max_positions:
+                    # Max positions reached - check for closed positions and wait
+                    await self._check_closed_positions()
+                    await asyncio.sleep(3)  # Check every 3 seconds if position closed
+                    continue
+
+                scan_count += 1
+
                 # Check safety limits
                 if not self._check_safety_limits():
                     logger.warning("Safety limits triggered, pausing trading")
                     await asyncio.sleep(60)
                     continue
 
-                # Process each trading pair
-                for symbol in self.strategy.trading_pairs:
-                    await self._process_symbol(symbol)
+                # Log scan start (with localization)
+                pairs_count = len(self.strategy.trading_pairs)
+                try:
+                    from ..api.main import get_log_message
+                    scan_msg = get_log_message("scanning_pairs", count=pairs_count)
+                except Exception:
+                    scan_msg = f"Scanning {pairs_count} pairs..."
+                logger.info(scan_msg, scan=scan_count, pairs=pairs_count, positions=current_positions)
 
-                # Wait for next iteration
-                await asyncio.sleep(self.config.candle_update_interval)
+                # FAST SCAN: Process pairs with minimal delay until max positions
+                signals_found = 0
+                for symbol in self.strategy.trading_pairs:
+                    # Check if we've reached max positions during scan
+                    if len(self._active_positions) >= max_positions:
+                        logger.info("Max positions reached during scan, stopping")
+                        break
+
+                    result = await self._process_symbol(symbol)
+                    if result:
+                        signals_found += 1
+
+                    # Minimal delay to avoid API rate limits (but fast)
+                    await asyncio.sleep(0.05)  # 50ms between symbols
+
+                # Log scan complete (with localization)
+                try:
+                    from ..api.main import get_log_message
+                    complete_msg = get_log_message("scan_complete", num=scan_count, signals=signals_found, positions=len(self._active_positions))
+                except Exception:
+                    complete_msg = f"Scan #{scan_count} complete"
+                logger.info(complete_msg)
+
+                # Short delay between scans if still need positions
+                if len(self._active_positions) < max_positions:
+                    await asyncio.sleep(self.config.scan_interval)  # Scan interval (default 15s)
+                else:
+                    # Max reached, longer pause
+                    await asyncio.sleep(self.config.candle_update_interval)
 
             except asyncio.CancelledError:
                 break
@@ -300,12 +347,15 @@ class TradingEngine:
                 await self._notify_error(e)
                 await asyncio.sleep(10)
 
-    async def _process_symbol(self, symbol: str) -> None:
+    async def _process_symbol(self, symbol: str) -> bool:
         """
         Process a single trading symbol.
 
         Args:
             symbol: Trading pair symbol
+
+        Returns:
+            True if a signal was found
         """
         try:
             # Get candle data
@@ -317,7 +367,7 @@ class TradingEngine:
 
             if df.empty or len(df) < self.strategy.min_candles_required:
                 logger.warning("Insufficient candle data", symbol=symbol, count=len(df))
-                return
+                return False
 
             # Generate signal
             signal = self.strategy.process(df, symbol)
@@ -326,13 +376,17 @@ class TradingEngine:
             if signal.signal_type != SignalType.NO_SIGNAL:
                 await self._process_signal(signal, df)
                 self.stats.signals_processed += 1
+                return True
 
             # Check for exit signals on existing positions
             if symbol in self._active_positions:
                 await self._check_position_exit(symbol, df)
 
+            return False
+
         except Exception as e:
             logger.error("Error processing symbol", symbol=symbol, error=str(e))
+            return False
 
     async def _process_signal(self, signal: Signal, df: pd.DataFrame) -> None:
         """
@@ -352,6 +406,12 @@ class TradingEngine:
 
         # Notify callbacks
         await self._notify_signal(signal)
+
+        # Check auto-trade filters (for auto_search mode)
+        filter_passed, filter_reason = await self._check_auto_trade_filters(signal.symbol, df)
+        if not filter_passed:
+            logger.info("Signal filtered out", symbol=symbol, reason=filter_reason)
+            return
 
         # Check risk limits
         existing_positions = len(self._active_positions)
@@ -382,12 +442,18 @@ class TradingEngine:
                     "side": "long" if signal.is_long else "short",
                     "entry_price": signal.price,
                     "quantity": float(size_result.quantity),
+                    "initial_quantity": float(size_result.quantity),
                     "stop_loss": signal.stop_loss,
+                    "original_sl": signal.stop_loss,  # Store original SL for TP2 calculation
                     "take_profit": signal.take_profit,
                     "entry_time": datetime.utcnow(),
                     "order_id": order.order_id,
+                    "partial_tp_executed": False,
                 }
                 self.stats.trades_executed += 1
+                # Log trade open with color marker
+                side_str = "LONG" if signal.is_long else "SHORT"
+                self._log_trade_open(symbol, side_str, size_result.quantity, signal.price, signal.stop_loss, signal.take_profit)
                 await self._notify_trade("entry", signal, order)
         else:
             # Paper trading - just log
@@ -400,6 +466,109 @@ class TradingEngine:
                 sl=signal.stop_loss,
                 tp=signal.take_profit,
             )
+
+    async def _check_auto_trade_filters(self, symbol: str, df: pd.DataFrame) -> tuple[bool, str]:
+        """
+        Check if the symbol passes all auto-trade filters.
+
+        Args:
+            symbol: Trading pair symbol
+            df: DataFrame with candle data
+
+        Returns:
+            Tuple of (passed, reason) where passed is True if all filters pass
+        """
+        try:
+            # Import runtime_settings here to avoid circular imports
+            from ..api.main import runtime_settings
+
+            # Get filter settings
+            min_volume = runtime_settings.get("filter_min_volume", 0)
+            max_volume = runtime_settings.get("filter_max_volume", 0)
+            min_price = runtime_settings.get("filter_min_price", 0)
+            max_price = runtime_settings.get("filter_max_price", 0)
+            min_change = runtime_settings.get("filter_min_change", 0)
+            max_change = runtime_settings.get("filter_max_change", 0)
+            volatility_period = runtime_settings.get("filter_volatility_period", 0)
+            min_volatility = runtime_settings.get("filter_min_volatility", 0)
+            max_volatility = runtime_settings.get("filter_max_volatility", 0)
+
+            # Log filter settings for debugging
+            logger.debug(
+                "Filter settings",
+                symbol=symbol,
+                min_volume=min_volume,
+                max_volume=max_volume,
+                min_price=min_price,
+                max_price=max_price,
+            )
+
+            # If all filters are disabled (0), pass through
+            if all(v == 0 for v in [min_volume, max_volume, min_price, max_price,
+                                      min_change, max_change, volatility_period]):
+                logger.debug("All filters disabled, passing through", symbol=symbol)
+                return True, ""
+
+            # Get ticker data for volume and price change
+            ticker = self.client.get_ticker(symbol)
+            if not ticker:
+                logger.warning("No ticker data, passing through", symbol=symbol)
+                return True, ""  # No ticker data, pass through
+
+            current_price = float(ticker.last_price)
+            volume_24h = float(ticker.turnover_24h)  # Volume in USDT
+            change_24h = float(ticker.change_24h)  # Percentage change
+
+            # Log ticker data for debugging
+            logger.info(
+                "Filter check",
+                symbol=symbol,
+                volume_24h=f"{volume_24h:.0f}",
+                min_volume=min_volume,
+                price=f"{current_price:.6f}",
+                change=f"{change_24h:.2f}%",
+            )
+
+            # Check volume filter
+            if min_volume > 0 and volume_24h < min_volume:
+                logger.info("FILTERED by volume", symbol=symbol, volume=f"{volume_24h:.0f}", min_volume=min_volume)
+                return False, f"Volume {volume_24h:.0f} < min {min_volume:.0f}"
+            if max_volume > 0 and volume_24h > max_volume:
+                logger.info("FILTERED by max volume", symbol=symbol, volume=f"{volume_24h:.0f}", max_volume=max_volume)
+                return False, f"Volume {volume_24h:.0f} > max {max_volume:.0f}"
+
+            # Check price filter
+            if min_price > 0 and current_price < min_price:
+                return False, f"Price {current_price:.4f} < min {min_price:.4f}"
+            if max_price > 0 and current_price > max_price:
+                return False, f"Price {current_price:.4f} > max {max_price:.4f}"
+
+            # Check price change filter
+            if min_change != 0 and change_24h < min_change:
+                return False, f"Change {change_24h:.2f}% < min {min_change:.2f}%"
+            if max_change != 0 and change_24h > max_change:
+                return False, f"Change {change_24h:.2f}% > max {max_change:.2f}%"
+
+            # Check volatility filter
+            if volatility_period > 0 and (min_volatility > 0 or max_volatility > 0):
+                # Calculate volatility as percentage range over period
+                period_data = df.tail(volatility_period)
+                if len(period_data) >= volatility_period:
+                    high = period_data["high"].max()
+                    low = period_data["low"].min()
+                    avg_price = (high + low) / 2
+                    volatility = ((high - low) / avg_price) * 100 if avg_price > 0 else 0
+
+                    if min_volatility > 0 and volatility < min_volatility:
+                        return False, f"Volatility {volatility:.2f}% < min {min_volatility:.2f}%"
+                    if max_volatility > 0 and volatility > max_volatility:
+                        return False, f"Volatility {volatility:.2f}% > max {max_volatility:.2f}%"
+
+            return True, ""
+
+        except Exception as e:
+            logger.warning("Error checking auto-trade filters", symbol=symbol, error=str(e))
+            return True, ""  # On error, pass through
 
     async def _execute_entry(self, signal: Signal, quantity: Decimal) -> Optional[Any]:
         """Execute entry order."""
@@ -469,11 +638,15 @@ class TradingEngine:
                     # Calculate PnL
                     entry_price = position_data["entry_price"]
                     exit_price = order.average_price or order.price
+                    quantity = position_data.get("quantity", 0)
 
                     if position_data["side"] == "long":
                         pnl = (float(exit_price) - entry_price) / entry_price * 100
                     else:
                         pnl = (entry_price - float(exit_price)) / entry_price * 100
+
+                    # Calculate PnL in USDT
+                    pnl_usdt = (pnl / 100) * float(quantity) * entry_price
 
                     if pnl > 0:
                         self.stats.winning_trades += 1
@@ -483,8 +656,11 @@ class TradingEngine:
                         self.stats.consecutive_losses += 1
 
                     self.stats.total_pnl += Decimal(str(pnl))
-                    self.stats.daily_pnl += Decimal(str(pnl))
+                    self.stats.daily_pnl += Decimal(str(pnl_usdt))  # USDT for daily PnL
                     self.stats.last_trade_time = datetime.utcnow()
+
+                    # Log trade close with color marker
+                    self._log_trade_close(symbol, pnl, pnl_usdt)
 
                     await self._notify_trade("exit", None, order, pnl=pnl, reason=reason)
 
@@ -498,131 +674,588 @@ class TradingEngine:
         except Exception as e:
             logger.error("Failed to close position", symbol=symbol, error=str(e))
 
+    async def _sync_positions_from_api(self) -> None:
+        """
+        Sync positions from Bybit API at startup.
+
+        Loads all existing open positions into local tracking.
+        """
+        try:
+            api_positions = self.client.get_positions(use_cache=False)
+
+            for pos in api_positions:
+                if float(pos.size) > 0:
+                    pos_data = {
+                        "symbol": pos.symbol,
+                        "side": "long" if pos.side.value == "Buy" else "short",
+                        "size": float(pos.size),
+                        "entry_price": float(pos.entry_price),
+                        "quantity": float(pos.size),
+                        "leverage": pos.leverage,
+                        "unrealized_pnl": float(pos.unrealized_pnl),
+                        "stop_loss": float(pos.stop_loss) if pos.stop_loss else None,
+                        "take_profit": float(pos.take_profit) if pos.take_profit else None,
+                    }
+                    self._active_positions[pos.symbol] = pos_data
+                    self._last_api_positions[pos.symbol] = pos_data
+
+            if self._active_positions:
+                logger.info(f"Synced {len(self._active_positions)} existing positions from API")
+
+        except Exception as e:
+            logger.warning(f"Failed to sync positions from API: {e}")
+
     async def _close_all_positions(self) -> None:
         """Close all open positions."""
         for symbol in list(self._active_positions.keys()):
             await self._close_position(symbol, reason="engine_stop")
 
+    async def _check_closed_positions(self) -> None:
+        """
+        API-centric position tracking.
+
+        Compares current API positions with last snapshot to detect closed positions.
+        All data (PnL, prices, etc.) comes directly from Bybit API.
+        """
+        try:
+            # Get ALL current positions from Bybit API
+            api_positions = self.client.get_positions(use_cache=False)
+
+            # Build current positions map: symbol -> position data
+            current_positions: dict[str, dict] = {}
+            for pos in api_positions:
+                if float(pos.size) > 0:
+                    current_positions[pos.symbol] = {
+                        "symbol": pos.symbol,
+                        "side": "long" if pos.side.value == "Buy" else "short",
+                        "size": float(pos.size),
+                        "entry_price": float(pos.entry_price),
+                        "leverage": pos.leverage,
+                        "unrealized_pnl": float(pos.unrealized_pnl),
+                        "stop_loss": float(pos.stop_loss) if pos.stop_loss else None,
+                        "take_profit": float(pos.take_profit) if pos.take_profit else None,
+                    }
+
+            # Find positions that were closed (in last snapshot but not in current)
+            closed_symbols = set(self._last_api_positions.keys()) - set(current_positions.keys())
+
+            # Also check _active_positions for any that are no longer open
+            for symbol in list(self._active_positions.keys()):
+                if symbol not in current_positions:
+                    closed_symbols.add(symbol)
+
+            # Process each closed position
+            for symbol in closed_symbols:
+                # Get closed PnL data directly from Bybit API
+                try:
+                    closed_pnl = self.client.get_symbol_closed_pnl(symbol, limit=5)
+
+                    if closed_pnl:
+                        # All data from Bybit API
+                        pnl_usdt = float(closed_pnl.get("closedPnl", 0))
+                        avg_entry = float(closed_pnl.get("avgEntryPrice", 0))
+                        avg_exit = float(closed_pnl.get("avgExitPrice", 0))
+                        closed_size = float(closed_pnl.get("closedSize", 0))
+                        cum_entry_value = float(closed_pnl.get("cumEntryValue", 0))
+                        leverage = float(closed_pnl.get("leverage", 1))
+                        side = closed_pnl.get("side", "")
+                        exec_type = closed_pnl.get("execType", "")
+                        order_id = closed_pnl.get("orderId", "")
+                        created_time = closed_pnl.get("createdTime", "")
+
+                        # Calculate PnL % from API data
+                        pnl_percent = 0.0
+                        if cum_entry_value > 0 and leverage > 0:
+                            margin_used = cum_entry_value / leverage
+                            pnl_percent = (pnl_usdt / margin_used) * 100
+
+                        # Determine close reason from execType
+                        close_reason = "SL/TP"
+                        if "StopLoss" in exec_type or "Stop" in exec_type:
+                            close_reason = "STOP LOSS"
+                        elif "TakeProfit" in exec_type or "Profit" in exec_type:
+                            close_reason = "TAKE PROFIT"
+                        elif "Trade" in exec_type:
+                            close_reason = "MARKET"
+
+                        # Log with all API data in clean format
+                        pnl_emoji = "💰" if pnl_usdt >= 0 else "📉"
+                        pnl_sign = "+" if pnl_usdt >= 0 else ""
+                        logger.info(
+                            f"━━━ CLOSED: {close_reason} ━━━ {symbol} {pnl_emoji}"
+                        )
+                        logger.info(
+                            f"Side: {side} | Entry: {avg_entry:.6f} → Exit: {avg_exit:.6f}"
+                        )
+                        logger.info(
+                            f"PnL: {pnl_sign}{pnl_percent:.2f}% ({pnl_sign}{pnl_usdt:.4f} USDT) | Size: {closed_size:.4f} | Leverage: {leverage:.0f}x"
+                        )
+
+                        # Update stats from API data
+                        if pnl_usdt > 0:
+                            self.stats.winning_trades += 1
+                            self.stats.consecutive_losses = 0
+                        elif pnl_usdt < 0:
+                            self.stats.losing_trades += 1
+                            self.stats.consecutive_losses += 1
+
+                        self.stats.total_pnl += Decimal(str(pnl_percent))
+                        self.stats.daily_pnl += Decimal(str(pnl_usdt))
+                        self.stats.last_trade_time = datetime.utcnow()
+                        self.stats.trades_executed += 1
+
+                        # Log formatted message for web UI
+                        self._log_trade_close(symbol, pnl_percent, pnl_usdt)
+                    else:
+                        # No PnL from API, try to use local data
+                        local_pos = self._active_positions.get(symbol) or self._last_api_positions.get(symbol)
+                        if local_pos:
+                            entry_price = local_pos.get("entry_price", 0)
+                            side = local_pos.get("side", "unknown")
+                            sl = local_pos.get("stop_loss", 0)
+                            tp = local_pos.get("take_profit", 0)
+                            logger.info(
+                                f"━━━ POSITION CLOSED ━━━ {symbol}",
+                            )
+                            logger.info(
+                                f"Side: {side} | Entry: {entry_price:.6f} | SL: {sl:.6f} | TP: {tp:.6f}"
+                            )
+                            logger.info(
+                                f"(PnL data not available from API - check Bybit for details)"
+                            )
+                        else:
+                            logger.info(f"Position closed: {symbol} (no data available)")
+
+                except Exception as e:
+                    logger.warning(f"Failed to get closed PnL for {symbol}: {e}")
+
+                # Remove from local tracking
+                self._active_positions.pop(symbol, None)
+
+            # Update last API positions snapshot
+            self._last_api_positions = current_positions
+
+            # Sync _active_positions with API (API is source of truth)
+            for symbol, pos_data in current_positions.items():
+                if symbol not in self._active_positions:
+                    # Position exists on API but not locally - sync it
+                    self._active_positions[symbol] = pos_data
+
+        except Exception as e:
+            logger.debug(f"Error in API position check: {e}")
+
     async def _position_monitoring_loop(self) -> None:
-        """Monitor positions for SL/TP updates based on trailing mode settings."""
+        """Monitor positions for SL/TP updates based on SuperTrend line."""
         # Track last candle close time for each symbol
         last_candle_time: dict[str, datetime] = {}
 
-        while self.state == EngineState.RUNNING:
+        while self.state == EngineState.RUNNING and not self._stop_requested:
             try:
-                for symbol, position_data in list(self._active_positions.items()):
-                    try:
-                        # Get current price
-                        ticker = self.client.get_ticker(symbol)
-                        if not ticker:
-                            continue
-                        current_price = float(ticker.last_price)
+                # Check stop flag at start of each iteration
+                if self._stop_requested:
+                    logger.info("Position monitoring: stop requested, exiting")
+                    break
 
-                        entry_price = position_data["entry_price"]
+                # When paused, only check for closed positions but don't execute any orders
+                if self.paused:
+                    await self._check_closed_positions()
+                    await asyncio.sleep(3)
+                    continue
+
+                # Check for positions closed by SL/TP on exchange
+                await self._check_closed_positions()
+
+                for symbol, position_data in list(self._active_positions.items()):
+                    # Check stop flag inside loop for faster exit
+                    if self._stop_requested:
+                        logger.info("Position monitoring: stop requested in loop, breaking")
+                        break
+
+                    try:
+                        # Get candle data to check for new closed candle
+                        df = self.client.get_klines(
+                            symbol=symbol,
+                            interval=self._timeframe_to_interval(self.strategy.timeframe),
+                            limit=250,
+                        )
+
+                        if df.empty or len(df) < 50:
+                            continue
+
+                        # Get the last closed candle time (second to last row, as last is still forming)
+                        current_candle_time = df.index[-2] if len(df) > 1 else df.index[-1]
+
+                        # Check if a new candle has closed
+                        prev_candle_time = last_candle_time.get(symbol)
+                        if prev_candle_time is not None and current_candle_time <= prev_candle_time:
+                            # No new candle closed, skip
+                            continue
+
+                        # Update last candle time
+                        last_candle_time[symbol] = current_candle_time
+
                         current_sl = position_data.get("stop_loss", 0)
                         side = position_data["side"]
+                        entry_price = position_data.get("entry_price", 0)
+                        take_profit = position_data.get("take_profit", 0)
+                        current_price = float(df["close"].iloc[-2])  # Last closed candle price
 
-                        # Track highest/lowest prices for trailing
-                        if side == "long":
-                            if symbol not in self._highest_prices or current_price > self._highest_prices[symbol]:
-                                self._highest_prices[symbol] = current_price
-                        else:
-                            if symbol not in self._lowest_prices or current_price < self._lowest_prices[symbol]:
-                                self._lowest_prices[symbol] = current_price
+                        # === PARTIAL TP LOGIC ===
+                        partial_tp_enabled = getattr(self.strategy.config, "partial_tp_enabled", True)
+                        partial_tp_executed = position_data.get("partial_tp_executed", False)
 
-                        # Calculate profit percentage
-                        if side == "long":
-                            profit_percent = (current_price - entry_price) / entry_price * 100
-                        else:
-                            profit_percent = (entry_price - current_price) / entry_price * 100
+                        if partial_tp_enabled and not partial_tp_executed and take_profit > 0:
+                            # Calculate TP1 (1:1 R:R) - halfway to full TP
+                            # Risk = distance from entry to SL
+                            # TP1 = entry + risk (for long) or entry - risk (for short)
+                            if side == "long":
+                                risk = entry_price - current_sl
+                                tp1 = entry_price + risk  # 1:1 R:R
+                            else:
+                                risk = current_sl - entry_price
+                                tp1 = entry_price - risk  # 1:1 R:R
 
-                        new_sl_price = current_sl
-                        update_reason = ""
+                            # Check if price reached TP1
+                            tp1_reached = False
+                            if side == "long" and current_price >= tp1:
+                                tp1_reached = True
+                            elif side == "short" and current_price <= tp1:
+                                tp1_reached = True
 
-                        # Check break-even first (if enabled)
-                        if self.config.breakeven_enabled and not position_data.get("breakeven_applied"):
-                            if profit_percent >= self.config.breakeven_activation:
-                                # Move SL to break-even + offset
-                                offset = entry_price * (self.config.breakeven_offset / 100)
-                                if side == "long":
-                                    breakeven_sl = entry_price + offset
-                                    if breakeven_sl > current_sl:
-                                        new_sl_price = breakeven_sl
-                                        update_reason = "break-even"
-                                        position_data["breakeven_applied"] = True
+                            if tp1_reached:
+                                close_percent = getattr(self.strategy.config, "partial_tp_close_percent", 50)
+                                sl_move_mode = getattr(self.strategy.config, "partial_tp_sl_move", "tp1")
+                                sl_offset_pct = getattr(self.strategy.config, "partial_tp_sl_offset", 0.2)
+
+                                # Calculate partial close quantity
+                                current_qty = position_data.get("quantity", 0)
+                                close_qty = current_qty * (close_percent / 100)
+                                remaining_qty = current_qty - close_qty
+
+                                # Calculate new SL based on sl_move mode
+                                if sl_move_mode == "entry":
+                                    # Move SL to entry price with offset (lock small profit)
+                                    if side == "long":
+                                        new_sl_at_tp = entry_price * (1 + sl_offset_pct / 100)
+                                    else:
+                                        new_sl_at_tp = entry_price * (1 - sl_offset_pct / 100)
                                 else:
-                                    breakeven_sl = entry_price - offset
-                                    if breakeven_sl < current_sl or current_sl == 0:
-                                        new_sl_price = breakeven_sl
-                                        update_reason = "break-even"
-                                        position_data["breakeven_applied"] = True
+                                    # Move SL to TP1 with offset (default)
+                                    if side == "long":
+                                        new_sl_at_tp = tp1 * (1 - sl_offset_pct / 100)
+                                    else:
+                                        new_sl_at_tp = tp1 * (1 + sl_offset_pct / 100)
 
-                        # Then check trailing stop (if enabled and profit meets activation)
-                        if self.config.trailing_enabled and profit_percent >= self.config.trailing_activation:
-                            if self.config.trailing_mode == "supertrend":
-                                # SuperTrend-based trailing - check on new candle close
-                                df = self.client.get_klines(
+                                logger.info(
+                                    f"Partial TP triggered at TP1 (1:1 R:R)",
                                     symbol=symbol,
-                                    interval=self._timeframe_to_interval(self.strategy.timeframe),
-                                    limit=250,
+                                    side=side,
+                                    entry=entry_price,
+                                    tp1=tp1,
+                                    current_price=current_price,
+                                    close_percent=close_percent,
+                                    sl_move=sl_move_mode,
+                                    close_qty=close_qty,
+                                    remaining_qty=remaining_qty,
+                                    new_sl=new_sl_at_tp,
                                 )
 
-                                if not df.empty and len(df) >= 50:
-                                    current_candle_time = df.index[-2] if len(df) > 1 else df.index[-1]
-                                    prev_candle_time = last_candle_time.get(symbol)
+                                # Execute partial close on exchange
+                                if not self.config.paper_trading:
+                                    if isinstance(self.trader, FuturesTrader):
+                                        try:
+                                            # Close partial position
+                                            close_side = "sell" if side == "long" else "buy"
+                                            self.trader.client.new_order(
+                                                symbol=symbol,
+                                                side=close_side.upper(),
+                                                type="MARKET",
+                                                quantity=str(round(close_qty, 8)),
+                                                reduceOnly="true",
+                                            )
+                                            # Update SL on exchange
+                                            self.trader.update_stop_loss(symbol, Decimal(str(new_sl_at_tp)))
+                                            logger.info(
+                                                "Partial TP executed on exchange",
+                                                symbol=symbol,
+                                                closed_qty=close_qty,
+                                            )
+                                        except Exception as e:
+                                            logger.error("Failed to execute partial TP", error=str(e))
 
-                                    if prev_candle_time is None or current_candle_time > prev_candle_time:
-                                        last_candle_time[symbol] = current_candle_time
+                                # Update local position data
+                                position_data["quantity"] = remaining_qty
+                                position_data["stop_loss"] = new_sl_at_tp
+                                position_data["partial_tp_executed"] = True
+                                current_sl = new_sl_at_tp  # Update for trailing logic
 
-                                        indicators = self.strategy.calculate_indicators(df)
-                                        triple_st = indicators.get("triple_supertrend")
+                        # === BREAK-EVEN LOGIC ===
+                        breakeven_enabled = self.config.breakeven_enabled
+                        breakeven_executed = position_data.get("breakeven_executed", False)
 
-                                        if triple_st:
-                                            sl_line = self.strategy.config.sl_supertrend_line
-                                            line_map = {
-                                                1: triple_st.st1.supertrend,
-                                                2: triple_st.st2.supertrend,
-                                                3: triple_st.st3.supertrend,
-                                            }
-                                            st_line = line_map.get(sl_line, triple_st.st2.supertrend)
-                                            st_sl_price = float(st_line.iloc[-2])
+                        if breakeven_enabled and not breakeven_executed and entry_price > 0:
+                            breakeven_activation = self.config.breakeven_activation
+                            breakeven_offset = self.config.breakeven_offset
 
-                                            if side == "long" and st_sl_price > new_sl_price:
-                                                new_sl_price = st_sl_price
-                                                update_reason = f"trailing SuperTrend line {sl_line}"
-                                            elif side == "short" and (st_sl_price < new_sl_price or new_sl_price == 0):
-                                                new_sl_price = st_sl_price
-                                                update_reason = f"trailing SuperTrend line {sl_line}"
+                            # Calculate current profit %
+                            if side == "long":
+                                profit_pct = ((current_price - entry_price) / entry_price) * 100
+                            else:
+                                profit_pct = ((entry_price - current_price) / entry_price) * 100
 
-                            elif self.config.trailing_mode == "percent":
-                                # Percentage-based trailing
-                                trailing_distance = self.config.trailing_step / 100
-
+                            # Check if profit exceeds activation threshold
+                            if profit_pct >= breakeven_activation:
+                                # Calculate break-even SL with offset
                                 if side == "long":
-                                    reference_price = self._highest_prices.get(symbol, current_price)
-                                    potential_sl = reference_price * (1 - trailing_distance)
-                                    if potential_sl > new_sl_price:
-                                        new_sl_price = potential_sl
-                                        update_reason = f"trailing {self.config.trailing_step}%"
+                                    new_breakeven_sl = entry_price * (1 + breakeven_offset / 100)
+                                    # Only move SL if new value is better (higher for long)
+                                    if new_breakeven_sl > current_sl:
+                                        logger.info(
+                                            f"Break-even activated",
+                                            symbol=symbol,
+                                            side=side,
+                                            profit_pct=f"{profit_pct:.2f}%",
+                                            old_sl=current_sl,
+                                            new_sl=new_breakeven_sl,
+                                        )
+                                        # Update SL on exchange
+                                        if not self.config.paper_trading:
+                                            if isinstance(self.trader, FuturesTrader):
+                                                try:
+                                                    self.trader.update_stop_loss(symbol, Decimal(str(new_breakeven_sl)))
+                                                except Exception as e:
+                                                    logger.error("Failed to update break-even SL", error=str(e))
+                                        position_data["stop_loss"] = new_breakeven_sl
+                                        position_data["breakeven_executed"] = True
+                                        current_sl = new_breakeven_sl
                                 else:
-                                    reference_price = self._lowest_prices.get(symbol, current_price)
-                                    potential_sl = reference_price * (1 + trailing_distance)
-                                    if potential_sl < new_sl_price or new_sl_price == 0:
-                                        new_sl_price = potential_sl
-                                        update_reason = f"trailing {self.config.trailing_step}%"
+                                    new_breakeven_sl = entry_price * (1 - breakeven_offset / 100)
+                                    # Only move SL if new value is better (lower for short)
+                                    if new_breakeven_sl < current_sl or current_sl == 0:
+                                        logger.info(
+                                            f"Break-even activated",
+                                            symbol=symbol,
+                                            side=side,
+                                            profit_pct=f"{profit_pct:.2f}%",
+                                            old_sl=current_sl,
+                                            new_sl=new_breakeven_sl,
+                                        )
+                                        # Update SL on exchange
+                                        if not self.config.paper_trading:
+                                            if isinstance(self.trader, FuturesTrader):
+                                                try:
+                                                    self.trader.update_stop_loss(symbol, Decimal(str(new_breakeven_sl)))
+                                                except Exception as e:
+                                                    logger.error("Failed to update break-even SL", error=str(e))
+                                        position_data["stop_loss"] = new_breakeven_sl
+                                        position_data["breakeven_executed"] = True
+                                        current_sl = new_breakeven_sl
 
-                        # Update SL if changed
-                        if new_sl_price != current_sl and update_reason:
+                        # === TRAILING TP LOGIC === For remaining position after partial TP
+                        trailing_tp_enabled = getattr(self.strategy.config, "trailing_tp_enabled", False)
+                        partial_tp_executed = position_data.get("partial_tp_executed", False)
+
+                        if trailing_tp_enabled and partial_tp_executed:
+                            trailing_tp_mode = getattr(self.strategy.config, "trailing_tp_mode", "st_line")
+
+                            if trailing_tp_mode == "st_line":
+                                # ST Line TP mode: Exit when price crosses SuperTrend line (reversal signal)
+                                indicators = self.strategy.calculate_indicators(df)
+                                triple_st = indicators.get("triple_supertrend")
+
+                                if triple_st:
+                                    # Use trailing_tp_st_line setting
+                                    trailing_tp_st_line = getattr(self.strategy.config, "trailing_tp_st_line", 2)
+
+                                    dir_map = {
+                                        1: triple_st.st1.direction,
+                                        2: triple_st.st2.direction,
+                                        3: triple_st.st3.direction,
+                                    }
+                                    st_direction = dir_map.get(trailing_tp_st_line, triple_st.st2.direction)
+
+                                    # Get current and previous direction
+                                    curr_dir = int(st_direction.iloc[-2])  # Last closed candle
+                                    prev_dir = int(st_direction.iloc[-3]) if len(st_direction) > 2 else curr_dir
+
+                                    # Check for reversal signal
+                                    should_exit = False
+                                    if side == "long" and prev_dir == 1 and curr_dir == -1:
+                                        # Long position: ST line turned bearish (reversal)
+                                        should_exit = True
+                                        exit_reason = "ST Line reversed to bearish"
+                                    elif side == "short" and prev_dir == -1 and curr_dir == 1:
+                                        # Short position: ST line turned bullish (reversal)
+                                        should_exit = True
+                                        exit_reason = "ST Line reversed to bullish"
+
+                                    if should_exit:
+                                        remaining_qty = position_data.get("quantity", 0)
+                                        logger.info(
+                                            f"Trailing TP (ST Line) - closing remaining position",
+                                            symbol=symbol,
+                                            side=side,
+                                            reason=exit_reason,
+                                            quantity=remaining_qty,
+                                        )
+
+                                        # Close remaining position on exchange
+                                        if not self.config.paper_trading:
+                                            if isinstance(self.trader, FuturesTrader):
+                                                try:
+                                                    close_side = "sell" if side == "long" else "buy"
+                                                    self.trader.client.new_order(
+                                                        symbol=symbol,
+                                                        side=close_side.upper(),
+                                                        type="MARKET",
+                                                        quantity=str(round(remaining_qty, 8)),
+                                                        reduceOnly="true",
+                                                    )
+                                                    logger.info(
+                                                        "Trailing TP (ST Line) executed on exchange",
+                                                        symbol=symbol,
+                                                        closed_qty=remaining_qty,
+                                                    )
+                                                except Exception as e:
+                                                    logger.error("Failed to execute Trailing TP (ST Line)", error=str(e))
+
+                                        # Remove position from tracking
+                                        del self._active_positions[symbol]
+                                        continue
+
+                            elif trailing_tp_mode == "trailing_percent":
+                                # Trailing % TP mode: Move TP when price approaches within activation %
+                                trailing_tp_activation = getattr(self.strategy.config, "trailing_tp_activation", 0.5)
+                                trailing_tp_step = getattr(self.strategy.config, "trailing_tp_step", 1.0)
+
+                                current_tp = position_data.get("take_profit", 0)
+                                if current_tp > 0 and entry_price > 0:
+                                    # Calculate distance to TP as percentage
+                                    if side == "long":
+                                        distance_to_tp_pct = ((current_tp - current_price) / current_price) * 100
+                                    else:
+                                        distance_to_tp_pct = ((current_price - current_tp) / current_price) * 100
+
+                                    # Check if price is within activation distance
+                                    if distance_to_tp_pct <= trailing_tp_activation and distance_to_tp_pct > 0:
+                                        # Move TP further by step %
+                                        if side == "long":
+                                            new_tp = current_tp * (1 + trailing_tp_step / 100)
+                                        else:
+                                            new_tp = current_tp * (1 - trailing_tp_step / 100)
+
+                                        logger.info(
+                                            f"Trailing TP (%) - moving TP further",
+                                            symbol=symbol,
+                                            side=side,
+                                            old_tp=current_tp,
+                                            new_tp=new_tp,
+                                            distance_pct=f"{distance_to_tp_pct:.2f}%",
+                                        )
+
+                                        # Update TP on exchange
+                                        if not self.config.paper_trading:
+                                            if isinstance(self.trader, FuturesTrader):
+                                                try:
+                                                    self.trader.update_take_profit(symbol, Decimal(str(new_tp)))
+                                                except Exception as e:
+                                                    logger.error("Failed to update TP on exchange", error=str(e))
+
+                                        # Update local position data
+                                        position_data["take_profit"] = new_tp
+
+                        # Skip trailing if disabled
+                        if not self.strategy.config.trailing_enabled:
+                            continue
+
+                        trailing_mode = getattr(self.strategy.config, "trailing_mode", "fix_percent")
+                        new_sl_price = None
+                        should_update = False
+
+                        if trailing_mode == "st_line":
+                            # ST Line trailing mode - follow SuperTrend line with confirmation
+                            indicators = self.strategy.calculate_indicators(df)
+                            triple_st = indicators.get("triple_supertrend")
+
+                            if not triple_st:
+                                continue
+
+                            # Use trailing_st_line setting (not sl_supertrend_line)
+                            trailing_st_line = getattr(self.strategy.config, "trailing_st_line", 2)
+                            confirm_candles = getattr(self.strategy.config, "trailing_confirm_candles", 1)
+
+                            line_map = {
+                                1: triple_st.st1.supertrend,
+                                2: triple_st.st2.supertrend,
+                                3: triple_st.st3.supertrend,
+                            }
+                            st_line = line_map.get(trailing_st_line, triple_st.st2.supertrend)
+
+                            # Get ST values for confirmation (last N closed candles)
+                            # iloc[-2] is last closed, iloc[-3] is second to last closed, etc.
+                            confirmed = True
+                            candidate_sl = float(st_line.iloc[-2])
+
+                            for i in range(confirm_candles):
+                                idx = -2 - i  # -2, -3, -4, etc.
+                                if abs(idx) > len(st_line):
+                                    confirmed = False
+                                    break
+                                candle_st = float(st_line.iloc[idx])
+                                # All confirmation candles must agree on direction
+                                if side == "long":
+                                    if candle_st < candidate_sl:
+                                        candidate_sl = candle_st  # Use the lowest (most conservative)
+                                else:
+                                    if candle_st > candidate_sl:
+                                        candidate_sl = candle_st  # Use the highest (most conservative)
+
+                            if confirmed:
+                                new_sl_price = candidate_sl
+                                # Only move SL in profit direction
+                                if side == "long":
+                                    if new_sl_price > current_sl:
+                                        should_update = True
+                                else:
+                                    if new_sl_price < current_sl or current_sl == 0:
+                                        should_update = True
+
+                        else:
+                            # Fix % trailing mode - activate after profit threshold
+                            if entry_price <= 0:
+                                continue
+
+                            activation_pct = self.strategy.config.trailing_activation
+                            step_pct = self.strategy.config.trailing_step
+
+                            # Calculate current profit %
+                            if side == "long":
+                                profit_pct = ((current_price - entry_price) / entry_price) * 100
+                            else:
+                                profit_pct = ((entry_price - current_price) / entry_price) * 100
+
+                            # Check if trailing should activate
+                            if profit_pct >= activation_pct:
+                                # Calculate new trailing SL
+                                if side == "long":
+                                    new_sl_price = current_price * (1 - step_pct / 100)
+                                    if new_sl_price > current_sl:
+                                        should_update = True
+                                else:
+                                    new_sl_price = current_price * (1 + step_pct / 100)
+                                    if new_sl_price < current_sl or current_sl == 0:
+                                        should_update = True
+
+                        if should_update and new_sl_price is not None:
                             logger.info(
-                                "Updating stop-loss",
+                                f"Trailing SL update ({trailing_mode})",
                                 symbol=symbol,
                                 side=side,
-                                reason=update_reason,
                                 old_sl=current_sl,
                                 new_sl=new_sl_price,
-                                profit_percent=round(profit_percent, 2),
                             )
 
+                            # Update on exchange if not paper trading
                             if not self.config.paper_trading:
                                 if isinstance(self.trader, FuturesTrader):
                                     try:
@@ -630,6 +1263,7 @@ class TradingEngine:
                                     except Exception as e:
                                         logger.error("Failed to update SL on exchange", error=str(e))
 
+                            # Update local position data
                             position_data["stop_loss"] = new_sl_price
 
                     except Exception as e:
@@ -652,76 +1286,25 @@ class TradingEngine:
                     minutes=self.config.cooldown_after_loss_streak
                 )
                 if datetime.utcnow() < cooldown_end:
-                    logger.warning(
-                        "Trading paused - consecutive losses cooldown",
-                        losses=self.stats.consecutive_losses,
-                        cooldown_end=cooldown_end.isoformat(),
-                    )
+                    logger.warning("Cooldown active after loss streak", consecutive_losses=self.stats.consecutive_losses)
                     return False
                 else:
                     self.stats.consecutive_losses = 0
 
-        # Check daily loss limit
+        # Check daily loss limit (daily_pnl is in USDT)
         if float(self.stats.daily_pnl) <= -self.config.max_daily_loss_percent:
-            logger.warning(
-                "Trading paused - daily loss limit reached",
-                daily_pnl=float(self.stats.daily_pnl),
-                limit=self.config.max_daily_loss_percent,
-            )
+            logger.warning("Daily loss limit reached", daily_pnl=float(self.stats.daily_pnl))
             return False
-
-        # Check weekly loss limit
-        if self._week_start_balance is not None:
-            try:
-                current_balance = self.client.get_balance("USDT").total
-                weekly_pnl_percent = float((current_balance - self._week_start_balance) / self._week_start_balance * 100)
-
-                # Reset weekly tracking if new week started
-                if self._week_start_time:
-                    days_since_start = (datetime.utcnow() - self._week_start_time).days
-                    if days_since_start >= 7:
-                        self._week_start_balance = current_balance
-                        self._week_start_time = datetime.utcnow()
-                        weekly_pnl_percent = 0.0
-
-                if weekly_pnl_percent <= -self.config.max_weekly_loss_percent:
-                    logger.warning(
-                        "Trading paused - weekly loss limit reached",
-                        weekly_pnl=weekly_pnl_percent,
-                        limit=self.config.max_weekly_loss_percent,
-                    )
-                    return False
-            except Exception:
-                pass  # Continue if can't check
-
-        # Check max drawdown from initial balance
-        if self._initial_balance is not None:
-            try:
-                current_balance = self.client.get_balance("USDT").total
-                drawdown_percent = float((self._initial_balance - current_balance) / self._initial_balance * 100)
-
-                if drawdown_percent >= self.config.max_drawdown_percent:
-                    logger.warning(
-                        "Trading paused - max drawdown reached",
-                        drawdown=drawdown_percent,
-                        limit=self.config.max_drawdown_percent,
-                    )
-                    return False
-            except Exception:
-                pass  # Continue if can't check
 
         # Check minimum balance
         try:
-            current_balance = self.client.get_balance("USDT").available
-            if float(current_balance) < self.config.min_balance_usdt:
-                logger.warning(
-                    "Trading paused - below minimum balance",
-                    balance=float(current_balance),
-                    min_required=self.config.min_balance_usdt,
-                )
+            balance = self.client.get_balance("USDT")
+            current_balance = float(balance.total)
+            if current_balance < self.config.min_balance_usdt:
+                logger.warning("Balance below minimum", balance=current_balance, min_required=self.config.min_balance_usdt)
                 return False
-        except Exception:
-            pass  # Continue if can't check
+        except Exception as e:
+            logger.debug(f"Could not check balance: {e}")
 
         return True
 
@@ -788,6 +1371,41 @@ class TradingEngine:
                     callback(error)
             except Exception as e:
                 logger.error("Error callback error", error=str(e))
+
+    def _log_trade_open(self, symbol: str, side: str, qty, entry: float, sl: float, tp: float) -> None:
+        """Log trade open with color marker for web interface."""
+        try:
+            from ..api.main import runtime_settings, get_log_message
+            lang = runtime_settings.get("language", "en")
+            if lang == "ru":
+                msg = f"[ОТКРЫТИЕ] Позиция открыта: {symbol} {side} кол-во={qty:.4f} вход={entry:.6f} SL={sl:.6f} TP={tp:.6f}"
+            else:
+                msg = f"[TRADE_OPEN] Position opened: {symbol} {side} qty={qty:.4f} entry={entry:.6f} SL={sl:.6f} TP={tp:.6f}"
+            logger.info(msg)
+        except Exception as e:
+            logger.info(f"[TRADE_OPEN] {symbol} {side} qty={qty} entry={entry} SL={sl} TP={tp}")
+
+    def _log_trade_close(self, symbol: str, pnl: float, pnl_usdt: float) -> None:
+        """Log trade close with color marker for web interface."""
+        try:
+            from ..api.main import runtime_settings
+            lang = runtime_settings.get("language", "en")
+            if pnl > 0:
+                if lang == "ru":
+                    msg = f"[ПРИБЫЛЬ] Позиция закрыта: {symbol} PnL: +{pnl:.2f}% (+{pnl_usdt:.2f} USDT)"
+                else:
+                    msg = f"[TRADE_PROFIT] Position closed: {symbol} PnL: +{pnl:.2f}% (+{pnl_usdt:.2f} USDT)"
+            else:
+                if lang == "ru":
+                    msg = f"[УБЫТОК] Позиция закрыта: {symbol} PnL: {pnl:.2f}% ({pnl_usdt:.2f} USDT)"
+                else:
+                    msg = f"[TRADE_LOSS] Position closed: {symbol} PnL: {pnl:.2f}% ({pnl_usdt:.2f} USDT)"
+            logger.info(msg)
+        except Exception as e:
+            if pnl > 0:
+                logger.info(f"[TRADE_PROFIT] {symbol} PnL: +{pnl:.2f}%")
+            else:
+                logger.info(f"[TRADE_LOSS] {symbol} PnL: {pnl:.2f}%")
 
     @property
     def is_running(self) -> bool:

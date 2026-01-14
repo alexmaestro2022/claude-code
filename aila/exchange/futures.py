@@ -53,6 +53,7 @@ class FuturesTrader:
         self,
         client: BybitClient,
         default_leverage: int = 10,
+        margin_mode: str = "cross",
     ):
         """
         Initialize futures trader.
@@ -60,10 +61,13 @@ class FuturesTrader:
         Args:
             client: Configured BybitClient instance
             default_leverage: Default leverage to use
+            margin_mode: Margin mode ("cross" or "isolated")
         """
         self.client = client
         self.default_leverage = default_leverage
+        self.margin_mode = MarginMode.CROSS if margin_mode == "cross" else MarginMode.ISOLATED
         self._leverage_cache: dict[str, int] = {}
+        self._margin_mode_cache: dict[str, MarginMode] = {}
 
     def open_long(
         self,
@@ -153,6 +157,11 @@ class FuturesTrader:
         if pair is None:
             logger.error("Trading pair not found", symbol=symbol)
             return None
+
+        # Set margin mode if needed (before leverage)
+        if symbol not in self._margin_mode_cache or self._margin_mode_cache[symbol] != self.margin_mode:
+            if self.set_margin_mode(symbol, self.margin_mode):
+                self._margin_mode_cache[symbol] = self.margin_mode
 
         # Set leverage if needed
         lev = leverage or self.default_leverage
@@ -269,10 +278,14 @@ class FuturesTrader:
         closed = 0
 
         for position in positions:
+            # Skip positions with zero size
+            if float(position.size) <= 0:
+                continue
             try:
                 order = self.client.close_position(position.symbol, position.side)
                 if order:
                     closed += 1
+                    logger.info("Closed position", symbol=position.symbol, side=position.side.value)
             except Exception as e:
                 logger.error(
                     "Failed to close position",
@@ -294,6 +307,38 @@ class FuturesTrader:
             True if successful
         """
         return self.client.set_leverage(symbol, leverage)
+
+    def set_margin_mode(self, symbol: str, mode: MarginMode) -> bool:
+        """
+        Set margin mode (cross/isolated) for a symbol.
+
+        Args:
+            symbol: Trading pair symbol
+            mode: MarginMode.CROSS or MarginMode.ISOLATED
+
+        Returns:
+            True if successful
+        """
+        try:
+            # Bybit API expects 0 for isolated, 1 for cross
+            trade_mode = 1 if mode == MarginMode.CROSS else 0
+            response = self.client.http.switch_margin_mode(
+                category="linear",
+                symbol=symbol,
+                tradeMode=trade_mode,
+                buyLeverage=str(self.default_leverage),
+                sellLeverage=str(self.default_leverage),
+            )
+            self.client._handle_response(response, "set_margin_mode")
+            logger.info("Margin mode set", symbol=symbol, mode=mode.value)
+            return True
+        except Exception as e:
+            # Error 110026 means margin mode is already set to the requested value
+            if "110026" in str(e):
+                logger.debug("Margin mode already set", symbol=symbol, mode=mode.value)
+                return True
+            logger.error("Failed to set margin mode", symbol=symbol, error=str(e))
+            return False
 
     def get_position(self, symbol: str) -> Optional[Position]:
         """
