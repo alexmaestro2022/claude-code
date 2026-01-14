@@ -1404,11 +1404,15 @@ DASHBOARD_HTML = r"""
                 <div class="settings-row">
                     <div class="setting-compact">
                         <label data-i18n="positionSizingMode">Position Sizing</label>
-                        <select id="newBotPositionSizingMode">
+                        <select id="newBotPositionSizingMode" onchange="toggleRiskPercentInput('new')">
                             <option value="fixed_amount" selected>Fixed USDT</option>
                             <option value="risk_percent">Risk %</option>
                             <option value="kelly">Kelly</option>
                         </select>
+                    </div>
+                    <div class="setting-compact" id="newRiskPerTradeContainer" style="display: none;">
+                        <label data-i18n="riskPerTrade">Risk per Trade (%)</label>
+                        <input type="number" id="newBotRiskPerTrade" value="2" min="0.1" max="10" step="0.1">
                     </div>
                     <div class="setting-compact">
                         <label data-i18n="leverageMode">Margin Mode</label>
@@ -1835,11 +1839,15 @@ DASHBOARD_HTML = r"""
                 <div class="settings-row">
                     <div class="setting-compact">
                         <label data-i18n="positionSizingMode">Position Sizing</label>
-                        <select id="editBotPositionSizingMode">
+                        <select id="editBotPositionSizingMode" onchange="toggleRiskPercentInput('edit')">
                             <option value="fixed_amount" selected>Fixed USDT</option>
                             <option value="risk_percent">Risk %</option>
                             <option value="kelly">Kelly</option>
                         </select>
+                    </div>
+                    <div class="setting-compact" id="editRiskPerTradeContainer" style="display: none;">
+                        <label data-i18n="riskPerTrade">Risk per Trade (%)</label>
+                        <input type="number" id="editBotRiskPerTrade" value="2" min="0.1" max="10" step="0.1">
                     </div>
                     <div class="setting-compact">
                         <label data-i18n="leverageMode">Margin Mode</label>
@@ -2201,6 +2209,7 @@ DASHBOARD_HTML = r"""
                 leverage: 'Leverage',
                 orderSize: 'Order Size (USDT)',
                 positionSizingMode: 'Position Sizing',
+                riskPerTrade: 'Risk per Trade (%)',
                 leverageMode: 'Margin Mode',
                 breakeven: 'Break-even',
                 breakevenEnabled: 'Break-even',
@@ -2334,6 +2343,7 @@ DASHBOARD_HTML = r"""
                 leverage: 'Плечо',
                 orderSize: 'Размер ордера (USDT)',
                 positionSizingMode: 'Размер позиции',
+                riskPerTrade: 'Риск на сделку (%)',
                 leverageMode: 'Режим маржи',
                 breakeven: 'Безубыток',
                 breakevenEnabled: 'Безубыток',
@@ -2603,6 +2613,15 @@ DASHBOARD_HTML = r"""
             const optionsRow = document.getElementById(prefix + 'BreakevenOptionsRow');
 
             if (optionsRow) optionsRow.style.display = breakevenEnabled ? 'flex' : 'none';
+        }
+
+        function toggleRiskPercentInput(prefix) {
+            const positionSizingMode = document.getElementById(prefix + 'BotPositionSizingMode').value;
+            const riskContainer = document.getElementById(prefix + 'RiskPerTradeContainer');
+
+            if (riskContainer) {
+                riskContainer.style.display = positionSizingMode === 'risk_percent' ? 'flex' : 'none';
+            }
         }
 
         // Toggle Trailing TP mode-specific options
@@ -3909,6 +3928,7 @@ DASHBOARD_HTML = r"""
                 leverage: parseInt(document.getElementById('newBotLeverage').value),
                 order_size: parseFloat(document.getElementById('newBotOrderSize').value),
                 position_sizing_mode: document.getElementById('newBotPositionSizingMode').value,
+                risk_per_trade: parseFloat(document.getElementById('newBotRiskPerTrade').value),
                 leverage_mode: document.getElementById('newBotLeverageMode').value,
                 breakeven_enabled: document.getElementById('newBotBreakevenEnabled').checked,
                 breakeven_activation: parseFloat(document.getElementById('newBotBreakevenActivation').value),
@@ -4107,6 +4127,8 @@ DASHBOARD_HTML = r"""
             document.getElementById('editBotLeverage').value = bot.leverage;
             document.getElementById('editBotOrderSize').value = bot.order_size || 10;
             document.getElementById('editBotPositionSizingMode').value = bot.position_sizing_mode || 'fixed_amount';
+            document.getElementById('editBotRiskPerTrade').value = bot.risk_per_trade || 2;
+            toggleRiskPercentInput('edit');
             document.getElementById('editBotLeverageMode').value = bot.leverage_mode || 'cross';
             document.getElementById('editBotBreakevenEnabled').checked = bot.breakeven_enabled || false;
             document.getElementById('editBotBreakevenActivation').value = bot.breakeven_activation || 1.0;
@@ -4124,6 +4146,7 @@ DASHBOARD_HTML = r"""
             document.getElementById('editBotSlLine').value = bot.sl_supertrend_line || 2;
             document.getElementById('editBotSlPercent').value = bot.sl_fixed_percent || 2;
             document.getElementById('editBotSlAtrMult').value = bot.sl_atr_multiplier || 1.5;
+            toggleSlOptions('edit');
             document.getElementById('editBotEmaEnabled').checked = bot.ema_enabled || false;
             document.getElementById('editBotEmaMode').value = bot.ema_filter_mode || 'strict';
             document.getElementById('editBotTrailingEnabled').checked = bot.trailing_enabled !== false;
@@ -4132,6 +4155,7 @@ DASHBOARD_HTML = r"""
             document.getElementById('editBotTrailingStep').value = bot.trailing_step || 0.5;
             document.getElementById('editBotTrailingStLine').value = bot.trailing_st_line || 2;
             document.getElementById('editBotTrailingConfirm').value = bot.trailing_confirm_candles || 1;
+            toggleTrailingOptions('edit');
             document.getElementById('editBotPartialTpEnabled').checked = bot.partial_tp_enabled !== false;
             document.getElementById('editBotPartialTpClose').value = bot.partial_tp_close_percent || 50;
             document.getElementById('editBotPartialTpSlMove').value = bot.partial_tp_sl_move || 'tp1';
@@ -4141,6 +4165,7 @@ DASHBOARD_HTML = r"""
             document.getElementById('editBotTrailingTpStLine').value = bot.trailing_tp_st_line || 2;
             document.getElementById('editBotTrailingTpActivation').value = bot.trailing_tp_activation || 0.5;
             document.getElementById('editBotTrailingTpStep').value = bot.trailing_tp_step || 1.0;
+            toggleTrailingTpOptions('edit');
             document.getElementById('editBotEarlyEntry').checked = bot.early_entry_enabled || false;
 
             // Asset filters
@@ -4191,6 +4216,7 @@ DASHBOARD_HTML = r"""
                 leverage: parseInt(document.getElementById('editBotLeverage').value),
                 order_size: parseFloat(document.getElementById('editBotOrderSize').value),
                 position_sizing_mode: document.getElementById('editBotPositionSizingMode').value,
+                risk_per_trade: parseFloat(document.getElementById('editBotRiskPerTrade').value),
                 leverage_mode: document.getElementById('editBotLeverageMode').value,
                 breakeven_enabled: document.getElementById('editBotBreakevenEnabled').checked,
                 breakeven_activation: parseFloat(document.getElementById('editBotBreakevenActivation').value),
@@ -5312,6 +5338,20 @@ async def create_bot(config: dict):
         "trailing_step": config.get("trailing_step", 0.5),
         "trailing_st_line": config.get("trailing_st_line", 2),
         "trailing_confirm_candles": config.get("trailing_confirm_candles", 1),
+        # Take Profit settings
+        "tp_mode": config.get("tp_mode", "rr"),
+        "tp_fixed_percent": config.get("tp_fixed_percent", 2.0),
+        # Partial TP settings
+        "partial_tp_enabled": config.get("partial_tp_enabled", True),
+        "partial_tp_close_percent": config.get("partial_tp_close_percent", 50),
+        "partial_tp_sl_move": config.get("partial_tp_sl_move", "tp1"),
+        "partial_tp_sl_offset": config.get("partial_tp_sl_offset", 0.2),
+        # Trailing TP settings
+        "trailing_tp_enabled": config.get("trailing_tp_enabled", False),
+        "trailing_tp_mode": config.get("trailing_tp_mode", "st_line"),
+        "trailing_tp_st_line": config.get("trailing_tp_st_line", 2),
+        "trailing_tp_activation": config.get("trailing_tp_activation", 0.5),
+        "trailing_tp_step": config.get("trailing_tp_step", 1.0),
         # Auto-trade filters
         "filter_min_volume": config.get("filter_min_volume", 0),
         "filter_max_volume": config.get("filter_max_volume", 0),
@@ -5398,6 +5438,31 @@ async def update_bot(bot_id: str, config: dict):
         bot["trailing_st_line"] = int(config["trailing_st_line"])
     if "trailing_confirm_candles" in config:
         bot["trailing_confirm_candles"] = int(config["trailing_confirm_candles"])
+    # Take Profit settings
+    if "tp_mode" in config:
+        bot["tp_mode"] = config["tp_mode"]
+    if "tp_fixed_percent" in config:
+        bot["tp_fixed_percent"] = float(config["tp_fixed_percent"])
+    # Partial TP settings
+    if "partial_tp_enabled" in config:
+        bot["partial_tp_enabled"] = config["partial_tp_enabled"]
+    if "partial_tp_close_percent" in config:
+        bot["partial_tp_close_percent"] = int(config["partial_tp_close_percent"])
+    if "partial_tp_sl_move" in config:
+        bot["partial_tp_sl_move"] = config["partial_tp_sl_move"]
+    if "partial_tp_sl_offset" in config:
+        bot["partial_tp_sl_offset"] = float(config["partial_tp_sl_offset"])
+    # Trailing TP settings
+    if "trailing_tp_enabled" in config:
+        bot["trailing_tp_enabled"] = config["trailing_tp_enabled"]
+    if "trailing_tp_mode" in config:
+        bot["trailing_tp_mode"] = config["trailing_tp_mode"]
+    if "trailing_tp_st_line" in config:
+        bot["trailing_tp_st_line"] = int(config["trailing_tp_st_line"])
+    if "trailing_tp_activation" in config:
+        bot["trailing_tp_activation"] = float(config["trailing_tp_activation"])
+    if "trailing_tp_step" in config:
+        bot["trailing_tp_step"] = float(config["trailing_tp_step"])
     # Auto-trade filters
     if "filter_min_volume" in config:
         bot["filter_min_volume"] = float(config["filter_min_volume"])
@@ -5515,6 +5580,9 @@ async def start_specific_bot(bot_id: str):
     bot_settings["trailing_step"] = bot.get("trailing_step", 0.5)
     bot_settings["trailing_st_line"] = bot.get("trailing_st_line", 2)
     bot_settings["trailing_confirm_candles"] = bot.get("trailing_confirm_candles", 1)
+    # Take Profit settings
+    bot_settings["tp_mode"] = bot.get("tp_mode", "rr")
+    bot_settings["tp_fixed_percent"] = bot.get("tp_fixed_percent", 2.0)
     # Auto-trade filters
     bot_settings["filter_min_volume"] = bot.get("filter_min_volume", 0)
     bot_settings["filter_max_volume"] = bot.get("filter_max_volume", 0)
@@ -5742,6 +5810,9 @@ async def resume_specific_bot(bot_id: str):
     bot_settings["trailing_step"] = bot.get("trailing_step", 0.5)
     bot_settings["trailing_st_line"] = bot.get("trailing_st_line", 2)
     bot_settings["trailing_confirm_candles"] = bot.get("trailing_confirm_candles", 1)
+    # Take Profit settings
+    bot_settings["tp_mode"] = bot.get("tp_mode", "rr")
+    bot_settings["tp_fixed_percent"] = bot.get("tp_fixed_percent", 2.0)
     # Auto-trade filters
     bot_settings["filter_min_volume"] = bot.get("filter_min_volume", 0)
     bot_settings["filter_max_volume"] = bot.get("filter_max_volume", 0)
