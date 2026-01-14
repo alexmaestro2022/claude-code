@@ -1351,8 +1351,8 @@ DASHBOARD_HTML = r"""
                     <div class="setting-compact">
                         <label data-i18n="botMode">Mode</label>
                         <select id="newBotMode" onchange="toggleBotMode('new')">
-                            <option value="manual" selected data-i18n="manualMode">Manual</option>
-                            <option value="auto_search" data-i18n="autoSearchMode">Auto Search</option>
+                            <option value="manual" data-i18n="manualMode">Manual</option>
+                            <option value="auto_search" selected data-i18n="autoSearchMode">Auto Search</option>
                         </select>
                     </div>
                 </div>
