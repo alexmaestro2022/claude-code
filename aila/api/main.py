@@ -73,6 +73,14 @@ app.add_middleware(
 )
 
 
+# Clear logs on startup
+@app.on_event("startup")
+async def startup_event():
+    """Clear logs when server restarts."""
+    log_buffer.clear()
+    log_buffer.append(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | --- Сервер перезапущен / Server restarted ---")
+
+
 # Dashboard HTML with auto-refresh and copy button
 DASHBOARD_HTML = r"""
 <!DOCTYPE html>
@@ -259,6 +267,9 @@ DASHBOARD_HTML = r"""
         .log-warning { color: #ffaa00; }
         .log-error { color: #ff4444; }
         .log-success { color: #00ff88; }
+        .log-trade-open { color: #ffcc00; font-weight: bold; }
+        .log-trade-profit { color: #00ff88; font-weight: bold; }
+        .log-trade-loss { color: #ff4444; font-weight: bold; }
 
         .toast {
             position: fixed;
@@ -548,6 +559,33 @@ DASHBOARD_HTML = r"""
             color: #888;
         }
 
+        .bot-status.paused {
+            background: #ffcc00;
+            color: #1a1a2e;
+        }
+
+        .bot-status.starting {
+            background: #ffcc00;
+            color: #1a1a2e;
+            animation: pulse 1s infinite;
+        }
+
+        .bot-status.stopping {
+            background: #ff6b6b;
+            color: #1a1a2e;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .bot-card.processing {
+            opacity: 0.8;
+            pointer-events: none;
+        }
+
         .bot-details {
             font-size: 13px;
             color: #888;
@@ -674,6 +712,368 @@ DASHBOARD_HTML = r"""
             color: #fff;
         }
 
+        /* Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            width: 36px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255,255,255,0.1);
+            transition: 0.3s;
+            border-radius: 18px;
+        }
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 12px;
+            width: 12px;
+            left: 3px;
+            bottom: 3px;
+            background: #888;
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+        .toggle-switch input:checked + .toggle-slider {
+            background: linear-gradient(90deg, #00d4ff, #00ff88);
+        }
+        .toggle-switch input:checked + .toggle-slider:before {
+            transform: translateX(18px);
+            background: #1a1a2e;
+        }
+
+        /* Info Icon */
+        .info-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.1);
+            color: #888;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-left: 6px;
+            transition: all 0.2s;
+            font-style: italic;
+            font-family: Georgia, serif;
+        }
+        .info-icon:hover {
+            background: rgba(0,212,255,0.3);
+            color: #00d4ff;
+        }
+        .info-tooltip {
+            display: none;
+            position: absolute;
+            background: linear-gradient(135deg, #1a1a2e 0%, #252542 100%);
+            border: 1px solid rgba(0,212,255,0.3);
+            border-radius: 8px;
+            padding: 10px 14px;
+            width: calc(100% - 20px);
+            left: 10px;
+            font-size: 13px;
+            color: #ccc;
+            line-height: 1.5;
+            z-index: 1000;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            top: 100%;
+            margin-top: 5px;
+            white-space: normal;
+        }
+        .info-tooltip.active {
+            display: block;
+        }
+        /* Desktop: show on hover */
+        @media (hover: hover) {
+            .info-wrapper:hover .info-tooltip {
+                display: block;
+            }
+        }
+        .info-wrapper {
+            position: static;
+        }
+        .settings-row:has(.info-wrapper) {
+            position: relative;
+        }
+
+        /* Range Slider */
+        .range-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .range-slider {
+            -webkit-appearance: none;
+            flex: 1;
+            height: 8px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.1);
+            outline: none;
+        }
+        .range-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00d4ff, #00ff88);
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 2px 6px rgba(0,212,255,0.4);
+        }
+        .range-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+        }
+        .range-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00d4ff, #00ff88);
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 6px rgba(0,212,255,0.4);
+        }
+        .range-slider::-webkit-slider-runnable-track {
+            border-radius: 10px;
+        }
+        .range-slider::-moz-range-track {
+            border-radius: 10px;
+            background: rgba(255,255,255,0.1);
+        }
+        .range-value {
+            min-width: 50px;
+            text-align: center;
+            font-weight: bold;
+            color: #00d4ff;
+        }
+        .range-slim {
+            height: 5px !important;
+        }
+        .range-slim::-webkit-slider-thumb {
+            width: 16px !important;
+            height: 16px !important;
+        }
+        .range-slim::-moz-range-thumb {
+            width: 16px !important;
+            height: 16px !important;
+        }
+
+        /* Settings Blocks */
+        .settings-block {
+            margin-bottom: 12px;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid;
+        }
+        .settings-block h4 {
+            margin: 0 0 10px 0;
+            font-size: 13px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .settings-block h4 .icon {
+            font-size: 14px;
+        }
+        .block-risk {
+            background: rgba(255,68,68,0.08);
+            border-color: rgba(255,68,68,0.3);
+        }
+        .block-risk h4 { color: #ff6b6b; }
+        .block-strategy {
+            background: rgba(0,212,255,0.08);
+            border-color: rgba(0,212,255,0.3);
+        }
+        .block-strategy h4 { color: #00d4ff; }
+        .block-filters {
+            background: rgba(0,255,136,0.08);
+            border-color: rgba(0,255,136,0.3);
+        }
+        .block-filters h4 { color: #00ff88; }
+        .block-profit {
+            background: rgba(255,204,0,0.08);
+            border-color: rgba(255,204,0,0.3);
+        }
+        .block-profit h4 { color: #ffcc00; }
+        .block-breakeven {
+            background: rgba(0,212,255,0.08);
+            border-color: rgba(0,212,255,0.3);
+        }
+        .block-breakeven h4 { color: #00d4ff; }
+        .block-auto {
+            background: rgba(255,204,0,0.08);
+            border-color: rgba(255,204,0,0.3);
+        }
+        .block-auto h4 { color: #ffcc00; }
+        .block-basic {
+            background: rgba(255,255,255,0.03);
+            border-color: rgba(255,255,255,0.1);
+        }
+        .block-basic h4 { color: #888; }
+
+        /* Compact Settings Grid */
+        .settings-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 8px;
+            align-items: center;
+        }
+        .settings-row:last-child {
+            margin-bottom: 0;
+        }
+        .setting-compact {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .setting-compact label {
+            font-size: 11px;
+            color: #888;
+        }
+        .setting-compact input,
+        .setting-compact select {
+            padding: 8px 10px;
+            border-radius: 5px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(0,0,0,0.3);
+            color: #e0e0e0;
+            font-size: 13px;
+            height: 36px;
+        }
+        .setting-inline {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .setting-inline label {
+            font-size: 12px;
+            color: #ccc;
+        }
+
+        /* Compact Modal */
+        .modal-compact {
+            max-width: 480px !important;
+            max-height: 95vh !important;
+            padding: 20px !important;
+        }
+        .modal-compact .modal-header {
+            margin-bottom: 12px;
+        }
+        .modal-compact .modal-header h3 {
+            font-size: 18px;
+        }
+        .modal-compact .settings-actions {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* Info Badge */
+        .info-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        .info-badge.success {
+            background: rgba(0,255,136,0.15);
+            color: #00ff88;
+        }
+        .info-badge.warning {
+            background: rgba(255,204,0,0.15);
+            color: #ffcc00;
+        }
+
+        /* Reset Button */
+        .btn-reset {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #888;
+            padding: 6px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+        .btn-reset:hover {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+        }
+
+        /* Block Header with Reset */
+        .block-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .block-header h4 {
+            margin: 0 !important;
+        }
+
+        /* RR Selector */
+        .rr-selector {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+        .rr-option {
+            padding: 5px 10px;
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: 0.2s;
+            background: rgba(0,0,0,0.3);
+            color: #888;
+        }
+        .rr-option:hover {
+            border-color: rgba(0,212,255,0.5);
+            color: #ccc;
+        }
+        .rr-option.active {
+            background: linear-gradient(135deg, rgba(0,212,255,0.2), rgba(0,255,136,0.2));
+            border-color: #00d4ff;
+            color: #00d4ff;
+        }
+
+        /* Responsive */
+        @media (max-width: 520px) {
+            .modal-compact {
+                max-width: 100% !important;
+                width: 100% !important;
+                max-height: 100vh !important;
+                border-radius: 0 !important;
+                padding: 15px !important;
+            }
+            .settings-row {
+                flex-wrap: wrap;
+            }
+            .setting-compact {
+                min-width: calc(50% - 5px);
+            }
+            .settings-block {
+                padding: 10px;
+            }
+        }
+
         /* Tabs */
         .tabs {
             display: flex;
@@ -730,7 +1130,6 @@ DASHBOARD_HTML = r"""
         <!-- Tabs Navigation -->
         <div class="tabs">
             <button class="tab active" onclick="showTab('dashboard')" data-i18n="dashboard">Dashboard</button>
-            <button class="tab" onclick="showTab('bots')" data-i18n="botsManager">Bots Manager</button>
             <button class="tab" onclick="showTab('charts')" data-i18n="charts">Charts</button>
             <button class="tab" onclick="showTab('pairs')" data-i18n="tradingPairs">Trading Pairs</button>
         </div>
@@ -760,6 +1159,27 @@ DASHBOARD_HTML = r"""
                 </div>
             </div>
 
+            <!-- Bots Section (integrated into Dashboard) -->
+            <div class="bots-section" style="margin-bottom: 20px;">
+                <div class="bots-header">
+                    <h3 data-i18n="botsManager">Bots</h3>
+                    <button class="btn btn-primary" onclick="showCreateBotModal()" data-i18n="createBot">+ Create Bot</button>
+                </div>
+                <div class="bots-grid" id="botsGrid">
+                    <!-- Bots will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Open Positions Section -->
+            <div class="positions-section" id="positionsSection" style="margin-bottom: 20px; display: none;">
+                <div class="bots-header">
+                    <h3 data-i18n="openPositions">Open Positions</h3>
+                </div>
+                <div class="positions-grid" id="positionsGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
+                    <!-- Positions will be loaded here -->
+                </div>
+            </div>
+
             <div class="logs-container">
                 <div class="logs-header">
                     <div style="display: flex; align-items: center;">
@@ -772,19 +1192,6 @@ DASHBOARD_HTML = r"""
                     </div>
                 </div>
                 <div class="logs" id="logs"></div>
-            </div>
-        </div>
-
-        <!-- Bots Manager Tab -->
-        <div class="tab-content" id="tab-bots">
-            <div class="bots-section">
-                <div class="bots-header">
-                    <h3 data-i18n="botsManager">Bots Manager</h3>
-                    <button class="btn btn-primary" onclick="showCreateBotModal()" data-i18n="createBot">+ Create Bot</button>
-                </div>
-                <div class="bots-grid" id="botsGrid">
-                    <!-- Bots will be loaded here -->
-                </div>
             </div>
         </div>
 
@@ -831,213 +1238,489 @@ DASHBOARD_HTML = r"""
         </footer>
     </div>
 
+    <!-- API Stats Panel (bottom right) -->
+    <div id="apiStatsPanel" style="
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: rgba(26, 26, 46, 0.95);
+        border: 1px solid rgba(0, 212, 255, 0.3);
+        border-radius: 8px;
+        padding: 10px 15px;
+        font-size: 12px;
+        color: #888;
+        z-index: 1000;
+        backdrop-filter: blur(10px);
+    ">
+        <div style="display: flex; align-items: center; gap: 15px;">
+            <div title="Ping to Bybit API">
+                <span style="color: #00d4ff;">⚡</span>
+                <span id="apiPing">--</span> ms
+            </div>
+            <div title="API Requests per 5 sec / Bybit Limit">
+                <span style="color: #00ff88;">📊</span>
+                <span id="apiRequests">--</span>/<span id="apiLimit">600</span>/5s
+            </div>
+            <div title="Rate Usage">
+                <span id="apiUsageBar" style="
+                    display: inline-block;
+                    width: 40px;
+                    height: 6px;
+                    background: rgba(255,255,255,0.1);
+                    border-radius: 3px;
+                    overflow: hidden;
+                ">
+                    <span id="apiUsageFill" style="
+                        display: block;
+                        height: 100%;
+                        width: 0%;
+                        background: linear-gradient(90deg, #00ff88, #ffcc00);
+                        transition: width 0.3s;
+                    "></span>
+                </span>
+            </div>
+            <button id="restartServerBtn" onclick="restartServer()" title="Restart Server" style="
+                background: transparent;
+                border: 1px solid rgba(255, 100, 100, 0.5);
+                border-radius: 4px;
+                padding: 4px 8px;
+                cursor: pointer;
+                color: #ff6666;
+                font-size: 11px;
+                transition: all 0.2s;
+            " onmouseover="this.style.background='rgba(255,100,100,0.2)'" onmouseout="this.style.background='transparent'">
+                🔄 Restart
+            </button>
+        </div>
+    </div>
+
     <div class="toast" id="toast">Logs copied to clipboard!</div>
 
     <!-- Create Bot Modal -->
     <div class="modal" id="createBotModal">
-        <div class="modal-content" style="max-width: 700px;">
+        <div class="modal-content modal-compact" style="overflow-y: auto;">
             <div class="modal-header">
-                <h3 data-i18n="createBot">Create Bot</h3>
+                <h3 data-i18n="createBot">+ Create Bot</h3>
                 <button class="modal-close" onclick="closeModal('createBotModal')">&times;</button>
             </div>
-            <div class="settings-grid">
-                <div class="setting-item">
-                    <label data-i18n="botName">Bot Name</label>
-                    <input type="text" id="newBotName" placeholder="My Bot">
+
+            <!-- Basic Settings Block -->
+            <div class="settings-block block-basic">
+                <h4><span class="icon">⚙️</span> <span data-i18n="basicSettings">Basic</span></h4>
+                <div class="settings-row">
+                    <div class="setting-compact">
+                        <label data-i18n="botName">Name</label>
+                        <input type="text" id="newBotName" placeholder="My Bot">
+                    </div>
+                    <div class="setting-compact">
+                        <label data-i18n="botMode">Mode</label>
+                        <select id="newBotMode" onchange="toggleBotMode('new')">
+                            <option value="manual" selected data-i18n="manualMode">Manual</option>
+                            <option value="auto_search" data-i18n="autoSearchMode">Auto Search</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="setting-item">
-                    <label data-i18n="botMode">Bot Mode</label>
-                    <select id="newBotMode" onchange="toggleBotMode('new')">
-                        <option value="manual" selected data-i18n="manualMode">Manual (Single Pair)</option>
-                        <option value="auto_search" data-i18n="autoSearchMode">Auto Search (All Pairs)</option>
-                    </select>
-                </div>
-                <div class="setting-item" id="newPairContainer">
-                    <label data-i18n="tradingPair">Trading Pair</label>
-                    <div class="pair-search-container" style="position: relative; display: flex; align-items: center;">
-                        <input type="text" id="newBotPairSearch" placeholder="Search pair... (e.g. BTC, ETH)"
-                               oninput="filterTradingPairs('new')" onfocus="showPairDropdown('new')"
-                               autocomplete="off" style="width: 100%; padding-right: 25px;">
-                        <span onclick="clearPairSearch('new')" style="position: absolute; right: 10px; cursor: pointer; color: #888; font-size: 16px; font-weight: bold;">&times;</span>
-                        <div id="newPairDropdown" class="pair-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; max-height: 250px; overflow-y: auto; background: #1a1a2e; border: 1px solid #333; border-radius: 5px; z-index: 1000;">
-                        </div>
+                <div class="settings-row" id="newPairContainer">
+                    <div class="setting-compact" style="position: relative;">
+                        <label data-i18n="tradingPair">Trading Pair</label>
+                        <input type="text" id="newBotPairSearch" placeholder="BTCUSDT" oninput="filterTradingPairs('new')" onfocus="showPairDropdown('new')" autocomplete="off">
+                        <div id="newPairDropdown" class="pair-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; max-height: 200px; overflow-y: auto; background: #1a1a2e; border: 1px solid #333; border-radius: 5px; z-index: 1000;"></div>
                         <input type="hidden" id="newBotPair" value="BTCUSDT">
                     </div>
                 </div>
-                <div class="setting-item" id="newMaxOrdersContainer" style="display: none;">
-                    <label data-i18n="maxSimultaneousOrders">Max Simultaneous Orders</label>
-                    <input type="number" id="newBotMaxOrders" value="3" min="1" max="20">
-                    <div style="margin-top: 5px; font-size: 11px; color: #888;" data-i18n="autoSearchHint">
-                        Bot will scan all pairs and open orders when strategy conditions match
-                    </div>
-                </div>
-                <div class="setting-item">
-                    <label data-i18n="timeframe">Timeframe</label>
-                    <select id="newBotTimeframe">
-                        <option value="1m">1m</option>
-                        <option value="3m">3m</option>
-                        <option value="5m">5m</option>
-                        <option value="15m" selected>15m</option>
-                        <option value="30m">30m</option>
-                        <option value="1h">1h</option>
-                        <option value="2h">2h</option>
-                        <option value="4h">4h</option>
-                        <option value="6h">6h</option>
-                        <option value="12h">12h</option>
-                        <option value="1d">1d</option>
-                        <option value="1w">1w</option>
-                    </select>
-                </div>
-                <div class="setting-item" id="newPairInfoContainer" style="display: none;">
-                    <label data-i18n="pairInfo">Pair Info</label>
-                    <div id="newPairInfo" style="padding: 8px; background: rgba(0,255,136,0.1); border-radius: 5px; font-size: 12px;">
-                        <div><span data-i18n="minOrder">Min Order:</span> <span id="newPairMinOrder">-</span> USDT</div>
-                        <div><span data-i18n="maxLeverage">Max Leverage:</span> <span id="newPairMaxLeverage">-</span>x</div>
-                    </div>
-                </div>
-                <div class="setting-item">
-                    <label data-i18n="leverage">Leverage</label>
-                    <select id="newBotLeverage" onchange="updateDepositInfo('new')">
-                        <option value="1">1x</option>
-                        <option value="2">2x</option>
-                        <option value="3">3x</option>
-                        <option value="5">5x</option>
-                        <option value="10" selected>10x</option>
-                        <option value="15">15x</option>
-                        <option value="20">20x</option>
-                        <option value="25">25x</option>
-                        <option value="50">50x</option>
-                        <option value="75">75x</option>
-                        <option value="100">100x</option>
-                    </select>
-                </div>
-                <div class="setting-item">
-                    <label data-i18n="orderSize">Order Size (USDT)</label>
-                    <input type="number" id="newBotOrderSize" value="100" min="5" max="100000" step="1" oninput="updateDepositInfo('new')">
-                    <div id="newDepositInfo" style="margin-top: 5px; padding: 5px; background: rgba(255,204,0,0.1); border-radius: 3px; font-size: 11px; color: #ffcc00;">
-                        <span data-i18n="depositUsed">Deposit used:</span> <span id="newDepositUsed">10</span> USDT
-                    </div>
-                </div>
-                <div class="setting-item">
-                    <label data-i18n="positionSizingMode">Position Sizing Mode</label>
-                    <select id="newBotPositionSizingMode" onchange="togglePositionSizingOptions('new')">
-                        <option value="fixed_amount" selected data-i18n="fixedAmount">Fixed Amount</option>
-                        <option value="risk_percent" data-i18n="riskPercent">Risk Percent</option>
-                        <option value="kelly" data-i18n="kellyCriterion">Kelly Criterion</option>
-                    </select>
-                </div>
-                <div class="setting-item" id="newRiskPercentContainer" style="display: none;">
-                    <label data-i18n="riskPerTrade">Risk per Trade (%)</label>
-                    <input type="number" id="newBotRisk" value="2" min="0.1" max="10" step="0.1">
-                </div>
-                <div class="setting-item">
-                    <label data-i18n="tpMode">Take Profit Mode</label>
-                    <select id="newBotTpMode" onchange="toggleTpOptions('new')">
-                        <option value="risk_ratio" selected data-i18n="riskRatio">Risk:Reward Ratio</option>
-                        <option value="fixed_percent" data-i18n="fixedPercent">Fixed Percent</option>
-                    </select>
-                </div>
-                <div class="setting-item" id="newTpRatioContainer">
-                    <label data-i18n="tpRatio">Take Profit (R:R)</label>
-                    <input type="number" id="newBotTpRatio" value="2" min="1" max="10" step="0.5">
-                </div>
-                <div class="setting-item" id="newTpPercentContainer" style="display: none;">
-                    <label data-i18n="tpPercent">Take Profit (%)</label>
-                    <input type="number" id="newBotTpPercent" value="4" min="0.5" max="20" step="0.5">
-                </div>
-                <div class="setting-item">
-                    <label data-i18n="slMode">Stop Loss Mode</label>
-                    <select id="newBotSlMode" onchange="toggleSlOptions('new')">
-                        <option value="supertrend_line" selected>SuperTrend Line</option>
-                        <option value="fixed_percent">Fixed Percent</option>
-                        <option value="atr">ATR</option>
-                    </select>
-                </div>
-                <div class="setting-item" id="newSlLineContainer">
-                    <label data-i18n="slLine">SL SuperTrend Line</label>
-                    <select id="newBotSlLine">
-                        <option value="1">Line 1 (Fast)</option>
-                        <option value="2" selected>Line 2 (Medium)</option>
-                        <option value="3">Line 3 (Slow)</option>
-                    </select>
-                </div>
-                <div class="setting-item" id="newSlPercentContainer" style="display: none;">
-                    <label data-i18n="slPercent">SL Fixed Percent (%)</label>
-                    <input type="number" id="newBotSlPercent" value="2" min="0.5" max="10" step="0.5">
-                </div>
-                <div class="setting-item" id="newSlAtrContainer" style="display: none;">
-                    <label data-i18n="slAtrMult">SL ATR Multiplier</label>
-                    <input type="number" id="newBotSlAtrMult" value="1.5" min="0.5" max="5" step="0.1">
-                </div>
-                <div class="setting-item">
-                    <label data-i18n="maxPositions">Max Positions</label>
-                    <input type="number" id="newBotMaxPositions" value="3" min="1" max="10">
-                </div>
-                <div class="setting-item">
-                    <label data-i18n="emaFilter">EMA 200 Filter</label>
-                    <select id="newBotEmaEnabled">
-                        <option value="true" selected data-i18n="enabled">Enabled</option>
-                        <option value="false" data-i18n="disabled">Disabled</option>
-                    </select>
-                </div>
-                <div class="setting-item">
-                    <label data-i18n="emaMode">EMA Filter Mode</label>
-                    <select id="newBotEmaMode">
-                        <option value="strict" selected data-i18n="strict">Strict</option>
-                        <option value="soft" data-i18n="soft">Soft (50% size)</option>
-                    </select>
-                </div>
-                <div class="setting-item">
-                    <label data-i18n="leverageMode">Leverage Mode</label>
-                    <select id="newBotLeverageMode">
-                        <option value="cross" selected data-i18n="crossMargin">Cross Margin</option>
-                        <option value="isolated" data-i18n="isolatedMargin">Isolated Margin</option>
-                    </select>
-                </div>
-                <div class="setting-item">
-                    <label data-i18n="trailingStop">Trailing Stop</label>
-                    <select id="newBotTrailingEnabled" onchange="toggleTrailingOptions('new')">
-                        <option value="true" selected data-i18n="enabled">Enabled</option>
-                        <option value="false" data-i18n="disabled">Disabled</option>
-                    </select>
-                </div>
-                <div id="newTrailingOptionsContainer">
-                    <div class="setting-item">
-                        <label data-i18n="trailingMode">Trailing Mode</label>
-                        <select id="newBotTrailingMode" onchange="toggleTrailingModeOptions('new')">
-                            <option value="supertrend" selected data-i18n="superTrendBased">SuperTrend Based</option>
-                            <option value="percent" data-i18n="percentBased">Percent Based</option>
-                        </select>
-                    </div>
-                    <div class="setting-item">
-                        <label data-i18n="trailingActivation">Trailing Activation (%)</label>
-                        <input type="number" id="newBotTrailingActivation" value="1.0" min="0.1" max="10" step="0.1">
-                    </div>
-                    <div class="setting-item" id="newTrailingStepContainer" style="display: none;">
-                        <label data-i18n="trailingStep">Trailing Step (%)</label>
-                        <input type="number" id="newBotTrailingStep" value="0.5" min="0.1" max="5" step="0.1">
-                    </div>
-                </div>
-                <div class="setting-item">
-                    <label data-i18n="breakeven">Break-even</label>
-                    <select id="newBotBreakevenEnabled" onchange="toggleBreakevenOptions('new')">
-                        <option value="false" selected data-i18n="disabled">Disabled</option>
-                        <option value="true" data-i18n="enabled">Enabled</option>
-                    </select>
-                </div>
-                <div id="newBreakevenOptionsContainer" style="display: none;">
-                    <div class="setting-item">
-                        <label data-i18n="breakevenActivation">Break-even Activation (%)</label>
-                        <input type="number" id="newBotBreakevenActivation" value="1.0" min="0.5" max="5" step="0.1">
-                    </div>
-                    <div class="setting-item">
-                        <label data-i18n="breakevenOffset">Break-even Offset (%)</label>
-                        <input type="number" id="newBotBreakevenOffset" value="0.1" min="0" max="1" step="0.05">
+                <div class="settings-row" id="newMaxPairsContainer" style="display: none;">
+                    <div class="setting-compact">
+                        <label data-i18n="maxTradingPairs">Max Trading Pairs</label>
+                        <input type="number" id="newBotMaxPairs" value="1" min="1" max="20">
                     </div>
                 </div>
             </div>
+
+            <!-- Risk Management Block -->
+            <div class="settings-block block-risk">
+                <h4><span class="icon">🛡️</span> <span data-i18n="riskManagement">Risk Management</span></h4>
+                <div class="settings-row">
+                    <div class="setting-compact" style="flex: 1;">
+                        <label data-i18n="balanceUsage">Balance Usage (%)</label>
+                        <div class="range-container">
+                            <span id="newBalanceUsageInfo" style="min-width: 90px; font-size: 12px; color: #00ff88;"><span id="newAllocatedBalance">-</span> / <span id="newTotalBalance">-</span></span>
+                            <input type="range" class="range-slider range-slim" id="newBotBalanceUsage" value="100" min="1" max="100" oninput="updateSliderValue(this, 'newBalanceValue'); updateBalanceUsageInfo('new'); updateMaxLossInfo('new')">
+                            <span class="range-value" id="newBalanceValue">100%</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-row">
+                    <div class="setting-compact" style="flex: 1;">
+                        <label data-i18n="maxLossLimit">Max Loss Limit (%)</label>
+                        <div class="range-container">
+                            <span id="newMaxLossInfo" style="min-width: 90px; font-size: 12px; color: #ff6b6b;"><span id="newMaxLossAmount">-</span> USDT</span>
+                            <input type="range" class="range-slider range-slim" id="newBotMaxLoss" value="100" min="1" max="100" oninput="updateSliderValue(this, 'newMaxLossValue'); updateMaxLossInfo('new')">
+                            <span class="range-value" id="newMaxLossValue">100%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Strategy Block -->
+            <div class="settings-block block-strategy">
+                <h4><span class="icon">📊</span> <span data-i18n="strategySettings">Strategy</span></h4>
+                <div class="settings-row">
+                    <div class="setting-compact">
+                        <label data-i18n="timeframe">Timeframe</label>
+                        <select id="newBotTimeframe">
+                            <option value="1m" selected>1m</option>
+                            <option value="3m">3m</option>
+                            <option value="5m">5m</option>
+                            <option value="15m">15m</option>
+                            <option value="30m">30m</option>
+                            <option value="1h">1h</option>
+                            <option value="4h">4h</option>
+                            <option value="1d">1d</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact">
+                        <label data-i18n="leverage">Leverage</label>
+                        <select id="newBotLeverage" onchange="updateDepositInfo('new')">
+                            <option value="1">1x</option>
+                            <option value="2">2x</option>
+                            <option value="5">5x</option>
+                            <option value="10" selected>10x</option>
+                            <option value="20">20x</option>
+                            <option value="50">50x</option>
+                            <option value="100">100x</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact">
+                        <label data-i18n="orderSize">Order (USDT)</label>
+                        <input type="number" id="newBotOrderSize" value="10" min="5" max="100000" step="1" oninput="updateDepositInfo('new')">
+                    </div>
+                    <div class="setting-compact" style="flex: 0.8;">
+                        <label>&nbsp;</label>
+                        <div id="newDepositInfo" class="info-badge warning" style="height: 36px; display: flex; align-items: center;">
+                            <span id="newDepositUsed">1</span> USDT
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-row">
+                    <div class="setting-compact">
+                        <label data-i18n="positionSizingMode">Position Sizing</label>
+                        <select id="newBotPositionSizingMode">
+                            <option value="fixed_amount" selected>Fixed USDT</option>
+                            <option value="risk_percent">Risk %</option>
+                            <option value="kelly">Kelly</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact">
+                        <label data-i18n="leverageMode">Margin Mode</label>
+                        <select id="newBotLeverageMode">
+                            <option value="cross" selected>Cross</option>
+                            <option value="isolated">Isolated</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Break-even Block -->
+            <div class="settings-block block-breakeven">
+                <h4><span class="icon">🎯</span> <span data-i18n="breakeven">Break-even</span></h4>
+                <div class="settings-row">
+                    <div class="setting-inline" style="flex: 0 0 auto;">
+                        <label data-i18n="breakevenEnabled" style="min-width: 80px;">Break-even</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="newBotBreakevenEnabled" onchange="toggleBreakevenOptions('new')">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="settings-row" id="newBreakevenOptionsRow" style="display: none;">
+                    <div class="setting-compact">
+                        <label data-i18n="breakevenActivation">Activation (%)</label>
+                        <input type="number" id="newBotBreakevenActivation" value="1.0" min="0.1" max="10" step="0.1">
+                    </div>
+                    <div class="setting-compact">
+                        <label data-i18n="breakevenOffset">Offset (%)</label>
+                        <input type="number" id="newBotBreakevenOffset" value="0.1" min="0" max="5" step="0.1">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Take Profit Block -->
+            <div class="settings-block block-profit">
+                <h4><span class="icon">💰</span> <span data-i18n="takeProfitSettings">Take Profit</span></h4>
+                <div class="settings-row">
+                    <div class="setting-compact">
+                        <label data-i18n="tpMode">TP Mode</label>
+                        <select id="newBotTpMode" onchange="toggleTpOptions('new')">
+                            <option value="rr" selected>R:R</option>
+                            <option value="fixed">Fix %</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact" id="newTpRrContainer">
+                        <label data-i18n="tpRatio">Take Profit (R:R)</label>
+                        <select id="newBotTpRatio">
+                            <option value="1">1:1</option>
+                            <option value="2" selected>2:1</option>
+                            <option value="3">3:1</option>
+                            <option value="4">4:1</option>
+                            <option value="5">5:1</option>
+                            <option value="6">6:1</option>
+                            <option value="7">7:1</option>
+                            <option value="8">8:1</option>
+                            <option value="9">9:1</option>
+                            <option value="10">10:1</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact" id="newTpFixedContainer" style="display: none;">
+                        <label data-i18n="tpPercent">TP %</label>
+                        <input type="number" id="newBotTpPercent" value="2" min="0.5" max="50" step="0.5">
+                    </div>
+                </div>
+                <div class="settings-row">
+                    <div class="setting-inline" style="flex: 0 0 auto;">
+                        <label data-i18n="trailingTp" style="min-width: 80px;">Trailing TP</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="newBotTrailingTpEnabled" onchange="toggleTrailingTpOptions('new')">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span class="info-wrapper">
+                            <span class="info-icon" onclick="toggleInfo(this)">i</span>
+                            <span class="info-tooltip" data-i18n-tooltip="trailingTpInfo">No fixed TP, follows trend. ST Line: exits on reversal. Trailing %: moves TP as price approaches.</span>
+                        </span>
+                    </div>
+                </div>
+                <div class="settings-row" id="newTrailingTpOptionsRow" style="display: none;">
+                    <div class="setting-compact" id="newTrailingTpModeContainer">
+                        <label data-i18n="trailingTpMode">Mode</label>
+                        <select id="newBotTrailingTpMode" onchange="toggleTrailingTpMode('new')">
+                            <option value="st_line" selected>ST Line</option>
+                            <option value="trailing_percent">Trailing %</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact" id="newTrailingTpStLineContainer">
+                        <label data-i18n="trailingTpStLine">ST Line</label>
+                        <select id="newBotTrailingTpStLine">
+                            <option value="1">Fast</option>
+                            <option value="2" selected>Medium</option>
+                            <option value="3">Slow</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact" id="newTrailingTpActivationContainer" style="display: none;">
+                        <label data-i18n="trailingTpActivation">Activation %</label>
+                        <input type="number" id="newBotTrailingTpActivation" value="0.5" min="0.1" max="2" step="0.1">
+                    </div>
+                    <div class="setting-compact" id="newTrailingTpStepContainer" style="display: none;">
+                        <label data-i18n="trailingTpStep">Step %</label>
+                        <input type="number" id="newBotTrailingTpStep" value="1.0" min="0.5" max="3" step="0.1">
+                    </div>
+                </div>
+                <div class="settings-row">
+                    <div class="setting-inline" style="flex: 0 0 auto;">
+                        <label data-i18n="partialTp" style="min-width: 80px;">Partial TP</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="newBotPartialTpEnabled" checked onchange="togglePartialTpOptions('new')">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span class="info-wrapper">
+                            <span class="info-icon" onclick="toggleInfo(this)">i</span>
+                            <span class="info-tooltip" data-i18n-tooltip="partialTpInfo">Closes part of position at TP1, moves SL to TP1/Entry to lock profit on remaining.</span>
+                        </span>
+                    </div>
+                </div>
+                <div class="settings-row" id="newPartialTpOptionsRow">
+                    <div class="setting-compact" id="newPartialTpCloseContainer">
+                        <label data-i18n="partialTpClose">Close %</label>
+                        <select id="newBotPartialTpClose">
+                            <option value="25">25%</option>
+                            <option value="50" selected>50%</option>
+                            <option value="75">75%</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact" id="newPartialTpSlMoveContainer">
+                        <label data-i18n="partialTpSlMove">SL Move</label>
+                        <select id="newBotPartialTpSlMove" onchange="togglePartialTpOffset('new')">
+                            <option value="tp1" selected>TP1</option>
+                            <option value="entry">Entry</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact" id="newPartialTpOffsetContainer">
+                        <label data-i18n="partialTpOffset">Offset %</label>
+                        <input type="number" id="newBotPartialTpOffset" value="0.2" min="0.1" max="1" step="0.1">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stop Loss Block -->
+            <div class="settings-block block-risk">
+                <h4><span class="icon">🛑</span> <span data-i18n="stopLossSettings">Stop Loss</span></h4>
+                <div class="settings-row">
+                    <div class="setting-compact">
+                        <label data-i18n="slMode">SL Mode</label>
+                        <select id="newBotSlMode" onchange="toggleSlOptions('new')">
+                            <option value="supertrend_line" selected>ST Line</option>
+                            <option value="fixed_percent">Fixed %</option>
+                            <option value="atr">ATR</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact" id="newSlLineContainer">
+                        <label data-i18n="slLine">SL Line</label>
+                        <select id="newBotSlLine" style="min-width: 120px;">
+                            <option value="1">Fast</option>
+                            <option value="2" selected>Medium</option>
+                            <option value="3">Slow</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact" id="newSlPercentContainer" style="display: none;">
+                        <label data-i18n="slPercent">SL %</label>
+                        <input type="number" id="newBotSlPercent" value="2" min="0.5" max="10" step="0.5" style="min-width: 120px;">
+                    </div>
+                    <div class="setting-compact" id="newSlAtrContainer" style="display: none;">
+                        <label data-i18n="slAtrMult">ATR Mult</label>
+                        <input type="number" id="newBotSlAtrMult" value="1.5" min="0.5" max="5" step="0.1" style="min-width: 120px;">
+                    </div>
+                </div>
+                <div class="settings-row">
+                    <div class="setting-inline" style="flex: 0 0 auto;">
+                        <label data-i18n="trailingSl" style="min-width: 80px;">Trailing SL</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="newBotTrailingEnabled" checked onchange="toggleTrailingOptions('new')">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span class="info-wrapper">
+                            <span class="info-icon" onclick="toggleInfo(this)">i</span>
+                            <span class="info-tooltip" data-i18n-tooltip="trailingSlInfo">SL moves in profit direction. Fix %: by steps. ST Line: follows SuperTrend.</span>
+                        </span>
+                    </div>
+                </div>
+                <div class="settings-row" id="newTrailingOptionsRow">
+                    <div class="setting-compact" id="newTrailingModeContainer">
+                        <label data-i18n="trailingMode">Mode</label>
+                        <select id="newBotTrailingMode" onchange="toggleTrailingMode('new')">
+                            <option value="fix_percent" selected>Fix %</option>
+                            <option value="st_line">ST Line</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact" id="newTrailingActivationContainer">
+                        <label data-i18n="trailingActivation">Activation %</label>
+                        <input type="number" id="newBotTrailingActivation" value="1.0" min="0.5" max="5" step="0.1">
+                    </div>
+                    <div class="setting-compact" id="newTrailingStepContainer">
+                        <label data-i18n="trailingStep">Step %</label>
+                        <input type="number" id="newBotTrailingStep" value="0.5" min="0.1" max="2" step="0.1">
+                    </div>
+                    <div class="setting-compact" id="newTrailingStLineContainer" style="display: none;">
+                        <label data-i18n="trailingStLine">ST Line</label>
+                        <select id="newBotTrailingStLine">
+                            <option value="1">Fast</option>
+                            <option value="2" selected>Medium</option>
+                            <option value="3">Slow</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact" id="newTrailingConfirmContainer" style="display: none;">
+                        <label data-i18n="trailingConfirm">Confirm Candles</label>
+                        <select id="newBotTrailingConfirm">
+                            <option value="1" selected>1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="settings-row">
+                    <div class="setting-inline">
+                        <label data-i18n="earlyEntry">Early Entry (ST3)</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="newBotEarlyEntry">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Signal Filters Block -->
+            <div class="settings-block block-filters">
+                <h4><span class="icon">🎯</span> <span data-i18n="signalFilters">Signal Filters</span></h4>
+                <div class="settings-row" style="align-items: center;">
+                    <div class="setting-inline" style="flex: 1; min-width: 120px;">
+                        <label data-i18n="emaFilter">EMA 200</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="newBotEmaEnabled" checked onchange="toggleEmaMode('new')">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-compact" id="newEmaModeContainer" style="flex: 1;">
+                        <label data-i18n="emaMode">EMA Mode</label>
+                        <select id="newBotEmaMode">
+                            <option value="strict" selected data-i18n="strict">Strict</option>
+                            <option value="soft" data-i18n="soft">Soft 50%</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Asset Filters (only for auto mode) -->
+            <div id="newAssetFiltersContainer" style="display: none;">
+                <div class="settings-block block-auto">
+                    <div class="block-header">
+                        <h4><span class="icon">🔍</span> <span data-i18n="assetFilters">Asset Filters</span></h4>
+                        <button class="btn-reset" onclick="resetAssetFilters('new')" title="Reset">↺</button>
+                    </div>
+                    <div class="settings-row">
+                        <div class="setting-compact">
+                            <label data-i18n="volume24hMin">Vol 24h Min</label>
+                            <input type="text" id="newBotMinVolume" value="3,000,000" oninput="formatMoneyInput(this)">
+                        </div>
+                        <div class="setting-compact">
+                            <label data-i18n="volume24hMax">Vol 24h Max</label>
+                            <input type="text" id="newBotMaxVolume" value="0" oninput="formatMoneyInput(this)">
+                        </div>
+                    </div>
+                    <div class="settings-row">
+                        <div class="setting-compact">
+                            <label data-i18n="priceMin">Price Min $</label>
+                            <input type="number" id="newBotMinPrice" value="0" min="0" step="0.0001">
+                        </div>
+                        <div class="setting-compact">
+                            <label data-i18n="priceMax">Price Max $</label>
+                            <input type="number" id="newBotMaxPrice" value="0" min="0" step="0.0001">
+                        </div>
+                    </div>
+                    <div class="settings-row">
+                        <div class="setting-compact">
+                            <label data-i18n="changeMin">Change Min %</label>
+                            <input type="number" id="newBotMinChange" value="-30" step="0.1">
+                        </div>
+                        <div class="setting-compact">
+                            <label data-i18n="changeMax">Change Max %</label>
+                            <input type="number" id="newBotMaxChange" value="20" step="0.1">
+                        </div>
+                    </div>
+                    <div class="settings-row">
+                        <div class="setting-compact">
+                            <label data-i18n="volatilityPeriod">Volat Period</label>
+                            <input type="number" id="newBotVolatilityPeriod" value="12" min="0">
+                        </div>
+                        <div class="setting-compact">
+                            <label data-i18n="volatilityMin">Volat Min %</label>
+                            <input type="number" id="newBotMinVolatility" value="0.5" min="0" step="0.1">
+                        </div>
+                        <div class="setting-compact">
+                            <label data-i18n="volatilityMax">Volat Max %</label>
+                            <input type="number" id="newBotMaxVolatility" value="3" min="0" step="0.1">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hidden pair info container -->
+            <div id="newPairInfoContainer" style="display: none;">
+                <div id="newPairInfo">
+                    <span id="newPairMinOrder">-</span>
+                    <span id="newPairMaxLeverage">-</span>
+                </div>
+            </div>
+
             <div class="settings-actions">
                 <button class="btn btn-secondary" onclick="closeModal('createBotModal')" data-i18n="cancel">Cancel</button>
+                <button class="btn-reset" onclick="resetCreateBotForm()" title="Reset" style="margin-left: auto; margin-right: 10px;">↺</button>
                 <button class="btn btn-primary" onclick="createBot()" data-i18n="create">Create</button>
             </div>
         </div>
@@ -1045,210 +1728,430 @@ DASHBOARD_HTML = r"""
 
     <!-- Edit Bot Modal -->
     <div class="modal" id="editBotModal">
-        <div class="modal-content" style="max-width: 700px;">
+        <div class="modal-content modal-compact" style="overflow-y: auto;">
             <div class="modal-header">
                 <h3 data-i18n="editBot">Edit Bot</h3>
                 <button class="modal-close" onclick="closeModal('editBotModal')">&times;</button>
             </div>
             <input type="hidden" id="editBotId">
-            <div class="settings-grid">
-                <div class="setting-item">
-                    <label data-i18n="botName">Bot Name</label>
-                    <input type="text" id="editBotName">
+
+            <!-- Basic Settings Block -->
+            <div class="settings-block block-basic">
+                <h4><span class="icon">⚙️</span> <span data-i18n="basicSettings">Basic</span></h4>
+                <div class="settings-row">
+                    <div class="setting-compact">
+                        <label data-i18n="botName">Name</label>
+                        <input type="text" id="editBotName">
+                    </div>
+                    <div class="setting-compact">
+                        <label data-i18n="botMode">Mode</label>
+                        <select id="editBotMode" onchange="toggleBotMode('edit')">
+                            <option value="manual" data-i18n="manualMode">Manual</option>
+                            <option value="auto_search" data-i18n="autoSearchMode">Auto Search</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="setting-item">
-                    <label data-i18n="botMode">Bot Mode</label>
-                    <select id="editBotMode" onchange="toggleBotMode('edit')">
-                        <option value="manual" data-i18n="manualMode">Manual (Single Pair)</option>
-                        <option value="auto_search" data-i18n="autoSearchMode">Auto Search (All Pairs)</option>
-                    </select>
-                </div>
-                <div class="setting-item" id="editPairContainer">
-                    <label data-i18n="tradingPair">Trading Pair</label>
-                    <div class="pair-search-container" style="position: relative; display: flex; align-items: center;">
-                        <input type="text" id="editBotPairSearch" placeholder="Search pair... (e.g. BTC, ETH)"
-                               oninput="filterTradingPairs('edit')" onfocus="showPairDropdown('edit')"
-                               autocomplete="off" style="width: 100%; padding-right: 25px;">
-                        <span onclick="clearPairSearch('edit')" style="position: absolute; right: 10px; cursor: pointer; color: #888; font-size: 16px; font-weight: bold;">&times;</span>
-                        <div id="editPairDropdown" class="pair-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; max-height: 250px; overflow-y: auto; background: #1a1a2e; border: 1px solid #333; border-radius: 5px; z-index: 1000;">
-                        </div>
+                <div class="settings-row" id="editPairContainer">
+                    <div class="setting-compact" style="position: relative;">
+                        <label data-i18n="tradingPair">Trading Pair</label>
+                        <input type="text" id="editBotPairSearch" placeholder="BTCUSDT" oninput="filterTradingPairs('edit')" onfocus="showPairDropdown('edit')" autocomplete="off">
+                        <div id="editPairDropdown" class="pair-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; max-height: 200px; overflow-y: auto; background: #1a1a2e; border: 1px solid #333; border-radius: 5px; z-index: 1000;"></div>
                         <input type="hidden" id="editBotPair" value="">
                     </div>
                 </div>
-                <div class="setting-item" id="editMaxOrdersContainer" style="display: none;">
-                    <label data-i18n="maxSimultaneousOrders">Max Simultaneous Orders</label>
-                    <input type="number" id="editBotMaxOrders" value="3" min="1" max="20">
-                    <div style="margin-top: 5px; font-size: 11px; color: #888;" data-i18n="autoSearchHint">
-                        Bot will scan all pairs and open orders when strategy conditions match
-                    </div>
-                </div>
-                <div class="setting-item">
-                    <label data-i18n="timeframe">Timeframe</label>
-                    <select id="editBotTimeframe">
-                        <option value="1m">1m</option>
-                        <option value="3m">3m</option>
-                        <option value="5m">5m</option>
-                        <option value="15m">15m</option>
-                        <option value="30m">30m</option>
-                        <option value="1h">1h</option>
-                        <option value="2h">2h</option>
-                        <option value="4h">4h</option>
-                        <option value="6h">6h</option>
-                        <option value="12h">12h</option>
-                        <option value="1d">1d</option>
-                        <option value="1w">1w</option>
-                    </select>
-                </div>
-                <div class="setting-item" id="editPairInfoContainer" style="display: none;">
-                    <label data-i18n="pairInfo">Pair Info</label>
-                    <div id="editPairInfo" style="padding: 8px; background: rgba(0,255,136,0.1); border-radius: 5px; font-size: 12px;">
-                        <div><span data-i18n="minOrder">Min Order:</span> <span id="editPairMinOrder">-</span> USDT</div>
-                        <div><span data-i18n="maxLeverage">Max Leverage:</span> <span id="editPairMaxLeverage">-</span>x</div>
-                    </div>
-                </div>
-                <div class="setting-item">
-                    <label data-i18n="leverage">Leverage</label>
-                    <select id="editBotLeverage" onchange="updateDepositInfo('edit')">
-                        <option value="1">1x</option>
-                        <option value="2">2x</option>
-                        <option value="3">3x</option>
-                        <option value="5">5x</option>
-                        <option value="10">10x</option>
-                        <option value="15">15x</option>
-                        <option value="20">20x</option>
-                        <option value="25">25x</option>
-                        <option value="50">50x</option>
-                        <option value="75">75x</option>
-                        <option value="100">100x</option>
-                    </select>
-                </div>
-                <div class="setting-item">
-                    <label data-i18n="orderSize">Order Size (USDT)</label>
-                    <input type="number" id="editBotOrderSize" value="100" min="5" max="100000" step="1" oninput="updateDepositInfo('edit')">
-                    <div id="editDepositInfo" style="margin-top: 5px; padding: 5px; background: rgba(255,204,0,0.1); border-radius: 3px; font-size: 11px; color: #ffcc00;">
-                        <span data-i18n="depositUsed">Deposit used:</span> <span id="editDepositUsed">10</span> USDT
-                    </div>
-                </div>
-                <div class="setting-item">
-                    <label data-i18n="positionSizingMode">Position Sizing Mode</label>
-                    <select id="editBotPositionSizingMode" onchange="togglePositionSizingOptions('edit')">
-                        <option value="fixed_amount" data-i18n="fixedAmount">Fixed Amount</option>
-                        <option value="risk_percent" data-i18n="riskPercent">Risk Percent</option>
-                        <option value="kelly" data-i18n="kellyCriterion">Kelly Criterion</option>
-                    </select>
-                </div>
-                <div class="setting-item" id="editRiskPercentContainer" style="display: none;">
-                    <label data-i18n="riskPerTrade">Risk per Trade (%)</label>
-                    <input type="number" id="editBotRisk" min="0.1" max="100" step="0.1">
-                </div>
-                <div class="setting-item">
-                    <label data-i18n="tpMode">Take Profit Mode</label>
-                    <select id="editBotTpMode" onchange="toggleTpOptions('edit')">
-                        <option value="risk_ratio" data-i18n="riskRatio">Risk:Reward Ratio</option>
-                        <option value="fixed_percent" data-i18n="fixedPercent">Fixed Percent</option>
-                    </select>
-                </div>
-                <div class="setting-item" id="editTpRatioContainer">
-                    <label data-i18n="tpRatio">Take Profit (R:R)</label>
-                    <input type="number" id="editBotTpRatio" min="1" max="10" step="0.5">
-                </div>
-                <div class="setting-item" id="editTpPercentContainer" style="display: none;">
-                    <label data-i18n="tpPercent">Take Profit (%)</label>
-                    <input type="number" id="editBotTpPercent" value="4" min="0.5" max="20" step="0.5">
-                </div>
-                <div class="setting-item">
-                    <label data-i18n="slMode">Stop Loss Mode</label>
-                    <select id="editBotSlMode" onchange="toggleSlOptions('edit')">
-                        <option value="supertrend_line">SuperTrend Line</option>
-                        <option value="fixed_percent">Fixed Percent</option>
-                        <option value="atr">ATR</option>
-                    </select>
-                </div>
-                <div class="setting-item" id="editSlLineContainer">
-                    <label data-i18n="slLine">SL SuperTrend Line</label>
-                    <select id="editBotSlLine">
-                        <option value="1">Line 1 (Fast)</option>
-                        <option value="2">Line 2 (Medium)</option>
-                        <option value="3">Line 3 (Slow)</option>
-                    </select>
-                </div>
-                <div class="setting-item" id="editSlPercentContainer" style="display: none;">
-                    <label data-i18n="slPercent">SL Fixed Percent (%)</label>
-                    <input type="number" id="editBotSlPercent" value="2" min="0.5" max="10" step="0.5">
-                </div>
-                <div class="setting-item" id="editSlAtrContainer" style="display: none;">
-                    <label data-i18n="slAtrMult">SL ATR Multiplier</label>
-                    <input type="number" id="editBotSlAtrMult" value="1.5" min="0.5" max="5" step="0.1">
-                </div>
-                <div class="setting-item">
-                    <label data-i18n="maxPositions">Max Positions</label>
-                    <input type="number" id="editBotMaxPositions" min="1" max="10">
-                </div>
-                <div class="setting-item">
-                    <label data-i18n="emaFilter">EMA 200 Filter</label>
-                    <select id="editBotEmaEnabled">
-                        <option value="true" data-i18n="enabled">Enabled</option>
-                        <option value="false" data-i18n="disabled">Disabled</option>
-                    </select>
-                </div>
-                <div class="setting-item">
-                    <label data-i18n="emaMode">EMA Filter Mode</label>
-                    <select id="editBotEmaMode">
-                        <option value="strict" data-i18n="strict">Strict</option>
-                        <option value="soft" data-i18n="soft">Soft (50% size)</option>
-                    </select>
-                </div>
-                <div class="setting-item">
-                    <label data-i18n="leverageMode">Leverage Mode</label>
-                    <select id="editBotLeverageMode">
-                        <option value="cross" data-i18n="crossMargin">Cross Margin</option>
-                        <option value="isolated" data-i18n="isolatedMargin">Isolated Margin</option>
-                    </select>
-                </div>
-                <div class="setting-item">
-                    <label data-i18n="trailingStop">Trailing Stop</label>
-                    <select id="editBotTrailingEnabled" onchange="toggleTrailingOptions('edit')">
-                        <option value="true" data-i18n="enabled">Enabled</option>
-                        <option value="false" data-i18n="disabled">Disabled</option>
-                    </select>
-                </div>
-                <div id="editTrailingOptionsContainer">
-                    <div class="setting-item">
-                        <label data-i18n="trailingMode">Trailing Mode</label>
-                        <select id="editBotTrailingMode" onchange="toggleTrailingModeOptions('edit')">
-                            <option value="supertrend" data-i18n="superTrendBased">SuperTrend Based</option>
-                            <option value="percent" data-i18n="percentBased">Percent Based</option>
-                        </select>
-                    </div>
-                    <div class="setting-item">
-                        <label data-i18n="trailingActivation">Trailing Activation (%)</label>
-                        <input type="number" id="editBotTrailingActivation" value="1.0" min="0.1" max="10" step="0.1">
-                    </div>
-                    <div class="setting-item" id="editTrailingStepContainer" style="display: none;">
-                        <label data-i18n="trailingStep">Trailing Step (%)</label>
-                        <input type="number" id="editBotTrailingStep" value="0.5" min="0.1" max="5" step="0.1">
-                    </div>
-                </div>
-                <div class="setting-item">
-                    <label data-i18n="breakeven">Break-even</label>
-                    <select id="editBotBreakevenEnabled" onchange="toggleBreakevenOptions('edit')">
-                        <option value="false" data-i18n="disabled">Disabled</option>
-                        <option value="true" data-i18n="enabled">Enabled</option>
-                    </select>
-                </div>
-                <div id="editBreakevenOptionsContainer" style="display: none;">
-                    <div class="setting-item">
-                        <label data-i18n="breakevenActivation">Break-even Activation (%)</label>
-                        <input type="number" id="editBotBreakevenActivation" value="1.0" min="0.5" max="5" step="0.1">
-                    </div>
-                    <div class="setting-item">
-                        <label data-i18n="breakevenOffset">Break-even Offset (%)</label>
-                        <input type="number" id="editBotBreakevenOffset" value="0.1" min="0" max="1" step="0.05">
+                <div class="settings-row" id="editMaxPairsContainer" style="display: none;">
+                    <div class="setting-compact">
+                        <label data-i18n="maxTradingPairs">Max Trading Pairs</label>
+                        <input type="number" id="editBotMaxPairs" value="1" min="1" max="20">
                     </div>
                 </div>
             </div>
+
+            <!-- Risk Management Block -->
+            <div class="settings-block block-risk">
+                <h4><span class="icon">🛡️</span> <span data-i18n="riskManagement">Risk Management</span></h4>
+                <div class="settings-row">
+                    <div class="setting-compact" style="flex: 1;">
+                        <label data-i18n="balanceUsage">Balance Usage (%)</label>
+                        <div class="range-container">
+                            <span id="editBalanceUsageInfo" style="min-width: 90px; font-size: 12px; color: #00ff88;"><span id="editAllocatedBalance">-</span> / <span id="editTotalBalance">-</span></span>
+                            <input type="range" class="range-slider range-slim" id="editBotBalanceUsage" value="100" min="1" max="100" oninput="updateSliderValue(this, 'editBalanceValue'); updateBalanceUsageInfo('edit'); updateMaxLossInfo('edit')">
+                            <span class="range-value" id="editBalanceValue">100%</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-row">
+                    <div class="setting-compact" style="flex: 1;">
+                        <label data-i18n="maxLossLimit">Max Loss Limit (%)</label>
+                        <div class="range-container">
+                            <span id="editMaxLossInfo" style="min-width: 90px; font-size: 12px; color: #ff6b6b;"><span id="editMaxLossAmount">-</span> USDT</span>
+                            <input type="range" class="range-slider range-slim" id="editBotMaxLoss" value="100" min="1" max="100" oninput="updateSliderValue(this, 'editMaxLossValue'); updateMaxLossInfo('edit')">
+                            <span class="range-value" id="editMaxLossValue">100%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Strategy Block -->
+            <div class="settings-block block-strategy">
+                <h4><span class="icon">📊</span> <span data-i18n="strategySettings">Strategy</span></h4>
+                <div class="settings-row">
+                    <div class="setting-compact">
+                        <label data-i18n="timeframe">Timeframe</label>
+                        <select id="editBotTimeframe">
+                            <option value="1m">1m</option>
+                            <option value="3m">3m</option>
+                            <option value="5m">5m</option>
+                            <option value="15m">15m</option>
+                            <option value="30m">30m</option>
+                            <option value="1h">1h</option>
+                            <option value="4h">4h</option>
+                            <option value="1d">1d</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact">
+                        <label data-i18n="leverage">Leverage</label>
+                        <select id="editBotLeverage" onchange="updateDepositInfo('edit')">
+                            <option value="1">1x</option>
+                            <option value="2">2x</option>
+                            <option value="5">5x</option>
+                            <option value="10">10x</option>
+                            <option value="20">20x</option>
+                            <option value="50">50x</option>
+                            <option value="100">100x</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact">
+                        <label data-i18n="orderSize">Order (USDT)</label>
+                        <input type="number" id="editBotOrderSize" value="10" min="5" step="1" oninput="updateDepositInfo('edit')">
+                    </div>
+                    <div class="setting-compact" style="flex: 0.8;">
+                        <label>&nbsp;</label>
+                        <div id="editDepositInfo" class="info-badge warning" style="height: 36px; display: flex; align-items: center;">
+                            <span id="editDepositUsed">1</span> USDT
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-row">
+                    <div class="setting-compact">
+                        <label data-i18n="positionSizingMode">Position Sizing</label>
+                        <select id="editBotPositionSizingMode">
+                            <option value="fixed_amount" selected>Fixed USDT</option>
+                            <option value="risk_percent">Risk %</option>
+                            <option value="kelly">Kelly</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact">
+                        <label data-i18n="leverageMode">Margin Mode</label>
+                        <select id="editBotLeverageMode">
+                            <option value="cross" selected>Cross</option>
+                            <option value="isolated">Isolated</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Break-even Block -->
+            <div class="settings-block block-breakeven">
+                <h4><span class="icon">🎯</span> <span data-i18n="breakeven">Break-even</span></h4>
+                <div class="settings-row">
+                    <div class="setting-inline" style="flex: 0 0 auto;">
+                        <label data-i18n="breakevenEnabled" style="min-width: 80px;">Break-even</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="editBotBreakevenEnabled" onchange="toggleBreakevenOptions('edit')">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="settings-row" id="editBreakevenOptionsRow" style="display: none;">
+                    <div class="setting-compact">
+                        <label data-i18n="breakevenActivation">Activation (%)</label>
+                        <input type="number" id="editBotBreakevenActivation" value="1.0" min="0.1" max="10" step="0.1">
+                    </div>
+                    <div class="setting-compact">
+                        <label data-i18n="breakevenOffset">Offset (%)</label>
+                        <input type="number" id="editBotBreakevenOffset" value="0.1" min="0" max="5" step="0.1">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Take Profit Block -->
+            <div class="settings-block block-profit">
+                <h4><span class="icon">💰</span> <span data-i18n="takeProfitSettings">Take Profit</span></h4>
+                <div class="settings-row">
+                    <div class="setting-compact">
+                        <label data-i18n="tpMode">TP Mode</label>
+                        <select id="editBotTpMode" onchange="toggleTpOptions('edit')">
+                            <option value="rr">R:R</option>
+                            <option value="fixed">Fix %</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact" id="editTpRrContainer">
+                        <label data-i18n="tpRatio">Take Profit (R:R)</label>
+                        <select id="editBotTpRatio">
+                            <option value="1">1:1</option>
+                            <option value="2" selected>2:1</option>
+                            <option value="3">3:1</option>
+                            <option value="4">4:1</option>
+                            <option value="5">5:1</option>
+                            <option value="6">6:1</option>
+                            <option value="7">7:1</option>
+                            <option value="8">8:1</option>
+                            <option value="9">9:1</option>
+                            <option value="10">10:1</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact" id="editTpFixedContainer" style="display: none;">
+                        <label data-i18n="tpPercent">TP %</label>
+                        <input type="number" id="editBotTpPercent" value="2" min="0.5" max="50" step="0.5">
+                    </div>
+                </div>
+                <div class="settings-row">
+                    <div class="setting-inline" style="flex: 0 0 auto;">
+                        <label data-i18n="trailingTp" style="min-width: 80px;">Trailing TP</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="editBotTrailingTpEnabled" onchange="toggleTrailingTpOptions('edit')">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span class="info-wrapper">
+                            <span class="info-icon" onclick="toggleInfo(this)">i</span>
+                            <span class="info-tooltip" data-i18n-tooltip="trailingTpInfo">No fixed TP, follows trend. ST Line: exits on reversal. Trailing %: moves TP as price approaches.</span>
+                        </span>
+                    </div>
+                </div>
+                <div class="settings-row" id="editTrailingTpOptionsRow" style="display: none;">
+                    <div class="setting-compact" id="editTrailingTpModeContainer">
+                        <label data-i18n="trailingTpMode">Mode</label>
+                        <select id="editBotTrailingTpMode" onchange="toggleTrailingTpMode('edit')">
+                            <option value="st_line" selected>ST Line</option>
+                            <option value="trailing_percent">Trailing %</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact" id="editTrailingTpStLineContainer">
+                        <label data-i18n="trailingTpStLine">ST Line</label>
+                        <select id="editBotTrailingTpStLine">
+                            <option value="1">Fast</option>
+                            <option value="2" selected>Medium</option>
+                            <option value="3">Slow</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact" id="editTrailingTpActivationContainer" style="display: none;">
+                        <label data-i18n="trailingTpActivation">Activation %</label>
+                        <input type="number" id="editBotTrailingTpActivation" value="0.5" min="0.1" max="2" step="0.1">
+                    </div>
+                    <div class="setting-compact" id="editTrailingTpStepContainer" style="display: none;">
+                        <label data-i18n="trailingTpStep">Step %</label>
+                        <input type="number" id="editBotTrailingTpStep" value="1.0" min="0.5" max="3" step="0.1">
+                    </div>
+                </div>
+                <div class="settings-row">
+                    <div class="setting-inline" style="flex: 0 0 auto;">
+                        <label data-i18n="partialTp" style="min-width: 80px;">Partial TP</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="editBotPartialTpEnabled" checked onchange="togglePartialTpOptions('edit')">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span class="info-wrapper">
+                            <span class="info-icon" onclick="toggleInfo(this)">i</span>
+                            <span class="info-tooltip" data-i18n-tooltip="partialTpInfo">Closes part of position at TP1, moves SL to TP1/Entry to lock profit on remaining.</span>
+                        </span>
+                    </div>
+                </div>
+                <div class="settings-row" id="editPartialTpOptionsRow">
+                    <div class="setting-compact" id="editPartialTpCloseContainer">
+                        <label data-i18n="partialTpClose">Close %</label>
+                        <select id="editBotPartialTpClose">
+                            <option value="25">25%</option>
+                            <option value="50" selected>50%</option>
+                            <option value="75">75%</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact" id="editPartialTpSlMoveContainer">
+                        <label data-i18n="partialTpSlMove">SL Move</label>
+                        <select id="editBotPartialTpSlMove" onchange="togglePartialTpOffset('edit')">
+                            <option value="tp1" selected>TP1</option>
+                            <option value="entry">Entry</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact" id="editPartialTpOffsetContainer">
+                        <label data-i18n="partialTpOffset">Offset %</label>
+                        <input type="number" id="editBotPartialTpOffset" value="0.2" min="0.1" max="1" step="0.1">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stop Loss Block -->
+            <div class="settings-block block-risk">
+                <h4><span class="icon">🛑</span> <span data-i18n="stopLossSettings">Stop Loss</span></h4>
+                <div class="settings-row">
+                    <div class="setting-compact">
+                        <label data-i18n="slMode">SL Mode</label>
+                        <select id="editBotSlMode" onchange="toggleSlOptions('edit')">
+                            <option value="supertrend_line">ST Line</option>
+                            <option value="fixed_percent">Fixed %</option>
+                            <option value="atr">ATR</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact" id="editSlLineContainer">
+                        <label data-i18n="slLine">SL Line</label>
+                        <select id="editBotSlLine" style="min-width: 120px;">
+                            <option value="1">Fast</option>
+                            <option value="2">Medium</option>
+                            <option value="3">Slow</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact" id="editSlPercentContainer" style="display: none;">
+                        <label data-i18n="slPercent">SL %</label>
+                        <input type="number" id="editBotSlPercent" value="2" min="0.5" max="10" step="0.5" style="min-width: 120px;">
+                    </div>
+                    <div class="setting-compact" id="editSlAtrContainer" style="display: none;">
+                        <label data-i18n="slAtrMult">ATR Mult</label>
+                        <input type="number" id="editBotSlAtrMult" value="1.5" min="0.5" max="5" step="0.1" style="min-width: 120px;">
+                    </div>
+                </div>
+                <div class="settings-row">
+                    <div class="setting-inline" style="flex: 0 0 auto;">
+                        <label data-i18n="trailingSl" style="min-width: 80px;">Trailing SL</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="editBotTrailingEnabled" checked onchange="toggleTrailingOptions('edit')">
+                            <span class="toggle-slider"></span>
+                        </label>
+                        <span class="info-wrapper">
+                            <span class="info-icon" onclick="toggleInfo(this)">i</span>
+                            <span class="info-tooltip" data-i18n-tooltip="trailingSlInfo">SL moves in profit direction. Fix %: by steps. ST Line: follows SuperTrend.</span>
+                        </span>
+                    </div>
+                </div>
+                <div class="settings-row" id="editTrailingOptionsRow">
+                    <div class="setting-compact" id="editTrailingModeContainer">
+                        <label data-i18n="trailingMode">Mode</label>
+                        <select id="editBotTrailingMode" onchange="toggleTrailingMode('edit')">
+                            <option value="fix_percent" selected>Fix %</option>
+                            <option value="st_line">ST Line</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact" id="editTrailingActivationContainer">
+                        <label data-i18n="trailingActivation">Activation %</label>
+                        <input type="number" id="editBotTrailingActivation" value="1.0" min="0.5" max="5" step="0.1">
+                    </div>
+                    <div class="setting-compact" id="editTrailingStepContainer">
+                        <label data-i18n="trailingStep">Step %</label>
+                        <input type="number" id="editBotTrailingStep" value="0.5" min="0.1" max="2" step="0.1">
+                    </div>
+                    <div class="setting-compact" id="editTrailingStLineContainer" style="display: none;">
+                        <label data-i18n="trailingStLine">ST Line</label>
+                        <select id="editBotTrailingStLine">
+                            <option value="1">Fast</option>
+                            <option value="2" selected>Medium</option>
+                            <option value="3">Slow</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact" id="editTrailingConfirmContainer" style="display: none;">
+                        <label data-i18n="trailingConfirm">Confirm Candles</label>
+                        <select id="editBotTrailingConfirm">
+                            <option value="1" selected>1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="settings-row">
+                    <div class="setting-inline">
+                        <label data-i18n="earlyEntry">Early Entry (ST3)</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="editBotEarlyEntry">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Signal Filters Block -->
+            <div class="settings-block block-filters">
+                <h4><span class="icon">🎯</span> <span data-i18n="signalFilters">Signal Filters</span></h4>
+                <div class="settings-row" style="align-items: center;">
+                    <div class="setting-inline" style="flex: 1; min-width: 120px;">
+                        <label data-i18n="emaFilter">EMA 200</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="editBotEmaEnabled" checked onchange="toggleEmaMode('edit')">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-compact" id="editEmaModeContainer" style="flex: 1;">
+                        <label data-i18n="emaMode">EMA Mode</label>
+                        <select id="editBotEmaMode">
+                            <option value="strict" data-i18n="strict">Strict</option>
+                            <option value="soft" data-i18n="soft">Soft 50%</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Asset Filters (only for auto mode) -->
+            <div id="editAssetFiltersContainer" style="display: none;">
+                <div class="settings-block block-auto">
+                    <div class="block-header">
+                        <h4><span class="icon">🔍</span> <span data-i18n="assetFilters">Asset Filters</span></h4>
+                        <button class="btn-reset" onclick="resetAssetFilters('edit')" title="Reset">↺</button>
+                    </div>
+                    <div class="settings-row">
+                        <div class="setting-compact">
+                            <label data-i18n="volume24hMin">Vol 24h Min</label>
+                            <input type="text" id="editBotMinVolume" value="3,000,000" oninput="formatMoneyInput(this)">
+                        </div>
+                        <div class="setting-compact">
+                            <label data-i18n="volume24hMax">Vol 24h Max</label>
+                            <input type="text" id="editBotMaxVolume" value="0" oninput="formatMoneyInput(this)">
+                        </div>
+                    </div>
+                    <div class="settings-row">
+                        <div class="setting-compact">
+                            <label data-i18n="priceMin">Price Min $</label>
+                            <input type="number" id="editBotMinPrice" value="0" min="0" step="0.0001">
+                        </div>
+                        <div class="setting-compact">
+                            <label data-i18n="priceMax">Price Max $</label>
+                            <input type="number" id="editBotMaxPrice" value="0" min="0" step="0.0001">
+                        </div>
+                    </div>
+                    <div class="settings-row">
+                        <div class="setting-compact">
+                            <label data-i18n="changeMin">Change Min %</label>
+                            <input type="number" id="editBotMinChange" value="-30" step="0.1">
+                        </div>
+                        <div class="setting-compact">
+                            <label data-i18n="changeMax">Change Max %</label>
+                            <input type="number" id="editBotMaxChange" value="20" step="0.1">
+                        </div>
+                    </div>
+                    <div class="settings-row">
+                        <div class="setting-compact">
+                            <label data-i18n="volatilityPeriod">Volat Period</label>
+                            <input type="number" id="editBotVolatilityPeriod" value="12" min="0">
+                        </div>
+                        <div class="setting-compact">
+                            <label data-i18n="volatilityMin">Volat Min %</label>
+                            <input type="number" id="editBotMinVolatility" value="0.5" min="0" step="0.1">
+                        </div>
+                        <div class="setting-compact">
+                            <label data-i18n="volatilityMax">Volat Max %</label>
+                            <input type="number" id="editBotMaxVolatility" value="3" min="0" step="0.1">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hidden pair info container -->
+            <div id="editPairInfoContainer" style="display: none;">
+                <div id="editPairInfo">
+                    <span id="editPairMinOrder">-</span>
+                    <span id="editPairMaxLeverage">-</span>
+                </div>
+            </div>
+
             <div class="settings-actions">
                 <button class="btn btn-secondary" onclick="closeModal('editBotModal')" data-i18n="cancel">Cancel</button>
+                <button class="btn-reset" onclick="resetEditBotForm()" title="Reset" style="margin-left: auto; margin-right: 10px;">↺</button>
                 <button class="btn btn-primary" onclick="saveEditBot()" data-i18n="save">Save</button>
             </div>
         </div>
@@ -1284,6 +2187,8 @@ DASHBOARD_HTML = r"""
                 stopping: 'Stopping...',
                 settings: 'Settings',
                 strategySettings: 'Strategy Settings',
+                takeProfitSettings: 'Take Profit',
+                stopLossSettings: 'Stop Loss',
                 timeframe: 'Timeframe',
                 tradingPairs: 'Trading Pairs',
                 tradingPair: 'Trading Pair',
@@ -1295,6 +2200,12 @@ DASHBOARD_HTML = r"""
                 slAtrMult: 'SL ATR Multiplier',
                 leverage: 'Leverage',
                 orderSize: 'Order Size (USDT)',
+                positionSizingMode: 'Position Sizing',
+                leverageMode: 'Margin Mode',
+                breakeven: 'Break-even',
+                breakevenEnabled: 'Break-even',
+                breakevenActivation: 'Activation (%)',
+                breakevenOffset: 'Offset (%)',
                 depositUsed: 'Deposit used:',
                 pairInfo: 'Pair Info',
                 minOrder: 'Min Order:',
@@ -1304,25 +2215,37 @@ DASHBOARD_HTML = r"""
                 emaMode: 'EMA Filter Mode',
                 strict: 'Strict',
                 soft: 'Soft (50% size)',
-                trailingStop: 'Trailing Stop',
-                trailingMode: 'Trailing Mode',
-                trailingActivation: 'Trailing Activation (%)',
-                trailingStep: 'Trailing Step (%)',
-                superTrendBased: 'SuperTrend Based',
-                percentBased: 'Percent Based',
-                positionSizingMode: 'Position Sizing Mode',
-                fixedAmount: 'Fixed Amount',
-                riskPercent: 'Risk Percent',
-                kellyCriterion: 'Kelly Criterion',
-                tpMode: 'Take Profit Mode',
-                riskRatio: 'Risk:Reward Ratio',
-                tpPercent: 'Take Profit (%)',
-                leverageMode: 'Leverage Mode',
-                crossMargin: 'Cross Margin',
-                isolatedMargin: 'Isolated Margin',
-                breakeven: 'Break-even',
-                breakevenActivation: 'Break-even Activation (%)',
-                breakevenOffset: 'Break-even Offset (%)',
+                trailingSl: 'Trailing SL',
+                trailingSlInfo: 'SL moves in profit direction. Fix %: by steps. ST Line: follows SuperTrend.',
+                partialTpInfo: 'Closes part of position at TP1, moves SL to TP1/Entry to lock profit on remaining.',
+                trailingTpInfo: 'No fixed TP, follows trend. ST Line: exits on reversal. Trailing %: moves TP as price approaches.',
+                trailingMode: 'Mode',
+                trailingActivation: 'Activation %',
+                trailingStep: 'Step %',
+                trailingStLine: 'ST Line',
+                trailingConfirm: 'Confirm Candles',
+                partialTp: 'Partial TP',
+                partialTpClose: 'Close %',
+                partialTpSlMove: 'SL Move',
+                partialTpOffset: 'Offset %',
+                trailingTp: 'Trailing TP',
+                trailingTpMode: 'Mode',
+                trailingTpStLine: 'ST Line',
+                trailingTpActivation: 'Activation %',
+                trailingTpStep: 'Step %',
+                assetFilters: 'Asset Filters',
+                volume24hMin: 'Volume 24h Min',
+                volume24hMax: 'Volume 24h Max',
+                priceMin: 'Price Min $',
+                priceMax: 'Price Max $',
+                changeMin: 'Change Min %',
+                changeMax: 'Change Max %',
+                volatilityPeriod: 'Volat Period',
+                volatilityMin: 'Volat Min %',
+                volatilityMax: 'Volat Max %',
+                earlyEntry: 'Early Entry (ST3)',
+                tpMode: 'TP Mode',
+                tpPercent: 'TP %',
                 enabled: 'Enabled',
                 disabled: 'Disabled',
                 fixedPercent: 'Fixed Percent',
@@ -1356,8 +2279,11 @@ DASHBOARD_HTML = r"""
                 cancel: 'Cancel',
                 create: 'Create',
                 stopped: 'Stopped',
+                paused: 'Paused',
                 start: 'Start',
                 stop: 'Stop',
+                pause: 'Pause',
+                resume: 'Resume',
                 delete: 'Delete',
                 applyPairs: 'Apply Selected Pairs',
                 noBots: 'No bots created yet. Click "Create Bot" to start.',
@@ -1372,8 +2298,16 @@ DASHBOARD_HTML = r"""
                 botMode: 'Bot Mode',
                 manualMode: 'Manual (Single Pair)',
                 autoSearchMode: 'Auto Search (All Pairs)',
-                maxSimultaneousOrders: 'Max Simultaneous Orders',
-                autoSearchHint: 'Bot will scan all pairs and open orders when strategy conditions match'
+                maxTradingPairs: 'Max Trading Pairs',
+                autoSearchHint: 'Bot will scan all pairs and open orders when strategy conditions match',
+                balanceUsage: 'Balance Usage (%)',
+                allocatedBalance: 'Allocated:',
+                ofTotal: 'of',
+                maxLossLimit: 'Max Loss Limit (%)',
+                maxLossHint: 'Bot stops when loss reaches this % of allocated balance',
+                basicSettings: 'Basic',
+                riskManagement: 'Risk Management',
+                signalFilters: 'Signal Filters'
             },
             ru: {
                 connecting: 'Подключение...',
@@ -1386,6 +2320,8 @@ DASHBOARD_HTML = r"""
                 stopping: 'Остановка...',
                 settings: 'Настройки',
                 strategySettings: 'Настройки стратегии',
+                takeProfitSettings: 'Тейк-профит',
+                stopLossSettings: 'Стоп-лосс',
                 timeframe: 'Таймфрейм',
                 tradingPairs: 'Торговые пары',
                 tradingPair: 'Торговая пара',
@@ -1397,6 +2333,12 @@ DASHBOARD_HTML = r"""
                 slAtrMult: 'SL ATR множитель',
                 leverage: 'Плечо',
                 orderSize: 'Размер ордера (USDT)',
+                positionSizingMode: 'Размер позиции',
+                leverageMode: 'Режим маржи',
+                breakeven: 'Безубыток',
+                breakevenEnabled: 'Безубыток',
+                breakevenActivation: 'Активация (%)',
+                breakevenOffset: 'Отступ (%)',
                 depositUsed: 'Используется депозит:',
                 pairInfo: 'Информация о паре',
                 minOrder: 'Мин. ордер:',
@@ -1406,25 +2348,37 @@ DASHBOARD_HTML = r"""
                 emaMode: 'Режим EMA фильтра',
                 strict: 'Строгий',
                 soft: 'Мягкий (50% размер)',
-                trailingStop: 'Трейлинг-стоп',
-                trailingMode: 'Режим трейлинга',
-                trailingActivation: 'Активация трейлинга (%)',
-                trailingStep: 'Шаг трейлинга (%)',
-                superTrendBased: 'По SuperTrend',
-                percentBased: 'По проценту',
-                positionSizingMode: 'Режим размера позиции',
-                fixedAmount: 'Фикс. сумма',
-                riskPercent: 'Процент риска',
-                kellyCriterion: 'Критерий Келли',
-                tpMode: 'Режим Take Profit',
-                riskRatio: 'Соотношение R:R',
-                tpPercent: 'Take Profit (%)',
-                leverageMode: 'Режим маржи',
-                crossMargin: 'Кросс-маржа',
-                isolatedMargin: 'Изолир. маржа',
-                breakeven: 'Безубыток',
-                breakevenActivation: 'Активация безубытка (%)',
-                breakevenOffset: 'Отступ безубытка (%)',
+                trailingSl: 'Trailing SL',
+                trailingSlInfo: 'SL двигается в направлении прибыли. Fix %: по шагам. ST Line: следует за SuperTrend.',
+                partialTpInfo: 'Закрывает часть позиции на TP1, двигает SL на TP1/Entry для фиксации прибыли.',
+                trailingTpInfo: 'Без фиксированного TP, следует тренду. ST Line: выход при развороте. Trailing %: двигает TP при приближении цены.',
+                trailingMode: 'Режим',
+                trailingActivation: 'Активация %',
+                trailingStep: 'Шаг %',
+                trailingStLine: 'ST линия',
+                trailingConfirm: 'Подтв. свечей',
+                partialTp: 'Partial TP',
+                partialTpClose: 'Закрыть %',
+                partialTpSlMove: 'SL на',
+                partialTpOffset: 'Отступ %',
+                trailingTp: 'Trailing TP',
+                trailingTpMode: 'Режим',
+                trailingTpStLine: 'ST линия',
+                trailingTpActivation: 'Активация %',
+                trailingTpStep: 'Шаг %',
+                assetFilters: 'Фильтры активов',
+                volume24hMin: 'Объем 24ч мин',
+                volume24hMax: 'Объем 24ч макс',
+                priceMin: 'Цена мин $',
+                priceMax: 'Цена макс $',
+                changeMin: 'Изм. мин %',
+                changeMax: 'Изм. макс %',
+                volatilityPeriod: 'Период волат.',
+                volatilityMin: 'Волат. мин %',
+                volatilityMax: 'Волат. макс %',
+                earlyEntry: 'Ранний вход (ST3)',
+                tpMode: 'Режим TP',
+                tpPercent: 'TP %',
                 enabled: 'Включен',
                 disabled: 'Выключен',
                 fixedPercent: 'Фикс. процент',
@@ -1458,8 +2412,11 @@ DASHBOARD_HTML = r"""
                 cancel: 'Отмена',
                 create: 'Создать',
                 stopped: 'Остановлен',
+                paused: 'Пауза',
                 start: 'Запуск',
                 stop: 'Стоп',
+                pause: 'Пауза',
+                resume: 'Продолжить',
                 delete: 'Удалить',
                 applyPairs: 'Применить выбранные пары',
                 noBots: 'Ботов пока нет. Нажмите "Создать бот" для начала.',
@@ -1474,8 +2431,16 @@ DASHBOARD_HTML = r"""
                 botMode: 'Режим бота',
                 manualMode: 'Ручной (одна пара)',
                 autoSearchMode: 'Автопоиск (все пары)',
-                maxSimultaneousOrders: 'Макс. одновременных ордеров',
-                autoSearchHint: 'Бот сканирует все пары и открывает ордера при совпадении условий стратегии'
+                maxTradingPairs: 'Макс. торговых пар',
+                autoSearchHint: 'Бот сканирует все пары и открывает ордера при совпадении условий стратегии',
+                balanceUsage: 'Использование баланса (%)',
+                allocatedBalance: 'Выделено:',
+                ofTotal: 'из',
+                maxLossLimit: 'Лимит потерь (%)',
+                maxLossHint: 'Бот остановится когда убыток достигнет этого % от выделенного баланса',
+                basicSettings: 'Основное',
+                riskManagement: 'Риск-менеджмент',
+                signalFilters: 'Фильтры сигналов'
             }
         };
 
@@ -1489,6 +2454,12 @@ DASHBOARD_HTML = r"""
             currentLang = lang;
             localStorage.setItem('ailaLang', lang);
             updateUI();
+            // Send language to server for log messages
+            fetch('/api/language', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ language: lang })
+            }).catch(err => console.error('Failed to set language:', err));
         }
 
         function updateUI() {
@@ -1498,7 +2469,288 @@ DASHBOARD_HTML = r"""
                     el.textContent = i18n[currentLang][key];
                 }
             });
+            // Translate tooltips
+            document.querySelectorAll('[data-i18n-tooltip]').forEach(el => {
+                const key = el.getAttribute('data-i18n-tooltip');
+                if (i18n[currentLang][key]) {
+                    el.textContent = i18n[currentLang][key];
+                }
+            });
             document.getElementById('langSelector').value = currentLang;
+        }
+
+        function updateBalanceUsageInfo(prefix) {
+            try {
+                const balanceUsageEl = document.getElementById(prefix + 'BotBalanceUsage');
+                const allocatedBalanceEl = document.getElementById(prefix + 'AllocatedBalance');
+                const totalBalanceEl = document.getElementById(prefix + 'TotalBalance');
+
+                if (!balanceUsageEl || !allocatedBalanceEl || !totalBalanceEl) return;
+
+                const balanceUsagePercent = parseFloat(balanceUsageEl.value) || 100;
+                const balanceText = document.getElementById('balance')?.textContent || '0';
+                const totalBalance = parseFloat(balanceText.replace('--', '0')) || 0;
+                const allocatedBalance = (totalBalance * balanceUsagePercent / 100).toFixed(2);
+
+                totalBalanceEl.textContent = totalBalance.toFixed(2);
+                allocatedBalanceEl.textContent = allocatedBalance;
+            } catch (e) {
+                console.error('updateBalanceUsageInfo error:', e);
+            }
+        }
+
+        function updateMaxLossInfo(prefix) {
+            try {
+                const balanceUsageEl = document.getElementById(prefix + 'BotBalanceUsage');
+                const maxLossEl = document.getElementById(prefix + 'BotMaxLoss');
+                const maxLossAmountEl = document.getElementById(prefix + 'MaxLossAmount');
+
+                if (!balanceUsageEl || !maxLossEl || !maxLossAmountEl) return;
+
+                const balanceUsagePercent = parseFloat(balanceUsageEl.value) || 100;
+                const maxLossPercent = parseFloat(maxLossEl.value) || 100;
+                const balanceText = document.getElementById('balance')?.textContent || '0';
+                const totalBalance = parseFloat(balanceText.replace('--', '0')) || 0;
+                const allocatedBalance = totalBalance * balanceUsagePercent / 100;
+                const maxLossAmount = (allocatedBalance * maxLossPercent / 100).toFixed(2);
+
+                maxLossAmountEl.textContent = maxLossAmount;
+            } catch (e) {
+                console.error('updateMaxLossInfo error:', e);
+            }
+        }
+
+        function updateSliderValue(slider, displayId) {
+            document.getElementById(displayId).textContent = slider.value + '%';
+        }
+
+        function toggleEmaMode(prefix) {
+            const emaEnabled = document.getElementById(prefix + 'BotEmaEnabled').checked;
+            const emaModeContainer = document.getElementById(prefix + 'EmaModeContainer');
+            if (emaModeContainer) {
+                emaModeContainer.style.display = emaEnabled ? 'flex' : 'none';
+            }
+        }
+
+        function toggleTrailingOptions(prefix) {
+            const trailingEnabled = document.getElementById(prefix + 'BotTrailingEnabled').checked;
+            const optionsRow = document.getElementById(prefix + 'TrailingOptionsRow');
+
+            // Show/hide the entire options row
+            if (optionsRow) optionsRow.style.display = trailingEnabled ? 'flex' : 'none';
+
+            if (trailingEnabled) {
+                toggleTrailingMode(prefix);
+            }
+        }
+
+        function toggleTrailingMode(prefix) {
+            const trailingMode = document.getElementById(prefix + 'BotTrailingMode').value;
+            const activationContainer = document.getElementById(prefix + 'TrailingActivationContainer');
+            const stepContainer = document.getElementById(prefix + 'TrailingStepContainer');
+            const stLineContainer = document.getElementById(prefix + 'TrailingStLineContainer');
+            const confirmContainer = document.getElementById(prefix + 'TrailingConfirmContainer');
+
+            if (trailingMode === 'fix_percent') {
+                if (activationContainer) activationContainer.style.display = 'flex';
+                if (stepContainer) stepContainer.style.display = 'flex';
+                if (stLineContainer) stLineContainer.style.display = 'none';
+                if (confirmContainer) confirmContainer.style.display = 'none';
+            } else {
+                // ST Line mode
+                if (activationContainer) activationContainer.style.display = 'none';
+                if (stepContainer) stepContainer.style.display = 'none';
+                if (stLineContainer) stLineContainer.style.display = 'flex';
+                if (confirmContainer) confirmContainer.style.display = 'flex';
+            }
+        }
+
+        // Toggle Partial TP options
+        function togglePartialTpOptions(prefix) {
+            const partialTpEnabled = document.getElementById(prefix + 'BotPartialTpEnabled').checked;
+            const optionsRow = document.getElementById(prefix + 'PartialTpOptionsRow');
+
+            if (optionsRow) optionsRow.style.display = partialTpEnabled ? 'flex' : 'none';
+
+            if (partialTpEnabled) {
+                togglePartialTpOffset(prefix);
+            }
+        }
+
+        // Toggle Partial TP offset visibility based on SL Move selection
+        function togglePartialTpOffset(prefix) {
+            // Offset is always visible when Partial TP is enabled
+            // For TP1 mode: offset from TP1 price
+            // For Entry mode: offset from entry price (to lock small profit)
+            const offsetContainer = document.getElementById(prefix + 'PartialTpOffsetContainer');
+            if (offsetContainer) offsetContainer.style.display = 'flex';
+        }
+
+        // Toggle Trailing TP options
+        function toggleTrailingTpOptions(prefix) {
+            const trailingTpEnabled = document.getElementById(prefix + 'BotTrailingTpEnabled').checked;
+            const optionsRow = document.getElementById(prefix + 'TrailingTpOptionsRow');
+
+            if (optionsRow) optionsRow.style.display = trailingTpEnabled ? 'flex' : 'none';
+
+            if (trailingTpEnabled) {
+                toggleTrailingTpMode(prefix);
+            }
+        }
+
+        function toggleBreakevenOptions(prefix) {
+            const breakevenEnabled = document.getElementById(prefix + 'BotBreakevenEnabled').checked;
+            const optionsRow = document.getElementById(prefix + 'BreakevenOptionsRow');
+
+            if (optionsRow) optionsRow.style.display = breakevenEnabled ? 'flex' : 'none';
+        }
+
+        // Toggle Trailing TP mode-specific options
+        function toggleTrailingTpMode(prefix) {
+            const mode = document.getElementById(prefix + 'BotTrailingTpMode').value;
+            const stLineContainer = document.getElementById(prefix + 'TrailingTpStLineContainer');
+            const activationContainer = document.getElementById(prefix + 'TrailingTpActivationContainer');
+            const stepContainer = document.getElementById(prefix + 'TrailingTpStepContainer');
+
+            if (mode === 'st_line') {
+                if (stLineContainer) stLineContainer.style.display = 'flex';
+                if (activationContainer) activationContainer.style.display = 'none';
+                if (stepContainer) stepContainer.style.display = 'none';
+            } else {
+                // Trailing % mode
+                if (stLineContainer) stLineContainer.style.display = 'none';
+                if (activationContainer) activationContainer.style.display = 'flex';
+                if (stepContainer) stepContainer.style.display = 'flex';
+            }
+        }
+
+        // Toggle info tooltip
+        // Toggle info tooltip (mobile only - desktop uses CSS hover)
+        function toggleInfo(icon) {
+            // Only handle click on touch devices
+            if (!window.matchMedia('(hover: hover)').matches) {
+                const tooltip = icon.nextElementSibling;
+                const isActive = tooltip.classList.contains('active');
+                // Close all other tooltips
+                document.querySelectorAll('.info-tooltip.active').forEach(t => t.classList.remove('active'));
+                if (!isActive) {
+                    tooltip.classList.add('active');
+                }
+            }
+        }
+        // Close tooltip on click outside (mobile)
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.info-wrapper')) {
+                document.querySelectorAll('.info-tooltip.active').forEach(t => t.classList.remove('active'));
+            }
+        });
+
+        // Toggle TP mode options
+        function toggleTpOptions(prefix) {
+            const tpMode = document.getElementById(prefix + 'BotTpMode').value;
+            const rrContainer = document.getElementById(prefix + 'TpRrContainer');
+            const fixedContainer = document.getElementById(prefix + 'TpFixedContainer');
+            if (rrContainer) rrContainer.style.display = tpMode === 'rr' ? 'flex' : 'none';
+            if (fixedContainer) fixedContainer.style.display = tpMode === 'fixed' ? 'flex' : 'none';
+        }
+
+        // Select R:R ratio
+        function selectRr(prefix, value) {
+            const selector = document.getElementById(prefix + 'RrSelector');
+            const hiddenInput = document.getElementById(prefix + 'BotTpRatio');
+            if (selector) {
+                selector.querySelectorAll('.rr-option').forEach(opt => {
+                    opt.classList.toggle('active', parseInt(opt.dataset.value) === value);
+                });
+            }
+            if (hiddenInput) hiddenInput.value = value;
+        }
+
+        // Format money input with thousands separator
+        function formatMoneyInput(input) {
+            let value = input.value.replace(/[^\d]/g, '');
+            if (value) {
+                value = parseInt(value).toLocaleString('en-US');
+            }
+            input.value = value || '0';
+        }
+
+        // Parse money input to number
+        function parseMoneyValue(value) {
+            return parseFloat(value.replace(/[^\d]/g, '')) || 0;
+        }
+
+        // Reset asset filters to defaults
+        function resetAssetFilters(prefix) {
+            document.getElementById(prefix + 'BotMinVolume').value = '3,000,000';
+            document.getElementById(prefix + 'BotMaxVolume').value = '0';
+            document.getElementById(prefix + 'BotMinPrice').value = '0';
+            document.getElementById(prefix + 'BotMaxPrice').value = '0';
+            document.getElementById(prefix + 'BotMinChange').value = '-30';
+            document.getElementById(prefix + 'BotMaxChange').value = '20';
+            document.getElementById(prefix + 'BotVolatilityPeriod').value = '12';
+            document.getElementById(prefix + 'BotMinVolatility').value = '0.5';
+            document.getElementById(prefix + 'BotMaxVolatility').value = '3';
+        }
+
+        // Reset create bot form to defaults
+        function resetCreateBotForm() {
+            document.getElementById('newBotName').value = '';
+            document.getElementById('newBotMode').value = 'manual';
+            document.getElementById('newBotPairSearch').value = '';
+            document.getElementById('newBotPair').value = 'BTCUSDT';
+            document.getElementById('newBotMaxPairs').value = '1';
+            document.getElementById('newBotBalanceUsage').value = '100';
+            document.getElementById('newBalanceValue').textContent = '100%';
+            document.getElementById('newBotMaxLoss').value = '100';
+            document.getElementById('newMaxLossValue').textContent = '100%';
+            document.getElementById('newBotTimeframe').value = '1m';
+            document.getElementById('newBotLeverage').value = '10';
+            document.getElementById('newBotOrderSize').value = '10';
+            document.getElementById('newBotTpMode').value = 'rr';
+            selectRr('new', 2);
+            document.getElementById('newBotTpPercent').value = '2';
+            document.getElementById('newBotSlMode').value = 'supertrend_line';
+            document.getElementById('newBotSlLine').value = '2';
+            document.getElementById('newBotSlPercent').value = '2';
+            document.getElementById('newBotSlAtrMult').value = '1.5';
+            document.getElementById('newBotTrailingEnabled').checked = true;
+            document.getElementById('newBotTrailingMode').value = 'fix_percent';
+            document.getElementById('newBotTrailingActivation').value = '1.0';
+            document.getElementById('newBotTrailingStep').value = '0.5';
+            document.getElementById('newBotTrailingStLine').value = '2';
+            document.getElementById('newBotTrailingConfirm').value = '1';
+            document.getElementById('newBotPartialTpEnabled').checked = true;
+            document.getElementById('newBotPartialTpClose').value = '50';
+            document.getElementById('newBotPartialTpSlMove').value = 'tp1';
+            document.getElementById('newBotPartialTpOffset').value = '0.2';
+            document.getElementById('newBotTrailingTpEnabled').checked = false;
+            document.getElementById('newBotTrailingTpMode').value = 'st_line';
+            document.getElementById('newBotTrailingTpStLine').value = '2';
+            document.getElementById('newBotTrailingTpActivation').value = '0.5';
+            document.getElementById('newBotTrailingTpStep').value = '1.0';
+            document.getElementById('newBotEarlyEntry').checked = false;
+            document.getElementById('newBotEmaEnabled').checked = true;
+            document.getElementById('newBotEmaMode').value = 'strict';
+            resetAssetFilters('new');
+            toggleBotMode('new');
+            toggleTpOptions('new');
+            toggleSlOptions('new');
+            toggleEmaMode('new');
+            toggleTrailingOptions('new');
+            togglePartialTpOptions('new');
+            toggleTrailingTpOptions('new');
+            updateDepositInfo('new');
+            updateBalanceUsageInfo('new');
+            updateMaxLossInfo('new');
+        }
+
+        // Reset edit bot form (reload bot data)
+        function resetEditBotForm() {
+            const botId = document.getElementById('editBotId').value;
+            if (botId) {
+                showEditBotModal(botId);
+            }
         }
 
         let ws;
@@ -1543,12 +2795,18 @@ DASHBOARD_HTML = r"""
             const line = document.createElement('div');
             line.className = 'log-line';
 
-            // Color based on content
-            if (text.includes('[error]') || text.includes('Error') || text.includes('Failed')) {
+            // Color based on content - check trade events first
+            if (text.includes('[TRADE_OPEN]') || text.includes('[ОТКРЫТИЕ]')) {
+                line.classList.add('log-trade-open');
+            } else if (text.includes('[TRADE_PROFIT]') || text.includes('[ПРИБЫЛЬ]')) {
+                line.classList.add('log-trade-profit');
+            } else if (text.includes('[TRADE_LOSS]') || text.includes('[УБЫТОК]')) {
+                line.classList.add('log-trade-loss');
+            } else if (text.includes('[error]') || text.includes('Error') || text.includes('Failed')) {
                 line.classList.add('log-error');
             } else if (text.includes('[warning]') || text.includes('Warning')) {
                 line.classList.add('log-warning');
-            } else if (text.includes('success') || text.includes('Filled') || text.includes('opened')) {
+            } else if (text.includes('success') || text.includes('Filled')) {
                 line.classList.add('log-success');
             } else {
                 line.classList.add('log-info');
@@ -1683,9 +2941,133 @@ DASHBOARD_HTML = r"""
         connectWebSocket();
         loadInitialLogs();
         fetchStats();
+        loadBots();  // Load bots immediately on dashboard
+        loadAllPositions();  // Load positions on startup
+        // Send current language to server
+        fetch('/api/language', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ language: currentLang })
+        }).catch(err => console.error('Failed to set language:', err));
 
-        // Refresh stats every 10 seconds
-        setInterval(fetchStats, 10000);
+        // Refresh stats every 5 seconds
+        setInterval(fetchStats, 5000);
+
+        // Refresh positions every 2 seconds for real-time PnL updates
+        setInterval(loadAllPositions, 2000);
+
+        // Regular bot refresh every 3 seconds
+        setInterval(loadBots, 3000);
+
+        // API stats refresh every 10 seconds
+        async function updateApiStats() {
+            try {
+                const response = await fetch('/api/ping');
+                const data = await response.json();
+                if (!data.error) {
+                    const pingEl = document.getElementById('apiPing');
+                    const ping = data.ping_ms || 0;
+                    pingEl.textContent = ping;
+
+                    // Ping color coding
+                    // < 100ms = excellent (green)
+                    // 100-300ms = good (yellow)
+                    // 300-500ms = average (orange)
+                    // > 500ms = slow (red)
+                    if (ping < 100) {
+                        pingEl.style.color = '#00ff88';  // Green - Excellent
+                    } else if (ping < 300) {
+                        pingEl.style.color = '#ffcc00';  // Yellow - Good
+                    } else if (ping < 500) {
+                        pingEl.style.color = '#ff9900';  // Orange - Average
+                    } else {
+                        pingEl.style.color = '#ff4444';  // Red - Slow
+                    }
+
+                    document.getElementById('apiRequests').textContent = data.requests_per_5s || 0;
+                    document.getElementById('apiLimit').textContent = data.rate_limit || 600;
+
+                    const usage = data.rate_usage || 0;
+                    const fillEl = document.getElementById('apiUsageFill');
+                    fillEl.style.width = usage + '%';
+
+                    // Rate usage color
+                    if (usage > 80) {
+                        fillEl.style.background = 'linear-gradient(90deg, #ff4444, #ff6666)';
+                    } else if (usage > 50) {
+                        fillEl.style.background = 'linear-gradient(90deg, #ffcc00, #ffaa00)';
+                    } else {
+                        fillEl.style.background = 'linear-gradient(90deg, #00ff88, #00cc66)';
+                    }
+                }
+            } catch (err) {
+                console.debug('Failed to fetch API stats:', err);
+            }
+        }
+        updateApiStats();
+        setInterval(updateApiStats, 10000);
+
+        // Restart server function
+        async function restartServer() {
+            const confirmMsg = currentLang === 'ru'
+                ? 'Вы уверены, что хотите перезагрузить сервер?\n\nВсе боты будут остановлены.'
+                : 'Are you sure you want to restart the server?\n\nAll bots will be stopped.';
+
+            if (!confirm(confirmMsg)) {
+                return;
+            }
+
+            const btn = document.getElementById('restartServerBtn');
+            btn.disabled = true;
+            btn.innerHTML = '⏳';
+            btn.style.color = '#ffcc00';
+
+            try {
+                const response = await fetch('/api/restart-server', { method: 'POST' });
+                const data = await response.json();
+
+                if (data.status === 'restarting') {
+                    btn.innerHTML = '🔄';
+                    btn.style.color = '#00ff88';
+
+                    // Show message
+                    const msg = currentLang === 'ru'
+                        ? 'Сервер перезагружается... Страница обновится автоматически.'
+                        : 'Server restarting... Page will refresh automatically.';
+                    alert(msg);
+
+                    // Wait and reload page
+                    setTimeout(() => {
+                        location.reload();
+                    }, 3000);
+                } else {
+                    throw new Error(data.error || 'Unknown error');
+                }
+            } catch (err) {
+                console.error('Restart failed:', err);
+                btn.innerHTML = '❌';
+                btn.style.color = '#ff4444';
+
+                const errMsg = currentLang === 'ru'
+                    ? 'Ошибка перезагрузки: ' + err.message
+                    : 'Restart error: ' + err.message;
+                alert(errMsg);
+
+                setTimeout(() => {
+                    btn.innerHTML = '🔄 Restart';
+                    btn.style.color = '#ff6666';
+                    btn.disabled = false;
+                }, 2000);
+            }
+        }
+
+        // Fast refresh for starting/stopping states (every 500ms)
+        setInterval(async () => {
+            const needsRefresh = botsData.some(b => b.status === 'starting' || b.status === 'stopping');
+            if (needsRefresh) {
+                await loadBots();
+            }
+        }, 500);
 
         // Bot control functions
         async function startBot() {
@@ -1867,7 +3249,6 @@ DASHBOARD_HTML = r"""
             event.target.classList.add('active');
 
             // Load data for specific tabs
-            if (tabName === 'bots') loadBots();
             if (tabName === 'charts') loadCharts();
             if (tabName === 'pairs') loadTradingPairs();
         }
@@ -1971,9 +3352,9 @@ DASHBOARD_HTML = r"""
             const pair = allTradingPairs.find(p => p.symbol === symbol);
             if (!pair) return;
 
-            // Show pair info container
-            const container = document.getElementById(prefix + 'PairInfoContainer');
-            if (container) container.style.display = 'block';
+            // Pair info container stays hidden - values are used programmatically
+            // const container = document.getElementById(prefix + 'PairInfoContainer');
+            // if (container) container.style.display = 'block';
 
             // Update min order
             const minOrderEl = document.getElementById(prefix + 'PairMinOrder');
@@ -2046,6 +3427,10 @@ DASHBOARD_HTML = r"""
             // Update pair info for default pair
             updatePairInfo('new', 'BTCUSDT');
 
+            // Update balance usage info
+            try { updateBalanceUsageInfo('new'); } catch(e) { console.error(e); }
+            try { updateMaxLossInfo('new'); } catch(e) { console.error(e); }
+
             document.getElementById('createBotModal').classList.add('show');
         }
 
@@ -2072,6 +3457,115 @@ DASHBOARD_HTML = r"""
             } catch (err) {
                 console.error('Failed to load bots:', err);
             }
+        }
+
+        // Positions data storage
+        let positionsData = [];
+
+        async function loadAllPositions() {
+            try {
+                const response = await fetch('/api/positions');
+                const data = await response.json();
+                positionsData = (data.positions || []).filter(p => p.status === 'open');
+                renderPositions();
+            } catch (err) {
+                console.error('Failed to load positions:', err);
+            }
+        }
+
+        function renderPositions() {
+            const section = document.getElementById('positionsSection');
+            const grid = document.getElementById('positionsGrid');
+
+            if (positionsData.length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+
+            section.style.display = 'block';
+
+            grid.innerHTML = positionsData.map(pos => {
+                const pnlClass = pos.pnl_usdt >= 0 ? 'positive' : 'negative';
+                const pnlSign = pos.pnl_usdt >= 0 ? '+' : '';
+                const sideColor = pos.side.toUpperCase() === 'LONG' ? '#00ff88' : '#ff4444';
+                const sideIcon = pos.side.toUpperCase() === 'LONG' ? '📈' : '📉';
+
+                // Find parent bot name
+                const parentBot = botsData.find(b => b.id === pos.bot_id);
+                const botName = parentBot ? parentBot.name : 'Unknown';
+
+                return `
+                <div class="position-card" style="
+                    background: rgba(255, 255, 255, 0.05);
+                    border-radius: 10px;
+                    padding: 15px;
+                    border: 1px solid rgba(255, 255, 255, 0.1);
+                    border-left: 3px solid ${sideColor};
+                    cursor: pointer;
+                " onclick="openPositionChart('${pos.id}')">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <div style="font-size: 16px; font-weight: bold; color: #fff;">
+                            ${sideIcon} ${pos.symbol}
+                        </div>
+                        <span style="color: ${sideColor}; font-weight: bold;">${pos.side.toUpperCase()}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="color: #888; font-size: 12px;">Entry: ${pos.entry_price.toFixed(6)}</span>
+                        <span style="color: #00d4ff; font-size: 12px;">Current: ${pos.current_price.toFixed(6)}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="color: #ff4444; font-size: 11px;">SL: ${pos.sl.toFixed(6)}</span>
+                        <span style="color: #00ff88; font-size: 11px;">TP: ${pos.tp.toFixed(6)}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding: 8px; background: rgba(0,0,0,0.3); border-radius: 5px;">
+                        <span class="${pnlClass}" style="font-size: 18px; font-weight: bold;">
+                            ${pnlSign}${pos.pnl_usdt.toFixed(4)} USDT
+                        </span>
+                        <span class="${pnlClass}" style="font-size: 14px;">
+                            (${pnlSign}${pos.pnl_percent.toFixed(2)}%)
+                        </span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="color: #666; font-size: 10px;">Bot: ${botName}</span>
+                        <button class="btn btn-danger" style="padding: 5px 10px; font-size: 11px;" onclick="event.stopPropagation(); closePosition('${pos.id}')">
+                            Close
+                        </button>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        async function closePosition(positionId) {
+            if (!confirm(currentLang === 'ru' ? 'Закрыть позицию?' : 'Close this position?')) return;
+
+            try {
+                const response = await fetch('/api/positions/' + positionId + '/close', { method: 'POST' });
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast(currentLang === 'ru' ? 'Позиция закрыта' : 'Position closed');
+                    loadAllPositions();
+                    loadBots(); // Refresh bot stats
+                } else {
+                    showToast(data.message);
+                }
+            } catch (err) {
+                console.error('Failed to close position:', err);
+                showToast(currentLang === 'ru' ? 'Ошибка закрытия' : 'Close failed');
+            }
+        }
+
+        function openPositionChart(positionId) {
+            const pos = positionsData.find(p => p.id === positionId);
+            if (!pos) return;
+
+            // Find bot for this position
+            const bot = botsData.find(b => b.id === pos.bot_id);
+            if (!bot) return;
+
+            // Open fullscreen chart with position data
+            openFullscreenChartWithPosition(pos, bot);
         }
 
         function renderBots() {
@@ -2102,44 +3596,71 @@ DASHBOARD_HTML = r"""
             const activeBots = botsData.filter(b => b.status === 'running').length;
             document.getElementById('activeBots').textContent = activeBots.toString();
 
-            grid.innerHTML = botsData.map(bot => `
-                <div class="bot-card ${bot.status === 'running' ? 'running' : ''}" style="min-width: 400px;" data-bot-id="${bot.id}">
+            grid.innerHTML = botsData.map(bot => {
+                const openCount = bot.open_positions_count || 0;
+                const totalPnl = bot.total_pnl || 0;
+                const pnlClass = totalPnl >= 0 ? 'positive' : 'negative';
+                const pnlSign = totalPnl >= 0 ? '+' : '';
+
+                return `
+                <div class="bot-card ${bot.status === 'running' ? 'running' : ''} ${bot.status === 'starting' || bot.status === 'stopping' ? 'processing' : ''}" style="min-width: 350px;" data-bot-id="${bot.id}">
                     <div class="bot-header">
                         <span class="bot-name">${bot.name}</span>
-                        <span class="bot-status ${bot.status}">${bot.status === 'running' ? t('running') : t('stopped')}</span>
+                        <span class="bot-status ${bot.status}">${
+                            bot.status === 'running' ? t('running') :
+                            bot.status === 'paused' ? t('paused') :
+                            bot.status === 'starting' ? t('starting') :
+                            bot.status === 'stopping' ? t('stopping') :
+                            t('stopped')
+                        }</span>
                     </div>
                     <div class="bot-details">
                         <div><strong>${t('botMode')}:</strong> ${bot.bot_mode === 'auto_search' ? '<span style="color: #ffcc00;">' + t('autoSearchMode') + '</span>' : t('manualMode')}</div>
-                        <div><strong>${bot.bot_mode === 'auto_search' ? t('maxSimultaneousOrders') : t('tradingPair')}:</strong> ${bot.bot_mode === 'auto_search' ? bot.max_simultaneous_orders || 3 : (Array.isArray(bot.trading_pairs) ? bot.trading_pairs[0] : bot.trading_pairs)}</div>
+                        <div><strong>${bot.bot_mode === 'auto_search' ? t('maxTradingPairs') : t('tradingPair')}:</strong> ${bot.bot_mode === 'auto_search' ? bot.max_trading_pairs || bot.max_simultaneous_orders || 1 : (Array.isArray(bot.trading_pairs) ? bot.trading_pairs[0] : bot.trading_pairs)}</div>
                         <div><strong>${t('timeframe')}:</strong> ${bot.timeframe} | <strong>${t('leverage')}:</strong> ${bot.leverage}x</div>
-                        <div><strong>R:R:</strong> ${bot.tp_risk_ratio} | <strong>${t('riskPerTrade')}:</strong> ${bot.risk_per_trade}%</div>
+                        <div><strong>TP:</strong> ${bot.tp_mode === 'fixed' ? bot.tp_fixed_percent + '%' : bot.tp_risk_ratio + ':1'} | <strong>Order:</strong> ${bot.order_size} USDT</div>
                         <div><strong>EMA200:</strong> ${bot.ema_enabled ? '✓' : '✗'} | <strong>SL:</strong> ${bot.sl_mode}</div>
                     </div>
-                    ${bot.status === 'running' ? `
-                        <div class="bot-chart-container" style="margin: 10px 0; cursor: pointer;" ondblclick="openFullscreenChart('${bot.id}')" title="${t('doubleClickChart')}">
-                            <div class="chart-wrapper" id="bot-chart-${bot.id}" style="height: 200px;"></div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: #666; margin-top: 5px;">
-                                <span>${t('doubleClickChart')}</span>
-                                <span class="bot-countdown" data-timeframe="${bot.timeframe}" style="color: #ffcc00; font-weight: bold;">--:--</span>
-                                <span class="update-time" style="color: #00ff88;">Loading...</span>
+                    ${bot.status === 'running' || bot.status === 'paused' ? `
+                        <div class="bot-stats" style="margin: 10px 0; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div style="text-align: center;">
+                                    <div style="font-size: 24px; font-weight: bold; color: #00d4ff;">${openCount}</div>
+                                    <div style="font-size: 11px; color: #888;">${t('openPositions')}</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="font-size: 24px; font-weight: bold;" class="${pnlClass}">${pnlSign}${totalPnl.toFixed(2)}</div>
+                                    <div style="font-size: 11px; color: #888;">${t('todayPnl')} (USDT)</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <span class="bot-countdown" data-timeframe="${bot.timeframe}" style="font-size: 18px; color: #ffcc00; font-weight: bold;">--:--</span>
+                                    <div style="font-size: 11px; color: #888;">Next Candle</div>
+                                </div>
                             </div>
                         </div>
                     ` : ''}
                     <div class="bot-actions">
                         ${bot.status === 'running' ?
-                            `<button class="btn btn-danger" onclick="stopSpecificBot('${bot.id}')">${t('stop')}</button>` :
+                            `<button class="btn btn-danger" onclick="stopSpecificBot('${bot.id}')">${t('stop')}</button>
+                             <button class="btn btn-warning" onclick="pauseBot('${bot.id}')" style="background: #ffcc00; color: #1a1a2e;">${t('pause')}</button>` :
+                         bot.status === 'paused' ?
+                            `<button class="btn btn-danger" onclick="stopSpecificBot('${bot.id}')">${t('stop')}</button>
+                             <button class="btn btn-success" onclick="resumeBot('${bot.id}')">${t('resume')}</button>` :
+                         bot.status === 'stopping' ?
+                            `<button class="btn btn-danger" disabled>${t('stopping')}</button>` :
+                         bot.status === 'starting' ?
+                            `<button class="btn btn-success" disabled>${t('starting')}</button>` :
                             `<button class="btn btn-success" onclick="startSpecificBot('${bot.id}')">${t('start')}</button>`
                         }
-                        <button class="btn btn-primary" onclick="showEditBotModal('${bot.id}')" ${bot.status === 'running' ? 'disabled' : ''}>${t('edit')}</button>
-                        <button class="btn btn-secondary" onclick="deleteBot('${bot.id}')" ${bot.status === 'running' ? 'disabled' : ''}>${t('delete')}</button>
+                        <button class="btn btn-primary" onclick="showEditBotModal('${bot.id}')" ${bot.status !== 'stopped' && bot.status !== 'paused' ? 'disabled' : ''}>${t('edit')}</button>
+                        <button class="btn btn-secondary" onclick="deleteBot('${bot.id}')" ${bot.status !== 'stopped' ? 'disabled' : ''}>${t('delete')}</button>
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
 
-            // Create charts for running bots
-            botsData.filter(bot => bot.status === 'running').forEach(bot => {
-                setTimeout(() => createBotChart(bot), 100);
-            });
+            // Load and render positions for running bots
+            loadAllPositions();
         }
 
         // Get update interval - fast 1 second updates for real-time feel
@@ -2346,16 +3867,19 @@ DASHBOARD_HTML = r"""
         function toggleBotMode(prefix) {
             const mode = document.getElementById(prefix + 'BotMode').value;
             const pairContainer = document.getElementById(prefix + 'PairContainer');
-            const maxOrdersContainer = document.getElementById(prefix + 'MaxOrdersContainer');
+            const maxPairsContainer = document.getElementById(prefix + 'MaxPairsContainer');
             const pairInfoContainer = document.getElementById(prefix + 'PairInfoContainer');
+            const assetFiltersContainer = document.getElementById(prefix + 'AssetFiltersContainer');
 
             if (mode === 'auto_search') {
                 if (pairContainer) pairContainer.style.display = 'none';
                 if (pairInfoContainer) pairInfoContainer.style.display = 'none';
-                if (maxOrdersContainer) maxOrdersContainer.style.display = 'block';
+                if (maxPairsContainer) maxPairsContainer.style.display = 'block';
+                if (assetFiltersContainer) assetFiltersContainer.style.display = 'block';
             } else {
                 if (pairContainer) pairContainer.style.display = 'block';
-                if (maxOrdersContainer) maxOrdersContainer.style.display = 'none';
+                if (maxPairsContainer) maxPairsContainer.style.display = 'none';
+                if (assetFiltersContainer) assetFiltersContainer.style.display = 'none';
             }
         }
 
@@ -2366,93 +3890,66 @@ DASHBOARD_HTML = r"""
             const percentContainer = document.getElementById(prefix + 'SlPercentContainer');
             const atrContainer = document.getElementById(prefix + 'SlAtrContainer');
 
-            lineContainer.style.display = slMode === 'supertrend_line' ? 'block' : 'none';
-            percentContainer.style.display = slMode === 'fixed_percent' ? 'block' : 'none';
-            atrContainer.style.display = slMode === 'atr' ? 'block' : 'none';
-        }
-
-        // Toggle Position Sizing options based on selected mode
-        function togglePositionSizingOptions(prefix) {
-            const mode = document.getElementById(prefix + 'BotPositionSizingMode').value;
-            const riskContainer = document.getElementById(prefix + 'RiskPercentContainer');
-            const orderSizeItem = document.getElementById(prefix + 'BotOrderSize');
-
-            // Show order size for fixed_amount, hide for risk-based modes
-            if (orderSizeItem) {
-                orderSizeItem.parentElement.style.display = mode === 'fixed_amount' ? 'block' : 'none';
-            }
-            // Show risk percent for risk_percent and kelly modes
-            if (riskContainer) {
-                riskContainer.style.display = (mode === 'risk_percent' || mode === 'kelly') ? 'block' : 'none';
-            }
-        }
-
-        // Toggle TP options based on selected mode
-        function toggleTpOptions(prefix) {
-            const tpMode = document.getElementById(prefix + 'BotTpMode').value;
-            const ratioContainer = document.getElementById(prefix + 'TpRatioContainer');
-            const percentContainer = document.getElementById(prefix + 'TpPercentContainer');
-
-            if (ratioContainer) ratioContainer.style.display = tpMode === 'risk_ratio' ? 'block' : 'none';
-            if (percentContainer) percentContainer.style.display = tpMode === 'fixed_percent' ? 'block' : 'none';
-        }
-
-        // Toggle Trailing options based on enabled/disabled
-        function toggleTrailingOptions(prefix) {
-            const enabled = document.getElementById(prefix + 'BotTrailingEnabled').value === 'true';
-            const optionsContainer = document.getElementById(prefix + 'TrailingOptionsContainer');
-
-            if (optionsContainer) optionsContainer.style.display = enabled ? 'block' : 'none';
-        }
-
-        // Toggle Trailing Mode options (step only for percent mode)
-        function toggleTrailingModeOptions(prefix) {
-            const mode = document.getElementById(prefix + 'BotTrailingMode').value;
-            const stepContainer = document.getElementById(prefix + 'TrailingStepContainer');
-
-            if (stepContainer) stepContainer.style.display = mode === 'percent' ? 'block' : 'none';
-        }
-
-        // Toggle Break-even options based on enabled/disabled
-        function toggleBreakevenOptions(prefix) {
-            const enabled = document.getElementById(prefix + 'BotBreakevenEnabled').value === 'true';
-            const optionsContainer = document.getElementById(prefix + 'BreakevenOptionsContainer');
-
-            if (optionsContainer) optionsContainer.style.display = enabled ? 'block' : 'none';
+            lineContainer.style.display = slMode === 'supertrend_line' ? 'flex' : 'none';
+            percentContainer.style.display = slMode === 'fixed_percent' ? 'flex' : 'none';
+            atrContainer.style.display = slMode === 'atr' ? 'flex' : 'none';
         }
 
         async function createBot() {
             const botMode = document.getElementById('newBotMode').value;
             const selectedPair = document.getElementById('newBotPair').value;
             const slMode = document.getElementById('newBotSlMode').value;
+            const tpMode = document.getElementById('newBotTpMode').value;
             const config = {
                 name: document.getElementById('newBotName').value || 'Bot ' + (botsData.length + 1),
                 bot_mode: botMode,
                 trading_pairs: botMode === 'auto_search' ? [] : [selectedPair],
-                max_simultaneous_orders: parseInt(document.getElementById('newBotMaxOrders').value) || 3,
+                max_trading_pairs: parseInt(document.getElementById('newBotMaxPairs').value) || 1,
                 timeframe: document.getElementById('newBotTimeframe').value,
                 leverage: parseInt(document.getElementById('newBotLeverage').value),
-                leverage_mode: document.getElementById('newBotLeverageMode').value,
                 order_size: parseFloat(document.getElementById('newBotOrderSize').value),
                 position_sizing_mode: document.getElementById('newBotPositionSizingMode').value,
-                risk_per_trade: parseFloat(document.getElementById('newBotRisk').value),
-                tp_mode: document.getElementById('newBotTpMode').value,
+                leverage_mode: document.getElementById('newBotLeverageMode').value,
+                breakeven_enabled: document.getElementById('newBotBreakevenEnabled').checked,
+                breakeven_activation: parseFloat(document.getElementById('newBotBreakevenActivation').value),
+                breakeven_offset: parseFloat(document.getElementById('newBotBreakevenOffset').value),
+                tp_mode: tpMode,
                 tp_risk_ratio: parseFloat(document.getElementById('newBotTpRatio').value),
-                tp_fixed_percent: parseFloat(document.getElementById('newBotTpPercent').value),
+                tp_fixed_percent: parseFloat(document.getElementById('newBotTpPercent').value) || 2,
                 sl_mode: slMode,
                 sl_supertrend_line: parseInt(document.getElementById('newBotSlLine').value),
                 sl_fixed_percent: parseFloat(document.getElementById('newBotSlPercent').value),
                 sl_atr_multiplier: parseFloat(document.getElementById('newBotSlAtrMult').value),
-                max_positions: parseInt(document.getElementById('newBotMaxPositions').value),
-                ema_enabled: document.getElementById('newBotEmaEnabled').value === 'true',
+                ema_enabled: document.getElementById('newBotEmaEnabled').checked,
                 ema_filter_mode: document.getElementById('newBotEmaMode').value,
-                trailing_enabled: document.getElementById('newBotTrailingEnabled').value === 'true',
+                trailing_enabled: document.getElementById('newBotTrailingEnabled').checked,
                 trailing_mode: document.getElementById('newBotTrailingMode').value,
                 trailing_activation: parseFloat(document.getElementById('newBotTrailingActivation').value),
                 trailing_step: parseFloat(document.getElementById('newBotTrailingStep').value),
-                breakeven_enabled: document.getElementById('newBotBreakevenEnabled').value === 'true',
-                breakeven_activation: parseFloat(document.getElementById('newBotBreakevenActivation').value),
-                breakeven_offset: parseFloat(document.getElementById('newBotBreakevenOffset').value),
+                trailing_st_line: parseInt(document.getElementById('newBotTrailingStLine').value),
+                trailing_confirm_candles: parseInt(document.getElementById('newBotTrailingConfirm').value),
+                partial_tp_enabled: document.getElementById('newBotPartialTpEnabled').checked,
+                partial_tp_close_percent: parseInt(document.getElementById('newBotPartialTpClose').value),
+                partial_tp_sl_move: document.getElementById('newBotPartialTpSlMove').value,
+                partial_tp_sl_offset: parseFloat(document.getElementById('newBotPartialTpOffset').value),
+                trailing_tp_enabled: document.getElementById('newBotTrailingTpEnabled').checked,
+                trailing_tp_mode: document.getElementById('newBotTrailingTpMode').value,
+                trailing_tp_st_line: parseInt(document.getElementById('newBotTrailingTpStLine').value),
+                trailing_tp_activation: parseFloat(document.getElementById('newBotTrailingTpActivation').value),
+                trailing_tp_step: parseFloat(document.getElementById('newBotTrailingTpStep').value),
+                early_entry_enabled: document.getElementById('newBotEarlyEntry').checked,
+                // Asset filters
+                filter_min_volume: parseMoneyValue(document.getElementById('newBotMinVolume').value),
+                filter_max_volume: parseMoneyValue(document.getElementById('newBotMaxVolume').value),
+                filter_min_price: parseFloat(document.getElementById('newBotMinPrice').value) || 0,
+                filter_max_price: parseFloat(document.getElementById('newBotMaxPrice').value) || 0,
+                filter_min_change: parseFloat(document.getElementById('newBotMinChange').value) || 0,
+                filter_max_change: parseFloat(document.getElementById('newBotMaxChange').value) || 0,
+                filter_volatility_period: parseInt(document.getElementById('newBotVolatilityPeriod').value) || 0,
+                filter_min_volatility: parseFloat(document.getElementById('newBotMinVolatility').value) || 0,
+                filter_max_volatility: parseFloat(document.getElementById('newBotMaxVolatility').value) || 0,
+                balance_usage_percent: parseFloat(document.getElementById('newBotBalanceUsage').value) || 100,
+                max_loss_percent: parseFloat(document.getElementById('newBotMaxLoss').value) || 100,
             };
 
             try {
@@ -2476,33 +3973,89 @@ DASHBOARD_HTML = r"""
         }
 
         async function startSpecificBot(botId) {
+            const bot = botsData.find(b => b.id === botId);
+            showToast(t('starting'));
+
             try {
                 const response = await fetch(`/api/bots/${botId}/start`, { method: 'POST' });
                 const data = await response.json();
                 if (data.success) {
+                    // Update status immediately on success
+                    if (bot) {
+                        bot.status = 'running';
+                        renderBots();
+                    }
                     showToast(t('botStarted'));
-                    loadBots();
                 } else {
                     showToast(data.message);
+                    await loadBots();
                 }
             } catch (err) {
                 console.error('Failed to start bot:', err);
+                await loadBots();
             }
         }
 
         async function stopSpecificBot(botId) {
+            const bot = botsData.find(b => b.id === botId);
+
+            // Update UI immediately
+            if (bot) {
+                bot.status = 'stopping';
+                renderBots();
+            }
+            showToast(t('stopping'));
+
             try {
                 const response = await fetch(`/api/bots/${botId}/stop`, { method: 'POST' });
                 const data = await response.json();
                 if (data.success) {
                     showToast(t('botStopped'));
-                    loadBots();
                 } else {
                     showToast(data.message);
                 }
             } catch (err) {
                 console.error('Failed to stop bot:', err);
+                showToast(t('failedStop'));
             }
+
+            // Always reload bots after stop attempt
+            await loadBots();
+        }
+
+        async function pauseBot(botId) {
+            const bot = botsData.find(b => b.id === botId);
+            showToast(t('pause') + '...');
+
+            try {
+                const response = await fetch(`/api/bots/${botId}/pause`, { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    showToast(currentLang === 'ru' ? 'Бот на паузе' : 'Bot paused');
+                } else {
+                    showToast(data.message);
+                }
+            } catch (err) {
+                console.error('Failed to pause bot:', err);
+            }
+            await loadBots();
+        }
+
+        async function resumeBot(botId) {
+            showToast(currentLang === 'ru' ? 'Возобновление...' : 'Resuming...');
+
+            try {
+                const response = await fetch(`/api/bots/${botId}/resume`, { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    showToast(currentLang === 'ru' ? 'Бот возобновлен' : 'Bot resumed');
+                } else {
+                    showToast(data.message);
+                }
+            } catch (err) {
+                console.error('Failed to resume bot:', err);
+            }
+            await loadBots();
         }
 
         async function deleteBot(botId) {
@@ -2537,7 +4090,7 @@ DASHBOARD_HTML = r"""
             document.getElementById('editBotId').value = bot.id;
             document.getElementById('editBotName').value = bot.name;
             document.getElementById('editBotMode').value = bot.bot_mode || 'manual';
-            document.getElementById('editBotMaxOrders').value = bot.max_simultaneous_orders || 3;
+            document.getElementById('editBotMaxPairs').value = bot.max_trading_pairs || bot.max_simultaneous_orders || 1;
             document.getElementById('editBotPairSearch').value = currentPair || '';
             document.getElementById('editBotPair').value = currentPair || '';
             document.getElementById('editBotTimeframe').value = bot.timeframe;
@@ -2552,38 +4105,74 @@ DASHBOARD_HTML = r"""
 
             // Then set values
             document.getElementById('editBotLeverage').value = bot.leverage;
-            document.getElementById('editBotLeverageMode').value = bot.leverage_mode || 'cross';
-            document.getElementById('editBotOrderSize').value = bot.order_size || 100;
+            document.getElementById('editBotOrderSize').value = bot.order_size || 10;
             document.getElementById('editBotPositionSizingMode').value = bot.position_sizing_mode || 'fixed_amount';
-            document.getElementById('editBotRisk').value = bot.risk_per_trade;
-            document.getElementById('editBotTpMode').value = bot.tp_mode || 'risk_ratio';
-            document.getElementById('editBotTpRatio').value = bot.tp_risk_ratio;
-            document.getElementById('editBotTpPercent').value = bot.tp_fixed_percent || 4;
+            document.getElementById('editBotLeverageMode').value = bot.leverage_mode || 'cross';
+            document.getElementById('editBotBreakevenEnabled').checked = bot.breakeven_enabled || false;
+            document.getElementById('editBotBreakevenActivation').value = bot.breakeven_activation || 1.0;
+            document.getElementById('editBotBreakevenOffset').value = bot.breakeven_offset || 0.1;
+            toggleBreakevenOptions('edit');
+
+            // TP Mode and value
+            const tpMode = bot.tp_mode || 'rr';
+            document.getElementById('editBotTpMode').value = tpMode;
+            document.getElementById('editBotTpRatio').value = bot.tp_risk_ratio || 2;
+            document.getElementById('editBotTpPercent').value = bot.tp_fixed_percent || 2;
+            toggleTpOptions('edit');
+
             document.getElementById('editBotSlMode').value = bot.sl_mode;
             document.getElementById('editBotSlLine').value = bot.sl_supertrend_line || 2;
             document.getElementById('editBotSlPercent').value = bot.sl_fixed_percent || 2;
             document.getElementById('editBotSlAtrMult').value = bot.sl_atr_multiplier || 1.5;
-            document.getElementById('editBotMaxPositions').value = bot.max_positions;
-            document.getElementById('editBotEmaEnabled').value = bot.ema_enabled ? 'true' : 'false';
+            document.getElementById('editBotEmaEnabled').checked = bot.ema_enabled || false;
             document.getElementById('editBotEmaMode').value = bot.ema_filter_mode || 'strict';
-            document.getElementById('editBotTrailingEnabled').value = bot.trailing_enabled !== false ? 'true' : 'false';
-            document.getElementById('editBotTrailingMode').value = bot.trailing_mode || 'supertrend';
+            document.getElementById('editBotTrailingEnabled').checked = bot.trailing_enabled !== false;
+            document.getElementById('editBotTrailingMode').value = bot.trailing_mode || 'fix_percent';
             document.getElementById('editBotTrailingActivation').value = bot.trailing_activation || 1.0;
             document.getElementById('editBotTrailingStep').value = bot.trailing_step || 0.5;
-            document.getElementById('editBotBreakevenEnabled').value = bot.breakeven_enabled ? 'true' : 'false';
-            document.getElementById('editBotBreakevenActivation').value = bot.breakeven_activation || 1.0;
-            document.getElementById('editBotBreakevenOffset').value = bot.breakeven_offset || 0.1;
+            document.getElementById('editBotTrailingStLine').value = bot.trailing_st_line || 2;
+            document.getElementById('editBotTrailingConfirm').value = bot.trailing_confirm_candles || 1;
+            document.getElementById('editBotPartialTpEnabled').checked = bot.partial_tp_enabled !== false;
+            document.getElementById('editBotPartialTpClose').value = bot.partial_tp_close_percent || 50;
+            document.getElementById('editBotPartialTpSlMove').value = bot.partial_tp_sl_move || 'tp1';
+            document.getElementById('editBotPartialTpOffset').value = bot.partial_tp_sl_offset || 0.2;
+            document.getElementById('editBotTrailingTpEnabled').checked = bot.trailing_tp_enabled || false;
+            document.getElementById('editBotTrailingTpMode').value = bot.trailing_tp_mode || 'st_line';
+            document.getElementById('editBotTrailingTpStLine').value = bot.trailing_tp_st_line || 2;
+            document.getElementById('editBotTrailingTpActivation').value = bot.trailing_tp_activation || 0.5;
+            document.getElementById('editBotTrailingTpStep').value = bot.trailing_tp_step || 1.0;
+            document.getElementById('editBotEarlyEntry').checked = bot.early_entry_enabled || false;
 
-            // Toggle options visibility
-            toggleSlOptions('edit');
-            togglePositionSizingOptions('edit');
-            toggleTpOptions('edit');
+            // Asset filters
+            document.getElementById('editBotMinVolume').value = (bot.filter_min_volume || 3000000).toLocaleString('en-US');
+            document.getElementById('editBotMaxVolume').value = (bot.filter_max_volume || 0).toLocaleString('en-US');
+            document.getElementById('editBotMinPrice').value = bot.filter_min_price || 0;
+            document.getElementById('editBotMaxPrice').value = bot.filter_max_price || 0;
+            document.getElementById('editBotMinChange').value = bot.filter_min_change || -30;
+            document.getElementById('editBotMaxChange').value = bot.filter_max_change || 20;
+            document.getElementById('editBotVolatilityPeriod').value = bot.filter_volatility_period || 12;
+            document.getElementById('editBotMinVolatility').value = bot.filter_min_volatility || 0.5;
+            document.getElementById('editBotMaxVolatility').value = bot.filter_max_volatility || 3;
+            document.getElementById('editBotBalanceUsage').value = bot.balance_usage_percent || 100;
+            document.getElementById('editBotMaxLoss').value = bot.max_loss_percent || 100;
+
+            // Update slider displays
+            document.getElementById('editBalanceValue').textContent = (bot.balance_usage_percent || 100) + '%';
+            document.getElementById('editMaxLossValue').textContent = (bot.max_loss_percent || 100) + '%';
+
+            // Toggle visibility of conditional fields
+            toggleEmaMode('edit');
             toggleTrailingOptions('edit');
-            toggleTrailingModeOptions('edit');
-            toggleBreakevenOptions('edit');
+            togglePartialTpOptions('edit');
+            toggleTrailingTpOptions('edit');
+
+            // Toggle SL options visibility
+            toggleSlOptions('edit');
 
             // Update deposit info
             updateDepositInfo('edit');
+            updateBalanceUsageInfo('edit');
+            updateMaxLossInfo('edit');
 
             document.getElementById('editBotModal').classList.add('show');
         }
@@ -2592,34 +4181,57 @@ DASHBOARD_HTML = r"""
             const botId = document.getElementById('editBotId').value;
             const botMode = document.getElementById('editBotMode').value;
             const slMode = document.getElementById('editBotSlMode').value;
+            const tpMode = document.getElementById('editBotTpMode').value;
             const config = {
                 name: document.getElementById('editBotName').value,
                 bot_mode: botMode,
                 trading_pairs: botMode === 'auto_search' ? [] : [document.getElementById('editBotPair').value],
-                max_simultaneous_orders: parseInt(document.getElementById('editBotMaxOrders').value) || 3,
+                max_trading_pairs: parseInt(document.getElementById('editBotMaxPairs').value) || 1,
                 timeframe: document.getElementById('editBotTimeframe').value,
                 leverage: parseInt(document.getElementById('editBotLeverage').value),
-                leverage_mode: document.getElementById('editBotLeverageMode').value,
                 order_size: parseFloat(document.getElementById('editBotOrderSize').value),
                 position_sizing_mode: document.getElementById('editBotPositionSizingMode').value,
-                risk_per_trade: parseFloat(document.getElementById('editBotRisk').value),
-                tp_mode: document.getElementById('editBotTpMode').value,
+                leverage_mode: document.getElementById('editBotLeverageMode').value,
+                breakeven_enabled: document.getElementById('editBotBreakevenEnabled').checked,
+                breakeven_activation: parseFloat(document.getElementById('editBotBreakevenActivation').value),
+                breakeven_offset: parseFloat(document.getElementById('editBotBreakevenOffset').value),
+                tp_mode: tpMode,
                 tp_risk_ratio: parseFloat(document.getElementById('editBotTpRatio').value),
-                tp_fixed_percent: parseFloat(document.getElementById('editBotTpPercent').value),
+                tp_fixed_percent: parseFloat(document.getElementById('editBotTpPercent').value) || 2,
                 sl_mode: slMode,
                 sl_supertrend_line: parseInt(document.getElementById('editBotSlLine').value),
                 sl_fixed_percent: parseFloat(document.getElementById('editBotSlPercent').value),
                 sl_atr_multiplier: parseFloat(document.getElementById('editBotSlAtrMult').value),
-                max_positions: parseInt(document.getElementById('editBotMaxPositions').value),
-                ema_enabled: document.getElementById('editBotEmaEnabled').value === 'true',
+                ema_enabled: document.getElementById('editBotEmaEnabled').checked,
                 ema_filter_mode: document.getElementById('editBotEmaMode').value,
-                trailing_enabled: document.getElementById('editBotTrailingEnabled').value === 'true',
+                trailing_enabled: document.getElementById('editBotTrailingEnabled').checked,
                 trailing_mode: document.getElementById('editBotTrailingMode').value,
                 trailing_activation: parseFloat(document.getElementById('editBotTrailingActivation').value),
                 trailing_step: parseFloat(document.getElementById('editBotTrailingStep').value),
-                breakeven_enabled: document.getElementById('editBotBreakevenEnabled').value === 'true',
-                breakeven_activation: parseFloat(document.getElementById('editBotBreakevenActivation').value),
-                breakeven_offset: parseFloat(document.getElementById('editBotBreakevenOffset').value),
+                trailing_st_line: parseInt(document.getElementById('editBotTrailingStLine').value),
+                trailing_confirm_candles: parseInt(document.getElementById('editBotTrailingConfirm').value),
+                partial_tp_enabled: document.getElementById('editBotPartialTpEnabled').checked,
+                partial_tp_close_percent: parseInt(document.getElementById('editBotPartialTpClose').value),
+                partial_tp_sl_move: document.getElementById('editBotPartialTpSlMove').value,
+                partial_tp_sl_offset: parseFloat(document.getElementById('editBotPartialTpOffset').value),
+                trailing_tp_enabled: document.getElementById('editBotTrailingTpEnabled').checked,
+                trailing_tp_mode: document.getElementById('editBotTrailingTpMode').value,
+                trailing_tp_st_line: parseInt(document.getElementById('editBotTrailingTpStLine').value),
+                trailing_tp_activation: parseFloat(document.getElementById('editBotTrailingTpActivation').value),
+                trailing_tp_step: parseFloat(document.getElementById('editBotTrailingTpStep').value),
+                early_entry_enabled: document.getElementById('editBotEarlyEntry').checked,
+                // Asset filters
+                filter_min_volume: parseMoneyValue(document.getElementById('editBotMinVolume').value),
+                filter_max_volume: parseMoneyValue(document.getElementById('editBotMaxVolume').value),
+                filter_min_price: parseFloat(document.getElementById('editBotMinPrice').value) || 0,
+                filter_max_price: parseFloat(document.getElementById('editBotMaxPrice').value) || 0,
+                filter_min_change: parseFloat(document.getElementById('editBotMinChange').value) || 0,
+                filter_max_change: parseFloat(document.getElementById('editBotMaxChange').value) || 0,
+                filter_volatility_period: parseInt(document.getElementById('editBotVolatilityPeriod').value) || 0,
+                filter_min_volatility: parseFloat(document.getElementById('editBotMinVolatility').value) || 0,
+                filter_max_volatility: parseFloat(document.getElementById('editBotMaxVolatility').value) || 0,
+                balance_usage_percent: parseFloat(document.getElementById('editBotBalanceUsage').value) || 100,
+                max_loss_percent: parseFloat(document.getElementById('editBotMaxLoss').value) || 100,
             };
 
             try {
@@ -2916,6 +4528,147 @@ DASHBOARD_HTML = r"""
             }
         }
 
+        // Open fullscreen chart with position markers (Entry, SL, TP)
+        async function openFullscreenChartWithPosition(pos, bot) {
+            const symbol = pos.symbol;
+            const sideEmoji = pos.side.toUpperCase() === 'LONG' ? '📈' : '📉';
+            document.getElementById('fullscreenChartTitle').textContent = `${sideEmoji} ${symbol} - ${pos.side.toUpperCase()} (${bot.timeframe})`;
+
+            document.getElementById('fullscreenChartModal').classList.add('show');
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            const container = document.getElementById('fullscreenChartContainer');
+            container.innerHTML = '';
+
+            if (typeof LightweightCharts === 'undefined') {
+                container.innerHTML = '<p style="color: #888; text-align: center; padding: 40px;">Chart library not loaded</p>';
+                return;
+            }
+
+            fullscreenChart = LightweightCharts.createChart(container, {
+                width: container.clientWidth,
+                height: container.clientHeight,
+                layout: {
+                    background: { type: 'solid', color: '#1a1a2e' },
+                    textColor: '#888',
+                },
+                grid: {
+                    vertLines: { color: 'rgba(255, 255, 255, 0.05)' },
+                    horzLines: { color: 'rgba(255, 255, 255, 0.05)' },
+                },
+                rightPriceScale: { borderColor: 'rgba(255, 255, 255, 0.1)' },
+                timeScale: { borderColor: 'rgba(255, 255, 255, 0.1)', timeVisible: true, secondsVisible: false },
+            });
+
+            const candlestickSeries = fullscreenChart.addCandlestickSeries({
+                upColor: '#00ff88',
+                downColor: '#ff4444',
+                borderDownColor: '#ff4444',
+                borderUpColor: '#00ff88',
+                wickDownColor: '#ff4444',
+                wickUpColor: '#00ff88',
+            });
+
+            const tfMap = {'1m':'1','3m':'3','5m':'5','15m':'15','30m':'30','1h':'60','2h':'120','4h':'240','1d':'D'};
+            const interval = tfMap[bot.timeframe] || '15';
+
+            // Load klines
+            try {
+                const klinesResponse = await fetch(`/api/klines/${symbol}?interval=${interval}&limit=500`);
+                const klinesData = await klinesResponse.json();
+                if (klinesData.klines && klinesData.klines.length > 0) {
+                    candlestickSeries.setData(klinesData.klines);
+                }
+            } catch (err) {
+                console.error('Failed to load klines:', err);
+            }
+
+            // Add Entry Price line (cyan)
+            candlestickSeries.createPriceLine({
+                price: pos.entry_price,
+                color: '#00d4ff',
+                lineWidth: 2,
+                lineStyle: LightweightCharts.LineStyle.Solid,
+                axisLabelVisible: true,
+                title: 'Entry',
+            });
+
+            // Add Stop Loss line (red)
+            candlestickSeries.createPriceLine({
+                price: pos.sl,
+                color: '#ff4444',
+                lineWidth: 2,
+                lineStyle: LightweightCharts.LineStyle.Dashed,
+                axisLabelVisible: true,
+                title: 'SL',
+            });
+
+            // Add Take Profit line (green)
+            candlestickSeries.createPriceLine({
+                price: pos.tp,
+                color: '#00ff88',
+                lineWidth: 2,
+                lineStyle: LightweightCharts.LineStyle.Dashed,
+                axisLabelVisible: true,
+                title: 'TP',
+            });
+
+            // Load indicators
+            try {
+                const indResponse = await fetch(`/api/indicators/${symbol}?interval=${interval}&limit=500`);
+                const indData = await indResponse.json();
+
+                if (indData.indicators) {
+                    // EMA 200
+                    if (bot.ema_enabled && indData.indicators.ema200 && indData.indicators.ema200.length > 0) {
+                        const emaSeries = fullscreenChart.addLineSeries({
+                            color: '#ffcc00',
+                            lineWidth: 2,
+                            title: 'EMA200',
+                        });
+                        emaSeries.setData(indData.indicators.ema200);
+                    }
+
+                    // SuperTrend lines
+                    if (indData.indicators.supertrend1 && indData.indicators.supertrend1.length > 0) {
+                        const st1Series = fullscreenChart.addLineSeries({ lineWidth: 1, lastValueVisible: false, priceLineVisible: false });
+                        st1Series.setData(indData.indicators.supertrend1.map(p => ({time: p.time, value: p.value, color: p.color})));
+                    }
+                    if (indData.indicators.supertrend2 && indData.indicators.supertrend2.length > 0) {
+                        const st2Series = fullscreenChart.addLineSeries({ lineWidth: 2, lastValueVisible: false, priceLineVisible: false });
+                        st2Series.setData(indData.indicators.supertrend2.map(p => ({time: p.time, value: p.value, color: p.color})));
+                    }
+                    if (indData.indicators.supertrend3 && indData.indicators.supertrend3.length > 0) {
+                        const st3Series = fullscreenChart.addLineSeries({ lineWidth: 3, lastValueVisible: false, priceLineVisible: false });
+                        st3Series.setData(indData.indicators.supertrend3.map(p => ({time: p.time, value: p.value, color: p.color})));
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to load indicators:', err);
+            }
+
+            // Update price info
+            const priceEl = document.getElementById('fsPrice');
+            priceEl.textContent = `${pos.current_price.toFixed(6)} | PnL: ${pos.pnl_usdt >= 0 ? '+' : ''}${pos.pnl_usdt.toFixed(4)} USDT (${pos.pnl_percent >= 0 ? '+' : ''}${pos.pnl_percent.toFixed(2)}%)`;
+            priceEl.style.color = pos.pnl_usdt >= 0 ? '#00ff88' : '#ff4444';
+
+            // Store data for updates
+            fullscreenChartData = { bot, symbol, interval, candlestickSeries, position: pos };
+
+            // Countdown timer
+            updateCountdown();
+            if (fullscreenCountdownInterval) clearInterval(fullscreenCountdownInterval);
+            fullscreenCountdownInterval = setInterval(updateCountdown, 1000);
+
+            // Fit content
+            fullscreenChart.timeScale().fitContent();
+
+            // Handle resize
+            new ResizeObserver(() => {
+                fullscreenChart.applyOptions({ width: container.clientWidth, height: container.clientHeight });
+            }).observe(container);
+        }
+
         // Charts
         let charts = {};
         let chartSymbols = ['BTCUSDT', 'ETHUSDT'];
@@ -3142,17 +4895,8 @@ async def dashboard():
     )
 
 
-@app.get("/api/stats")
-async def get_stats():
-    """Get current trading statistics."""
-    # This will be populated by the trading engine
-    return {
-        "balance": None,
-        "positions": 0,
-        "trades": 0,
-        "pnl": 0.0,
-    }
-
+# NOTE: /api/stats is defined in run_web.py with background client support for balance display
+# This avoids duplicating the endpoint and allows balance to show even when no bot is running
 
 @app.get("/api/logs")
 async def get_logs():
@@ -3179,7 +4923,84 @@ runtime_settings = {
     "leverage": 10,
     "max_open_positions": 3,
     "ema_enabled": True,
+    "language": "en",  # en or ru
 }
+
+
+# Log messages in different languages
+LOG_MESSAGES = {
+    "en": {
+        "trade_open": "[TRADE_OPEN] Position opened: {symbol} {side} qty={qty} entry={entry} SL={sl} TP={tp}",
+        "trade_close_profit": "[TRADE_PROFIT] Position closed: {symbol} PnL: +{pnl:.2f}% (+{pnl_usdt:.2f} USDT)",
+        "trade_close_loss": "[TRADE_LOSS] Position closed: {symbol} PnL: {pnl:.2f}% ({pnl_usdt:.2f} USDT)",
+        "bot_started": "Bot started",
+        "bot_stopped": "Bot stopped",
+        "scanning_pairs": "Scanning {count} pairs...",
+        "scan_complete": "Scan #{num} complete  signals={signals} positions={positions}",
+        "signal_found": "Signal: {symbol} {side} price={price}",
+        "order_placed": "Order placed: {symbol} {side} qty={qty}",
+        "order_failed": "Order failed: {symbol} - {error}",
+        "insufficient_balance": "Insufficient balance for order",
+        "starting_engine": "Starting trading engine",
+        "engine_started": "Trading engine started",
+        "connected": "Connected to Bybit API",
+        "balance": "Balance: {balance} USDT",
+        "starting_bot": "Starting AILA Trading Bot...",
+        "mode_auto": "Mode: AUTO SEARCH - scanning {pairs} pairs, max orders={max_orders}",
+        "mode_manual": "Mode: MANUAL - trading {pairs} pairs",
+        "config_info": "Config: timeframe={tf} leverage={lev}x ema={ema} order_size={size} USDT",
+        "strategy_info": "Strategy: tp_ratio={tp} sl_mode={sl} risk={risk}%",
+        "bot_running": "Bot running",
+        "position_opened": "Position OPENED: {symbol} {side} qty={qty} @ {price}",
+        "position_closed": "Position CLOSED: {symbol} PnL={pnl}",
+    },
+    "ru": {
+        "trade_open": "[ОТКРЫТИЕ] Позиция открыта: {symbol} {side} кол-во={qty} вход={entry} SL={sl} TP={tp}",
+        "trade_close_profit": "[ПРИБЫЛЬ] Позиция закрыта: {symbol} PnL: +{pnl:.2f}% (+{pnl_usdt:.2f} USDT)",
+        "trade_close_loss": "[УБЫТОК] Позиция закрыта: {symbol} PnL: {pnl:.2f}% ({pnl_usdt:.2f} USDT)",
+        "bot_started": "Бот запущен",
+        "bot_stopped": "Бот остановлен",
+        "scanning_pairs": "Сканирование {count} пар...",
+        "scan_complete": "Скан #{num} завершён  сигналов={signals} позиций={positions}",
+        "signal_found": "Сигнал: {symbol} {side} цена={price}",
+        "order_placed": "Ордер размещён: {symbol} {side} кол-во={qty}",
+        "order_failed": "Ошибка ордера: {symbol} - {error}",
+        "insufficient_balance": "Недостаточно баланса для ордера",
+        "starting_engine": "Запуск торгового движка",
+        "engine_started": "Торговый движок запущен",
+        "connected": "Подключено к Bybit API",
+        "balance": "Баланс: {balance} USDT",
+        "starting_bot": "Запуск AILA Trading Bot...",
+        "mode_auto": "Режим: АВТОПОИСК - сканирование {pairs} пар, макс ордеров={max_orders}",
+        "mode_manual": "Режим: РУЧНОЙ - торговля {pairs} парами",
+        "config_info": "Конфиг: таймфрейм={tf} плечо={lev}x ema={ema} размер={size} USDT",
+        "strategy_info": "Стратегия: tp_ratio={tp} sl_mode={sl} риск={risk}%",
+        "bot_running": "Бот работает",
+        "position_opened": "Позиция ОТКРЫТА: {symbol} {side} кол-во={qty} @ {price}",
+        "position_closed": "Позиция ЗАКРЫТА: {symbol} PnL={pnl}",
+    },
+}
+
+
+def get_log_message(key: str, **kwargs) -> str:
+    """Get log message in current language."""
+    lang = runtime_settings.get("language", "en")
+    messages = LOG_MESSAGES.get(lang, LOG_MESSAGES["en"])
+    template = messages.get(key, LOG_MESSAGES["en"].get(key, key))
+    try:
+        return template.format(**kwargs)
+    except Exception:
+        return template
+
+
+@app.post("/api/language")
+async def set_language(data: dict):
+    """Set the log language."""
+    lang = data.get("language", "en")
+    if lang in ("en", "ru"):
+        runtime_settings["language"] = lang
+        return {"success": True, "language": lang}
+    return {"success": False, "message": "Invalid language"}
 
 
 @app.get("/api/bot/status")
@@ -3263,28 +5084,41 @@ trading_pairs_cache = {
 # Multi-bot management (up to 10 bots)
 MAX_BOTS = 10
 bots_registry = {}  # bot_id -> bot_config
+
+# Multi-bot engine instances - each bot has its own engine
 bot_engines = {}  # bot_id -> TradingEngine instance
 bot_clients = {}  # bot_id -> BybitClient instance
 bot_runtime_settings = {}  # bot_id -> settings dict (per-bot runtime settings)
 
 # Trading positions registry - tracks positions per bot
+# position_id -> {bot_id, symbol, side, size, entry_price, sl, tp, pnl, status, opened_at}
 positions_registry = {}
 
 
 def get_running_bot_id():
-    """Get the ID of first currently running or paused bot."""
+    """Get the ID of first currently running or paused bot (for backwards compatibility)."""
     for bot_id, bot in bots_registry.items():
         if bot.get("status") in ("running", "paused"):
             return bot_id
     return None
 
 
+def get_all_running_bot_ids():
+    """Get list of all currently running or paused bot IDs."""
+    return [bot_id for bot_id, bot in bots_registry.items()
+            if bot.get("status") in ("running", "paused")]
+
+
 def get_bot_for_symbol(symbol: str):
-    """Get the bot_id that is trading a specific symbol."""
+    """Get the bot_id that is trading a specific symbol.
+    Returns the first running bot that has this symbol in its trading pairs.
+    """
     for bot_id, bot in bots_registry.items():
         if bot.get("status") not in ("running", "paused"):
             continue
+        # Check if bot trades this symbol
         bot_pairs = bot.get("trading_pairs", [])
+        # In auto_search mode, bot trades all pairs
         if bot.get("bot_mode") == "auto_search" or symbol in bot_pairs:
             return bot_id
     return None
@@ -3294,16 +5128,57 @@ def get_bot_runtime_settings(bot_id: str):
     """Get runtime settings for a specific bot."""
     if bot_id in bot_runtime_settings:
         return bot_runtime_settings[bot_id]
+    # Fallback to global runtime_settings for backwards compatibility
     return runtime_settings
 
 
+def check_trading_pairs_conflict(bot_id: str, new_pairs: list) -> tuple[bool, list]:
+    """Check if new bot's trading pairs conflict with running bots.
+
+    Returns (has_conflict, conflicting_pairs).
+    In manual mode, checks for exact pair overlaps.
+    In auto_search mode, always conflicts if another auto_search bot is running.
+    """
+    conflicting_pairs = []
+    new_pairs_set = set(new_pairs)
+
+    for other_id, other_bot in bots_registry.items():
+        if other_id == bot_id:
+            continue
+        if other_bot.get("status") not in ("running", "paused"):
+            continue
+
+        other_settings = bot_runtime_settings.get(other_id, {})
+        other_pairs = set(other_settings.get("trading_pairs", other_bot.get("trading_pairs", [])))
+
+        # Check for pair overlap
+        overlap = new_pairs_set & other_pairs
+        if overlap:
+            conflicting_pairs.extend(list(overlap))
+
+    return (len(conflicting_pairs) > 0, list(set(conflicting_pairs)))
+
+
 def register_position(symbol: str, side: str, entry_price: float, size: float, sl: float, tp: float, bot_id: str = None):
-    """Register a new position opened by a bot."""
+    """Register a new position opened by a bot.
+
+    Args:
+        symbol: Trading pair symbol
+        side: LONG or SHORT
+        entry_price: Entry price
+        size: Position size
+        sl: Stop loss price
+        tp: Take profit price
+        bot_id: Optional bot ID. If not provided, uses get_bot_for_symbol() or get_running_bot_id()
+    """
     import uuid
 
+    # Determine which bot this position belongs to
     if not bot_id:
+        # First try to find bot by symbol
         bot_id = get_bot_for_symbol(symbol)
     if not bot_id:
+        # Fallback to any running bot
         bot_id = get_running_bot_id()
     if not bot_id:
         return None
@@ -3331,6 +5206,15 @@ def register_position(symbol: str, side: str, entry_price: float, size: float, s
     return position_id
 
 
+def update_position_pnl(symbol: str, current_price: float, pnl_usdt: float, pnl_percent: float):
+    """Update PnL for open positions of a symbol."""
+    for pos_id, pos in positions_registry.items():
+        if pos["symbol"] == symbol and pos["status"] == "open":
+            pos["current_price"] = current_price
+            pos["pnl_usdt"] = pnl_usdt
+            pos["pnl_percent"] = pnl_percent
+
+
 def close_position_record(symbol: str, reason: str, pnl_usdt: float = None, pnl_percent: float = None):
     """Mark position as closed."""
     for pos_id, pos in positions_registry.items():
@@ -3346,16 +5230,48 @@ def close_position_record(symbol: str, reason: str, pnl_usdt: float = None, pnl_
     return None
 
 
+def get_bot_positions(bot_id: str):
+    """Get all positions for a specific bot."""
+    return [pos for pos in positions_registry.values() if pos["bot_id"] == bot_id]
+
+
 def get_bot_open_positions(bot_id: str):
     """Get open positions for a specific bot."""
     return [pos for pos in positions_registry.values()
             if pos["bot_id"] == bot_id and pos["status"] == "open"]
 
 
+def get_bot_total_pnl(bot_id: str):
+    """Calculate total PnL for a bot's open positions."""
+    positions = get_bot_open_positions(bot_id)
+    return sum(pos.get("pnl_usdt", 0) for pos in positions)
+
+
 @app.get("/api/bots")
 async def get_bots():
-    """Get all configured bots."""
-    return {"bots": list(bots_registry.values()), "max_bots": MAX_BOTS}
+    """Get all configured bots with position stats."""
+    bots_with_stats = []
+    for bot in bots_registry.values():
+        bot_copy = dict(bot)
+        bot_id = bot["id"]
+        # Add position stats
+        open_positions = get_bot_open_positions(bot_id)
+        bot_copy["open_positions_count"] = len(open_positions)
+        bot_copy["total_pnl"] = sum(p.get("pnl_usdt", 0) for p in open_positions)
+        # Add engine status
+        bot_copy["has_engine"] = bot_id in bot_engines
+        bot_copy["has_client"] = bot_id in bot_clients
+        bots_with_stats.append(bot_copy)
+
+    # Include count of running bots
+    running_count = len([b for b in bots_registry.values() if b.get("status") == "running"])
+
+    return {
+        "bots": bots_with_stats,
+        "max_bots": MAX_BOTS,
+        "running_count": running_count,
+        "total_engines": len(bot_engines),
+    }
 
 
 @app.post("/api/bots")
@@ -3374,35 +5290,41 @@ async def create_bot(config: dict):
         "trading_pairs": config.get("trading_pairs", ["BTCUSDT"]),
         "max_simultaneous_orders": config.get("max_simultaneous_orders", 3),
         "timeframe": config.get("timeframe", "15m"),
-        # Position sizing
-        "position_sizing_mode": config.get("position_sizing_mode", "fixed_amount"),
         "risk_per_trade": config.get("risk_per_trade", 2.0),
-        "order_size": config.get("order_size", 100.0),
-        # Take profit
-        "tp_mode": config.get("tp_mode", "risk_ratio"),
         "tp_risk_ratio": config.get("tp_risk_ratio", 2.0),
-        "tp_fixed_percent": config.get("tp_fixed_percent", 4.0),
-        # Stop loss
         "sl_mode": config.get("sl_mode", "supertrend_line"),
         "sl_supertrend_line": config.get("sl_supertrend_line", 2),
         "sl_fixed_percent": config.get("sl_fixed_percent", 2.0),
         "sl_atr_multiplier": config.get("sl_atr_multiplier", 1.5),
-        # Leverage
         "leverage": config.get("leverage", 10),
+        "order_size": config.get("order_size", 100.0),
+        "position_sizing_mode": config.get("position_sizing_mode", "fixed_amount"),
         "leverage_mode": config.get("leverage_mode", "cross"),
-        "max_positions": config.get("max_positions", 3),
-        # EMA filter
-        "ema_enabled": config.get("ema_enabled", True),
-        "ema_filter_mode": config.get("ema_filter_mode", "strict"),
-        # Trailing stop
-        "trailing_enabled": config.get("trailing_enabled", True),
-        "trailing_mode": config.get("trailing_mode", "supertrend"),
-        "trailing_activation": config.get("trailing_activation", 1.0),
-        "trailing_step": config.get("trailing_step", 0.5),
-        # Break-even
         "breakeven_enabled": config.get("breakeven_enabled", False),
         "breakeven_activation": config.get("breakeven_activation", 1.0),
         "breakeven_offset": config.get("breakeven_offset", 0.1),
+        "max_positions": config.get("max_positions", 3),
+        "ema_enabled": config.get("ema_enabled", True),
+        "ema_filter_mode": config.get("ema_filter_mode", "strict"),
+        "trailing_enabled": config.get("trailing_enabled", True),
+        "trailing_mode": config.get("trailing_mode", "fix_percent"),
+        "trailing_activation": config.get("trailing_activation", 1.0),
+        "trailing_step": config.get("trailing_step", 0.5),
+        "trailing_st_line": config.get("trailing_st_line", 2),
+        "trailing_confirm_candles": config.get("trailing_confirm_candles", 1),
+        # Auto-trade filters
+        "filter_min_volume": config.get("filter_min_volume", 0),
+        "filter_max_volume": config.get("filter_max_volume", 0),
+        "filter_min_price": config.get("filter_min_price", 0),
+        "filter_max_price": config.get("filter_max_price", 0),
+        "filter_min_change": config.get("filter_min_change", 0),
+        "filter_max_change": config.get("filter_max_change", 0),
+        "filter_volatility_period": config.get("filter_volatility_period", 0),
+        "filter_min_volatility": config.get("filter_min_volatility", 0),
+        "filter_max_volatility": config.get("filter_max_volatility", 0),
+        "early_entry_enabled": config.get("early_entry_enabled", False),
+        "balance_usage_percent": config.get("balance_usage_percent", 100),
+        "max_loss_percent": config.get("max_loss_percent", 10),
         "status": "stopped",
         "created_at": datetime.now().isoformat(),
     }
@@ -3432,21 +5354,10 @@ async def update_bot(bot_id: str, config: dict):
         bot["max_simultaneous_orders"] = int(config["max_simultaneous_orders"])
     if "timeframe" in config:
         bot["timeframe"] = config["timeframe"]
-    # Position sizing
-    if "position_sizing_mode" in config:
-        bot["position_sizing_mode"] = config["position_sizing_mode"]
     if "risk_per_trade" in config:
         bot["risk_per_trade"] = float(config["risk_per_trade"])
-    if "order_size" in config:
-        bot["order_size"] = float(config["order_size"])
-    # Take profit
-    if "tp_mode" in config:
-        bot["tp_mode"] = config["tp_mode"]
     if "tp_risk_ratio" in config:
         bot["tp_risk_ratio"] = float(config["tp_risk_ratio"])
-    if "tp_fixed_percent" in config:
-        bot["tp_fixed_percent"] = float(config["tp_fixed_percent"])
-    # Stop loss
     if "sl_mode" in config:
         bot["sl_mode"] = config["sl_mode"]
     if "sl_supertrend_line" in config:
@@ -3455,19 +5366,26 @@ async def update_bot(bot_id: str, config: dict):
         bot["sl_fixed_percent"] = float(config["sl_fixed_percent"])
     if "sl_atr_multiplier" in config:
         bot["sl_atr_multiplier"] = float(config["sl_atr_multiplier"])
-    # Leverage
     if "leverage" in config:
         bot["leverage"] = int(config["leverage"])
+    if "order_size" in config:
+        bot["order_size"] = float(config["order_size"])
+    if "position_sizing_mode" in config:
+        bot["position_sizing_mode"] = config["position_sizing_mode"]
     if "leverage_mode" in config:
         bot["leverage_mode"] = config["leverage_mode"]
+    if "breakeven_enabled" in config:
+        bot["breakeven_enabled"] = config["breakeven_enabled"]
+    if "breakeven_activation" in config:
+        bot["breakeven_activation"] = float(config["breakeven_activation"])
+    if "breakeven_offset" in config:
+        bot["breakeven_offset"] = float(config["breakeven_offset"])
     if "max_positions" in config:
         bot["max_positions"] = int(config["max_positions"])
-    # EMA filter
     if "ema_enabled" in config:
         bot["ema_enabled"] = config["ema_enabled"]
     if "ema_filter_mode" in config:
         bot["ema_filter_mode"] = config["ema_filter_mode"]
-    # Trailing stop
     if "trailing_enabled" in config:
         bot["trailing_enabled"] = config["trailing_enabled"]
     if "trailing_mode" in config:
@@ -3476,13 +5394,35 @@ async def update_bot(bot_id: str, config: dict):
         bot["trailing_activation"] = float(config["trailing_activation"])
     if "trailing_step" in config:
         bot["trailing_step"] = float(config["trailing_step"])
-    # Break-even
-    if "breakeven_enabled" in config:
-        bot["breakeven_enabled"] = config["breakeven_enabled"]
-    if "breakeven_activation" in config:
-        bot["breakeven_activation"] = float(config["breakeven_activation"])
-    if "breakeven_offset" in config:
-        bot["breakeven_offset"] = float(config["breakeven_offset"])
+    if "trailing_st_line" in config:
+        bot["trailing_st_line"] = int(config["trailing_st_line"])
+    if "trailing_confirm_candles" in config:
+        bot["trailing_confirm_candles"] = int(config["trailing_confirm_candles"])
+    # Auto-trade filters
+    if "filter_min_volume" in config:
+        bot["filter_min_volume"] = float(config["filter_min_volume"])
+    if "filter_max_volume" in config:
+        bot["filter_max_volume"] = float(config["filter_max_volume"])
+    if "filter_min_price" in config:
+        bot["filter_min_price"] = float(config["filter_min_price"])
+    if "filter_max_price" in config:
+        bot["filter_max_price"] = float(config["filter_max_price"])
+    if "filter_min_change" in config:
+        bot["filter_min_change"] = float(config["filter_min_change"])
+    if "filter_max_change" in config:
+        bot["filter_max_change"] = float(config["filter_max_change"])
+    if "filter_volatility_period" in config:
+        bot["filter_volatility_period"] = int(config["filter_volatility_period"])
+    if "filter_min_volatility" in config:
+        bot["filter_min_volatility"] = float(config["filter_min_volatility"])
+    if "filter_max_volatility" in config:
+        bot["filter_max_volatility"] = float(config["filter_max_volatility"])
+    if "early_entry_enabled" in config:
+        bot["early_entry_enabled"] = bool(config["early_entry_enabled"])
+    if "balance_usage_percent" in config:
+        bot["balance_usage_percent"] = float(config["balance_usage_percent"])
+    if "max_loss_percent" in config:
+        bot["max_loss_percent"] = float(config["max_loss_percent"])
 
     add_log(f"[info    ] Bot updated: {bot['name']} (ID: {bot_id})")
 
@@ -3507,7 +5447,7 @@ async def delete_bot(bot_id: str):
 
 @app.post("/api/bots/{bot_id}/start")
 async def start_specific_bot(bot_id: str):
-    """Start a specific bot."""
+    """Start a specific bot with its own independent engine."""
     if bot_id not in bots_registry:
         return {"success": False, "message": "Bot not found"}
 
@@ -3515,74 +5455,231 @@ async def start_specific_bot(bot_id: str):
     if bot.get("status") == "running":
         return {"success": False, "message": "Bot is already running"}
 
-    # Update runtime settings with this bot's config
-    runtime_settings["bot_mode"] = bot.get("bot_mode", "manual")
-    runtime_settings["max_simultaneous_orders"] = bot.get("max_simultaneous_orders", 3)
+    # Check if bot is already in bot_engines (shouldn't happen but safety check)
+    if bot_id in bot_engines:
+        return {"success": False, "message": "Bot engine already exists"}
+
+    # Build per-bot runtime settings
+    bot_settings = {}
+
+    bot_settings["bot_mode"] = bot.get("bot_mode", "manual")
+    bot_settings["max_simultaneous_orders"] = bot.get("max_simultaneous_orders", 3)
 
     # For auto_search mode, get all trading pairs
     if bot.get("bot_mode") == "auto_search":
         # Get all perpetual USDT pairs from cache or fetch
         if trading_pairs_cache["pairs"]:
-            # Filter out any undefined/empty symbols
-            runtime_settings["trading_pairs"] = [
+            import re
+            # Filter out any undefined/empty symbols and dated futures (e.g., BTCUSDT-23JAN26)
+            dated_futures_pattern = re.compile(r'-\d{2}[A-Z]{3}\d{2}$')
+            bot_settings["trading_pairs"] = [
                 p["symbol"] for p in trading_pairs_cache["pairs"]
-                if p.get("symbol") and p["symbol"] not in ("undefined", "null", "")
+                if p.get("symbol")
+                and p["symbol"] not in ("undefined", "null", "")
+                and not dated_futures_pattern.search(p["symbol"])
             ]
         else:
-            runtime_settings["trading_pairs"] = ["BTCUSDT"]  # Fallback
-        runtime_settings["auto_search_active"] = True
+            bot_settings["trading_pairs"] = ["BTCUSDT"]  # Fallback
+        bot_settings["auto_search_active"] = True
     else:
-        runtime_settings["trading_pairs"] = bot["trading_pairs"]
-        runtime_settings["auto_search_active"] = False
+        bot_settings["trading_pairs"] = bot["trading_pairs"]
+        bot_settings["auto_search_active"] = False
 
-    runtime_settings["timeframe"] = bot["timeframe"]
-    # Position sizing
-    runtime_settings["position_sizing_mode"] = bot.get("position_sizing_mode", "fixed_amount")
-    runtime_settings["risk_per_trade"] = bot["risk_per_trade"]
-    runtime_settings["order_size"] = bot.get("order_size", 100.0)
-    # Take profit
-    runtime_settings["tp_mode"] = bot.get("tp_mode", "risk_ratio")
-    runtime_settings["tp_risk_ratio"] = bot["tp_risk_ratio"]
-    runtime_settings["tp_fixed_percent"] = bot.get("tp_fixed_percent", 4.0)
-    # Stop loss
-    runtime_settings["sl_mode"] = bot["sl_mode"]
-    runtime_settings["sl_supertrend_line"] = bot.get("sl_supertrend_line", 2)
-    runtime_settings["sl_fixed_percent"] = bot.get("sl_fixed_percent", 2.0)
-    runtime_settings["sl_atr_multiplier"] = bot.get("sl_atr_multiplier", 1.5)
-    # Leverage
-    runtime_settings["leverage"] = bot["leverage"]
-    runtime_settings["leverage_mode"] = bot.get("leverage_mode", "cross")
-    runtime_settings["margin_mode"] = bot.get("leverage_mode", "cross")  # alias for TradingEngineConfig
-    runtime_settings["max_open_positions"] = bot["max_positions"]
-    # EMA filter
-    runtime_settings["ema_enabled"] = bot["ema_enabled"]
-    runtime_settings["ema_filter_mode"] = bot.get("ema_filter_mode", "strict")
-    # Trailing stop
-    runtime_settings["trailing_enabled"] = bot.get("trailing_enabled", True)
-    runtime_settings["trailing_mode"] = bot.get("trailing_mode", "supertrend")
-    runtime_settings["trailing_activation"] = bot.get("trailing_activation", 1.0)
-    runtime_settings["trailing_step"] = bot.get("trailing_step", 0.5)
-    # Break-even
-    runtime_settings["breakeven_enabled"] = bot.get("breakeven_enabled", False)
-    runtime_settings["breakeven_activation"] = bot.get("breakeven_activation", 1.0)
-    runtime_settings["breakeven_offset"] = bot.get("breakeven_offset", 0.1)
+    # Check for trading pair conflicts with other running bots
+    has_conflict, conflicting = check_trading_pairs_conflict(bot_id, bot_settings["trading_pairs"])
+    if has_conflict:
+        # Log warning but allow start - user might want this intentionally
+        add_log(f"[warning ] Bot {bot['name']} shares pairs with other running bots: {', '.join(conflicting[:5])}{'...' if len(conflicting) > 5 else ''}")
 
-    # Start the bot
+    bot_settings["timeframe"] = bot["timeframe"]
+    bot_settings["risk_per_trade"] = bot["risk_per_trade"]
+    bot_settings["tp_risk_ratio"] = bot["tp_risk_ratio"]
+    bot_settings["sl_mode"] = bot["sl_mode"]
+    bot_settings["sl_supertrend_line"] = bot.get("sl_supertrend_line", 2)
+    bot_settings["sl_fixed_percent"] = bot.get("sl_fixed_percent", 2.0)
+    bot_settings["sl_atr_multiplier"] = bot.get("sl_atr_multiplier", 1.5)
+    bot_settings["leverage"] = bot["leverage"]
+    bot_settings["order_size"] = bot.get("order_size", 100.0)
+    bot_settings["position_sizing_mode"] = bot.get("position_sizing_mode", "fixed_amount")
+    bot_settings["leverage_mode"] = bot.get("leverage_mode", "cross")
+    bot_settings["margin_mode"] = bot.get("leverage_mode", "cross")  # alias for TradingEngineConfig
+    bot_settings["breakeven_enabled"] = bot.get("breakeven_enabled", False)
+    bot_settings["breakeven_activation"] = bot.get("breakeven_activation", 1.0)
+    bot_settings["breakeven_offset"] = bot.get("breakeven_offset", 0.1)
+    bot_settings["max_open_positions"] = bot["max_positions"]
+    bot_settings["ema_enabled"] = bot["ema_enabled"]
+    bot_settings["ema_filter_mode"] = bot.get("ema_filter_mode", "strict")
+    bot_settings["trailing_enabled"] = bot.get("trailing_enabled", True)
+    bot_settings["trailing_mode"] = bot.get("trailing_mode", "fix_percent")
+    bot_settings["trailing_activation"] = bot.get("trailing_activation", 1.0)
+    bot_settings["trailing_step"] = bot.get("trailing_step", 0.5)
+    bot_settings["trailing_st_line"] = bot.get("trailing_st_line", 2)
+    bot_settings["trailing_confirm_candles"] = bot.get("trailing_confirm_candles", 1)
+    # Auto-trade filters
+    bot_settings["filter_min_volume"] = bot.get("filter_min_volume", 0)
+    bot_settings["filter_max_volume"] = bot.get("filter_max_volume", 0)
+    bot_settings["filter_min_price"] = bot.get("filter_min_price", 0)
+    bot_settings["filter_max_price"] = bot.get("filter_max_price", 0)
+    bot_settings["filter_min_change"] = bot.get("filter_min_change", 0)
+    bot_settings["filter_max_change"] = bot.get("filter_max_change", 0)
+    bot_settings["filter_volatility_period"] = bot.get("filter_volatility_period", 0)
+    bot_settings["filter_min_volatility"] = bot.get("filter_min_volatility", 0)
+    bot_settings["filter_max_volatility"] = bot.get("filter_max_volatility", 0)
+    bot_settings["early_entry_enabled"] = bot.get("early_entry_enabled", False)
+    # Partial TP settings
+    bot_settings["partial_tp_enabled"] = bot.get("partial_tp_enabled", True)
+    bot_settings["partial_tp_close_percent"] = bot.get("partial_tp_close_percent", 50)
+    bot_settings["partial_tp_sl_move"] = bot.get("partial_tp_sl_move", "tp1")
+    bot_settings["partial_tp_sl_offset"] = bot.get("partial_tp_sl_offset", 0.2)
+    # Trailing TP settings
+    bot_settings["trailing_tp_enabled"] = bot.get("trailing_tp_enabled", False)
+    bot_settings["trailing_tp_mode"] = bot.get("trailing_tp_mode", "st_line")
+    bot_settings["trailing_tp_st_line"] = bot.get("trailing_tp_st_line", 2)
+    bot_settings["trailing_tp_activation"] = bot.get("trailing_tp_activation", 0.5)
+    bot_settings["trailing_tp_step"] = bot.get("trailing_tp_step", 1.0)
+
+    # Store per-bot settings
+    bot_runtime_settings[bot_id] = bot_settings
+
+    # Also update global runtime_settings for backwards compatibility
+    for key, value in bot_settings.items():
+        runtime_settings[key] = value
+
+    # Start the bot - use per-bot callback if available, fallback to global
+    start_callback_for_bot = bot_state.get("start_callback_for_bot")
     start_callback = bot_state.get("start_callback")
-    if start_callback:
-        try:
-            await start_callback()
-            bot["status"] = "running"
-            return {"success": True, "message": f"Bot {bot['name']} started"}
-        except Exception as e:
-            return {"success": False, "message": str(e)}
+
+    if start_callback_for_bot:
+        # New multi-bot architecture - use per-bot callback
+        bot["status"] = "running"
+
+        async def do_start():
+            try:
+                await start_callback_for_bot(bot_id)
+            except Exception as e:
+                bot["status"] = "stopped"
+                bot_runtime_settings.pop(bot_id, None)
+                add_log(f"[error   ] Failed to start bot {bot['name']}: {str(e)}")
+
+        asyncio.create_task(do_start())
+        return {"success": True, "message": f"Bot {bot['name']} started"}
+
+    elif start_callback:
+        # Legacy single-bot mode - use global callback
+        bot["status"] = "running"
+
+        async def do_start():
+            try:
+                await start_callback()
+            except Exception as e:
+                bot["status"] = "stopped"
+                bot_runtime_settings.pop(bot_id, None)
+                add_log(f"[error   ] Failed to start bot: {str(e)}")
+
+        asyncio.create_task(do_start())
+        return {"success": True, "message": f"Bot {bot['name']} started"}
 
     return {"success": False, "message": "Start callback not configured"}
 
 
+def close_all_bot_positions(bot_id: str):
+    """Mark all positions for a bot as closed."""
+    closed_count = 0
+    for pos_id, pos in list(positions_registry.items()):
+        if pos["bot_id"] == bot_id and pos["status"] == "open":
+            pos["status"] = "closed"
+            pos["closed_at"] = datetime.now().isoformat()
+            pos["close_reason"] = "Bot stopped"
+            closed_count += 1
+    if closed_count > 0:
+        add_log(f"[info    ] Closed {closed_count} position records")
+
+
 @app.post("/api/bots/{bot_id}/stop")
 async def stop_specific_bot(bot_id: str):
-    """Stop a specific bot."""
+    """Stop a specific bot and its independent engine."""
+    if bot_id not in bots_registry:
+        return {"success": False, "message": "Bot not found"}
+
+    bot = bots_registry[bot_id]
+    if bot.get("status") not in ("running", "starting", "paused"):
+        return {"success": False, "message": "Bot is not running"}
+
+    # Try per-bot stop callback first (new multi-bot architecture)
+    stop_callback_for_bot = bot_state.get("stop_callback_for_bot")
+    stop_callback = bot_state.get("stop_callback")
+
+    if stop_callback_for_bot and bot_id in bot_engines:
+        # New multi-bot architecture - stop specific bot engine
+        bot["status"] = "stopping"
+        add_log(f"[info    ] Stopping bot {bot['name']}...")
+
+        try:
+            await asyncio.wait_for(stop_callback_for_bot(bot_id), timeout=12.0)
+            bot["status"] = "stopped"
+            # Close all position records for this bot
+            close_all_bot_positions(bot_id)
+            # Clean up per-bot settings
+            bot_runtime_settings.pop(bot_id, None)
+            return {"success": True, "message": "Bot stopped"}
+        except asyncio.TimeoutError:
+            bot["status"] = "stopped"
+            close_all_bot_positions(bot_id)
+            bot_runtime_settings.pop(bot_id, None)
+            # Force cleanup
+            bot_engines.pop(bot_id, None)
+            bot_clients.pop(bot_id, None)
+            add_log(f"[warning ] Stop timed out, forced stop")
+            return {"success": True, "message": "Bot stopped (timeout)"}
+        except Exception as e:
+            bot["status"] = "stopped"
+            close_all_bot_positions(bot_id)
+            bot_runtime_settings.pop(bot_id, None)
+            bot_engines.pop(bot_id, None)
+            bot_clients.pop(bot_id, None)
+            add_log(f"[error   ] Stop error: {str(e)}")
+            return {"success": True, "message": f"Bot stopped with error: {str(e)}"}
+
+    elif stop_callback:
+        # Legacy single-bot mode - use global callback
+        bot["status"] = "stopping"
+        add_log(f"[info    ] Stopping bot {bot['name']}...")
+
+        try:
+            # Wait for stop with 3 second timeout
+            await asyncio.wait_for(stop_callback(), timeout=3.0)
+            bot["status"] = "stopped"
+            # Close all position records for this bot
+            close_all_bot_positions(bot_id)
+            bot_runtime_settings.pop(bot_id, None)
+            add_log(f"[info    ] Bot {bot['name']} stopped")
+            return {"success": True, "message": "Bot stopped"}
+        except asyncio.TimeoutError:
+            bot["status"] = "stopped"
+            close_all_bot_positions(bot_id)
+            bot_runtime_settings.pop(bot_id, None)
+            add_log(f"[warning ] Stop timed out, forced stop")
+            return {"success": True, "message": "Bot stopped (timeout)"}
+        except Exception as e:
+            bot["status"] = "stopped"
+            close_all_bot_positions(bot_id)
+            bot_runtime_settings.pop(bot_id, None)
+            add_log(f"[error   ] Stop error: {str(e)}")
+            return {"success": True, "message": f"Bot stopped with error: {str(e)}"}
+
+    # No callback - just mark as stopped and cleanup
+    bot["status"] = "stopped"
+    close_all_bot_positions(bot_id)
+    bot_runtime_settings.pop(bot_id, None)
+    bot_engines.pop(bot_id, None)
+    bot_clients.pop(bot_id, None)
+    add_log(f"[warning ] No stop callback, forcing stop")
+    return {"success": True, "message": "Bot stopped (forced)"}
+
+
+@app.post("/api/bots/{bot_id}/pause")
+async def pause_specific_bot(bot_id: str):
+    """Pause a specific bot (keeps positions open, allows editing)."""
     if bot_id not in bots_registry:
         return {"success": False, "message": "Bot not found"}
 
@@ -3590,16 +5687,240 @@ async def stop_specific_bot(bot_id: str):
     if bot.get("status") != "running":
         return {"success": False, "message": "Bot is not running"}
 
-    stop_callback = bot_state.get("stop_callback")
-    if stop_callback:
-        try:
-            await stop_callback()
-            bot["status"] = "stopped"
-            return {"success": True, "message": f"Bot {bot['name']} stopped"}
-        except Exception as e:
-            return {"success": False, "message": str(e)}
+    # Set paused state - engine will check this and skip scanning
+    bot["status"] = "paused"
 
-    return {"success": False, "message": "Stop callback not configured"}
+    # Set pause flag on per-bot engine if exists, otherwise global
+    engine = bot_engines.get(bot_id) or bot_state.get("engine")
+    if engine:
+        engine.paused = True
+
+    # Update per-bot settings
+    if bot_id in bot_runtime_settings:
+        bot_runtime_settings[bot_id]["paused"] = True
+    runtime_settings["paused"] = True
+
+    add_log(f"[info    ] Bot {bot['name']} paused - positions kept open")
+    return {"success": True, "message": "Bot paused"}
+
+
+@app.post("/api/bots/{bot_id}/resume")
+async def resume_specific_bot(bot_id: str):
+    """Resume a paused bot with updated settings."""
+    if bot_id not in bots_registry:
+        return {"success": False, "message": "Bot not found"}
+
+    bot = bots_registry[bot_id]
+    if bot.get("status") != "paused":
+        return {"success": False, "message": "Bot is not paused"}
+
+    # Update per-bot settings from bot config
+    bot_settings = bot_runtime_settings.get(bot_id, {})
+    bot_settings["bot_mode"] = bot.get("bot_mode", "manual")
+    bot_settings["max_simultaneous_orders"] = bot.get("max_simultaneous_orders", 3)
+    bot_settings["timeframe"] = bot["timeframe"]
+    bot_settings["risk_per_trade"] = bot["risk_per_trade"]
+    bot_settings["tp_risk_ratio"] = bot["tp_risk_ratio"]
+    bot_settings["sl_mode"] = bot["sl_mode"]
+    bot_settings["sl_supertrend_line"] = bot.get("sl_supertrend_line", 2)
+    bot_settings["sl_fixed_percent"] = bot.get("sl_fixed_percent", 2.0)
+    bot_settings["sl_atr_multiplier"] = bot.get("sl_atr_multiplier", 1.5)
+    bot_settings["leverage"] = bot["leverage"]
+    bot_settings["order_size"] = bot.get("order_size", 100.0)
+    bot_settings["position_sizing_mode"] = bot.get("position_sizing_mode", "fixed_amount")
+    bot_settings["leverage_mode"] = bot.get("leverage_mode", "cross")
+    bot_settings["margin_mode"] = bot.get("leverage_mode", "cross")  # alias for TradingEngineConfig
+    bot_settings["breakeven_enabled"] = bot.get("breakeven_enabled", False)
+    bot_settings["breakeven_activation"] = bot.get("breakeven_activation", 1.0)
+    bot_settings["breakeven_offset"] = bot.get("breakeven_offset", 0.1)
+    bot_settings["max_open_positions"] = bot["max_positions"]
+    bot_settings["ema_enabled"] = bot["ema_enabled"]
+    bot_settings["ema_filter_mode"] = bot.get("ema_filter_mode", "strict")
+    bot_settings["trailing_enabled"] = bot.get("trailing_enabled", True)
+    bot_settings["trailing_mode"] = bot.get("trailing_mode", "fix_percent")
+    bot_settings["trailing_activation"] = bot.get("trailing_activation", 1.0)
+    bot_settings["trailing_step"] = bot.get("trailing_step", 0.5)
+    bot_settings["trailing_st_line"] = bot.get("trailing_st_line", 2)
+    bot_settings["trailing_confirm_candles"] = bot.get("trailing_confirm_candles", 1)
+    # Auto-trade filters
+    bot_settings["filter_min_volume"] = bot.get("filter_min_volume", 0)
+    bot_settings["filter_max_volume"] = bot.get("filter_max_volume", 0)
+    bot_settings["filter_min_price"] = bot.get("filter_min_price", 0)
+    bot_settings["filter_max_price"] = bot.get("filter_max_price", 0)
+    bot_settings["filter_min_change"] = bot.get("filter_min_change", 0)
+    bot_settings["filter_max_change"] = bot.get("filter_max_change", 0)
+    bot_settings["filter_volatility_period"] = bot.get("filter_volatility_period", 0)
+    bot_settings["filter_min_volatility"] = bot.get("filter_min_volatility", 0)
+    bot_settings["filter_max_volatility"] = bot.get("filter_max_volatility", 0)
+    bot_settings["early_entry_enabled"] = bot.get("early_entry_enabled", False)
+    bot_settings["paused"] = False
+
+    # Store updated per-bot settings
+    bot_runtime_settings[bot_id] = bot_settings
+
+    # Also update global runtime_settings for backwards compatibility
+    for key, value in bot_settings.items():
+        runtime_settings[key] = value
+
+    # Update the running engine's strategy config
+    update_callback = bot_state.get("update_settings_callback")
+    if update_callback:
+        update_callback()
+
+    # Unpause the per-bot engine if exists, otherwise global
+    engine = bot_engines.get(bot_id) or bot_state.get("engine")
+    if engine:
+        engine.paused = False
+
+    bot["status"] = "running"
+    runtime_settings["paused"] = False
+    add_log(f"[info    ] Bot {bot['name']} resumed with updated settings")
+    return {"success": True, "message": "Bot resumed"}
+
+
+def sync_positions_from_exchange():
+    """Sync positions with exchange data to update PnL and detect closed positions."""
+    # Try to get any connected client - prefer per-bot clients, fallback to global
+    client = None
+
+    # First try per-bot clients
+    for bid, c in bot_clients.items():
+        if c and getattr(c, 'is_connected', False):
+            client = c
+            break
+
+    # Fallback to global client
+    if not client:
+        client = bot_state.get("client")
+
+    if not client or not getattr(client, 'is_connected', False):
+        return
+
+    try:
+        exchange_positions = client.get_positions()
+        # Get set of (symbol, side) tuples with open positions on exchange
+        # This allows tracking both LONG and SHORT positions for the same symbol
+        exchange_position_keys = set()
+        for ex_pos in exchange_positions:
+            if float(ex_pos.size) > 0:
+                # Normalize side to uppercase for comparison
+                side = ex_pos.side.upper() if hasattr(ex_pos, 'side') and ex_pos.side else "LONG"
+                # Handle Bybit side naming: "Buy" = LONG, "Sell" = SHORT
+                if side in ("BUY", "LONG"):
+                    side = "LONG"
+                elif side in ("SELL", "SHORT"):
+                    side = "SHORT"
+                exchange_position_keys.add((ex_pos.symbol, side))
+
+        # Check each position in registry
+        for pos_id, pos in list(positions_registry.items()):
+            if pos["status"] != "open":
+                continue
+
+            symbol = pos["symbol"]
+            pos_side = pos["side"].upper()
+
+            # If position (symbol + side) not on exchange anymore - it was closed (TP/SL hit)
+            if (symbol, pos_side) not in exchange_position_keys:
+                pos["status"] = "closed"
+                pos["closed_at"] = datetime.now().isoformat()
+                pos["close_reason"] = "TP/SL"
+                add_log(f"[info    ] Position auto-closed: {symbol} {pos_side}")
+                continue
+
+            # Update PnL for open positions
+            for ex_pos in exchange_positions:
+                if ex_pos.symbol == symbol and float(ex_pos.size) > 0:
+                    # Check side matches
+                    ex_side = ex_pos.side.upper() if hasattr(ex_pos, 'side') and ex_pos.side else "LONG"
+                    if ex_side in ("BUY", "LONG"):
+                        ex_side = "LONG"
+                    elif ex_side in ("SELL", "SHORT"):
+                        ex_side = "SHORT"
+
+                    if ex_side != pos_side:
+                        continue
+
+                    current_price = float(ex_pos.mark_price or 0)
+                    entry_price = float(ex_pos.entry_price or pos["entry_price"])
+                    leverage = float(ex_pos.leverage or 1)
+
+                    # Calculate PnL
+                    if pos_side == "LONG":
+                        pnl_percent = ((current_price - entry_price) / entry_price) * 100 * leverage
+                    else:
+                        pnl_percent = ((entry_price - current_price) / entry_price) * 100 * leverage
+
+                    pnl_usdt = float(ex_pos.unrealized_pnl or 0)
+
+                    pos["current_price"] = current_price
+                    pos["pnl_usdt"] = pnl_usdt
+                    pos["pnl_percent"] = pnl_percent
+                    break
+    except Exception as e:
+        logger.debug(f"Sync positions error: {e}")
+
+
+@app.get("/api/positions")
+async def get_all_positions():
+    """Get all positions with synced PnL."""
+    # Sync with exchange before returning
+    sync_positions_from_exchange()
+    return {"positions": list(positions_registry.values())}
+
+
+@app.get("/api/positions/{bot_id}")
+async def get_positions_for_bot(bot_id: str):
+    """Get positions for a specific bot."""
+    positions = get_bot_positions(bot_id)
+    open_positions = [p for p in positions if p["status"] == "open"]
+    total_pnl = sum(p.get("pnl_usdt", 0) for p in open_positions)
+
+    return {
+        "positions": positions,
+        "open_count": len(open_positions),
+        "total_pnl": total_pnl,
+    }
+
+
+@app.post("/api/positions/{position_id}/close")
+async def close_position(position_id: str):
+    """Close a specific position manually."""
+    if position_id not in positions_registry:
+        return {"success": False, "message": "Position not found"}
+
+    pos = positions_registry[position_id]
+    if pos["status"] != "open":
+        return {"success": False, "message": "Position already closed"}
+
+    # Get client to close position - prefer per-bot client, fallback to global
+    pos_bot_id = pos.get("bot_id")
+    client = bot_clients.get(pos_bot_id) if pos_bot_id else None
+
+    if not client or not getattr(client, 'is_connected', False):
+        client = bot_state.get("client")
+
+    if not client or not getattr(client, 'is_connected', False):
+        return {"success": False, "message": "Not connected to exchange"}
+
+    try:
+        from aila.exchange.models import PositionSide
+        side = PositionSide.LONG if pos["side"].upper() == "LONG" else PositionSide.SHORT
+
+        # Close the position on exchange
+        client.close_position(pos["symbol"], side)
+
+        # Mark as closed in registry
+        pos["status"] = "closed"
+        pos["closed_at"] = datetime.now().isoformat()
+        pos["close_reason"] = "Manual"
+
+        add_log(f"[info    ] Position closed manually: {pos['symbol']} {pos['side']}")
+        return {"success": True, "message": "Position closed"}
+
+    except Exception as e:
+        add_log(f"[error   ] Failed to close position: {str(e)}")
+        return {"success": False, "message": str(e)}
 
 
 @app.get("/api/trading-pairs")
@@ -3677,7 +5998,11 @@ async def get_trading_pairs():
                 trading_pairs_cache["pairs"] = result
                 trading_pairs_cache["last_update"] = datetime.now()
 
-                logger.info(f"Loaded {len(result)} trading pairs from Bybit API")
+                lang = runtime_settings.get("language", "en")
+                if lang == "ru":
+                    logger.info(f"Загружено {len(result)} торговых пар с Bybit API")
+                else:
+                    logger.info(f"Loaded {len(result)} trading pairs from Bybit API")
                 return {"pairs": result}
 
     except Exception as e:
@@ -3861,9 +6186,8 @@ async def websocket_logs(websocket: WebSocket):
     connected_clients.add(websocket)
 
     try:
-        # Send existing logs
-        for log in log_buffer:
-            await websocket.send_text(log)
+        # Don't send existing logs here - they're loaded via /api/logs HTTP endpoint
+        # WebSocket only sends NEW logs that arrive after connection
 
         # Keep connection alive
         while True:
@@ -3901,82 +6225,6 @@ class WebLogHandler:
         add_log(message)
 
         return event_dict
-
-
-# ============== Log Messages ==============
-LOG_MESSAGES = {
-    "en": {
-        "trade_open": "[TRADE_OPEN] Position opened: {symbol} {side} qty={qty} entry={entry} SL={sl} TP={tp}",
-        "trade_close_profit": "[TRADE_PROFIT] Position closed: {symbol} PnL: +{pnl:.2f}% (+{pnl_usdt:.2f} USDT)",
-        "trade_close_loss": "[TRADE_LOSS] Position closed: {symbol} PnL: {pnl:.2f}% ({pnl_usdt:.2f} USDT)",
-        "bot_started": "Bot started",
-        "bot_stopped": "Bot stopped",
-        "scanning_pairs": "Scanning {count} pairs...",
-        "scan_complete": "Scan #{num} complete  signals={signals} positions={positions}",
-        "signal_found": "Signal: {symbol} {side} price={price}",
-        "order_placed": "Order placed: {symbol} {side} qty={qty}",
-        "order_failed": "Order failed: {symbol} - {error}",
-        "insufficient_balance": "Insufficient balance for order",
-        "starting_engine": "Starting trading engine",
-        "engine_started": "Trading engine started",
-        "connected": "Connected to Bybit API",
-        "balance": "Balance: {balance} USDT",
-        "starting_bot": "Starting AILA Trading Bot...",
-        "mode_auto": "Mode: AUTO SEARCH - scanning {pairs} pairs, max orders={max_orders}",
-        "mode_manual": "Mode: MANUAL - trading {pairs} pairs",
-        "config_info": "Config: timeframe={tf} leverage={lev}x ema={ema} order_size={size} USDT",
-        "strategy_info": "Strategy: tp_ratio={tp} sl_mode={sl} risk={risk}%",
-        "bot_running": "Bot running",
-        "position_opened": "Position OPENED: {symbol} {side} qty={qty} @ {price}",
-        "position_closed": "Position CLOSED: {symbol} PnL={pnl}",
-    },
-    "ru": {
-        "trade_open": "[ОТКРЫТИЕ] Позиция открыта: {symbol} {side} кол-во={qty} вход={entry} SL={sl} TP={tp}",
-        "trade_close_profit": "[ПРИБЫЛЬ] Позиция закрыта: {symbol} PnL: +{pnl:.2f}% (+{pnl_usdt:.2f} USDT)",
-        "trade_close_loss": "[УБЫТОК] Позиция закрыта: {symbol} PnL: {pnl:.2f}% ({pnl_usdt:.2f} USDT)",
-        "bot_started": "Бот запущен",
-        "bot_stopped": "Бот остановлен",
-        "scanning_pairs": "Сканирование {count} пар...",
-        "scan_complete": "Скан #{num} завершён  сигналов={signals} позиций={positions}",
-        "signal_found": "Сигнал: {symbol} {side} цена={price}",
-        "order_placed": "Ордер размещён: {symbol} {side} кол-во={qty}",
-        "order_failed": "Ошибка ордера: {symbol} - {error}",
-        "insufficient_balance": "Недостаточно баланса для ордера",
-        "starting_engine": "Запуск торгового движка",
-        "engine_started": "Торговый движок запущен",
-        "connected": "Подключено к Bybit API",
-        "balance": "Баланс: {balance} USDT",
-        "starting_bot": "Запуск AILA Trading Bot...",
-        "mode_auto": "Режим: АВТОПОИСК - сканирование {pairs} пар, макс ордеров={max_orders}",
-        "mode_manual": "Режим: РУЧНОЙ - торговля {pairs} парами",
-        "config_info": "Конфиг: таймфрейм={tf} плечо={lev}x ema={ema} размер={size} USDT",
-        "strategy_info": "Стратегия: tp_ratio={tp} sl_mode={sl} риск={risk}%",
-        "bot_running": "Бот работает",
-        "position_opened": "Позиция ОТКРЫТА: {symbol} {side} кол-во={qty} @ {price}",
-        "position_closed": "Позиция ЗАКРЫТА: {symbol} PnL={pnl}",
-    },
-}
-
-
-def get_log_message(key: str, **kwargs) -> str:
-    """Get log message in current language."""
-    lang = runtime_settings.get("language", "en")
-    messages = LOG_MESSAGES.get(lang, LOG_MESSAGES["en"])
-    template = messages.get(key, LOG_MESSAGES["en"].get(key, key))
-    try:
-        return template.format(**kwargs)
-    except Exception:
-        return template
-
-
-@app.post("/api/language")
-async def set_language(data: dict):
-    """Set the log language."""
-    lang = data.get("language", "en")
-    if lang in ("en", "ru"):
-        runtime_settings["language"] = lang
-        return {"success": True, "language": lang}
-    return {"success": False, "message": "Invalid language"}
 
 
 def run_web_server(host: str = "0.0.0.0", port: int = 8080):
