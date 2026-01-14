@@ -17,7 +17,7 @@ import structlog
 from ..core.risk import PositionSizer, PositionSizingConfig, StopLossConfig, StopLossManager, TakeProfitManager
 from ..core.strategy import Signal, SignalType, TripleSuperTrendStrategy
 from ..exchange import BybitClient, FuturesTrader, SpotTrader
-from ..exchange.models import AccountType, MarginMode, Position
+from ..exchange.models import AccountType, MarginMode, Position, PositionSide
 
 logger = structlog.get_logger(__name__)
 
@@ -962,14 +962,12 @@ class TradingEngine:
                                 if not self.config.paper_trading:
                                     if isinstance(self.trader, FuturesTrader):
                                         try:
-                                            # Close partial position
-                                            close_side = "sell" if side == "long" else "buy"
-                                            self.trader.client.new_order(
+                                            # Close partial position using close_position with quantity
+                                            pos_side = PositionSide.LONG if side == "long" else PositionSide.SHORT
+                                            self.trader.client.close_position(
                                                 symbol=symbol,
-                                                side=close_side.upper(),
-                                                type="MARKET",
-                                                quantity=str(round(close_qty, 8)),
-                                                reduceOnly="true",
+                                                side=pos_side,
+                                                quantity=Decimal(str(round(close_qty, 8))),
                                             )
                                             # Update SL on exchange
                                             self.trader.update_stop_loss(symbol, Decimal(str(new_sl_at_tp)))
@@ -1039,13 +1037,11 @@ class TradingEngine:
                                         if not self.config.paper_trading:
                                             if isinstance(self.trader, FuturesTrader):
                                                 try:
-                                                    close_side = "sell" if side == "long" else "buy"
-                                                    self.trader.client.new_order(
+                                                    pos_side = PositionSide.LONG if side == "long" else PositionSide.SHORT
+                                                    self.trader.client.close_position(
                                                         symbol=symbol,
-                                                        side=close_side.upper(),
-                                                        type="MARKET",
-                                                        quantity=str(round(remaining_qty, 8)),
-                                                        reduceOnly="true",
+                                                        side=pos_side,
+                                                        quantity=Decimal(str(round(remaining_qty, 8))),
                                                     )
                                                     logger.info(
                                                         "Trailing TP (ST Line) executed on exchange",
@@ -1183,24 +1179,42 @@ class TradingEngine:
                                         should_update = True
 
                         if should_update and new_sl_price is not None:
-                            logger.info(
-                                f"Trailing SL update ({trailing_mode})",
-                                symbol=symbol,
-                                side=side,
-                                old_sl=current_sl,
-                                new_sl=new_sl_price,
-                            )
+                            # Validate SL is on correct side of current price
+                            # For LONG: SL must be BELOW current price
+                            # For SHORT: SL must be ABOVE current price
+                            sl_valid = False
+                            if side == "long" and new_sl_price < current_price:
+                                sl_valid = True
+                            elif side == "short" and new_sl_price > current_price:
+                                sl_valid = True
 
-                            # Update on exchange if not paper trading
-                            if not self.config.paper_trading:
-                                if isinstance(self.trader, FuturesTrader):
-                                    try:
-                                        self.trader.update_stop_loss(symbol, Decimal(str(new_sl_price)))
-                                    except Exception as e:
-                                        logger.error("Failed to update SL on exchange", error=str(e))
+                            if not sl_valid:
+                                logger.debug(
+                                    "Trailing SL skip - SL would be on wrong side of price",
+                                    symbol=symbol,
+                                    side=side,
+                                    new_sl=new_sl_price,
+                                    current_price=current_price,
+                                )
+                            else:
+                                logger.info(
+                                    f"Trailing SL update ({trailing_mode})",
+                                    symbol=symbol,
+                                    side=side,
+                                    old_sl=current_sl,
+                                    new_sl=new_sl_price,
+                                )
 
-                            # Update local position data
-                            position_data["stop_loss"] = new_sl_price
+                                # Update on exchange if not paper trading
+                                if not self.config.paper_trading:
+                                    if isinstance(self.trader, FuturesTrader):
+                                        try:
+                                            self.trader.update_stop_loss(symbol, Decimal(str(new_sl_price)))
+                                        except Exception as e:
+                                            logger.error("Failed to update SL on exchange", error=str(e))
+
+                                # Update local position data
+                                position_data["stop_loss"] = new_sl_price
 
                     except Exception as e:
                         logger.error("Error updating position SL", symbol=symbol, error=str(e))
