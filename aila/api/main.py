@@ -3790,6 +3790,10 @@ DASHBOARD_HTML = r"""
                 const pnlPercent = allocatedDeposit > 0 ? (totalPnl / allocatedDeposit * 100) : 0;
                 const pnlPercentSign = pnlPercent >= 0 ? '+' : '';
 
+                // Current balance = initial deposit + total PnL (shows how balance changes during session)
+                const currentBalance = allocatedDeposit + totalPnl;
+                const balanceColor = totalPnl > 0 ? '#00ff88' : (totalPnl < 0 ? '#ff4444' : '#00d4ff');
+
                 // Status indicator class
                 const indicatorClass = bot.status === 'error' ? 'error' : bot.status;
 
@@ -3798,7 +3802,7 @@ DASHBOARD_HTML = r"""
                     <div class="bot-header">
                         <span class="status-indicator ${indicatorClass}"></span>
                         <span class="bot-name">${bot.name}</span>
-                        <span style="font-size: 14px; color: #00d4ff; margin-left: 8px;">${bot.order_size} USDT</span>
+                        <span style="font-size: 14px; color: ${balanceColor}; margin-left: 8px;">${currentBalance.toFixed(2)} USDT</span>
                     </div>
                     <div class="bot-details" style="font-size: 12px;">
                         <div><strong>${t('botMode')}:</strong> ${bot.bot_mode === 'auto_search' ? '<span style="color: #ffcc00;">' + t('autoSearchMode') + '</span>' : t('manualMode')} | <strong>${bot.bot_mode === 'auto_search' ? 'Max' : 'Pair'}:</strong> ${bot.bot_mode === 'auto_search' ? bot.max_trading_pairs || bot.max_simultaneous_orders || 1 : (Array.isArray(bot.trading_pairs) ? bot.trading_pairs[0] : bot.trading_pairs)}</div>
