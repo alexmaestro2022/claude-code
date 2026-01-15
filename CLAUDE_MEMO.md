@@ -235,6 +235,7 @@ if directions_curr[line] != target_dir:
 | Конфликты при мерже | Ветка сессии создана от старого кода | Создавать от рабочей ветки |
 | Настройки не применяются | Не обновлён engine.strategy.config | Добавить в update_bot и resume |
 | **Ложные сигналы входа** | Использовалась незакрытая свеча | Использовать iloc[-2] вместо iloc[-1] |
+| **Параметры ST не меняются** | `.env` файл переопределяет settings.py | Изменить `/opt/aila/.env` на сервере! |
 
 ---
 
@@ -276,7 +277,37 @@ st1_dir_curr = int(triple_st.st1.direction.iloc[-1])  # незакрытая с�
 
 ---
 
-## 11. Bybit API Rate Limits
+## 11. КРИТИЧНО: Конфигурация .env на сервере
+
+**`.env` файл на сервере ПЕРЕОПРЕДЕЛЯЕТ значения из settings.py!**
+
+Путь: `/opt/aila/.env`
+
+**Правильные параметры SuperTrend:**
+```bash
+# SuperTrend 1 (Fast)
+STRATEGY_ST1_PERIOD=10
+STRATEGY_ST1_MULTIPLIER=1.0
+
+# SuperTrend 2 (Medium)
+STRATEGY_ST2_PERIOD=11
+STRATEGY_ST2_MULTIPLIER=2.0
+
+# SuperTrend 3 (Slow) - ТРИГГЕР по умолчанию
+STRATEGY_ST3_PERIOD=12
+STRATEGY_ST3_MULTIPLIER=3.0
+```
+
+**ВАЖНО:**
+- ST1 = FAST (быстрая, period=10, mult=1.0)
+- ST2 = MEDIUM (средняя, period=11, mult=2.0)
+- ST3 = SLOW (медленная, period=12, mult=3.0) - используется как TRIGGER
+
+**При изменении параметров ST - проверить И settings.py И .env на сервере!**
+
+---
+
+## 12. Bybit API Rate Limits
 
 **Лимиты:**
 - 600 запросов / 5 секунд (120 req/s в среднем)
@@ -296,7 +327,7 @@ st1_dir_curr = int(triple_st.st1.direction.iloc[-1])  # незакрытая с�
 
 ---
 
-## 11. Рабочие функции в текущей ветке
+## 13. Рабочие функции в текущей ветке
 
 Ветка `claude/start-new-session-4XrKU` содержит:
 - Multi-bot архитектура (создание ботов через веб-интерфейс)
@@ -317,7 +348,7 @@ st1_dir_curr = int(triple_st.st1.direction.iloc[-1])  # незакрытая с�
 
 ---
 
-## 11. Команды для сервера (справочно)
+## 14. Команды для сервера (справочно)
 
 **Проверка статуса:**
 ```bash
