@@ -282,12 +282,37 @@ class TripleSuperTrendStrategy(BaseStrategy):
         # Check for LONG signal
         def check_signal(target_dir):
             """Check if signal conditions are met for given direction (1=long, -1=short)"""
-            # 1. Check trigger: must have just turned to target direction
-            trigger_curr = directions_curr[trigger_line]
-            trigger_prev = directions_prev[trigger_line]
+            confirm_candles = self.config.trigger_confirm_candles
 
-            if trigger_curr != target_dir or trigger_prev == target_dir:
-                return False  # Trigger didn't just turn
+            # Get trigger direction history
+            trigger_dirs = {
+                'st1': triple_st.st1.direction,
+                'st2': triple_st.st2.direction,
+                'st3': triple_st.st3.direction,
+            }
+            trigger_history = trigger_dirs[trigger_line]
+
+            # 1. Check trigger confirmation candles
+            # For confirm_candles=1: current must be target_dir, prev must NOT be (just turned)
+            # For confirm_candles=3: last 3 closed candles must be target_dir,
+            #                        and the one before must NOT be (turn happened 3 candles ago)
+            #
+            # Closed candles: iloc[-2] = current closed, iloc[-3] = prev closed, etc.
+            # (iloc[-1] is unfinished candle, we skip it)
+
+            # Check that last N closed candles are in target direction
+            for i in range(confirm_candles):
+                idx = -2 - i  # -2 (current closed), -3 (prev), -4, etc.
+                if abs(idx) > len(trigger_history):
+                    return False
+                if int(trigger_history.iloc[idx]) != target_dir:
+                    return False
+
+            # Check the turn point: candle BEFORE confirmation period must NOT be in target direction
+            turn_idx = -2 - confirm_candles  # e.g., for confirm_candles=3: idx=-5
+            if abs(turn_idx) <= len(trigger_history):
+                if int(trigger_history.iloc[turn_idx]) == target_dir:
+                    return False  # Was already in direction before, not a recent turn
 
             # 2. Check confirm lines: must already be in target direction
             # AND still be in that direction on current candle
@@ -298,24 +323,6 @@ class TripleSuperTrendStrategy(BaseStrategy):
                         return False  # Confirm line was not in direction on prev candle
                     if directions_curr[line] != target_dir:
                         return False  # Confirm line is not in direction on current candle
-
-            # 3. Optional: Check trigger confirmation candles
-            confirm_candles = self.config.trigger_confirm_candles
-            if confirm_candles > 1:
-                # Need more candles to confirm - check historical data
-                trigger_dirs = {
-                    'st1': triple_st.st1.direction,
-                    'st2': triple_st.st2.direction,
-                    'st3': triple_st.st3.direction,
-                }
-                trigger_history = trigger_dirs[trigger_line]
-                # Check if trigger has been in target direction for required candles
-                for i in range(1, confirm_candles):
-                    idx = -1 - i  # -2, -3, etc. (current is -1)
-                    if abs(idx) > len(trigger_history):
-                        return False
-                    if int(trigger_history.iloc[idx]) != target_dir:
-                        return False
 
             return True
 
