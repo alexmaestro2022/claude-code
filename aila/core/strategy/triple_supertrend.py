@@ -269,10 +269,14 @@ class TripleSuperTrendStrategy(BaseStrategy):
                 return False  # Trigger didn't just turn
 
             # 2. Check confirm lines: must already be in target direction
+            # AND still be in that direction on current candle
             for line, role in roles.items():
                 if role == 'confirm':
+                    # Confirm line must be in target direction on BOTH prev and current candle
                     if directions_prev[line] != target_dir:
-                        return False  # Confirm line was not in direction
+                        return False  # Confirm line was not in direction on prev candle
+                    if directions_curr[line] != target_dir:
+                        return False  # Confirm line is not in direction on current candle
 
             # 3. Optional: Check trigger confirmation candles
             confirm_candles = self.config.trigger_confirm_candles

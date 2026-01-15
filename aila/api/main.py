@@ -5736,6 +5736,57 @@ async def update_bot(bot_id: str, config: dict):
     if "max_loss_percent" in config:
         bot["max_loss_percent"] = float(config["max_loss_percent"])
 
+    # If bot is running or paused, update engine's strategy config in real-time
+    if bot.get("status") in ("running", "paused") and bot_id in bot_engines:
+        engine = bot_engines[bot_id]
+        if hasattr(engine, 'strategy') and hasattr(engine.strategy, 'config'):
+            # Update Signal Entry settings
+            if "st1_role" in config:
+                engine.strategy.config.st1_role = config["st1_role"]
+            if "st2_role" in config:
+                engine.strategy.config.st2_role = config["st2_role"]
+            if "st3_role" in config:
+                engine.strategy.config.st3_role = config["st3_role"]
+            if "trigger_confirm_candles" in config:
+                engine.strategy.config.trigger_confirm_candles = int(config["trigger_confirm_candles"])
+            # Update other strategy settings
+            if "ema_enabled" in config:
+                engine.strategy.config.ema_enabled = config["ema_enabled"]
+            if "ema_filter_mode" in config:
+                engine.strategy.config.ema_filter_mode = config["ema_filter_mode"]
+            if "trailing_enabled" in config:
+                engine.strategy.config.trailing_enabled = config["trailing_enabled"]
+            if "trailing_mode" in config:
+                engine.strategy.config.trailing_mode = config["trailing_mode"]
+            if "trailing_activation" in config:
+                engine.strategy.config.trailing_activation = float(config["trailing_activation"])
+            if "trailing_step" in config:
+                engine.strategy.config.trailing_step = float(config["trailing_step"])
+            if "trailing_st_line" in config:
+                engine.strategy.config.trailing_st_line = int(config["trailing_st_line"])
+            if "trailing_confirm_candles" in config:
+                engine.strategy.config.trailing_confirm_candles = int(config["trailing_confirm_candles"])
+            if "partial_tp_enabled" in config:
+                engine.strategy.config.partial_tp_enabled = config["partial_tp_enabled"]
+            if "partial_tp_close_percent" in config:
+                engine.strategy.config.partial_tp_close_percent = int(config["partial_tp_close_percent"])
+            if "partial_tp_sl_move" in config:
+                engine.strategy.config.partial_tp_sl_move = config["partial_tp_sl_move"]
+            if "partial_tp_sl_offset" in config:
+                engine.strategy.config.partial_tp_sl_offset = float(config["partial_tp_sl_offset"])
+            if "trailing_tp_enabled" in config:
+                engine.strategy.config.trailing_tp_enabled = config["trailing_tp_enabled"]
+            if "trailing_tp_mode" in config:
+                engine.strategy.config.trailing_tp_mode = config["trailing_tp_mode"]
+            if "trailing_tp_st_line" in config:
+                engine.strategy.config.trailing_tp_st_line = int(config["trailing_tp_st_line"])
+            add_log(f"[info    ] Updated running engine strategy config for bot {bot['name']}")
+
+        # Also update bot_runtime_settings
+        if bot_id in bot_runtime_settings:
+            for key, value in config.items():
+                bot_runtime_settings[bot_id][key] = value
+
     add_log(f"[info    ] Bot updated: {bot['name']} (ID: {bot_id})")
 
     return {"success": True, "bot": bot}
@@ -6090,6 +6141,29 @@ async def resume_specific_bot(bot_id: str):
 
     # Unpause the per-bot engine if exists, otherwise global
     engine = bot_engines.get(bot_id) or bot_state.get("engine")
+
+    # Update per-bot engine's strategy config with new Signal Entry settings
+    if engine and hasattr(engine, 'strategy') and hasattr(engine.strategy, 'config'):
+        engine.strategy.config.st1_role = bot_settings.get("st1_role", "confirm")
+        engine.strategy.config.st2_role = bot_settings.get("st2_role", "confirm")
+        engine.strategy.config.st3_role = bot_settings.get("st3_role", "trigger")
+        engine.strategy.config.trigger_confirm_candles = bot_settings.get("trigger_confirm_candles", 1)
+        engine.strategy.config.ema_enabled = bot_settings.get("ema_enabled", True)
+        engine.strategy.config.ema_filter_mode = bot_settings.get("ema_filter_mode", "strict")
+        engine.strategy.config.trailing_enabled = bot_settings.get("trailing_enabled", True)
+        engine.strategy.config.trailing_mode = bot_settings.get("trailing_mode", "fix_percent")
+        engine.strategy.config.trailing_activation = bot_settings.get("trailing_activation", 1.0)
+        engine.strategy.config.trailing_step = bot_settings.get("trailing_step", 0.5)
+        engine.strategy.config.trailing_st_line = bot_settings.get("trailing_st_line", 2)
+        engine.strategy.config.trailing_confirm_candles = bot_settings.get("trailing_confirm_candles", 1)
+        engine.strategy.config.partial_tp_enabled = bot_settings.get("partial_tp_enabled", True)
+        engine.strategy.config.partial_tp_close_percent = bot_settings.get("partial_tp_close_percent", 50)
+        engine.strategy.config.partial_tp_sl_move = bot_settings.get("partial_tp_sl_move", "tp1")
+        engine.strategy.config.partial_tp_sl_offset = bot_settings.get("partial_tp_sl_offset", 0.2)
+        engine.strategy.config.trailing_tp_enabled = bot_settings.get("trailing_tp_enabled", False)
+        engine.strategy.config.trailing_tp_mode = bot_settings.get("trailing_tp_mode", "st_line")
+        engine.strategy.config.trailing_tp_st_line = bot_settings.get("trailing_tp_st_line", 2)
+        add_log(f"[info    ] Updated strategy config for bot {bot['name']}")
     if engine:
         engine.paused = False
 
