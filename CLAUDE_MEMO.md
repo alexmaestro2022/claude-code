@@ -266,6 +266,14 @@ const balanceColor = totalPnl > 0 ? '#00ff88' : (totalPnl < 0 ? '#ff4444' : '#00
 **Если настройка влияет на торговлю:**
 11. run_web.py - create_strategy_config_for_bot()
 
+**ВАЖНО: Типы данных для boolean полей:**
+> JavaScript checkbox.checked возвращает boolean, но при сериализации в JSON
+> может стать строкой "false". Используй функцию `_to_bool()` из main.py:
+> ```python
+> "ema_enabled": _to_bool(config.get("ema_enabled", True), True),
+> ```
+> Это касается: ema_enabled, trailing_enabled, partial_tp_enabled, trailing_tp_enabled
+
 ---
 
 ## 9. Частые ошибки и решения
@@ -284,6 +292,7 @@ const balanceColor = totalPnl > 0 ? '#00ff88' : (totalPnl < 0 ? '#ff4444' : '#00
 | **Параметры ST не меняются** | `.env` файл переопределяет settings.py | Изменить `/opt/aila/.env` на сервере! |
 | **Баланс бота 0 или неверный** | initial_balance не рассчитан | Рассчитывается в run_web.py при старте |
 | **trigger_confirm не работал** | Логика была противоречивой | Исправлено - проверяет N свечей подряд |
+| **EMA фильтр не отключался** | JS отправлял строку "false" | _to_bool() конвертирует в boolean |
 
 ---
 
