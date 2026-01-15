@@ -5618,6 +5618,17 @@ async def create_bot(config: dict):
         "initial_balance": 0.0,  # Balance when bot started (for % calculation)
     }
 
+    # Calculate initial_balance from exchange balance and balance_usage_percent
+    try:
+        client = bot_state.get("client")
+        if client:
+            balance_obj = client.get_balance("USDT", use_cache=False)
+            total_balance = float(balance_obj.total) if balance_obj else 0
+            balance_usage_percent = bot_config.get("balance_usage_percent", 100)
+            bot_config["initial_balance"] = total_balance * balance_usage_percent / 100
+    except Exception:
+        pass  # Will be calculated on bot start
+
     bots_registry[bot_id] = bot_config
     add_log(f"[info    ] Bot created: {bot_config['name']} (ID: {bot_id})")
 
@@ -5738,6 +5749,15 @@ async def update_bot(bot_id: str, config: dict):
         bot["trigger_confirm_candles"] = int(config["trigger_confirm_candles"])
     if "balance_usage_percent" in config:
         bot["balance_usage_percent"] = float(config["balance_usage_percent"])
+        # Recalculate initial_balance when balance_usage_percent changes
+        try:
+            client = bot_state.get("client")
+            if client:
+                balance_obj = client.get_balance("USDT", use_cache=False)
+                total_balance = float(balance_obj.total) if balance_obj else 0
+                bot["initial_balance"] = total_balance * bot["balance_usage_percent"] / 100
+        except Exception:
+            pass
     if "max_loss_percent" in config:
         bot["max_loss_percent"] = float(config["max_loss_percent"])
 
