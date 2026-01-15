@@ -45,65 +45,53 @@
 | База данных | SQLite (./data/aila.db) |
 | Веб-интерфейс | http://149.28.16.83:8080 |
 | Логи | /var/log/aila.log |
-
-### Команды для сервера:
-
-**Проверка текущей ветки:**
-```bash
-cd /opt/aila && git branch -v
-```
-
-**Запуск бота:**
-```bash
-cd /opt/aila && nohup /opt/aila/venv/bin/python -m aila.scripts.run_web > /var/log/aila.log 2>&1 &
-```
-
-**Перезапуск бота:**
-```bash
-pkill -f "aila.scripts.run_web"; sleep 2; nohup /opt/aila/venv/bin/python -m aila.scripts.run_web > /var/log/aila.log 2>&1 &
-```
-
-**Деплой новой версии:**
-```bash
-cd /opt/aila && git fetch origin claude/start-new-session-4XrKU && git reset --hard origin/claude/start-new-session-4XrKU
-pkill -f "aila.scripts.run_web"; sleep 2; nohup /opt/aila/venv/bin/python -m aila.scripts.run_web > /var/log/aila.log 2>&1 &
-```
+| Скрипт деплоя | /opt/aila/merge_claude.sh |
 
 ---
 
-## 3.1 Workflow: Claude → Сервер → GitHub
-
-**Ограничение:** Каждая сессия Claude может пушить только в свою ветку (с ID сессии).
+## 3.1 Workflow: Claude -> Сервер -> GitHub
 
 **Схема работы:**
 ```
-1. Claude читает код из рабочей ветки
-2. Claude делает изменения
-3. Claude пушит в свою ветку сессии (claude/*-XXXXX)
-4. Пользователь мержит на сервере
-5. Сервер пушит в рабочую ветку на GitHub
+┌─────────────┐     push      ┌─────────────────────────────────┐
+│   Claude    │ ───────────►  │ GitHub: claude/...-XXXXX        │
+│  (сессия)   │               │ (ветка сессии)                  │
+└─────────────┘               └─────────────────────────────────┘
+                                            │
+                                            │ merge_claude.sh
+                                            ▼
+                              ┌─────────────────────────────────┐
+                              │ Сервер + GitHub рабочая ветка   │
+                              │ claude/start-new-session-4XrKU  │
+                              └─────────────────────────────────┘
 ```
 
-**ВАЖНО: В начале каждой сессии Claude должен создать ветку ОТ рабочей ветки:**
+### В начале КАЖДОЙ сессии Claude должен:
 ```bash
 git fetch origin claude/start-new-session-4XrKU
 git checkout -B claude/новая-сессия-XXXXX origin/claude/start-new-session-4XrKU
 ```
 
-Это гарантирует что мерж пройдёт без конфликтов.
+### После завершения работы Claude пишет:
+```
+Готово! Изменения запушены в ветку: claude/xxx-xxx-XXXXX
 
-**Команда для мержа изменений от Claude (выполняет пользователь на сервере):**
-```bash
-cd /opt/aila && git fetch origin && git merge origin/claude/ВЕТКА-СЕССИИ -m "Merge from Claude" && git push origin claude/start-new-session-4XrKU
+Для применения на сервере:
+/opt/aila/merge_claude.sh claude/xxx-xxx-XXXXX
 ```
 
-**После мержа - перезапуск бота:**
+### Пользователь на сервере выполняет:
 ```bash
-pkill -f "aila.scripts.run_web"; sleep 2; nohup /opt/aila/venv/bin/python -m aila.scripts.run_web > /var/log/aila.log 2>&1 &
+/opt/aila/merge_claude.sh claude/xxx-xxx-XXXXX
 ```
 
-**Удаление ветки сессии после мержа (на GitHub):**
-https://github.com/alexmaestro2022/claude-code/branches
+Скрипт автоматически:
+1. Получает изменения с GitHub
+2. Показывает что будет смержено
+3. Спрашивает подтверждение (y/n)
+4. Мержит в рабочую ветку
+5. Пушит на GitHub
+6. Перезапускает бота
 
 ---
 
@@ -120,13 +108,26 @@ https://github.com/alexmaestro2022/claude-code/branches
 
 ### Signal Entry - система ролей:
 - **off** - линия не используется
-- **confirm** - линия должна УЖЕ быть в направлении
-- **trigger** - линия должна ТОЛЬКО ЧТО развернуться
+- **confirm** - линия должна УЖЕ быть в направлении (на prev И curr свече)
+- **trigger** - линия должна ТОЛЬКО ЧТО развернуться (prev != target, curr == target)
 
 ### По умолчанию:
 - ST1 (Fast) = confirm
 - ST2 (Medium) = confirm
-- ST3 (Slow) = **trigger** ← медленная разворачивается последней
+- ST3 (Slow) = **trigger** <- медленная разворачивается последней
+
+### Логика проверки сигнала (triple_supertrend.py):
+```python
+# Trigger: должен ТОЛЬКО ЧТО развернуться
+if trigger_curr != target_dir or trigger_prev == target_dir:
+    return False
+
+# Confirm: должен быть в направлении на ОБЕИХ свечах
+if directions_prev[line] != target_dir:
+    return False
+if directions_curr[line] != target_dir:
+    return False
+```
 
 ---
 
@@ -157,7 +158,8 @@ https://github.com/alexmaestro2022/claude-code/branches
 │   │   └── main.py          # ГЛАВНЫЙ ФАЙЛ - FastAPI + UI (~6000 строк)
 │   ├── config/              # Настройки
 │   └── scripts/
-│       └── run_web.py       # Запуск + API endpoints (/api/stats, /api/ping, /api/restart-server)
+│       └── run_web.py       # Запуск + API endpoints
+├── merge_claude.sh          # Скрипт деплоя от Claude
 ├── venv/                    # Python virtual environment
 ├── data/                    # SQLite база данных
 └── .env                     # API ключи (НЕ ТРОГАТЬ!)
@@ -167,9 +169,9 @@ https://github.com/alexmaestro2022/claude-code/branches
 
 | Файл | Описание |
 |------|----------|
-| `aila/api/main.py` | **ГЛАВНЫЙ** - FastAPI + весь UI (монолит) |
+| `aila/api/main.py` | **ГЛАВНЫЙ** - FastAPI + весь UI (монолит ~6000 строк) |
 | `aila/scripts/run_web.py` | Запуск + /api/stats, /api/ping, /api/restart-server |
-| `aila/core/strategy/triple_supertrend.py` | Логика стратегии |
+| `aila/core/strategy/triple_supertrend.py` | Логика стратегии Signal Entry |
 | `aila/core/risk/position_sizing.py` | Расчет размера позиции |
 | `aila/trading/engine.py` | TradingEngineConfig |
 
@@ -177,21 +179,22 @@ https://github.com/alexmaestro2022/claude-code/branches
 
 ## 7. Добавление новых настроек - ЧЕКЛИСТ
 
-При добавлении новой настройки нужно изменить **7 мест** в main.py:
+При добавлении новой настройки нужно изменить **11 мест**:
 
+**В main.py:**
 1. HTML форма создания бота (`newBot...`)
 2. HTML форма редактирования бота (`editBot...`)
 3. JavaScript - createBot()
 4. JavaScript - loadEditBot()
 5. JavaScript - saveEditBot()
 6. Backend - create_bot endpoint
-7. Backend - update_bot endpoint
+7. Backend - update_bot endpoint (+ real-time обновление engine!)
 8. Backend - start_bot (bot_settings)
-9. Переводы (translations.en и translations.ru)
+9. Backend - resume_specific_bot (обновление strategy.config!)
+10. Переводы (translations.en и translations.ru)
 
-**+ Если настройка влияет на торговлю:**
-10. TradingEngineConfig (engine.py)
-11. run_web.py - передача в create_engine_config_for_bot()
+**Если настройка влияет на торговлю:**
+11. run_web.py - create_strategy_config_for_bot()
 
 ---
 
@@ -206,6 +209,7 @@ https://github.com/alexmaestro2022/claude-code/branches
 | ST1/ST3 перепутаны | Неправильные названия в UI | ST1=Fast, ST3=Slow |
 | Старый интерфейс | Кэш браузера | Ctrl+Shift+R |
 | Конфликты при мерже | Ветка сессии создана от старого кода | Создавать от рабочей ветки |
+| Настройки не применяются | Не обновлён engine.strategy.config | Добавить в update_bot и resume |
 
 ---
 
@@ -224,13 +228,36 @@ https://github.com/alexmaestro2022/claude-code/branches
 
 Ветка `claude/start-new-session-4XrKU` содержит:
 - Multi-bot архитектура (создание ботов через веб-интерфейс)
-- Signal Entry - новая система ролей ST линий (off/confirm/trigger)
-- /api/stats - баланс работает даже без запущенных ботов (background client)
+- Signal Entry - система ролей ST линий (off/confirm/trigger)
+- Real-time обновление настроек при update_bot и resume
+- /api/stats - баланс работает даже без запущенных ботов
 - /api/ping - пинг биржи работает
 - /api/restart-server - перезагрузка с остановкой ботов
-- Правильный position sizing (order_size = notional, не умножается на leverage)
+- Правильный position sizing (order_size = notional)
 - Trailing SL по SuperTrend линиям
 - Auto Search mode для ботов
+- Partial TP с переносом SL
+- Trailing TP для остатка позиции
+
+---
+
+## 11. Команды для сервера (справочно)
+
+**Проверка статуса:**
+```bash
+cd /opt/aila && git branch -v
+tail -20 /var/log/aila.log
+```
+
+**Ручной перезапуск бота:**
+```bash
+pkill -f "aila.scripts.run_web"; sleep 2; nohup /opt/aila/venv/bin/python -m aila.scripts.run_web > /var/log/aila.log 2>&1 &
+```
+
+**Деплой через скрипт (рекомендуется):**
+```bash
+/opt/aila/merge_claude.sh claude/имя-ветки-сессии
+```
 
 ---
 
