@@ -81,9 +81,9 @@
 │   Claude    │ ───────────►  │ GitHub: claude/...-XXXXX        │
 │  (сессия)   │               │ (ветка сессии)                  │
 └─────────────┘               └─────────────────────────────────┘
-                                            │
-                                            │ merge_claude.sh
-                                            ▼
+                                          │
+                                          │ merge_claude.sh
+                                          ▼
                               ┌─────────────────────────────────┐
                               │ Сервер + GitHub рабочая ветка   │
                               │ claude/start-new-session-4XrKU  │
@@ -133,29 +133,74 @@ git checkout -B claude/новая-сессия-XXXXX origin/claude/start-new-ses
 ### Signal Entry - система ролей:
 - **off** - линия не используется
 - **confirm** - линия должна УЖЕ быть в направлении (на prev И curr свече)
-- **trigger** - линия должна ТОЛЬКО ЧТО развернуться (prev != target, curr == target)
+- **trigger** - линия должна ТОЛЬКО ЧТО развернуться
 
 ### По умолчанию:
 - ST1 (Fast) = confirm
 - ST2 (Medium) = confirm
 - ST3 (Slow) = **trigger** <- медленная разворачивается последней
 
-### Логика проверки сигнала (triple_supertrend.py):
-```python
-# Trigger: должен ТОЛЬКО ЧТО развернуться
-if trigger_curr != target_dir or trigger_prev == target_dir:
-    return False
+### trigger_confirm_candles - подтверждение триггера:
 
-# Confirm: должен быть в направлении на ОБЕИХ свечах
-if directions_prev[line] != target_dir:
-    return False
-if directions_curr[line] != target_dir:
-    return False
+Параметр `trigger_confirm_candles` определяет сколько ЗАКРЫТЫХ свечей триггер должен быть в нужном направлении:
+
+```
+Для trigger_confirm_candles = 3:
+
+Свеча:  [-5]  [-4]  [-3]  [-2]  [-1]
+         ↑     ↑     ↑     ↑     ↑
+        RED  GREEN GREEN GREEN (forming)
+         │     └─────┴─────┘
+         │      3 свечи подтверждения
+         └── точка разворота (должна быть в противоположном направлении)
+```
+
+**Логика проверки (triple_supertrend.py):**
+```python
+# Проверяем что последние N закрытых свечей в нужном направлении
+for i in range(confirm_candles):
+    idx = -2 - i  # -2 (current closed), -3 (prev), -4, etc.
+    if int(trigger_history.iloc[idx]) != target_dir:
+        return False
+
+# Проверяем точку разворота - свеча ДО периода подтверждения
+turn_idx = -2 - confirm_candles
+if int(trigger_history.iloc[turn_idx]) == target_dir:
+    return False  # Не недавний разворот
 ```
 
 ---
 
-## 5. Position Sizing
+## 5. Баланс бота и PnL
+
+### initial_balance - выделенный депозит:
+
+Рассчитывается как: `баланс_биржи × balance_usage_percent / 100`
+
+**Где рассчитывается:**
+1. **При создании бота** - `main.py create_bot()` (если есть client)
+2. **При редактировании** - `main.py update_bot()` (при изменении balance_usage_percent)
+3. **При запуске бота** - `run_web.py` (с актуальным балансом)
+
+### Отображение баланса в UI:
+```javascript
+// Текущий баланс = начальный + PnL
+const currentBalance = allocatedDeposit + totalPnl;
+// Цвет: зеленый если в плюсе, красный если в минусе
+const balanceColor = totalPnl > 0 ? '#00ff88' : (totalPnl < 0 ? '#ff4444' : '#00d4ff');
+```
+
+### Статистика бота (обновляется при закрытии позиции):
+- `total_trades` - общее количество сделок
+- `winning_trades` - выигрышные сделки
+- `losing_trades` - убыточные сделки
+- `total_pnl_history` - накопленный PnL от закрытых позиций
+
+**close_position_record()** вызывается из `engine.py` при закрытии позиции для обновления статистики.
+
+---
+
+## 6. Position Sizing
 
 ### Режим fixed_amount:
 - `order_size` = размер позиции (notional value), НЕ маржа!
@@ -167,7 +212,7 @@ if directions_curr[line] != target_dir:
 
 ---
 
-## 6. Структура проекта
+## 7. Структура проекта
 
 ```
 /opt/aila/
@@ -196,12 +241,13 @@ if directions_curr[line] != target_dir:
 | `aila/api/main.py` | **ГЛАВНЫЙ** - FastAPI + весь UI (монолит ~6000 строк) |
 | `aila/scripts/run_web.py` | Запуск + /api/stats, /api/ping, /api/restart-server |
 | `aila/core/strategy/triple_supertrend.py` | Логика стратегии Signal Entry |
+| `aila/core/indicators/supertrend.py` | Индикаторы SuperTrend |
 | `aila/core/risk/position_sizing.py` | Расчет размера позиции |
-| `aila/trading/engine.py` | TradingEngineConfig |
+| `aila/trading/engine.py` | TradingEngine + close_position_record call |
 
 ---
 
-## 7. Добавление новых настроек - ЧЕКЛИСТ
+## 8. Добавление новых настроек - ЧЕКЛИСТ
 
 При добавлении новой настройки нужно изменить **11 мест**:
 
@@ -222,7 +268,7 @@ if directions_curr[line] != target_dir:
 
 ---
 
-## 8. Частые ошибки и решения
+## 9. Частые ошибки и решения
 
 | Ошибка | Причина | Решение |
 |--------|---------|---------|
@@ -236,10 +282,12 @@ if directions_curr[line] != target_dir:
 | Настройки не применяются | Не обновлён engine.strategy.config | Добавить в update_bot и resume |
 | **Ложные сигналы входа** | Использовалась незакрытая свеча | Использовать iloc[-2] вместо iloc[-1] |
 | **Параметры ST не меняются** | `.env` файл переопределяет settings.py | Изменить `/opt/aila/.env` на сервере! |
+| **Баланс бота 0 или неверный** | initial_balance не рассчитан | Рассчитывается в run_web.py при старте |
+| **trigger_confirm не работал** | Логика была противоречивой | Исправлено - проверяет N свечей подряд |
 
 ---
 
-## 9. При проблемах
+## 10. При проблемах
 
 1. **НЕ** бери файлы из других веток!
 2. **ЧИТАЙ** код перед изменением
@@ -250,7 +298,7 @@ if directions_curr[line] != target_dir:
 
 ---
 
-## 10. ВАЖНО: Данные свечей Bybit API
+## 11. ВАЖНО: Данные свечей Bybit API
 
 **Bybit API возвращает НЕЗАКРЫТУЮ текущую свечу как последний элемент!**
 
@@ -277,7 +325,7 @@ st1_dir_curr = int(triple_st.st1.direction.iloc[-1])  # незакрытая с�
 
 ---
 
-## 11. КРИТИЧНО: Конфигурация .env на сервере
+## 12. КРИТИЧНО: Конфигурация .env на сервере
 
 **`.env` файл на сервере ПЕРЕОПРЕДЕЛЯЕТ значения из settings.py!**
 
@@ -307,7 +355,7 @@ STRATEGY_ST3_MULTIPLIER=3.0
 
 ---
 
-## 12. Bybit API Rate Limits
+## 13. Bybit API Rate Limits
 
 **Лимиты:**
 - 600 запросов / 5 секунд (120 req/s в среднем)
@@ -327,11 +375,12 @@ STRATEGY_ST3_MULTIPLIER=3.0
 
 ---
 
-## 13. Рабочие функции в текущей ветке
+## 14. Рабочие функции в текущей ветке
 
 Ветка `claude/start-new-session-4XrKU` содержит:
 - Multi-bot архитектура (создание ботов через веб-интерфейс)
 - Signal Entry - система ролей ST линий (off/confirm/trigger)
+- **trigger_confirm_candles** - подтверждение триггера N свечами
 - **ИСПРАВЛЕНО: Сигналы входа по ЗАКРЫТЫМ свечам** (iloc[-2] вместо iloc[-1])
 - Real-time обновление настроек при update_bot и resume
 - **FAST SCAN** - оптимизированное сканирование (458 -> ~30 пар за 3 сек)
@@ -345,15 +394,23 @@ STRATEGY_ST3_MULTIPLIER=3.0
 - Partial TP с переносом SL
 - Trailing TP для остатка позиции
 - **Подробное логирование параметров** при старте и сигналах
+- **Динамический баланс бота** - показывает initial_balance + PnL
+- **Статистика бота** - winrate, total trades, PnL history (обновляется при закрытии позиций)
+- **Копирование логов** - последние 100 строк
 
 ---
 
-## 14. Команды для сервера (справочно)
+## 15. Команды для сервера (справочно)
 
 **Проверка статуса:**
 ```bash
 cd /opt/aila && git branch -v
 tail -20 /var/log/aila.log
+```
+
+**Проверка .env параметров:**
+```bash
+cat /opt/aila/.env | grep -E "STRATEGY_ST"
 ```
 
 **Ручной перезапуск бота:**
