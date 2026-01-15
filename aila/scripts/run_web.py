@@ -385,6 +385,19 @@ async def start_trading_for_bot(bot_id: str):
     api_bot_state["client"] = client
     api_bot_state["engine"] = engine
 
+    # Calculate and set initial_balance for this bot (after client is created)
+    try:
+        balance_obj = client.get_balance("USDT", use_cache=False)
+        total_balance = float(balance_obj.total) if balance_obj else 0
+        balance_usage_percent = bot_settings.get("balance_usage_percent", 100)
+        calculated_initial_balance = total_balance * balance_usage_percent / 100
+        # Update bot in registry
+        if bot_id in bots_registry:
+            bots_registry[bot_id]["initial_balance"] = calculated_initial_balance
+        add_log(f"[info    ] [{bot_name}] Connected. USDT Balance: {total_balance} | Allocated: {calculated_initial_balance:.2f} ({balance_usage_percent}%)")
+    except Exception as e:
+        add_log(f"[warning ] [{bot_name}] Failed to calculate initial_balance: {e}")
+
     # Register callbacks with bot_id context
     async def on_signal(sig):
         add_log(f"[info    ] [{bot_name}] Signal: {sig.symbol} {sig.signal_type.value} price={sig.price:.2f} sl={sig.stop_loss:.2f} tp={sig.take_profit:.2f}")
