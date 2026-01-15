@@ -46,9 +46,9 @@ class TripleSuperTrendConfig(StrategyConfig):
 
     # Signal Entry configuration
     # Roles: 'off' = not used, 'confirm' = must be in direction, 'trigger' = must just turn
-    st1_role: str = "confirm"  # ST1 (slow) role
-    st2_role: str = "confirm"  # ST2 (medium) role
-    st3_role: str = "trigger"  # ST3 (fast) role - trigger by default
+    st1_role: str = "confirm"  # ST1 (fast) role - period=10, mult=1.0
+    st2_role: str = "confirm"  # ST2 (medium) role - period=11, mult=2.0
+    st3_role: str = "trigger"  # ST3 (slow) role - period=12, mult=3.0 - trigger by default
     trigger_confirm_candles: int = 1  # Number of candles to confirm trigger
 
     # EMA filter
@@ -181,13 +181,15 @@ class TripleSuperTrendStrategy(BaseStrategy):
         """
         Generate trading signal based on Triple SuperTrend + EMA.
 
-        Standard mode:
-        - LONG: All three SuperTrends are bullish (green)
-        - SHORT: All three SuperTrends are bearish (red)
+        Signal Entry uses role-based configuration:
+        - 'trigger' role: line must "just turn" to signal direction
+        - 'confirm' role: line must already be in signal direction
+        - 'off' role: line is not used
 
-        Early Entry mode:
-        - LONG: ST1 & ST2 already bullish, ST3 just turned bullish
-        - SHORT: ST1 & ST2 already bearish, ST3 just turned bearish
+        ST Lines (by default):
+        - ST1: Fast (period=10, mult=1.0) - confirm role
+        - ST2: Medium (period=11, mult=2.0) - confirm role
+        - ST3: Slow (period=12, mult=3.0) - trigger role (default)
 
         Args:
             df: DataFrame with OHLCV data

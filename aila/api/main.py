@@ -1647,7 +1647,7 @@ DASHBOARD_HTML = r"""
                 <h4><span class="icon">📊</span> <span data-i18n="signalEntry">Signal Entry</span></h4>
                 <div class="settings-row">
                     <div class="setting-compact">
-                        <label>ST1 (Slow)</label>
+                        <label>ST1 (Fast)</label>
                         <select id="newBotSt1Role" onchange="updateSignalPreview('new')">
                             <option value="off">❌ Выкл</option>
                             <option value="confirm" selected>🟢 Подтв</option>
@@ -1663,7 +1663,7 @@ DASHBOARD_HTML = r"""
                         </select>
                     </div>
                     <div class="setting-compact">
-                        <label>ST3 (Fast)</label>
+                        <label>ST3 (Slow)</label>
                         <select id="newBotSt3Role" onchange="updateSignalPreview('new')">
                             <option value="off">❌ Выкл</option>
                             <option value="confirm">🟢 Подтв</option>
@@ -2094,7 +2094,7 @@ DASHBOARD_HTML = r"""
                 <h4><span class="icon">📊</span> <span data-i18n="signalEntry">Signal Entry</span></h4>
                 <div class="settings-row">
                     <div class="setting-compact">
-                        <label>ST1 (Slow)</label>
+                        <label>ST1 (Fast)</label>
                         <select id="editBotSt1Role" onchange="updateSignalPreview('edit')">
                             <option value="off">❌ Выкл</option>
                             <option value="confirm" selected>🟢 Подтв</option>
@@ -2110,7 +2110,7 @@ DASHBOARD_HTML = r"""
                         </select>
                     </div>
                     <div class="setting-compact">
-                        <label>ST3 (Fast)</label>
+                        <label>ST3 (Slow)</label>
                         <select id="editBotSt3Role" onchange="updateSignalPreview('edit')">
                             <option value="off">❌ Выкл</option>
                             <option value="confirm">🟢 Подтв</option>
