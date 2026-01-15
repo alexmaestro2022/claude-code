@@ -226,6 +226,22 @@ class TripleSuperTrendStrategy(BaseStrategy):
         # Get combined direction from last CLOSED candle
         st_direction = int(triple_st.combined_direction.iloc[-2]) if len(triple_st.combined_direction) > 1 else 0
 
+        # DEBUG: Log candle timestamps and ST3 directions for last 5 candles
+        try:
+            df_index = triple_st.st3.direction.index
+            st3_dirs = triple_st.st3.direction
+            logger.debug(
+                "ST3 direction history (last 5 candles)",
+                candles=[
+                    f"{df_index[i].strftime('%H:%M')}={int(st3_dirs.iloc[i])}"
+                    for i in range(-5, 0)
+                ],
+                curr_idx=-2,
+                prev_idx=-3,
+            )
+        except Exception:
+            pass
+
         # Get EMA value if enabled (use CLOSED candle for signal detection)
         ema_value = None
         ema_trend = 0
