@@ -135,9 +135,12 @@ def close_all_positions_on_startup():
             add_log("[warning ] Could not connect to exchange for cleanup")
             return
 
-        # Get all open positions
-        positions = client.get_positions()
+        # Get all open positions WITHOUT cache (critical!)
+        positions = client.get_positions(use_cache=False)
         open_positions = [p for p in positions if float(p.size) > 0]
+
+        print(f"[STARTUP] API returned {len(positions)} positions, {len(open_positions)} with size > 0")
+        add_log(f"[info    ] Positions check: total={len(positions)}, open={len(open_positions)}")
 
         if open_positions:
             print(f"[STARTUP] Found {len(open_positions)} open position(s), closing at market...")
@@ -146,19 +149,21 @@ def close_all_positions_on_startup():
             for pos in open_positions:
                 try:
                     # Determine side
-                    side_str = pos.side.upper() if hasattr(pos, 'side') and pos.side else "LONG"
+                    side_str = pos.side.value.upper() if hasattr(pos.side, 'value') else str(pos.side).upper()
                     if side_str in ("BUY", "LONG"):
                         side = PositionSide.LONG
                     else:
                         side = PositionSide.SHORT
 
+                    print(f"[STARTUP] Closing: {pos.symbol} {side_str} size={pos.size}")
+
                     # Close position at market
                     client.close_position(pos.symbol, side)
                     add_log(f"[info    ] Closed orphaned position: {pos.symbol} {side_str} size={pos.size}")
-                    print(f"[STARTUP] Closed: {pos.symbol} {side_str} size={pos.size}")
+                    print(f"[STARTUP] ✓ Closed: {pos.symbol} {side_str} size={pos.size}")
                 except Exception as e:
                     add_log(f"[error   ] Failed to close {pos.symbol}: {e}")
-                    print(f"[STARTUP] ERROR closing {pos.symbol}: {e}")
+                    print(f"[STARTUP] ✗ ERROR closing {pos.symbol}: {e}")
         else:
             print("[STARTUP] No open positions found")
 
