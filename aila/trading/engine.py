@@ -962,6 +962,9 @@ class TradingEngine:
                         self._log_trade_close(symbol, pnl_percent, pnl_usdt)
                     else:
                         # No PnL from API, try to use local data
+                        pnl_usdt = None
+                        pnl_percent = None
+                        close_reason = "CLOSED"
                         local_pos = self._active_positions.get(symbol) or self._last_api_positions.get(symbol)
                         if local_pos:
                             entry_price = local_pos.get("entry_price", 0)
@@ -982,6 +985,17 @@ class TradingEngine:
 
                 except Exception as e:
                     logger.warning(f"Failed to get closed PnL for {symbol}: {e}")
+                    pnl_usdt = None
+                    pnl_percent = None
+                    close_reason = "UNKNOWN"
+
+                # Update bot statistics in main.py registry
+                try:
+                    from aila.api.main import close_position_record
+                    close_position_record(symbol, close_reason, pnl_usdt, pnl_percent)
+                    logger.debug(f"Updated bot stats for closed position: {symbol}")
+                except Exception as e:
+                    logger.warning(f"Failed to update bot stats for {symbol}: {e}")
 
                 # Remove from local tracking
                 self._active_positions.pop(symbol, None)

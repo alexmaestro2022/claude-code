@@ -3785,9 +3785,9 @@ DASHBOARD_HTML = r"""
                 // PnL color: green if positive, red if negative, white if zero
                 const pnlColor = totalPnl > 0 ? '#00ff88' : (totalPnl < 0 ? '#ff4444' : '#ffffff');
 
-                // Calculate PnL percentage (based on initial balance or order_size * leverage as estimate)
-                const initialBalance = bot.initial_balance || (bot.order_size * (bot.leverage || 10));
-                const pnlPercent = initialBalance > 0 ? (totalPnl / initialBalance * 100) : 0;
+                // Calculate PnL percentage based on allocated deposit (order_size), NOT leveraged amount
+                const allocatedDeposit = bot.initial_balance || bot.order_size || 100;
+                const pnlPercent = allocatedDeposit > 0 ? (totalPnl / allocatedDeposit * 100) : 0;
                 const pnlPercentSign = pnlPercent >= 0 ? '+' : '';
 
                 // Status indicator class
@@ -3798,6 +3798,7 @@ DASHBOARD_HTML = r"""
                     <div class="bot-header">
                         <span class="status-indicator ${indicatorClass}"></span>
                         <span class="bot-name">${bot.name}</span>
+                        <span style="font-size: 14px; color: #00d4ff; margin-left: 8px;">${bot.order_size} USDT</span>
                     </div>
                     <div class="bot-details" style="font-size: 12px;">
                         <div><strong>${t('botMode')}:</strong> ${bot.bot_mode === 'auto_search' ? '<span style="color: #ffcc00;">' + t('autoSearchMode') + '</span>' : t('manualMode')} | <strong>${bot.bot_mode === 'auto_search' ? 'Max' : 'Pair'}:</strong> ${bot.bot_mode === 'auto_search' ? bot.max_trading_pairs || bot.max_simultaneous_orders || 1 : (Array.isArray(bot.trading_pairs) ? bot.trading_pairs[0] : bot.trading_pairs)}</div>
@@ -5919,6 +5920,7 @@ async def start_specific_bot(bot_id: str):
         # New multi-bot architecture - use per-bot callback
         bot["status"] = "running"
         bot["started_at"] = datetime.now().isoformat()
+        bot["initial_balance"] = bot.get("order_size", 100.0)  # Store allocated deposit for PnL % calculation
 
         async def do_start():
             try:
@@ -5935,6 +5937,7 @@ async def start_specific_bot(bot_id: str):
         # Legacy single-bot mode - use global callback
         bot["status"] = "running"
         bot["started_at"] = bot.get("started_at") or datetime.now().isoformat()
+        bot["initial_balance"] = bot.get("order_size", 100.0)  # Store allocated deposit for PnL % calculation
 
         async def do_start():
             try:
