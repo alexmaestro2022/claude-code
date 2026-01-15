@@ -5374,6 +5374,15 @@ def get_bot_for_symbol(symbol: str):
     return None
 
 
+def _to_bool(val, default: bool = False) -> bool:
+    """Convert value to boolean. Handles JS strings like "false", "0", etc."""
+    if val is None:
+        return default
+    if isinstance(val, bool):
+        return val
+    return str(val).lower() not in ('false', '0', '')
+
+
 def get_bot_runtime_settings(bot_id: str):
     """Get runtime settings for a specific bot."""
     if bot_id in bot_runtime_settings:
@@ -5580,9 +5589,10 @@ async def create_bot(config: dict):
         "position_sizing_mode": config.get("position_sizing_mode", "fixed_amount"),
         "leverage_mode": config.get("leverage_mode", "cross"),
         "max_positions": config.get("max_positions", 3),
-        "ema_enabled": config.get("ema_enabled", True),
+        # Ensure boolean type for all boolean fields (JS may send string "false")
+        "ema_enabled": _to_bool(config.get("ema_enabled", True), True),
         "ema_filter_mode": config.get("ema_filter_mode", "strict"),
-        "trailing_enabled": config.get("trailing_enabled", True),
+        "trailing_enabled": _to_bool(config.get("trailing_enabled", True), True),
         "trailing_mode": config.get("trailing_mode", "fix_percent"),
         "trailing_activation": config.get("trailing_activation", 1.0),
         "trailing_step": config.get("trailing_step", 0.5),
@@ -5592,12 +5602,12 @@ async def create_bot(config: dict):
         "tp_mode": config.get("tp_mode", "rr"),
         "tp_fixed_percent": config.get("tp_fixed_percent", 2.0),
         # Partial TP settings
-        "partial_tp_enabled": config.get("partial_tp_enabled", True),
+        "partial_tp_enabled": _to_bool(config.get("partial_tp_enabled", True), True),
         "partial_tp_close_percent": config.get("partial_tp_close_percent", 50),
         "partial_tp_sl_move": config.get("partial_tp_sl_move", "tp1"),
         "partial_tp_sl_offset": config.get("partial_tp_sl_offset", 0.2),
         # Trailing TP settings
-        "trailing_tp_enabled": config.get("trailing_tp_enabled", False),
+        "trailing_tp_enabled": _to_bool(config.get("trailing_tp_enabled", False), False),
         "trailing_tp_mode": config.get("trailing_tp_mode", "st_line"),
         "trailing_tp_st_line": config.get("trailing_tp_st_line", 2),
         "trailing_tp_activation": config.get("trailing_tp_activation", 0.5),
@@ -5691,11 +5701,11 @@ async def update_bot(bot_id: str, config: dict):
     if "max_positions" in config:
         bot["max_positions"] = int(config["max_positions"])
     if "ema_enabled" in config:
-        bot["ema_enabled"] = config["ema_enabled"]
+        bot["ema_enabled"] = _to_bool(config["ema_enabled"])
     if "ema_filter_mode" in config:
         bot["ema_filter_mode"] = config["ema_filter_mode"]
     if "trailing_enabled" in config:
-        bot["trailing_enabled"] = config["trailing_enabled"]
+        bot["trailing_enabled"] = _to_bool(config["trailing_enabled"])
     if "trailing_mode" in config:
         bot["trailing_mode"] = config["trailing_mode"]
     if "trailing_activation" in config:
@@ -5713,7 +5723,7 @@ async def update_bot(bot_id: str, config: dict):
         bot["tp_fixed_percent"] = float(config["tp_fixed_percent"])
     # Partial TP settings
     if "partial_tp_enabled" in config:
-        bot["partial_tp_enabled"] = config["partial_tp_enabled"]
+        bot["partial_tp_enabled"] = _to_bool(config["partial_tp_enabled"])
     if "partial_tp_close_percent" in config:
         bot["partial_tp_close_percent"] = int(config["partial_tp_close_percent"])
     if "partial_tp_sl_move" in config:
@@ -5722,7 +5732,7 @@ async def update_bot(bot_id: str, config: dict):
         bot["partial_tp_sl_offset"] = float(config["partial_tp_sl_offset"])
     # Trailing TP settings
     if "trailing_tp_enabled" in config:
-        bot["trailing_tp_enabled"] = config["trailing_tp_enabled"]
+        bot["trailing_tp_enabled"] = _to_bool(config["trailing_tp_enabled"])
     if "trailing_tp_mode" in config:
         bot["trailing_tp_mode"] = config["trailing_tp_mode"]
     if "trailing_tp_st_line" in config:
@@ -5787,11 +5797,11 @@ async def update_bot(bot_id: str, config: dict):
                 engine.strategy.config.trigger_confirm_candles = int(config["trigger_confirm_candles"])
             # Update other strategy settings
             if "ema_enabled" in config:
-                engine.strategy.config.ema_enabled = config["ema_enabled"]
+                engine.strategy.config.ema_enabled = _to_bool(config["ema_enabled"])
             if "ema_filter_mode" in config:
                 engine.strategy.config.ema_filter_mode = config["ema_filter_mode"]
             if "trailing_enabled" in config:
-                engine.strategy.config.trailing_enabled = config["trailing_enabled"]
+                engine.strategy.config.trailing_enabled = _to_bool(config["trailing_enabled"])
             if "trailing_mode" in config:
                 engine.strategy.config.trailing_mode = config["trailing_mode"]
             if "trailing_activation" in config:
@@ -5803,7 +5813,7 @@ async def update_bot(bot_id: str, config: dict):
             if "trailing_confirm_candles" in config:
                 engine.strategy.config.trailing_confirm_candles = int(config["trailing_confirm_candles"])
             if "partial_tp_enabled" in config:
-                engine.strategy.config.partial_tp_enabled = config["partial_tp_enabled"]
+                engine.strategy.config.partial_tp_enabled = _to_bool(config["partial_tp_enabled"])
             if "partial_tp_close_percent" in config:
                 engine.strategy.config.partial_tp_close_percent = int(config["partial_tp_close_percent"])
             if "partial_tp_sl_move" in config:
@@ -5811,7 +5821,7 @@ async def update_bot(bot_id: str, config: dict):
             if "partial_tp_sl_offset" in config:
                 engine.strategy.config.partial_tp_sl_offset = float(config["partial_tp_sl_offset"])
             if "trailing_tp_enabled" in config:
-                engine.strategy.config.trailing_tp_enabled = config["trailing_tp_enabled"]
+                engine.strategy.config.trailing_tp_enabled = _to_bool(config["trailing_tp_enabled"])
             if "trailing_tp_mode" in config:
                 engine.strategy.config.trailing_tp_mode = config["trailing_tp_mode"]
             if "trailing_tp_st_line" in config:
@@ -6210,19 +6220,19 @@ async def resume_specific_bot(bot_id: str):
         engine.strategy.config.st2_role = bot_settings.get("st2_role", "confirm")
         engine.strategy.config.st3_role = bot_settings.get("st3_role", "trigger")
         engine.strategy.config.trigger_confirm_candles = bot_settings.get("trigger_confirm_candles", 1)
-        engine.strategy.config.ema_enabled = bot_settings.get("ema_enabled", True)
+        engine.strategy.config.ema_enabled = _to_bool(bot_settings.get("ema_enabled", True), True)
         engine.strategy.config.ema_filter_mode = bot_settings.get("ema_filter_mode", "strict")
-        engine.strategy.config.trailing_enabled = bot_settings.get("trailing_enabled", True)
+        engine.strategy.config.trailing_enabled = _to_bool(bot_settings.get("trailing_enabled", True), True)
         engine.strategy.config.trailing_mode = bot_settings.get("trailing_mode", "fix_percent")
         engine.strategy.config.trailing_activation = bot_settings.get("trailing_activation", 1.0)
         engine.strategy.config.trailing_step = bot_settings.get("trailing_step", 0.5)
         engine.strategy.config.trailing_st_line = bot_settings.get("trailing_st_line", 2)
         engine.strategy.config.trailing_confirm_candles = bot_settings.get("trailing_confirm_candles", 1)
-        engine.strategy.config.partial_tp_enabled = bot_settings.get("partial_tp_enabled", True)
+        engine.strategy.config.partial_tp_enabled = _to_bool(bot_settings.get("partial_tp_enabled", True), True)
         engine.strategy.config.partial_tp_close_percent = bot_settings.get("partial_tp_close_percent", 50)
         engine.strategy.config.partial_tp_sl_move = bot_settings.get("partial_tp_sl_move", "tp1")
         engine.strategy.config.partial_tp_sl_offset = bot_settings.get("partial_tp_sl_offset", 0.2)
-        engine.strategy.config.trailing_tp_enabled = bot_settings.get("trailing_tp_enabled", False)
+        engine.strategy.config.trailing_tp_enabled = _to_bool(bot_settings.get("trailing_tp_enabled", False), False)
         engine.strategy.config.trailing_tp_mode = bot_settings.get("trailing_tp_mode", "st_line")
         engine.strategy.config.trailing_tp_st_line = bot_settings.get("trailing_tp_st_line", 2)
         add_log(f"[info    ] Updated strategy config for bot {bot['name']}")
