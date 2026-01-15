@@ -3802,7 +3802,7 @@ DASHBOARD_HTML = r"""
                     <div class="bot-header">
                         <span class="status-indicator ${indicatorClass}"></span>
                         <span class="bot-name">${bot.name}</span>
-                        <span style="font-size: 14px; color: ${balanceColor}; margin-left: 8px;">${currentBalance.toFixed(2)} USDT</span>
+                        <span style="font-size: 16px; font-weight: bold; color: ${balanceColor}; margin-left: 10px;">${currentBalance.toFixed(2)} USDT</span>
                     </div>
                     <div class="bot-details" style="font-size: 12px;">
                         <div><strong>${t('botMode')}:</strong> ${bot.bot_mode === 'auto_search' ? '<span style="color: #ffcc00;">' + t('autoSearchMode') + '</span>' : t('manualMode')} | <strong>${bot.bot_mode === 'auto_search' ? 'Max' : 'Pair'}:</strong> ${bot.bot_mode === 'auto_search' ? bot.max_trading_pairs || bot.max_simultaneous_orders || 1 : (Array.isArray(bot.trading_pairs) ? bot.trading_pairs[0] : bot.trading_pairs)}</div>
@@ -5924,7 +5924,19 @@ async def start_specific_bot(bot_id: str):
         # New multi-bot architecture - use per-bot callback
         bot["status"] = "running"
         bot["started_at"] = datetime.now().isoformat()
-        bot["initial_balance"] = bot.get("order_size", 100.0)  # Store allocated deposit for PnL % calculation
+
+        # Calculate initial_balance from exchange balance and balance_usage_percent
+        try:
+            client = bot_state.get("client")
+            if client:
+                balance_obj = client.get_balance("USDT", use_cache=False)
+                total_balance = float(balance_obj.total) if balance_obj else 0
+                balance_usage_percent = bot.get("balance_usage_percent", 100)
+                bot["initial_balance"] = total_balance * balance_usage_percent / 100
+            else:
+                bot["initial_balance"] = bot.get("order_size", 100.0)
+        except Exception as e:
+            bot["initial_balance"] = bot.get("order_size", 100.0)
 
         async def do_start():
             try:
@@ -5941,7 +5953,19 @@ async def start_specific_bot(bot_id: str):
         # Legacy single-bot mode - use global callback
         bot["status"] = "running"
         bot["started_at"] = bot.get("started_at") or datetime.now().isoformat()
-        bot["initial_balance"] = bot.get("order_size", 100.0)  # Store allocated deposit for PnL % calculation
+
+        # Calculate initial_balance from exchange balance and balance_usage_percent
+        try:
+            client = bot_state.get("client")
+            if client:
+                balance_obj = client.get_balance("USDT", use_cache=False)
+                total_balance = float(balance_obj.total) if balance_obj else 0
+                balance_usage_percent = bot.get("balance_usage_percent", 100)
+                bot["initial_balance"] = total_balance * balance_usage_percent / 100
+            else:
+                bot["initial_balance"] = bot.get("order_size", 100.0)
+        except Exception as e:
+            bot["initial_balance"] = bot.get("order_size", 100.0)
 
         async def do_start():
             try:
