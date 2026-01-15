@@ -36,9 +36,9 @@ class SuperTrendResult:
 class TripleSuperTrendResult:
     """Result of Triple SuperTrend calculation."""
 
-    st1: SuperTrendResult  # Slow SuperTrend
-    st2: SuperTrendResult  # Medium SuperTrend
-    st3: SuperTrendResult  # Fast SuperTrend
+    st1: SuperTrendResult  # Fast SuperTrend (period=10, mult=1.0)
+    st2: SuperTrendResult  # Medium SuperTrend (period=11, mult=2.0)
+    st3: SuperTrendResult  # Slow SuperTrend (period=12, mult=3.0)
     combined_direction: pd.Series  # 1 if all green, -1 if all red, 0 mixed
 
 
@@ -226,9 +226,9 @@ class TripleSuperTrend:
     Triple SuperTrend indicator combining three SuperTrend instances.
 
     Default configuration:
-    - ST1 (slow): period=12, multiplier=3.0
+    - ST1 (fast): period=10, multiplier=1.0
     - ST2 (medium): period=11, multiplier=2.0
-    - ST3 (fast): period=10, multiplier=1.0
+    - ST3 (slow): period=12, multiplier=3.0
 
     Signals:
     - LONG: All three SuperTrends are bullish (direction = 1)
@@ -243,23 +243,23 @@ class TripleSuperTrend:
 
     def __init__(
         self,
-        st1_period: int = 12,
-        st1_multiplier: float = 3.0,
+        st1_period: int = 10,
+        st1_multiplier: float = 1.0,
         st2_period: int = 11,
         st2_multiplier: float = 2.0,
-        st3_period: int = 10,
-        st3_multiplier: float = 1.0,
+        st3_period: int = 12,
+        st3_multiplier: float = 3.0,
     ):
         """
         Initialize Triple SuperTrend indicator.
 
         Args:
-            st1_period: Period for slow SuperTrend
-            st1_multiplier: Multiplier for slow SuperTrend
-            st2_period: Period for medium SuperTrend
-            st2_multiplier: Multiplier for medium SuperTrend
-            st3_period: Period for fast SuperTrend
-            st3_multiplier: Multiplier for fast SuperTrend
+            st1_period: Period for fast SuperTrend (ST1)
+            st1_multiplier: Multiplier for fast SuperTrend (ST1)
+            st2_period: Period for medium SuperTrend (ST2)
+            st2_multiplier: Multiplier for medium SuperTrend (ST2)
+            st3_period: Period for slow SuperTrend (ST3)
+            st3_multiplier: Multiplier for slow SuperTrend (ST3)
         """
         self.st1 = SuperTrend(period=st1_period, multiplier=st1_multiplier)
         self.st2 = SuperTrend(period=st2_period, multiplier=st2_multiplier)
