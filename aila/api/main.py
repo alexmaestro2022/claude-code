@@ -3787,8 +3787,17 @@ DASHBOARD_HTML = r"""
                 // PnL color: green if positive, red if negative, white if zero
                 const pnlColor = totalPnl > 0 ? '#00ff88' : (totalPnl < 0 ? '#ff4444' : '#ffffff');
 
-                // Calculate PnL percentage based on allocated deposit (order_size), NOT leveraged amount
-                const allocatedDeposit = bot.initial_balance || bot.order_size || 100;
+                // Calculate allocated deposit from balance_usage_percent
+                // If initial_balance is set (bot was started), use it
+                // Otherwise calculate from current exchange balance * balance_usage_percent
+                let allocatedDeposit = bot.initial_balance;
+                if (!allocatedDeposit || allocatedDeposit <= 0) {
+                    const globalBalanceText = document.getElementById('balance')?.textContent || '0';
+                    const globalBalance = parseFloat(globalBalanceText.replace('--', '0')) || 0;
+                    const balanceUsagePercent = bot.balance_usage_percent || 100;
+                    allocatedDeposit = globalBalance * balanceUsagePercent / 100;
+                }
+
                 const pnlPercent = allocatedDeposit > 0 ? (totalPnl / allocatedDeposit * 100) : 0;
                 const pnlPercentSign = pnlPercent >= 0 ? '+' : '';
 
