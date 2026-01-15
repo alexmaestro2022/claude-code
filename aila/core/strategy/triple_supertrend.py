@@ -203,30 +203,35 @@ class TripleSuperTrendStrategy(BaseStrategy):
         triple_st = indicators["triple_supertrend"]
         ema_result = indicators["ema"]
 
-        # Get individual SuperTrend directions (1=bullish/green, -1=bearish/red)
-        st1_dir_curr = int(triple_st.st1.direction.iloc[-1])
-        st2_dir_curr = int(triple_st.st2.direction.iloc[-1])
-        st3_dir_curr = int(triple_st.st3.direction.iloc[-1])
+        # IMPORTANT: Bybit returns current UNFINISHED candle as iloc[-1]
+        # For signal detection we must use only CLOSED candles:
+        # - iloc[-2] = last CLOSED candle (use as "current" for signals)
+        # - iloc[-3] = second-to-last CLOSED candle (use as "previous" for signals)
 
-        # Get SuperTrend line values
-        st1_value = float(triple_st.st1.supertrend.iloc[-1])
-        st2_value = float(triple_st.st2.supertrend.iloc[-1])
-        st3_value = float(triple_st.st3.supertrend.iloc[-1])
+        # Get individual SuperTrend directions from CLOSED candles (1=bullish/green, -1=bearish/red)
+        st1_dir_curr = int(triple_st.st1.direction.iloc[-2]) if len(triple_st.st1.direction) > 1 else 0
+        st2_dir_curr = int(triple_st.st2.direction.iloc[-2]) if len(triple_st.st2.direction) > 1 else 0
+        st3_dir_curr = int(triple_st.st3.direction.iloc[-2]) if len(triple_st.st3.direction) > 1 else 0
 
-        # Get previous candle directions (for early entry mode)
-        st1_dir_prev = int(triple_st.st1.direction.iloc[-2]) if len(triple_st.st1.direction) > 1 else 0
-        st2_dir_prev = int(triple_st.st2.direction.iloc[-2]) if len(triple_st.st2.direction) > 1 else 0
-        st3_dir_prev = int(triple_st.st3.direction.iloc[-2]) if len(triple_st.st3.direction) > 1 else 0
+        # Get SuperTrend line values from last CLOSED candle
+        st1_value = float(triple_st.st1.supertrend.iloc[-2]) if len(triple_st.st1.supertrend) > 1 else 0
+        st2_value = float(triple_st.st2.supertrend.iloc[-2]) if len(triple_st.st2.supertrend) > 1 else 0
+        st3_value = float(triple_st.st3.supertrend.iloc[-2]) if len(triple_st.st3.supertrend) > 1 else 0
 
-        # Get combined direction
-        st_direction = int(triple_st.combined_direction.iloc[-1])
+        # Get previous candle directions (second-to-last CLOSED candle)
+        st1_dir_prev = int(triple_st.st1.direction.iloc[-3]) if len(triple_st.st1.direction) > 2 else 0
+        st2_dir_prev = int(triple_st.st2.direction.iloc[-3]) if len(triple_st.st2.direction) > 2 else 0
+        st3_dir_prev = int(triple_st.st3.direction.iloc[-3]) if len(triple_st.st3.direction) > 2 else 0
 
-        # Get EMA value if enabled
+        # Get combined direction from last CLOSED candle
+        st_direction = int(triple_st.combined_direction.iloc[-2]) if len(triple_st.combined_direction) > 1 else 0
+
+        # Get EMA value if enabled (use CLOSED candle for signal detection)
         ema_value = None
         ema_trend = 0
         if self.config.ema_enabled and ema_result is not None:
-            ema_value = float(ema_result.ema.iloc[-1])
-            ema_trend = int(ema_result.trend.iloc[-1])
+            ema_value = float(ema_result.ema.iloc[-2]) if len(ema_result.ema) > 1 else 0
+            ema_trend = int(ema_result.trend.iloc[-2]) if len(ema_result.trend) > 1 else 0
 
         # Helper function for direction display
         def dir_str(d):
@@ -650,7 +655,10 @@ class TripleSuperTrendStrategy(BaseStrategy):
         if triple_st is None:
             return False, ""
 
-        st_direction = int(triple_st.combined_direction.iloc[-1])
+        # Use CLOSED candle for exit signal (iloc[-2] = last closed, iloc[-1] = current unfinished)
+        if len(triple_st.combined_direction) < 2:
+            return False, ""
+        st_direction = int(triple_st.combined_direction.iloc[-2])
 
         if position_side == "long" and st_direction == -1:
             return True, "SuperTrend flipped bearish"
