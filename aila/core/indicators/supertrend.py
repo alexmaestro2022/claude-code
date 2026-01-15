@@ -6,9 +6,9 @@ trend-following signals. It creates upper and lower bands around price,
 and the trend direction changes when price crosses these bands.
 
 Triple SuperTrend uses three instances with different parameters:
-- ST1 (slow): period=12, multiplier=3.0
+- ST1 (fast): period=10, multiplier=1.0
 - ST2 (medium): period=11, multiplier=2.0
-- ST3 (fast): period=10, multiplier=1.0
+- ST3 (slow): period=12, multiplier=3.0
 """
 
 from dataclasses import dataclass

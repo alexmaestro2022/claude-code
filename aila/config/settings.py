@@ -66,12 +66,13 @@ class StrategySettings(BaseSettings):
     )
 
     # SuperTrend parameters
-    st1_period: int = 12
-    st1_multiplier: float = 3.0
+    # ST1 = FAST, ST2 = MEDIUM, ST3 = SLOW
+    st1_period: int = 10
+    st1_multiplier: float = 1.0
     st2_period: int = 11
     st2_multiplier: float = 2.0
-    st3_period: int = 10
-    st3_multiplier: float = 1.0
+    st3_period: int = 12
+    st3_multiplier: float = 3.0
 
     # EMA filter
     ema_enabled: bool = True
