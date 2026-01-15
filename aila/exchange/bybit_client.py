@@ -917,6 +917,62 @@ class BybitClient:
         self._set_cached(cache_key, ticker)
         return ticker
 
+    def get_all_tickers(self, use_cache: bool = True) -> dict[str, Ticker]:
+        """
+        Get ALL tickers in ONE API request - optimized for fast scanning.
+
+        This is much faster than calling get_ticker() for each symbol.
+        Bybit returns all tickers in a single response.
+
+        Args:
+            use_cache: Whether to use cached data (default: True, TTL 2 seconds)
+
+        Returns:
+            Dictionary of symbol -> Ticker
+        """
+        cache_key = "all_tickers"
+
+        # Check cache first (short TTL for real-time data)
+        if use_cache:
+            cached = self._get_cached(cache_key, 2)  # 2 second cache
+            if cached is not None:
+                return cached
+
+        self._rate_limit()
+
+        category = "linear" if self.config.account_type == AccountType.FUTURES else "spot"
+
+        # Get ALL tickers without specifying symbol
+        response = self.http.get_tickers(category=category)
+        result = self._handle_response(response, "get_all_tickers")
+
+        tickers_list = result.get("list", [])
+        tickers_dict = {}
+
+        for t in tickers_list:
+            symbol = t.get("symbol", "")
+            if not symbol:
+                continue
+
+            ticker = Ticker(
+                symbol=symbol,
+                last_price=Decimal(str(t.get("lastPrice", "0"))),
+                bid_price=Decimal(str(t.get("bid1Price", "0"))),
+                ask_price=Decimal(str(t.get("ask1Price", "0"))),
+                high_24h=Decimal(str(t.get("highPrice24h", "0"))),
+                low_24h=Decimal(str(t.get("lowPrice24h", "0"))),
+                volume_24h=Decimal(str(t.get("volume24h", "0"))),
+                turnover_24h=Decimal(str(t.get("turnover24h", "0"))),
+                change_24h=float(t.get("price24hPcnt", "0")) * 100,
+            )
+            tickers_dict[symbol] = ticker
+            # Also cache individual ticker
+            self._set_cached(f"ticker_{symbol}", ticker)
+
+        self._set_cached(cache_key, tickers_dict)
+        logger.debug(f"Fetched {len(tickers_dict)} tickers in single request")
+        return tickers_dict
+
     def get_trading_pairs(self, reload: bool = False) -> list[TradingPair]:
         """
         Get available trading pairs.

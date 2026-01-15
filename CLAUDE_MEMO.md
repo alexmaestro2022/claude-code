@@ -232,12 +232,33 @@ if directions_curr[line] != target_dir:
 
 ---
 
-## 10. Рабочие функции в текущей ветке
+## 10. Bybit API Rate Limits
+
+**Лимиты:**
+- 600 запросов / 5 секунд (120 req/s в среднем)
+- При превышении - бан IP на 10 минут
+- WebSocket не считается в rate limit
+
+**Оптимизация сканирования (engine.py):**
+```
+БЫЛО: 458 пар × get_kline = 458 запросов (~23 сек)
+СТАЛО: 1 get_all_tickers + ~30 get_kline = ~35 запросов (~3 сек)
+```
+
+**Ключевые методы:**
+- `get_all_tickers()` - все 458 тикеров за 1 запрос
+- `_fast_filter_by_tickers()` - фильтрация по price/volume БЕЗ kline
+- `_process_symbols_parallel()` - параллельные запросы kline (10 одновременно)
+
+---
+
+## 11. Рабочие функции в текущей ветке
 
 Ветка `claude/start-new-session-4XrKU` содержит:
 - Multi-bot архитектура (создание ботов через веб-интерфейс)
 - Signal Entry - система ролей ST линий (off/confirm/trigger)
 - Real-time обновление настроек при update_bot и resume
+- **FAST SCAN** - оптимизированное сканирование (458 -> ~30 пар за 3 сек)
 - /api/stats - баланс работает даже без запущенных ботов
 - /api/ping - пинг биржи работает
 - /api/restart-server - перезагрузка с остановкой ботов

@@ -41,6 +41,10 @@ class TradingEngineConfig:
     position_check_interval: int = 1  # seconds - ultra fast position monitoring
     scan_interval: int = 1  # seconds between scans - ultra fast (safe for <50 pairs)
 
+    # Fast scanning optimization (Bybit: 600 req/5s = 120 req/s)
+    max_parallel_kline_requests: int = 10  # parallel kline requests
+    kline_request_delay: float = 0.1  # 100ms between batches (safe margin)
+
     # Trading settings
     auto_start: bool = False
     paper_trading: bool = False
@@ -263,7 +267,14 @@ class TradingEngine:
         logger.info("Trading engine stopped", stats=self.stats)
 
     async def _main_loop(self) -> None:
-        """Main trading loop with smart scanning."""
+        """Main trading loop with OPTIMIZED fast scanning.
+
+        Optimization: Uses single get_all_tickers() call to filter symbols
+        BEFORE requesting expensive kline data. This reduces API calls from
+        ~500 to ~50 for typical filter settings.
+
+        Bybit API limits: 600 requests / 5 seconds (120 req/s)
+        """
         scan_count = 0
         while self.state == EngineState.RUNNING and not self._stop_requested:
             try:
@@ -295,43 +306,52 @@ class TradingEngine:
                     await asyncio.sleep(60)
                     continue
 
-                # Log scan start (with localization)
+                # OPTIMIZED FAST SCAN:
+                # Step 1: Get ALL tickers in ONE request
+                all_tickers = self.client.get_all_tickers(use_cache=False)
+
+                # Step 2: Pre-filter symbols by ticker data (price/volume/change)
+                # This avoids expensive kline requests for symbols that won't pass filters
+                filtered_symbols = await self._fast_filter_by_tickers(
+                    self.strategy.trading_pairs,
+                    all_tickers
+                )
+
                 pairs_count = len(self.strategy.trading_pairs)
+                filtered_count = len(filtered_symbols)
+
+                # Log scan start
                 try:
                     from ..api.main import get_log_message
                     scan_msg = get_log_message("scanning_pairs", count=pairs_count)
                 except Exception:
                     scan_msg = f"Scanning {pairs_count} pairs..."
-                logger.info(scan_msg, scan=scan_count, pairs=pairs_count, positions=current_positions)
+                logger.info(
+                    f"{scan_msg} (filtered to {filtered_count})",
+                    scan=scan_count,
+                    pairs=pairs_count,
+                    filtered=filtered_count,
+                    positions=current_positions
+                )
 
-                # FAST SCAN: Process pairs with minimal delay until max positions
-                signals_found = 0
-                for symbol in self.strategy.trading_pairs:
-                    # Check if we've reached max positions during scan
-                    if len(self._active_positions) >= max_positions:
-                        logger.info("Max positions reached during scan, stopping")
-                        break
+                # Step 3: Process only filtered symbols with parallel kline requests
+                signals_found = await self._process_symbols_parallel(
+                    filtered_symbols,
+                    max_positions - current_positions
+                )
 
-                    result = await self._process_symbol(symbol)
-                    if result:
-                        signals_found += 1
-
-                    # Minimal delay to avoid API rate limits (but fast)
-                    await asyncio.sleep(0.05)  # 50ms between symbols
-
-                # Log scan complete (with localization)
+                # Log scan complete
                 try:
                     from ..api.main import get_log_message
                     complete_msg = get_log_message("scan_complete", num=scan_count, signals=signals_found, positions=len(self._active_positions))
                 except Exception:
                     complete_msg = f"Scan #{scan_count} complete"
-                logger.info(complete_msg)
+                logger.info(complete_msg, filtered=filtered_count, signals=signals_found)
 
                 # Short delay between scans if still need positions
                 if len(self._active_positions) < max_positions:
-                    await asyncio.sleep(self.config.scan_interval)  # Scan interval (default 15s)
+                    await asyncio.sleep(self.config.scan_interval)
                 else:
-                    # Max reached, longer pause
                     await asyncio.sleep(self.config.candle_update_interval)
 
             except asyncio.CancelledError:
@@ -340,6 +360,119 @@ class TradingEngine:
                 logger.error("Error in main loop", error=str(e))
                 await self._notify_error(e)
                 await asyncio.sleep(10)
+
+    async def _fast_filter_by_tickers(
+        self,
+        symbols: list[str],
+        all_tickers: dict
+    ) -> list[str]:
+        """
+        Fast pre-filter symbols using ticker data WITHOUT kline requests.
+
+        This is the key optimization: filter 458 symbols down to ~30-50
+        using a single get_all_tickers() call instead of 458 individual requests.
+
+        Args:
+            symbols: List of symbols to filter
+            all_tickers: Dictionary of all tickers from get_all_tickers()
+
+        Returns:
+            List of symbols that pass ticker-based filters
+        """
+        try:
+            from ..api.main import runtime_settings
+        except ImportError:
+            return symbols  # Fallback: return all symbols
+
+        # Get filter settings
+        min_volume = runtime_settings.get("filter_min_volume", 0)
+        max_volume = runtime_settings.get("filter_max_volume", 0)
+        min_price = runtime_settings.get("filter_min_price", 0)
+        max_price = runtime_settings.get("filter_max_price", 0)
+        min_change = runtime_settings.get("filter_min_change", 0)
+        max_change = runtime_settings.get("filter_max_change", 0)
+
+        # If all basic filters are disabled, return all symbols
+        if all(v == 0 for v in [min_volume, max_volume, min_price, max_price, min_change, max_change]):
+            return symbols
+
+        filtered = []
+        for symbol in symbols:
+            ticker = all_tickers.get(symbol)
+            if not ticker:
+                continue  # Skip symbols without ticker data
+
+            price = float(ticker.last_price)
+            volume = float(ticker.turnover_24h)
+            change = float(ticker.change_24h)
+
+            # Apply filters
+            if min_volume > 0 and volume < min_volume:
+                continue
+            if max_volume > 0 and volume > max_volume:
+                continue
+            if min_price > 0 and price < min_price:
+                continue
+            if max_price > 0 and price > max_price:
+                continue
+            if min_change != 0 and change < min_change:
+                continue
+            if max_change != 0 and change > max_change:
+                continue
+
+            filtered.append(symbol)
+
+        logger.debug(f"Fast filter: {len(symbols)} -> {len(filtered)} symbols")
+        return filtered
+
+    async def _process_symbols_parallel(
+        self,
+        symbols: list[str],
+        slots_available: int
+    ) -> int:
+        """
+        Process symbols with parallel kline requests for maximum speed.
+
+        Uses batched parallel requests to stay within Bybit rate limits
+        (600 req/5s = 120 req/s). Default: 10 parallel requests.
+
+        Args:
+            symbols: Pre-filtered list of symbols to process
+            slots_available: Number of position slots available
+
+        Returns:
+            Number of signals found
+        """
+        if not symbols or slots_available <= 0:
+            return 0
+
+        signals_found = 0
+        batch_size = self.config.max_parallel_kline_requests
+        max_positions = self.strategy.config.max_open_positions
+
+        # Process in batches
+        for i in range(0, len(symbols), batch_size):
+            # Check if we've filled all slots
+            if len(self._active_positions) >= max_positions:
+                logger.info("Max positions reached during parallel scan, stopping")
+                break
+
+            batch = symbols[i:i + batch_size]
+
+            # Process batch in parallel
+            tasks = [self._process_symbol(symbol) for symbol in batch]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+
+            # Count signals found
+            for result in results:
+                if result is True:
+                    signals_found += 1
+
+            # Small delay between batches to respect rate limits
+            if i + batch_size < len(symbols):
+                await asyncio.sleep(self.config.kline_request_delay)
+
+        return signals_found
 
     async def _process_symbol(self, symbol: str) -> bool:
         """
