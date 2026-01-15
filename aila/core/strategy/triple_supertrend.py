@@ -379,7 +379,16 @@ class TripleSuperTrendStrategy(BaseStrategy):
         st2_trigger = roles['st2'] == 'trigger'
         st3_trigger = roles['st3'] == 'trigger'
 
-        # Log signal in clean format
+        # Get candle timestamps for logging
+        try:
+            df_index = triple_st.st3.direction.index
+            candle_curr_time = df_index[-2].strftime('%H:%M:%S') if len(df_index) > 1 else "N/A"
+            candle_prev_time = df_index[-3].strftime('%H:%M:%S') if len(df_index) > 2 else "N/A"
+        except Exception:
+            candle_curr_time = "N/A"
+            candle_prev_time = "N/A"
+
+        # Log signal in clean format with full parameters
         logger.info(
             f"━━━ SIGNAL: {signal_type.upper()} ━━━ {symbol} @ {current_price:.6f}"
         )
@@ -387,9 +396,18 @@ class TripleSuperTrendStrategy(BaseStrategy):
             f"Mode: {entry_mode} | {signal_reason}"
         )
         logger.info(
-            f"ST1(10,1): {dir_str(st1_dir_curr)}←{dir_str(st1_dir_prev)} | "
-            f"ST2(11,2): {dir_str(st2_dir_curr)}←{dir_str(st2_dir_prev)} | "
-            f"ST3(12,3): {dir_str(st3_dir_curr)}←{dir_str(st3_dir_prev)} {get_st_marker(st3_trigger)}"
+            f"Candles: curr={candle_curr_time} (iloc[-2]), prev={candle_prev_time} (iloc[-3])"
+        )
+        logger.info(
+            f"ST1({self.config.st1_period},{self.config.st1_multiplier}): {dir_str(st1_dir_curr)}←{dir_str(st1_dir_prev)} {get_st_marker(st1_trigger)} | "
+            f"ST2({self.config.st2_period},{self.config.st2_multiplier}): {dir_str(st2_dir_curr)}←{dir_str(st2_dir_prev)} {get_st_marker(st2_trigger)} | "
+            f"ST3({self.config.st3_period},{self.config.st3_multiplier}): {dir_str(st3_dir_curr)}←{dir_str(st3_dir_prev)} {get_st_marker(st3_trigger)}"
+        )
+        logger.info(
+            f"ST lines: ST1={st1_value:.6f} ST2={st2_value:.6f} ST3={st3_value:.6f}"
+        )
+        logger.info(
+            f"Roles: ST1={self.config.st1_role} ST2={self.config.st2_role} ST3={self.config.st3_role}"
         )
         if self.config.ema_enabled:
             logger.info(

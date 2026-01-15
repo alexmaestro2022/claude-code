@@ -213,6 +213,29 @@ class TradingEngine:
 
             self.state = EngineState.RUNNING
             logger.info("Trading engine started")
+
+            # Log strategy parameters for debugging
+            if hasattr(self.strategy, 'config'):
+                cfg = self.strategy.config
+                logger.info(
+                    "Strategy config loaded",
+                    st1_period=getattr(cfg, 'st1_period', None),
+                    st1_mult=getattr(cfg, 'st1_multiplier', None),
+                    st1_role=getattr(cfg, 'st1_role', None),
+                    st2_period=getattr(cfg, 'st2_period', None),
+                    st2_mult=getattr(cfg, 'st2_multiplier', None),
+                    st2_role=getattr(cfg, 'st2_role', None),
+                    st3_period=getattr(cfg, 'st3_period', None),
+                    st3_mult=getattr(cfg, 'st3_multiplier', None),
+                    st3_role=getattr(cfg, 'st3_role', None),
+                    trigger_confirm=getattr(cfg, 'trigger_confirm_candles', None),
+                    ema_enabled=getattr(cfg, 'ema_enabled', None),
+                    sl_mode=getattr(cfg, 'sl_mode', None),
+                    sl_line=getattr(cfg, 'sl_supertrend_line', None),
+                    tp_mode=getattr(cfg, 'tp_mode', None),
+                    tp_ratio=getattr(cfg, 'tp_risk_ratio', None),
+                )
+
             return True
 
         except Exception as e:
