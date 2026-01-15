@@ -2965,7 +2965,9 @@ DASHBOARD_HTML = r"""
             const logsDiv = document.getElementById('logs');
             const logLines = logsDiv.querySelectorAll('.log-line');
             let text = '';
-            for (let i = 0; i < logLines.length; i++) {
+            // Copy only last 100 lines
+            const startIndex = Math.max(0, logLines.length - 100);
+            for (let i = startIndex; i < logLines.length; i++) {
                 text += logLines[i].textContent;
                 if (i < logLines.length - 1) text += String.fromCharCode(10);
             }
@@ -2973,17 +2975,17 @@ DASHBOARD_HTML = r"""
             // Try modern clipboard API first
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(text).then(function() {
-                    showToast(t('logsCopied'));
+                    showToast(t('logsCopied') + ` (${logLines.length - startIndex} lines)`);
                 }).catch(function(err) {
                     console.error('Clipboard API failed:', err);
-                    fallbackCopy(text);
+                    fallbackCopy(text, logLines.length - startIndex);
                 });
             } else {
-                fallbackCopy(text);
+                fallbackCopy(text, logLines.length - startIndex);
             }
         }
 
-        function fallbackCopy(text) {
+        function fallbackCopy(text, lineCount) {
             const textArea = document.createElement('textarea');
             textArea.value = text;
             textArea.style.position = 'fixed';
@@ -2995,7 +2997,7 @@ DASHBOARD_HTML = r"""
             try {
                 const successful = document.execCommand('copy');
                 if (successful) {
-                    showToast(t('logsCopied'));
+                    showToast(t('logsCopied') + (lineCount ? ` (${lineCount} lines)` : ''));
                 } else {
                     showToast(t('copyFailed'));
                 }
