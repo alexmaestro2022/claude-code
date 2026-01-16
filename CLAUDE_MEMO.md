@@ -294,6 +294,7 @@ const balanceColor = totalPnl > 0 ? '#00ff88' : (totalPnl < 0 ? '#ff4444' : '#00
 | **trigger_confirm не работал** | Логика была противоречивой | Исправлено - проверяет N свечей подряд |
 | **EMA фильтр не отключался** | JS отправлял строку "false" | _to_bool() конвертирует в boolean |
 | **Qty invalid при partial/trailing TP** | qty не округлён до step_size | Использовать trading_pair.round_quantity() |
+| **Safety limits при 100% лимите** | max_loss_percent не передавался в engine | Добавить в bot_settings и create_engine_config |
 
 ---
 
