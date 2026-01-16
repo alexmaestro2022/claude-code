@@ -1132,12 +1132,19 @@ class TradingEngine:
                                 if not self.config.paper_trading:
                                     if isinstance(self.trader, FuturesTrader):
                                         try:
+                                            # Get trading pair info for qty step
+                                            trading_pair = self.client.get_trading_pair(symbol)
+                                            if trading_pair:
+                                                rounded_qty = trading_pair.round_quantity(Decimal(str(close_qty)))
+                                            else:
+                                                rounded_qty = Decimal(str(round(close_qty, 8)))
+
                                             # Close partial position using close_position with quantity
                                             pos_side = PositionSide.LONG if side == "long" else PositionSide.SHORT
                                             self.trader.client.close_position(
                                                 symbol=symbol,
                                                 side=pos_side,
-                                                quantity=Decimal(str(round(close_qty, 8))),
+                                                quantity=rounded_qty,
                                             )
                                             # Update SL on exchange
                                             self.trader.update_stop_loss(symbol, Decimal(str(new_sl_at_tp)))
@@ -1207,16 +1214,23 @@ class TradingEngine:
                                         if not self.config.paper_trading:
                                             if isinstance(self.trader, FuturesTrader):
                                                 try:
+                                                    # Get trading pair info for qty step
+                                                    trading_pair = self.client.get_trading_pair(symbol)
+                                                    if trading_pair:
+                                                        rounded_qty = trading_pair.round_quantity(Decimal(str(remaining_qty)))
+                                                    else:
+                                                        rounded_qty = Decimal(str(round(remaining_qty, 8)))
+
                                                     pos_side = PositionSide.LONG if side == "long" else PositionSide.SHORT
                                                     self.trader.client.close_position(
                                                         symbol=symbol,
                                                         side=pos_side,
-                                                        quantity=Decimal(str(round(remaining_qty, 8))),
+                                                        quantity=rounded_qty,
                                                     )
                                                     logger.info(
                                                         "Trailing TP (ST Line) executed on exchange",
                                                         symbol=symbol,
-                                                        closed_qty=remaining_qty,
+                                                        closed_qty=rounded_qty,
                                                     )
                                                 except Exception as e:
                                                     logger.error("Failed to execute Trailing TP (ST Line)", error=str(e))
