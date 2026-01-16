@@ -298,6 +298,52 @@ const balanceColor = totalPnl > 0 ? '#00ff88' : (totalPnl < 0 ? '#ff4444' : '#00
 
 ---
 
+## 9.1 Лимит потерь (Safety Limits)
+
+**Как работает:**
+```python
+# engine.py _check_safety_limits()
+loss_percent = abs(daily_pnl_usdt) / allocated_balance * 100
+if loss_percent >= max_daily_loss_percent:
+    return False  # Остановить торговлю
+```
+
+**Пример:**
+| Общий баланс | balance_usage_percent | allocated_balance | max_loss_percent | Стоп при убытке |
+|-------------|----------------------|------------------|-----------------|----------------|
+| 100 USDT | 10% | 10 USDT | 50% | 5 USDT |
+| 50 USDT | 50% | 25 USDT | 20% | 5 USDT |
+
+**Ключевые файлы:**
+- `engine.py` - `allocated_balance` в TradingEngineConfig + логика проверки
+- `run_web.py` - `engine.config.allocated_balance = calculated_initial_balance`
+- `main.py` - `bot_settings["max_loss_percent"]` копируется при start_bot
+
+---
+
+## 9.2 Логика триггера - когда возникает сигнал
+
+**Сигнал возникает ТОЛЬКО при СМЕНЕ направления триггера!**
+
+```
+ST3 history: [+1, +1, +1, -1, -1]
+                         ↑
+                    Момент смены = СИГНАЛ SHORT
+
+ST3 history: [-1, -1, -1, -1, -1]
+                    ↑     ↑
+               Уже в шорт = НЕТ нового сигнала
+```
+
+**Если в логах видите:**
+```
+ST3 direction history: candles=['17:12=-1', '17:13=-1', '17:14=-1', '17:15=-1', '17:16=-1']
+signals=0
+```
+Это нормально! ST3 уже в направлении -1 несколько свечей. Бот ждёт нового перехода.
+
+---
+
 ## 10. При проблемах
 
 1. **НЕ** бери файлы из других веток!
