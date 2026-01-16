@@ -87,10 +87,17 @@ DASHBOARD_HTML = r"""
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
+    <!-- iOS PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="AILA Bot">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#1a1a2e">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%231a1a2e' width='100' height='100' rx='20'/><text x='50' y='65' font-size='50' text-anchor='middle' fill='%2300d4ff'>A</text></svg>">
     <title>AILA Trading Bot v2.1</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
     <style>
@@ -410,6 +417,30 @@ DASHBOARD_HTML = r"""
             display: flex;
             align-items: center;
             gap: 20px;
+        }
+
+        .refresh-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(0, 0, 0, 0.3);
+            color: #00d4ff;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .refresh-btn:hover {
+            background: rgba(0, 212, 255, 0.2);
+            transform: rotate(180deg);
+        }
+
+        .refresh-btn:active {
+            transform: rotate(360deg);
         }
 
         .lang-selector {
@@ -1152,6 +1183,7 @@ DASHBOARD_HTML = r"""
         <header>
             <h1>AILA Trading Bot</h1>
             <div class="header-right">
+                <button class="refresh-btn" onclick="location.reload()" title="Refresh">↻</button>
                 <select class="lang-selector" id="langSelector" onchange="changeLanguage(this.value)">
                     <option value="en">English</option>
                     <option value="ru">Русский</option>
