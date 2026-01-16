@@ -5939,12 +5939,12 @@ async def start_specific_bot(bot_id: str):
     bot_settings["st3_role"] = bot.get("st3_role", "trigger")
     bot_settings["trigger_confirm_candles"] = bot.get("trigger_confirm_candles", 1)
     # Partial TP settings
-    bot_settings["partial_tp_enabled"] = bot.get("partial_tp_enabled", True)
+    bot_settings["partial_tp_enabled"] = _to_bool(bot.get("partial_tp_enabled", True), True)
     bot_settings["partial_tp_close_percent"] = bot.get("partial_tp_close_percent", 50)
     bot_settings["partial_tp_sl_move"] = bot.get("partial_tp_sl_move", "tp1")
     bot_settings["partial_tp_sl_offset"] = bot.get("partial_tp_sl_offset", 0.2)
     # Trailing TP settings
-    bot_settings["trailing_tp_enabled"] = bot.get("trailing_tp_enabled", False)
+    bot_settings["trailing_tp_enabled"] = _to_bool(bot.get("trailing_tp_enabled", False), False)
     bot_settings["trailing_tp_mode"] = bot.get("trailing_tp_mode", "st_line")
     bot_settings["trailing_tp_st_line"] = bot.get("trailing_tp_st_line", 2)
     bot_settings["trailing_tp_activation"] = bot.get("trailing_tp_activation", 0.5)
