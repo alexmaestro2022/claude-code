@@ -293,6 +293,7 @@ const balanceColor = totalPnl > 0 ? '#00ff88' : (totalPnl < 0 ? '#ff4444' : '#00
 | **Баланс бота 0 или неверный** | initial_balance не рассчитан | Рассчитывается в run_web.py при старте |
 | **trigger_confirm не работал** | Логика была противоречивой | Исправлено - проверяет N свечей подряд |
 | **EMA фильтр не отключался** | JS отправлял строку "false" | _to_bool() конвертирует в boolean |
+| **Qty invalid при partial/trailing TP** | qty не округлён до step_size | Использовать trading_pair.round_quantity() |
 
 ---
 
