@@ -5949,6 +5949,9 @@ async def start_specific_bot(bot_id: str):
     bot_settings["trailing_tp_st_line"] = bot.get("trailing_tp_st_line", 2)
     bot_settings["trailing_tp_activation"] = bot.get("trailing_tp_activation", 0.5)
     bot_settings["trailing_tp_step"] = bot.get("trailing_tp_step", 1.0)
+    # Risk management
+    bot_settings["max_loss_percent"] = bot.get("max_loss_percent", 100)
+    bot_settings["balance_usage_percent"] = bot.get("balance_usage_percent", 100)
 
     # Store per-bot settings
     bot_runtime_settings[bot_id] = bot_settings

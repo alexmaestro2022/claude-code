@@ -241,7 +241,8 @@ def create_strategy_config() -> TripleSuperTrendConfig:
 def create_engine_config() -> TradingEngineConfig:
     """Create trading engine configuration."""
     return TradingEngineConfig(
-        max_daily_loss_percent=settings.risk.max_daily_loss_percent,
+        # Use max_loss_percent from runtime_settings (UI), fallback to global settings
+        max_daily_loss_percent=runtime_settings.get("max_loss_percent", settings.risk.max_daily_loss_percent),
         paper_trading=not settings.is_production,
         order_size=runtime_settings.get("order_size", 100.0),
     )
@@ -318,7 +319,8 @@ def create_engine_config_for_bot(bot_id: str) -> TradingEngineConfig:
     """Create trading engine configuration for a specific bot."""
     bot_settings = get_bot_runtime_settings(bot_id)
     return TradingEngineConfig(
-        max_daily_loss_percent=settings.risk.max_daily_loss_percent,
+        # Use max_loss_percent from bot settings (UI), fallback to global settings
+        max_daily_loss_percent=bot_settings.get("max_loss_percent", settings.risk.max_daily_loss_percent),
         paper_trading=not settings.is_production,
         order_size=bot_settings.get("order_size", 100.0),
         # Position sizing settings
