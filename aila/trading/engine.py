@@ -61,6 +61,7 @@ class TradingEngineConfig:
     max_daily_loss_percent: float = 5.0
     max_consecutive_losses: int = 3
     cooldown_after_loss_streak: int = 60  # minutes
+    allocated_balance: float = 0.0  # Bot's allocated deposit (for loss % calculation)
 
     # Execution
     use_market_orders: bool = True
@@ -1424,9 +1425,17 @@ class TradingEngine:
                 else:
                     self.stats.consecutive_losses = 0
 
-        # Check daily loss limit
-        if float(self.stats.daily_pnl) <= -self.config.max_daily_loss_percent:
-            return False
+        # Check daily loss limit (as % of allocated balance)
+        if self.config.allocated_balance > 0:
+            # Calculate loss as percentage of allocated balance
+            daily_pnl_usdt = float(self.stats.daily_pnl)
+            loss_percent = abs(daily_pnl_usdt) / self.config.allocated_balance * 100 if daily_pnl_usdt < 0 else 0
+            if loss_percent >= self.config.max_daily_loss_percent:
+                return False
+        else:
+            # Fallback: compare raw USDT values (legacy behavior)
+            if float(self.stats.daily_pnl) <= -self.config.max_daily_loss_percent:
+                return False
 
         return True
 

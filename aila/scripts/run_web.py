@@ -396,6 +396,8 @@ async def start_trading_for_bot(bot_id: str):
         # Update bot in registry
         if bot_id in bots_registry:
             bots_registry[bot_id]["initial_balance"] = calculated_initial_balance
+        # Update engine config with allocated balance for proper loss % calculation
+        engine.config.allocated_balance = calculated_initial_balance
         add_log(f"[info    ] [{bot_name}] Connected. USDT Balance: {total_balance} | Allocated: {calculated_initial_balance:.2f} ({balance_usage_percent}%)")
     except Exception as e:
         add_log(f"[warning ] [{bot_name}] Failed to calculate initial_balance: {e}")
