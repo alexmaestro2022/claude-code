@@ -766,8 +766,13 @@ def get_interval_seconds(timeframe: str) -> int:
 
 
 @app.get("/api/indicators/{symbol}")
-async def get_indicators(symbol: str, timeframe: str = "1h", limit: int = 200):
-    """Get indicator data (SuperTrend + EMA) for a symbol."""
+async def get_indicators(
+    symbol: str,
+    timeframe: str = "1h",
+    limit: int = 200,
+    bot_id: str = None
+):
+    """Get indicator data based on bot strategy settings."""
     from aila.core.indicators import SuperTrendIndicator, EMAIndicator
 
     client = bot_state.get("client")
@@ -776,6 +781,11 @@ async def get_indicators(symbol: str, timeframe: str = "1h", limit: int = 200):
 
     if not client or not getattr(client, 'is_connected', False):
         return {"error": "Not connected"}
+
+    # Get bot settings if bot_id provided
+    bot_settings = None
+    if bot_id and bot_id in bots_registry:
+        bot_settings = bots_registry[bot_id]
 
     try:
         # Map timeframe to Bybit interval
@@ -791,62 +801,107 @@ async def get_indicators(symbol: str, timeframe: str = "1h", limit: int = 200):
         if klines is None or klines.empty:
             return {"error": "No data"}
 
-        # Calculate SuperTrend indicators (ST1, ST2, ST3)
-        st1 = SuperTrendIndicator(period=10, multiplier=1.0)
-        st2 = SuperTrendIndicator(period=11, multiplier=2.0)
-        st3 = SuperTrendIndicator(period=12, multiplier=3.0)
-
-        st1_data = st1.calculate(klines)
-        st2_data = st2.calculate(klines)
-        st3_data = st3.calculate(klines)
-
-        # Calculate EMA200
-        ema = EMAIndicator(period=200)
-        ema_data = ema.calculate(klines)
-
-        # Format data for chart
         result = {
             "symbol": symbol,
             "timeframe": timeframe,
-            "st1": [],  # Fast (green/red)
-            "st2": [],  # Medium (blue)
-            "st3": [],  # Slow (orange)
-            "ema200": [],
+            "indicators": {}
         }
 
-        for i, row in klines.iterrows():
-            time_val = int(row["open_time"].timestamp()) if hasattr(row["open_time"], 'timestamp') else int(row["open_time"] / 1000)
+        # Helper function to add indicator data
+        def add_st_data(name: str, st_data, klines_df):
+            data = []
+            for i, row in klines_df.iterrows():
+                time_val = int(row["open_time"].timestamp()) if hasattr(row["open_time"], 'timestamp') else int(row["open_time"] / 1000)
+                if i < len(st_data.supertrend) and not pd.isna(st_data.supertrend.iloc[i]):
+                    data.append({
+                        "time": time_val,
+                        "value": float(st_data.supertrend.iloc[i]),
+                        "direction": int(st_data.direction.iloc[i]) if not pd.isna(st_data.direction.iloc[i]) else 0
+                    })
+            return data
 
-            # ST1
-            if i < len(st1_data.supertrend) and not pd.isna(st1_data.supertrend.iloc[i]):
-                result["st1"].append({
-                    "time": time_val,
-                    "value": float(st1_data.supertrend.iloc[i]),
-                    "direction": int(st1_data.direction.iloc[i]) if not pd.isna(st1_data.direction.iloc[i]) else 0
-                })
+        def add_ema_data(ema_series, klines_df):
+            data = []
+            for i, row in klines_df.iterrows():
+                time_val = int(row["open_time"].timestamp()) if hasattr(row["open_time"], 'timestamp') else int(row["open_time"] / 1000)
+                if i < len(ema_series) and not pd.isna(ema_series.iloc[i]):
+                    data.append({
+                        "time": time_val,
+                        "value": float(ema_series.iloc[i])
+                    })
+            return data
 
-            # ST2
-            if i < len(st2_data.supertrend) and not pd.isna(st2_data.supertrend.iloc[i]):
-                result["st2"].append({
-                    "time": time_val,
-                    "value": float(st2_data.supertrend.iloc[i]),
-                    "direction": int(st2_data.direction.iloc[i]) if not pd.isna(st2_data.direction.iloc[i]) else 0
-                })
+        # If bot settings available, use them
+        if bot_settings:
+            # ST1 (Fast)
+            st1_role = bot_settings.get("st1_role", "confirm")
+            if st1_role != "off":
+                st1_period = bot_settings.get("st1_period", 10)
+                st1_mult = bot_settings.get("st1_multiplier", 1.0)
+                st1 = SuperTrendIndicator(period=int(st1_period), multiplier=float(st1_mult))
+                st1_data = st1.calculate(klines)
+                result["indicators"]["st1"] = {
+                    "data": add_st_data("st1", st1_data, klines),
+                    "period": st1_period,
+                    "multiplier": st1_mult,
+                    "role": st1_role
+                }
 
-            # ST3
-            if i < len(st3_data.supertrend) and not pd.isna(st3_data.supertrend.iloc[i]):
-                result["st3"].append({
-                    "time": time_val,
-                    "value": float(st3_data.supertrend.iloc[i]),
-                    "direction": int(st3_data.direction.iloc[i]) if not pd.isna(st3_data.direction.iloc[i]) else 0
-                })
+            # ST2 (Medium)
+            st2_role = bot_settings.get("st2_role", "confirm")
+            if st2_role != "off":
+                st2_period = bot_settings.get("st2_period", 11)
+                st2_mult = bot_settings.get("st2_multiplier", 2.0)
+                st2 = SuperTrendIndicator(period=int(st2_period), multiplier=float(st2_mult))
+                st2_data = st2.calculate(klines)
+                result["indicators"]["st2"] = {
+                    "data": add_st_data("st2", st2_data, klines),
+                    "period": st2_period,
+                    "multiplier": st2_mult,
+                    "role": st2_role
+                }
 
-            # EMA200
-            if i < len(ema_data) and not pd.isna(ema_data.iloc[i]):
-                result["ema200"].append({
-                    "time": time_val,
-                    "value": float(ema_data.iloc[i])
-                })
+            # ST3 (Slow)
+            st3_role = bot_settings.get("st3_role", "trigger")
+            if st3_role != "off":
+                st3_period = bot_settings.get("st3_period", 12)
+                st3_mult = bot_settings.get("st3_multiplier", 3.0)
+                st3 = SuperTrendIndicator(period=int(st3_period), multiplier=float(st3_mult))
+                st3_data = st3.calculate(klines)
+                result["indicators"]["st3"] = {
+                    "data": add_st_data("st3", st3_data, klines),
+                    "period": st3_period,
+                    "multiplier": st3_mult,
+                    "role": st3_role
+                }
+
+            # EMA
+            ema_enabled = bot_settings.get("ema_enabled", True)
+            if ema_enabled:
+                ema_period = bot_settings.get("ema_period", 200)
+                ema = EMAIndicator(period=int(ema_period))
+                ema_data = ema.calculate(klines)
+                result["indicators"]["ema"] = {
+                    "data": add_ema_data(ema_data, klines),
+                    "period": ema_period
+                }
+
+        else:
+            # Default: show all indicators with default settings
+            st1 = SuperTrendIndicator(period=10, multiplier=1.0)
+            st2 = SuperTrendIndicator(period=11, multiplier=2.0)
+            st3 = SuperTrendIndicator(period=12, multiplier=3.0)
+            ema = EMAIndicator(period=200)
+
+            st1_data = st1.calculate(klines)
+            st2_data = st2.calculate(klines)
+            st3_data = st3.calculate(klines)
+            ema_data = ema.calculate(klines)
+
+            result["indicators"]["st1"] = {"data": add_st_data("st1", st1_data, klines), "period": 10, "multiplier": 1.0, "role": "confirm"}
+            result["indicators"]["st2"] = {"data": add_st_data("st2", st2_data, klines), "period": 11, "multiplier": 2.0, "role": "confirm"}
+            result["indicators"]["st3"] = {"data": add_st_data("st3", st3_data, klines), "period": 12, "multiplier": 3.0, "role": "trigger"}
+            result["indicators"]["ema"] = {"data": add_ema_data(ema_data, klines), "period": 200}
 
         return result
 

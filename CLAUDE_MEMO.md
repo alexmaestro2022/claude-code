@@ -473,11 +473,14 @@ STRATEGY_ST3_MULTIPLIER=3.0
 - **Нижняя панель** - версия слева, API stats (ping, requests), кнопка Restart справа
 - **График позиции** - клик на карточку позиции открывает полноэкранный график:
   - Свечи с TradingView Lightweight Charts
-  - Индикаторы: ST1 (зелёный), ST2 (голубой), ST3 (оранжевый), EMA200 (жёлтый)
+  - Индикаторы отображаются ТОЛЬКО если активны в настройках бота (role != "off")
+  - SuperTrend цвета по направлению: зелёный (bullish/+1), красный (bearish/-1)
+  - Толщина линий: ST1=1px (тонкая), ST2=2px (средняя), ST3=3px (толстая)
+  - EMA200 жёлтая линия (если включена в настройках)
   - Линии Entry/SL/TP с PnL
   - Перетаскивание SL/TP мышью для ручного изменения
   - Обратный отсчёт до закрытия свечи
-  - API: /api/klines/{symbol}, /api/indicators/{symbol}, /api/positions/{id}/update-levels
+  - API: /api/klines/{symbol}, /api/indicators/{symbol}?bot_id=X, /api/positions/{id}/update-levels
 
 ---
 

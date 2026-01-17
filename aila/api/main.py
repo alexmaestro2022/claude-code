@@ -5351,8 +5351,8 @@ DASHBOARD_HTML = r"""
             // Create chart
             await createPositionChart(position.symbol, timeframe, position);
 
-            // Load indicators
-            await loadIndicators(position.symbol, timeframe);
+            // Load indicators with bot settings
+            await loadIndicators(position.symbol, timeframe, position.bot_id);
 
             // Start real-time updates
             startPositionChartUpdates(position.symbol, timeframe);
@@ -5479,9 +5479,14 @@ DASHBOARD_HTML = r"""
             }
         }
 
-        async function loadIndicators(symbol, timeframe) {
+        async function loadIndicators(symbol, timeframe, botId) {
             try {
-                const response = await fetch(`/api/indicators/${symbol}?timeframe=${timeframe}&limit=200`);
+                let url = `/api/indicators/${symbol}?timeframe=${timeframe}&limit=200`;
+                if (botId) {
+                    url += `&bot_id=${botId}`;
+                }
+
+                const response = await fetch(url);
                 const data = await response.json();
 
                 if (data.error) {
@@ -5489,8 +5494,38 @@ DASHBOARD_HTML = r"""
                     return;
                 }
 
-                // Add EMA200 line (yellow, behind everything)
-                if (data.ema200 && data.ema200.length > 0) {
+                const indicators = data.indicators || {};
+
+                // Helper function to add SuperTrend with direction-based coloring
+                function addSuperTrendSeries(stData, lineWidth, name) {
+                    if (!stData || !stData.data || stData.data.length === 0) return null;
+
+                    // Create two series for up/down colors (green/red like candles)
+                    const upColor = '#00ff88';  // Green for bullish
+                    const downColor = '#ff4444';  // Red for bearish
+
+                    // We'll use line series with color property per point
+                    const series = positionChart.addLineSeries({
+                        color: upColor,  // Default color
+                        lineWidth: lineWidth,
+                        priceLineVisible: false,
+                        lastValueVisible: false,
+                        crosshairMarkerVisible: false,
+                    });
+
+                    // Set data with color based on direction
+                    const coloredData = stData.data.map(d => ({
+                        time: d.time,
+                        value: d.value,
+                        color: d.direction === 1 ? upColor : downColor
+                    }));
+
+                    series.setData(coloredData);
+                    return series;
+                }
+
+                // Add EMA line (yellow) - only if enabled in settings
+                if (indicators.ema && indicators.ema.data && indicators.ema.data.length > 0) {
                     ema200Series = positionChart.addLineSeries({
                         color: '#ffcc00',
                         lineWidth: 1,
@@ -5499,49 +5534,23 @@ DASHBOARD_HTML = r"""
                         lastValueVisible: false,
                         crosshairMarkerVisible: false,
                     });
-                    ema200Series.setData(data.ema200);
+                    ema200Series.setData(indicators.ema.data);
                 }
 
-                // Add SuperTrend lines
-                // ST1 (Fast) - thin line
-                if (data.st1 && data.st1.length > 0) {
-                    // Split into up/down segments for coloring
-                    const st1Up = data.st1.filter(d => d.direction === 1).map(d => ({ time: d.time, value: d.value }));
-                    const st1Down = data.st1.filter(d => d.direction === -1).map(d => ({ time: d.time, value: d.value }));
-
-                    st1Series = positionChart.addLineSeries({
-                        color: '#00ff88',
-                        lineWidth: 1,
-                        priceLineVisible: false,
-                        lastValueVisible: false,
-                        crosshairMarkerVisible: false,
-                    });
-                    // Use full data with color based on last direction
-                    st1Series.setData(data.st1.map(d => ({ time: d.time, value: d.value })));
+                // Add SuperTrend lines with different widths
+                // ST1 (Fast) - thin (1px)
+                if (indicators.st1) {
+                    st1Series = addSuperTrendSeries(indicators.st1, 1, 'ST1');
                 }
 
-                // ST2 (Medium) - blue line
-                if (data.st2 && data.st2.length > 0) {
-                    st2Series = positionChart.addLineSeries({
-                        color: '#00d4ff',
-                        lineWidth: 1,
-                        priceLineVisible: false,
-                        lastValueVisible: false,
-                        crosshairMarkerVisible: false,
-                    });
-                    st2Series.setData(data.st2.map(d => ({ time: d.time, value: d.value })));
+                // ST2 (Medium) - medium (2px)
+                if (indicators.st2) {
+                    st2Series = addSuperTrendSeries(indicators.st2, 2, 'ST2');
                 }
 
-                // ST3 (Slow) - orange line
-                if (data.st3 && data.st3.length > 0) {
-                    st3Series = positionChart.addLineSeries({
-                        color: '#ff8800',
-                        lineWidth: 2,
-                        priceLineVisible: false,
-                        lastValueVisible: false,
-                        crosshairMarkerVisible: false,
-                    });
-                    st3Series.setData(data.st3.map(d => ({ time: d.time, value: d.value })));
+                // ST3 (Slow) - thick (3px)
+                if (indicators.st3) {
+                    st3Series = addSuperTrendSeries(indicators.st3, 3, 'ST3');
                 }
 
             } catch (err) {
