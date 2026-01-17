@@ -13,7 +13,15 @@ import os
 from pathlib import Path
 
 # Add project root to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+
+# Read version from VERSION file
+VERSION_FILE = PROJECT_ROOT / "VERSION"
+if VERSION_FILE.exists():
+    VERSION = VERSION_FILE.read_text().strip()
+else:
+    VERSION = "2.1.0"
 
 import structlog
 import uvicorn
@@ -593,12 +601,18 @@ def get_background_client():
 # Update stats endpoint with real data
 @app.get("/api/stats")
 async def get_stats():
-    """Get current trading statistics."""
+    """Get current trading statistics.
+
+    All session stats (PnL, winrate, closed_trades) reset on server restart.
+    Balance is always fetched fresh from exchange.
+    """
     stats = {
         "balance": None,
         "positions": 0,
-        "trades": 0,
-        "pnl": 0.0,
+        "closed_trades": 0,
+        "pnl_usdt": 0.0,
+        "pnl_percent": 0.0,
+        "winrate": None,
         "api_stats": None,
     }
 
@@ -628,12 +642,44 @@ async def get_stats():
         except Exception as e:
             logger.debug(f"Failed to get API stats: {e}")
 
-    if bot_state.get("engine"):
-        engine = bot_state["engine"]
-        stats["trades"] = engine.stats.trades_executed
-        stats["pnl"] = float(engine.stats.daily_pnl)
+    # Calculate session stats from all bots (since server restart)
+    total_pnl_usdt = 0.0
+    total_trades = 0
+    winning_trades = 0
+
+    for bot_id, bot in bots_registry.items():
+        # total_pnl_history is accumulated PnL from closed positions
+        total_pnl_usdt += bot.get("total_pnl_history", 0)
+        total_trades += bot.get("total_trades", 0)
+        winning_trades += bot.get("winning_trades", 0)
+
+    stats["pnl_usdt"] = total_pnl_usdt
+    stats["closed_trades"] = total_trades
+
+    # Calculate winrate
+    if total_trades > 0:
+        stats["winrate"] = (winning_trades / total_trades) * 100
+    else:
+        stats["winrate"] = None
+
+    # Calculate PnL percent (relative to initial balance if available)
+    # Use the sum of all bots' initial_balance
+    total_initial_balance = sum(
+        bot.get("initial_balance", 0) for bot in bots_registry.values()
+        if bot.get("initial_balance", 0) > 0
+    )
+    if total_initial_balance > 0 and total_pnl_usdt != 0:
+        stats["pnl_percent"] = (total_pnl_usdt / total_initial_balance) * 100
+    else:
+        stats["pnl_percent"] = 0.0
 
     return stats
+
+
+@app.get("/api/version")
+async def get_version():
+    """Get bot version."""
+    return {"version": VERSION}
 
 
 @app.get("/api/ping")

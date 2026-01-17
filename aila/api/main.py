@@ -117,6 +117,7 @@ DASHBOARD_HTML = r"""
             color: #e0e0e0;
             min-height: 100vh;
             padding: 20px;
+            padding-bottom: 50px; /* Space for fixed bottom panel */
         }
 
         .container {
@@ -188,6 +189,45 @@ DASHBOARD_HTML = r"""
             50% { opacity: 0.5; }
         }
 
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 12px 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+            height: 65px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .stat-title {
+            font-size: 10px;
+            color: #888;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #00d4ff;
+            white-space: nowrap;
+        }
+
+        .stat-value.positive { color: #00ff88; }
+        .stat-value.negative { color: #ff4444; }
+
+        /* Legacy cards - keep for bots section */
         .cards {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -332,13 +372,6 @@ DASHBOARD_HTML = r"""
 
         .auto-scroll-indicator.active {
             color: #00ff88;
-        }
-
-        footer {
-            text-align: center;
-            padding: 20px;
-            color: #666;
-            font-size: 12px;
         }
 
         .controls {
@@ -514,7 +547,10 @@ DASHBOARD_HTML = r"""
 
         /* Bots Manager Section */
         .bots-section {
+            margin-top: 20px;
+            padding-top: 20px;
             margin-bottom: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .bots-header {
@@ -1186,31 +1222,40 @@ DASHBOARD_HTML = r"""
 
         <!-- Dashboard Tab -->
         <div class="tab-content active" id="tab-dashboard">
-            <div class="cards">
-                <div class="card">
-                    <div class="card-title" data-i18n="balance">Balance (USDT)</div>
-                    <div class="card-value" id="balance">--</div>
+            <!-- Stats Row 1: Balance, PnL, Winrate -->
+            <div class="stats-row">
+                <div class="stat-card">
+                    <div class="stat-title" data-i18n="balance">Balance (USDT)</div>
+                    <div class="stat-value" id="balance">--</div>
                 </div>
-                <div class="card">
-                    <div class="card-title" data-i18n="openPositions">Open Positions</div>
-                    <div class="card-value" id="positions">--</div>
+                <div class="stat-card">
+                    <div class="stat-title" data-i18n="sessionPnl">Session PnL</div>
+                    <div class="stat-value" id="pnl">--</div>
                 </div>
-                <div class="card">
-                    <div class="card-title" data-i18n="todayTrades">Today's Trades</div>
-                    <div class="card-value" id="trades">--</div>
+                <div class="stat-card">
+                    <div class="stat-title" data-i18n="winrate">Winrate</div>
+                    <div class="stat-value" id="winrate">--%</div>
                 </div>
-                <div class="card">
-                    <div class="card-title" data-i18n="todayPnl">Today's PnL</div>
-                    <div class="card-value" id="pnl">--</div>
+            </div>
+
+            <!-- Stats Row 2: Open Positions, Active Bots, Closed Trades -->
+            <div class="stats-row">
+                <div class="stat-card">
+                    <div class="stat-title" data-i18n="openPositions">Open Positions</div>
+                    <div class="stat-value" id="positions">--</div>
                 </div>
-                <div class="card">
-                    <div class="card-title" data-i18n="activeBots">Active Bots</div>
-                    <div class="card-value" id="activeBots">0</div>
+                <div class="stat-card">
+                    <div class="stat-title" data-i18n="activeBots">Active Bots</div>
+                    <div class="stat-value" id="activeBots">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-title" data-i18n="closedTrades">Closed Trades</div>
+                    <div class="stat-value" id="closedTrades">0</div>
                 </div>
             </div>
 
             <!-- Bots Section (integrated into Dashboard) -->
-            <div class="bots-section" style="margin-bottom: 20px;">
+            <div class="bots-section">
                 <div class="bots-header">
                     <h3 data-i18n="botsManager">Bots</h3>
                     <button class="btn btn-primary" onclick="showCreateBotModal()" data-i18n="createBot">+ Create Bot</button>
@@ -1283,51 +1328,51 @@ DASHBOARD_HTML = r"""
             </div>
         </div>
 
-        <footer>
-            AILA v2.0.0 | Triple SuperTrend + EMA200 Strategy | Multi-Bot Trading Platform
-        </footer>
     </div>
 
-    <!-- API Stats Panel (bottom right) -->
+    <!-- API Stats Panel (bottom, aligned with container) -->
     <div id="apiStatsPanel" style="
         position: fixed;
-        bottom: 20px;
-        right: 20px;
+        bottom: 0;
+        left: 0;
+        right: 0;
         background: rgba(26, 26, 46, 0.95);
-        border: 1px solid rgba(0, 212, 255, 0.3);
-        border-radius: 8px;
-        padding: 10px 15px;
+        border-top: 1px solid rgba(0, 212, 255, 0.3);
+        padding: 8px 20px;
         font-size: 12px;
         color: #888;
         z-index: 1000;
         backdrop-filter: blur(10px);
     ">
-        <div style="display: flex; align-items: center; gap: 15px;">
-            <div title="Ping to Bybit API">
-                <span style="color: #00d4ff;">⚡</span>
-                <span id="apiPing">--</span> ms
-            </div>
-            <div title="API Requests per 5 sec / Bybit Limit">
-                <span style="color: #00ff88;">📊</span>
-                <span id="apiRequests">--</span>/<span id="apiLimit">600</span>/5s
-            </div>
-            <div title="Rate Usage">
-                <span id="apiUsageBar" style="
-                    display: inline-block;
-                    width: 40px;
-                    height: 6px;
-                    background: rgba(255,255,255,0.1);
-                    border-radius: 3px;
-                    overflow: hidden;
-                ">
-                    <span id="apiUsageFill" style="
-                        display: block;
-                        height: 100%;
-                        width: 0%;
-                        background: linear-gradient(90deg, #00ff88, #ffcc00);
-                        transition: width 0.3s;
-                    "></span>
-                </span>
+        <div style="max-width: 1600px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <span style="color: #00d4ff; font-weight: bold;" id="versionDisplay">v2.1.0</span>
+                <div title="Ping to Bybit API">
+                    <span style="color: #00d4ff;">⚡</span>
+                    <span id="apiPing">--</span> ms
+                </div>
+                <div title="API Requests per 5 sec / Bybit Limit">
+                    <span style="color: #00ff88;">📊</span>
+                    <span id="apiRequests">--</span>/<span id="apiLimit">600</span>/5s
+                </div>
+                <div title="Rate Usage">
+                    <span id="apiUsageBar" style="
+                        display: inline-block;
+                        width: 40px;
+                        height: 6px;
+                        background: rgba(255,255,255,0.1);
+                        border-radius: 3px;
+                        overflow: hidden;
+                    ">
+                        <span id="apiUsageFill" style="
+                            display: block;
+                            height: 100%;
+                            width: 0%;
+                            background: linear-gradient(90deg, #00ff88, #ffcc00);
+                            transition: width 0.3s;
+                        "></span>
+                    </span>
+                </div>
             </div>
             <button id="restartServerBtn" onclick="restartServer()" title="Restart Server" style="
                 background: transparent;
@@ -2332,8 +2377,10 @@ DASHBOARD_HTML = r"""
                 saveSettings: 'Save Settings',
                 balance: 'Balance (USDT)',
                 openPositions: 'Open Positions',
-                todayTrades: "Today's Trades",
-                todayPnl: "Today's PnL",
+                sessionPnl: 'Session PnL',
+                winrate: 'Winrate',
+                closedTrades: 'Closed Trades',
+                activeBots: 'Active Bots',
                 liveLogs: 'Live Logs',
                 autoScrollOn: 'Auto-scroll ON',
                 autoScrollOff: 'Auto-scroll OFF (scroll to bottom to enable)',
@@ -2464,8 +2511,10 @@ DASHBOARD_HTML = r"""
                 saveSettings: 'Сохранить',
                 balance: 'Баланс (USDT)',
                 openPositions: 'Открытые позиции',
-                todayTrades: 'Сделок сегодня',
-                todayPnl: 'PnL за день',
+                sessionPnl: 'PnL сессии',
+                winrate: 'Винрейт',
+                closedTrades: 'Закрытые сделки',
+                activeBots: 'Активные боты',
                 liveLogs: 'Логи',
                 autoScrollOn: 'Авто-прокрутка ВКЛ',
                 autoScrollOff: 'Авто-прокрутка ВЫКЛ (прокрутите вниз для включения)',
@@ -3056,20 +3105,45 @@ DASHBOARD_HTML = r"""
                 const response = await fetch('/api/stats');
                 const data = await response.json();
 
+                // Balance (USDT) - always from exchange
                 document.getElementById('balance').textContent =
                     data.balance ? data.balance.toFixed(2) : '--';
+
+                // Open Positions
                 document.getElementById('positions').textContent =
                     data.positions !== undefined ? data.positions : '--';
-                document.getElementById('trades').textContent =
-                    data.trades !== undefined ? data.trades : '--';
 
+                // PnL (USDT and %) - session stats since server restart
                 const pnlEl = document.getElementById('pnl');
-                if (data.pnl !== undefined) {
-                    pnlEl.textContent = (data.pnl >= 0 ? '+' : '') + data.pnl.toFixed(2) + '%';
-                    pnlEl.className = 'card-value ' + (data.pnl >= 0 ? 'positive' : 'negative');
+                if (data.pnl_usdt !== undefined && data.pnl_usdt !== null) {
+                    const pnlUsdt = data.pnl_usdt;
+                    const pnlPercent = data.pnl_percent || 0;
+                    const sign = pnlUsdt >= 0 ? '+' : '';
+                    pnlEl.textContent = `${sign}${pnlUsdt.toFixed(2)} (${sign}${pnlPercent.toFixed(2)}%)`;
+                    if (pnlUsdt > 0) {
+                        pnlEl.className = 'stat-value positive';
+                    } else if (pnlUsdt < 0) {
+                        pnlEl.className = 'stat-value negative';
+                    } else {
+                        pnlEl.className = 'stat-value'; // cyan for zero
+                    }
                 } else {
-                    pnlEl.textContent = '--';
+                    pnlEl.textContent = '0.00 (0.00%)';
+                    pnlEl.className = 'stat-value'; // cyan for zero
                 }
+
+                // Winrate %
+                const winrateEl = document.getElementById('winrate');
+                if (data.winrate !== undefined && data.winrate !== null) {
+                    winrateEl.textContent = data.winrate.toFixed(1) + '%';
+                } else {
+                    winrateEl.textContent = '--%';
+                }
+
+                // Closed Trades - session stats since server restart
+                document.getElementById('closedTrades').textContent =
+                    data.closed_trades !== undefined ? data.closed_trades : '0';
+
             } catch (err) {
                 console.error('Failed to fetch stats:', err);
             }
@@ -3086,9 +3160,23 @@ DASHBOARD_HTML = r"""
             }
         }
 
+        // Load version from API
+        async function loadVersion() {
+            try {
+                const response = await fetch('/api/version');
+                const data = await response.json();
+                if (data.version) {
+                    document.getElementById('versionDisplay').textContent = 'v' + data.version;
+                }
+            } catch (err) {
+                console.error('Failed to load version:', err);
+            }
+        }
+
         // Initialize
         connectWebSocket();
         loadInitialLogs();
+        loadVersion();
         fetchStats();
         loadBots();  // Load bots immediately on dashboard
         loadAllPositions();  // Load positions on startup

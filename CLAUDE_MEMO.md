@@ -216,6 +216,7 @@ const balanceColor = totalPnl > 0 ? '#00ff88' : (totalPnl < 0 ? '#ff4444' : '#00
 
 ```
 /opt/aila/
+├── VERSION                  # Файл версии бота (редактировать здесь!)
 ├── aila/
 │   ├── core/
 │   │   ├── indicators/      # SuperTrend, EMA, ATR
@@ -227,11 +228,23 @@ const balanceColor = totalPnl > 0 ? '#00ff88' : (totalPnl < 0 ? '#ff4444' : '#00
 │   │   └── main.py          # ГЛАВНЫЙ ФАЙЛ - FastAPI + UI (~6000 строк)
 │   ├── config/              # Настройки
 │   └── scripts/
-│       └── run_web.py       # Запуск + API endpoints
+│       └── run_web.py       # Запуск + API endpoints + чтение VERSION
 ├── merge_claude.sh          # Скрипт деплоя от Claude
 ├── venv/                    # Python virtual environment
 ├── data/                    # SQLite база данных
 └── .env                     # API ключи (НЕ ТРОГАТЬ!)
+```
+
+### Версия бота:
+**Файл:** `/opt/aila/VERSION`
+
+Для изменения версии - редактировать этот файл. Версия автоматически отображается:
+- В нижней панели интерфейса (слева)
+- Через API: `GET /api/version`
+
+```bash
+# Изменить версию
+echo "2.2.0" > /opt/aila/VERSION
 ```
 
 ### Ключевые файлы:
@@ -444,6 +457,7 @@ STRATEGY_ST3_MULTIPLIER=3.0
 - **STARTUP CLEANUP** - при перезапуске сервера закрываются ВСЕ позиции и ордера
 - /api/stats - баланс работает даже без запущенных ботов
 - /api/ping - пинг биржи работает
+- /api/version - возвращает версию из файла VERSION
 - /api/restart-server - перезагрузка с остановкой ботов
 - Правильный position sizing (order_size = notional)
 - Trailing SL по SuperTrend линиям
@@ -455,6 +469,8 @@ STRATEGY_ST3_MULTIPLIER=3.0
 - **Статистика бота** - winrate, total trades, PnL history (обновляется при закрытии позиций)
 - **Копирование логов** - последние 100 строк
 - **Компактная шапка** - зелёная точка статуса слева, логотип (клик = refresh), выбор языка EN/RU справа
+- **Dashboard карточки** - 2 ряда по 3 карточки: Balance/PnL/Winrate и Positions/Bots/Trades
+- **Нижняя панель** - версия слева, API stats (ping, requests), кнопка Restart справа
 
 ---
 
@@ -484,4 +500,5 @@ pkill -f "aila.scripts.run_web"; sleep 2; nohup /opt/aila/venv/bin/python -m ail
 ---
 
 **Последнее обновление:** 2026-01-17
+**Текущая версия:** v2.1.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
