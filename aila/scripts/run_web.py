@@ -706,6 +706,64 @@ async def get_ping():
     return {"error": "Not connected"}
 
 
+@app.get("/api/klines/{symbol}")
+async def get_klines(symbol: str, timeframe: str = "1h", limit: int = 200):
+    """Get candlestick data for a symbol."""
+    client = bot_state.get("client")
+    if not client or not getattr(client, 'is_connected', False):
+        client = get_background_client()
+
+    if not client or not getattr(client, 'is_connected', False):
+        return {"error": "Not connected", "candles": []}
+
+    try:
+        # Map timeframe to Bybit interval
+        tf_map = {
+            "1m": "1", "3m": "3", "5m": "5", "15m": "15", "30m": "30",
+            "1h": "60", "2h": "120", "4h": "240", "6h": "360", "12h": "720",
+            "1d": "D", "1w": "W", "1M": "M"
+        }
+        interval = tf_map.get(timeframe, "60")
+
+        # Get klines from Bybit
+        klines = client.get_kline(symbol, interval, limit=limit)
+
+        if klines is None or klines.empty:
+            return {"candles": [], "symbol": symbol, "timeframe": timeframe}
+
+        # Convert to list of OHLCV dicts
+        candles = []
+        for _, row in klines.iterrows():
+            candles.append({
+                "time": int(row["open_time"].timestamp()) if hasattr(row["open_time"], 'timestamp') else int(row["open_time"] / 1000),
+                "open": float(row["open"]),
+                "high": float(row["high"]),
+                "low": float(row["low"]),
+                "close": float(row["close"]),
+                "volume": float(row["volume"]) if "volume" in row else 0
+            })
+
+        return {
+            "candles": candles,
+            "symbol": symbol,
+            "timeframe": timeframe,
+            "interval_seconds": get_interval_seconds(timeframe)
+        }
+    except Exception as e:
+        logger.error(f"Failed to get klines: {e}")
+        return {"error": str(e), "candles": []}
+
+
+def get_interval_seconds(timeframe: str) -> int:
+    """Convert timeframe to seconds."""
+    tf_seconds = {
+        "1m": 60, "3m": 180, "5m": 300, "15m": 900, "30m": 1800,
+        "1h": 3600, "2h": 7200, "4h": 14400, "6h": 21600, "12h": 43200,
+        "1d": 86400, "1w": 604800, "1M": 2592000
+    }
+    return tf_seconds.get(timeframe, 3600)
+
+
 @app.post("/api/restart-server")
 async def restart_server():
     """Restart the server by exiting process (systemd will restart it)."""

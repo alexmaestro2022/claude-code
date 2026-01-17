@@ -2321,6 +2321,38 @@ DASHBOARD_HTML = r"""
         </div>
     </div>
 
+    <!-- Position Chart Modal -->
+    <div class="modal" id="positionChartModal" style="background: rgba(0,0,0,0.95);">
+        <div class="modal-content" style="max-width: 95%; width: 95%; height: 90vh; padding: 15px;">
+            <div class="modal-header" style="margin-bottom: 10px;">
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <h3 id="posChartSymbol" style="margin: 0;">BTCUSDT</h3>
+                    <span id="posChartSide" style="padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 12px;">LONG</span>
+                    <span id="posChartTimeframe" style="color: #888; font-size: 14px;">1h</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 20px;">
+                    <div id="posChartPnl" style="text-align: right;">
+                        <span id="posChartPnlUsdt" style="font-size: 20px; font-weight: bold;">+0.00 USDT</span>
+                        <span id="posChartPnlPercent" style="font-size: 14px; margin-left: 10px;">(+0.00%)</span>
+                    </div>
+                    <button class="modal-close" onclick="closePositionChart()">&times;</button>
+                </div>
+            </div>
+            <div id="posChartPriceInfo" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 15px; background: rgba(0,0,0,0.3); border-radius: 5px; margin-bottom: 10px; font-family: monospace;">
+                <div style="display: flex; gap: 20px;">
+                    <span>Entry: <span id="posChartEntry" style="color: #00d4ff;">--</span></span>
+                    <span>SL: <span id="posChartSL" style="color: #ff4444;">--</span></span>
+                    <span>TP: <span id="posChartTP" style="color: #00ff88;">--</span></span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <span id="posChartCurrentPrice" style="color: #00ff88; font-size: 18px; font-weight: bold;">--</span>
+                    <span id="posChartCountdown" style="color: #ffcc00; font-size: 16px;">--:--</span>
+                </div>
+            </div>
+            <div id="positionChartContainer" style="height: calc(100% - 100px); width: 100%;"></div>
+        </div>
+    </div>
+
     <script>
         // Localization
         const i18n = {
@@ -5256,6 +5288,291 @@ DASHBOARD_HTML = r"""
                 updateAllCharts();
             }
         }, 30000);
+
+        // ============== Position Chart Functions ==============
+        let positionChart = null;
+        let positionCandleSeries = null;
+        let positionChartData = null;
+        let positionChartInterval = null;
+        let positionChartCountdownInterval = null;
+        let currentPositionId = null;
+        let entryLine = null;
+        let slLine = null;
+        let tpLine = null;
+
+        async function openPositionChart(positionId) {
+            currentPositionId = positionId;
+
+            // Find position data
+            const position = positionsData.find(p => p.id === positionId);
+            if (!position) {
+                showToast('Position not found');
+                return;
+            }
+
+            // Find bot to get timeframe
+            const bot = botsData.find(b => b.id === position.bot_id);
+            const timeframe = bot ? bot.timeframe : '1h';
+
+            // Update header info
+            document.getElementById('posChartSymbol').textContent = position.symbol;
+
+            const sideEl = document.getElementById('posChartSide');
+            sideEl.textContent = position.side.toUpperCase();
+            sideEl.style.background = position.side.toUpperCase() === 'LONG' ? '#00ff88' : '#ff4444';
+            sideEl.style.color = '#1a1a2e';
+
+            document.getElementById('posChartTimeframe').textContent = timeframe;
+
+            // Update price info
+            document.getElementById('posChartEntry').textContent = position.entry_price.toFixed(6);
+            document.getElementById('posChartSL').textContent = position.sl.toFixed(6);
+            document.getElementById('posChartTP').textContent = position.tp.toFixed(6);
+
+            updatePositionPnl(position);
+
+            // Show modal
+            document.getElementById('positionChartModal').classList.add('active');
+
+            // Create chart
+            await createPositionChart(position.symbol, timeframe, position);
+
+            // Start real-time updates
+            startPositionChartUpdates(position.symbol, timeframe);
+        }
+
+        function closePositionChart() {
+            document.getElementById('positionChartModal').classList.remove('active');
+
+            // Clean up
+            if (positionChartInterval) {
+                clearInterval(positionChartInterval);
+                positionChartInterval = null;
+            }
+            if (positionChartCountdownInterval) {
+                clearInterval(positionChartCountdownInterval);
+                positionChartCountdownInterval = null;
+            }
+            if (positionChart) {
+                positionChart.remove();
+                positionChart = null;
+            }
+            currentPositionId = null;
+        }
+
+        function updatePositionPnl(position) {
+            const pnlUsdt = document.getElementById('posChartPnlUsdt');
+            const pnlPercent = document.getElementById('posChartPnlPercent');
+            const pnlSign = position.pnl_usdt >= 0 ? '+' : '';
+            const pnlColor = position.pnl_usdt >= 0 ? '#00ff88' : '#ff4444';
+
+            pnlUsdt.textContent = `${pnlSign}${position.pnl_usdt.toFixed(4)} USDT`;
+            pnlUsdt.style.color = pnlColor;
+            pnlPercent.textContent = `(${pnlSign}${position.pnl_percent.toFixed(2)}%)`;
+            pnlPercent.style.color = pnlColor;
+        }
+
+        async function createPositionChart(symbol, timeframe, position) {
+            const container = document.getElementById('positionChartContainer');
+            container.innerHTML = '';
+
+            // Create chart
+            positionChart = LightweightCharts.createChart(container, {
+                width: container.clientWidth,
+                height: container.clientHeight,
+                layout: {
+                    background: { type: 'solid', color: '#0d0d0d' },
+                    textColor: '#888',
+                },
+                grid: {
+                    vertLines: { color: 'rgba(255, 255, 255, 0.05)' },
+                    horzLines: { color: 'rgba(255, 255, 255, 0.05)' },
+                },
+                rightPriceScale: {
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                    scaleMargins: { top: 0.1, bottom: 0.1 },
+                },
+                timeScale: {
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                    timeVisible: true,
+                    secondsVisible: false,
+                },
+                crosshair: {
+                    mode: LightweightCharts.CrosshairMode.Normal,
+                    vertLine: { color: 'rgba(0, 212, 255, 0.3)' },
+                    horzLine: { color: 'rgba(0, 212, 255, 0.3)' },
+                },
+            });
+
+            // Candlestick series
+            positionCandleSeries = positionChart.addCandlestickSeries({
+                upColor: '#00ff88',
+                downColor: '#ff4444',
+                borderDownColor: '#ff4444',
+                borderUpColor: '#00ff88',
+                wickDownColor: '#ff4444',
+                wickUpColor: '#00ff88',
+            });
+
+            // Load candle data
+            await loadPositionChartData(symbol, timeframe);
+
+            // Add price lines
+            addPositionPriceLines(position);
+
+            // Add entry marker
+            addEntryMarker(position);
+
+            // Resize handler
+            const resizeObserver = new ResizeObserver(() => {
+                if (positionChart) {
+                    positionChart.applyOptions({
+                        width: container.clientWidth,
+                        height: container.clientHeight,
+                    });
+                }
+            });
+            resizeObserver.observe(container);
+        }
+
+        async function loadPositionChartData(symbol, timeframe) {
+            try {
+                const response = await fetch(`/api/klines/${symbol}?timeframe=${timeframe}&limit=200`);
+                const data = await response.json();
+
+                if (data.candles && data.candles.length > 0) {
+                    positionChartData = data;
+                    positionCandleSeries.setData(data.candles);
+                    positionChart.timeScale().fitContent();
+
+                    // Update current price
+                    const lastCandle = data.candles[data.candles.length - 1];
+                    document.getElementById('posChartCurrentPrice').textContent = lastCandle.close.toFixed(6);
+                }
+            } catch (err) {
+                console.error('Failed to load chart data:', err);
+            }
+        }
+
+        function addPositionPriceLines(position) {
+            // Calculate PnL for SL and TP
+            const isLong = position.side.toUpperCase() === 'LONG';
+            const size = position.size || 0;
+
+            // SL PnL calculation
+            let slPnl, tpPnl;
+            if (isLong) {
+                slPnl = (position.sl - position.entry_price) * size;
+                tpPnl = (position.tp - position.entry_price) * size;
+            } else {
+                slPnl = (position.entry_price - position.sl) * size;
+                tpPnl = (position.entry_price - position.tp) * size;
+            }
+
+            // Entry line
+            entryLine = positionCandleSeries.createPriceLine({
+                price: position.entry_price,
+                color: '#00d4ff',
+                lineWidth: 2,
+                lineStyle: LightweightCharts.LineStyle.Solid,
+                axisLabelVisible: true,
+                title: `Entry`,
+            });
+
+            // Stop Loss line
+            slLine = positionCandleSeries.createPriceLine({
+                price: position.sl,
+                color: '#ff4444',
+                lineWidth: 2,
+                lineStyle: LightweightCharts.LineStyle.Dashed,
+                axisLabelVisible: true,
+                title: `SL ${slPnl.toFixed(2)}`,
+            });
+
+            // Take Profit line
+            tpLine = positionCandleSeries.createPriceLine({
+                price: position.tp,
+                color: '#00ff88',
+                lineWidth: 2,
+                lineStyle: LightweightCharts.LineStyle.Dashed,
+                axisLabelVisible: true,
+                title: `TP +${tpPnl.toFixed(2)}`,
+            });
+        }
+
+        function addEntryMarker(position) {
+            // Find the candle closest to entry time
+            if (!positionChartData || !positionChartData.candles) return;
+
+            const entryTime = position.opened_at ? new Date(position.opened_at).getTime() / 1000 : null;
+            if (!entryTime) return;
+
+            const isLong = position.side.toUpperCase() === 'LONG';
+
+            // Find closest candle
+            let closestCandle = positionChartData.candles[0];
+            let minDiff = Math.abs(closestCandle.time - entryTime);
+
+            for (const candle of positionChartData.candles) {
+                const diff = Math.abs(candle.time - entryTime);
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    closestCandle = candle;
+                }
+            }
+
+            // Add marker
+            positionCandleSeries.setMarkers([{
+                time: closestCandle.time,
+                position: isLong ? 'belowBar' : 'aboveBar',
+                color: isLong ? '#00ff88' : '#ff4444',
+                shape: isLong ? 'arrowUp' : 'arrowDown',
+                text: 'Entry',
+            }]);
+        }
+
+        function startPositionChartUpdates(symbol, timeframe) {
+            // Update chart data every few seconds
+            positionChartInterval = setInterval(async () => {
+                if (!currentPositionId) return;
+
+                // Reload candle data
+                await loadPositionChartData(symbol, timeframe);
+
+                // Update position info from positionsData
+                const position = positionsData.find(p => p.id === currentPositionId);
+                if (position) {
+                    updatePositionPnl(position);
+                    document.getElementById('posChartCurrentPrice').textContent = position.current_price.toFixed(6);
+
+                    // Update price color based on PnL
+                    const priceEl = document.getElementById('posChartCurrentPrice');
+                    priceEl.style.color = position.pnl_usdt >= 0 ? '#00ff88' : '#ff4444';
+                }
+            }, 5000);
+
+            // Countdown timer
+            const intervalSeconds = getIntervalSeconds(timeframe);
+            positionChartCountdownInterval = setInterval(() => {
+                const now = Math.floor(Date.now() / 1000);
+                const nextCandleTime = Math.ceil(now / intervalSeconds) * intervalSeconds;
+                const remaining = nextCandleTime - now;
+
+                const minutes = Math.floor(remaining / 60);
+                const seconds = remaining % 60;
+                document.getElementById('posChartCountdown').textContent =
+                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }, 1000);
+        }
+
+        function getIntervalSeconds(timeframe) {
+            const tf = {
+                '1m': 60, '3m': 180, '5m': 300, '15m': 900, '30m': 1800,
+                '1h': 3600, '2h': 7200, '4h': 14400, '6h': 21600, '12h': 43200,
+                '1d': 86400, '1w': 604800
+            };
+            return tf[timeframe] || 3600;
+        }
     </script>
 </body>
 </html>
