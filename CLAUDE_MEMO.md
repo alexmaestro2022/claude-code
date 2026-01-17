@@ -471,6 +471,13 @@ STRATEGY_ST3_MULTIPLIER=3.0
 - **Компактная шапка** - зелёная точка статуса слева, логотип (клик = refresh), выбор языка EN/RU справа
 - **Dashboard карточки** - 2 ряда по 3 карточки: Balance/PnL/Winrate и Positions/Bots/Trades
 - **Нижняя панель** - версия слева, API stats (ping, requests), кнопка Restart справа
+- **График позиции** - клик на карточку позиции открывает полноэкранный график:
+  - Свечи с TradingView Lightweight Charts
+  - Индикаторы: ST1 (зелёный), ST2 (голубой), ST3 (оранжевый), EMA200 (жёлтый)
+  - Линии Entry/SL/TP с PnL
+  - Перетаскивание SL/TP мышью для ручного изменения
+  - Обратный отсчёт до закрытия свечи
+  - API: /api/klines/{symbol}, /api/indicators/{symbol}, /api/positions/{id}/update-levels
 
 ---
 
