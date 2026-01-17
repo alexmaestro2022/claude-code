@@ -25,6 +25,7 @@ else:
 
 import structlog
 import uvicorn
+import pandas as pd
 
 # NOTE: We need a placeholder for add_log that will be set after import
 _log_callback = None
@@ -762,6 +763,121 @@ def get_interval_seconds(timeframe: str) -> int:
         "1d": 86400, "1w": 604800, "1M": 2592000
     }
     return tf_seconds.get(timeframe, 3600)
+
+
+@app.get("/api/indicators/{symbol}")
+async def get_indicators(symbol: str, timeframe: str = "1h", limit: int = 200):
+    """Get indicator data (SuperTrend + EMA) for a symbol."""
+    from aila.core.indicators import SuperTrendIndicator, EMAIndicator
+
+    client = bot_state.get("client")
+    if not client or not getattr(client, 'is_connected', False):
+        client = get_background_client()
+
+    if not client or not getattr(client, 'is_connected', False):
+        return {"error": "Not connected"}
+
+    try:
+        # Map timeframe to Bybit interval
+        tf_map = {
+            "1m": "1", "3m": "3", "5m": "5", "15m": "15", "30m": "30",
+            "1h": "60", "2h": "120", "4h": "240", "6h": "360", "12h": "720",
+            "1d": "D", "1w": "W", "1M": "M"
+        }
+        interval = tf_map.get(timeframe, "60")
+
+        # Get klines
+        klines = client.get_kline(symbol, interval, limit=limit)
+        if klines is None or klines.empty:
+            return {"error": "No data"}
+
+        # Calculate SuperTrend indicators (ST1, ST2, ST3)
+        st1 = SuperTrendIndicator(period=10, multiplier=1.0)
+        st2 = SuperTrendIndicator(period=11, multiplier=2.0)
+        st3 = SuperTrendIndicator(period=12, multiplier=3.0)
+
+        st1_data = st1.calculate(klines)
+        st2_data = st2.calculate(klines)
+        st3_data = st3.calculate(klines)
+
+        # Calculate EMA200
+        ema = EMAIndicator(period=200)
+        ema_data = ema.calculate(klines)
+
+        # Format data for chart
+        result = {
+            "symbol": symbol,
+            "timeframe": timeframe,
+            "st1": [],  # Fast (green/red)
+            "st2": [],  # Medium (blue)
+            "st3": [],  # Slow (orange)
+            "ema200": [],
+        }
+
+        for i, row in klines.iterrows():
+            time_val = int(row["open_time"].timestamp()) if hasattr(row["open_time"], 'timestamp') else int(row["open_time"] / 1000)
+
+            # ST1
+            if i < len(st1_data.supertrend) and not pd.isna(st1_data.supertrend.iloc[i]):
+                result["st1"].append({
+                    "time": time_val,
+                    "value": float(st1_data.supertrend.iloc[i]),
+                    "direction": int(st1_data.direction.iloc[i]) if not pd.isna(st1_data.direction.iloc[i]) else 0
+                })
+
+            # ST2
+            if i < len(st2_data.supertrend) and not pd.isna(st2_data.supertrend.iloc[i]):
+                result["st2"].append({
+                    "time": time_val,
+                    "value": float(st2_data.supertrend.iloc[i]),
+                    "direction": int(st2_data.direction.iloc[i]) if not pd.isna(st2_data.direction.iloc[i]) else 0
+                })
+
+            # ST3
+            if i < len(st3_data.supertrend) and not pd.isna(st3_data.supertrend.iloc[i]):
+                result["st3"].append({
+                    "time": time_val,
+                    "value": float(st3_data.supertrend.iloc[i]),
+                    "direction": int(st3_data.direction.iloc[i]) if not pd.isna(st3_data.direction.iloc[i]) else 0
+                })
+
+            # EMA200
+            if i < len(ema_data) and not pd.isna(ema_data.iloc[i]):
+                result["ema200"].append({
+                    "time": time_val,
+                    "value": float(ema_data.iloc[i])
+                })
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Failed to get indicators: {e}")
+        return {"error": str(e)}
+
+
+@app.post("/api/positions/{position_id}/update-levels")
+async def update_position_levels(position_id: str, sl: float = None, tp: float = None):
+    """Update SL/TP levels for a position."""
+    from aila.api.main import positions_registry
+
+    if position_id not in positions_registry:
+        return {"success": False, "message": "Position not found"}
+
+    position = positions_registry[position_id]
+
+    # Update levels
+    if sl is not None:
+        position["sl"] = sl
+        add_log(f"[info    ] Position {position['symbol']} SL updated to {sl}")
+
+    if tp is not None:
+        position["tp"] = tp
+        add_log(f"[info    ] Position {position['symbol']} TP updated to {tp}")
+
+    # TODO: Update actual exchange orders if needed
+    # This would require canceling old SL/TP orders and placing new ones
+
+    return {"success": True, "sl": position["sl"], "tp": position["tp"]}
 
 
 @app.post("/api/restart-server")

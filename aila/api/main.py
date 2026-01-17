@@ -5296,9 +5296,22 @@ DASHBOARD_HTML = r"""
         let positionChartInterval = null;
         let positionChartCountdownInterval = null;
         let currentPositionId = null;
+        let currentPositionData = null;
         let entryLine = null;
         let slLine = null;
         let tpLine = null;
+
+        // Indicator series
+        let st1Series = null;
+        let st2Series = null;
+        let st3Series = null;
+        let ema200Series = null;
+
+        // Dragging state
+        let isDragging = false;
+        let dragType = null; // 'sl' or 'tp'
+        let dragStartY = 0;
+        let dragStartPrice = 0;
 
         async function openPositionChart(positionId) {
             currentPositionId = positionId;
@@ -5309,6 +5322,7 @@ DASHBOARD_HTML = r"""
                 showToast('Position not found');
                 return;
             }
+            currentPositionData = position;
 
             // Find bot to get timeframe
             const bot = botsData.find(b => b.id === position.bot_id);
@@ -5337,6 +5351,9 @@ DASHBOARD_HTML = r"""
             // Create chart
             await createPositionChart(position.symbol, timeframe, position);
 
+            // Load indicators
+            await loadIndicators(position.symbol, timeframe);
+
             // Start real-time updates
             startPositionChartUpdates(position.symbol, timeframe);
         }
@@ -5358,6 +5375,11 @@ DASHBOARD_HTML = r"""
                 positionChart = null;
             }
             currentPositionId = null;
+            currentPositionData = null;
+            st1Series = null;
+            st2Series = null;
+            st3Series = null;
+            ema200Series = null;
         }
 
         function updatePositionPnl(position) {
@@ -5417,11 +5439,14 @@ DASHBOARD_HTML = r"""
             // Load candle data
             await loadPositionChartData(symbol, timeframe);
 
-            // Add price lines
+            // Add price lines (with drag support)
             addPositionPriceLines(position);
 
             // Add entry marker
             addEntryMarker(position);
+
+            // Setup drag handlers
+            setupDragHandlers(container);
 
             // Resize handler
             const resizeObserver = new ResizeObserver(() => {
@@ -5454,6 +5479,76 @@ DASHBOARD_HTML = r"""
             }
         }
 
+        async function loadIndicators(symbol, timeframe) {
+            try {
+                const response = await fetch(`/api/indicators/${symbol}?timeframe=${timeframe}&limit=200`);
+                const data = await response.json();
+
+                if (data.error) {
+                    console.error('Indicators error:', data.error);
+                    return;
+                }
+
+                // Add EMA200 line (yellow, behind everything)
+                if (data.ema200 && data.ema200.length > 0) {
+                    ema200Series = positionChart.addLineSeries({
+                        color: '#ffcc00',
+                        lineWidth: 1,
+                        lineStyle: LightweightCharts.LineStyle.Solid,
+                        priceLineVisible: false,
+                        lastValueVisible: false,
+                        crosshairMarkerVisible: false,
+                    });
+                    ema200Series.setData(data.ema200);
+                }
+
+                // Add SuperTrend lines
+                // ST1 (Fast) - thin line
+                if (data.st1 && data.st1.length > 0) {
+                    // Split into up/down segments for coloring
+                    const st1Up = data.st1.filter(d => d.direction === 1).map(d => ({ time: d.time, value: d.value }));
+                    const st1Down = data.st1.filter(d => d.direction === -1).map(d => ({ time: d.time, value: d.value }));
+
+                    st1Series = positionChart.addLineSeries({
+                        color: '#00ff88',
+                        lineWidth: 1,
+                        priceLineVisible: false,
+                        lastValueVisible: false,
+                        crosshairMarkerVisible: false,
+                    });
+                    // Use full data with color based on last direction
+                    st1Series.setData(data.st1.map(d => ({ time: d.time, value: d.value })));
+                }
+
+                // ST2 (Medium) - blue line
+                if (data.st2 && data.st2.length > 0) {
+                    st2Series = positionChart.addLineSeries({
+                        color: '#00d4ff',
+                        lineWidth: 1,
+                        priceLineVisible: false,
+                        lastValueVisible: false,
+                        crosshairMarkerVisible: false,
+                    });
+                    st2Series.setData(data.st2.map(d => ({ time: d.time, value: d.value })));
+                }
+
+                // ST3 (Slow) - orange line
+                if (data.st3 && data.st3.length > 0) {
+                    st3Series = positionChart.addLineSeries({
+                        color: '#ff8800',
+                        lineWidth: 2,
+                        priceLineVisible: false,
+                        lastValueVisible: false,
+                        crosshairMarkerVisible: false,
+                    });
+                    st3Series.setData(data.st3.map(d => ({ time: d.time, value: d.value })));
+                }
+
+            } catch (err) {
+                console.error('Failed to load indicators:', err);
+            }
+        }
+
         function addPositionPriceLines(position) {
             // Calculate PnL for SL and TP
             const isLong = position.side.toUpperCase() === 'LONG';
@@ -5479,7 +5574,7 @@ DASHBOARD_HTML = r"""
                 title: `Entry`,
             });
 
-            // Stop Loss line
+            // Stop Loss line (draggable)
             slLine = positionCandleSeries.createPriceLine({
                 price: position.sl,
                 color: '#ff4444',
@@ -5487,9 +5582,10 @@ DASHBOARD_HTML = r"""
                 lineStyle: LightweightCharts.LineStyle.Dashed,
                 axisLabelVisible: true,
                 title: `SL ${slPnl.toFixed(2)}`,
+                draggable: true,
             });
 
-            // Take Profit line
+            // Take Profit line (draggable)
             tpLine = positionCandleSeries.createPriceLine({
                 price: position.tp,
                 color: '#00ff88',
@@ -5497,7 +5593,139 @@ DASHBOARD_HTML = r"""
                 lineStyle: LightweightCharts.LineStyle.Dashed,
                 axisLabelVisible: true,
                 title: `TP +${tpPnl.toFixed(2)}`,
+                draggable: true,
             });
+        }
+
+        function setupDragHandlers(container) {
+            // Mouse events for dragging SL/TP lines
+            container.addEventListener('mousedown', (e) => {
+                if (!currentPositionData) return;
+
+                const rect = container.getBoundingClientRect();
+                const y = e.clientY - rect.top;
+                const price = positionChart.priceScale('right').coordinateToPrice(y);
+
+                const slPrice = currentPositionData.sl;
+                const tpPrice = currentPositionData.tp;
+
+                // Check if click is near SL or TP line (within 0.5% of price)
+                const threshold = Math.abs(slPrice * 0.005);
+
+                if (Math.abs(price - slPrice) < threshold) {
+                    isDragging = true;
+                    dragType = 'sl';
+                    dragStartY = y;
+                    dragStartPrice = slPrice;
+                    container.style.cursor = 'ns-resize';
+                } else if (Math.abs(price - tpPrice) < threshold) {
+                    isDragging = true;
+                    dragType = 'tp';
+                    dragStartY = y;
+                    dragStartPrice = tpPrice;
+                    container.style.cursor = 'ns-resize';
+                }
+            });
+
+            container.addEventListener('mousemove', (e) => {
+                if (!isDragging || !currentPositionData) return;
+
+                const rect = container.getBoundingClientRect();
+                const y = e.clientY - rect.top;
+                const newPrice = positionChart.priceScale('right').coordinateToPrice(y);
+
+                if (dragType === 'sl' && slLine) {
+                    // Update SL line position
+                    positionCandleSeries.removePriceLine(slLine);
+                    const isLong = currentPositionData.side.toUpperCase() === 'LONG';
+                    const size = currentPositionData.size || 0;
+                    const slPnl = isLong ?
+                        (newPrice - currentPositionData.entry_price) * size :
+                        (currentPositionData.entry_price - newPrice) * size;
+
+                    slLine = positionCandleSeries.createPriceLine({
+                        price: newPrice,
+                        color: '#ff4444',
+                        lineWidth: 2,
+                        lineStyle: LightweightCharts.LineStyle.Dashed,
+                        axisLabelVisible: true,
+                        title: `SL ${slPnl.toFixed(2)}`,
+                    });
+                    document.getElementById('posChartSL').textContent = newPrice.toFixed(6);
+                } else if (dragType === 'tp' && tpLine) {
+                    // Update TP line position
+                    positionCandleSeries.removePriceLine(tpLine);
+                    const isLong = currentPositionData.side.toUpperCase() === 'LONG';
+                    const size = currentPositionData.size || 0;
+                    const tpPnl = isLong ?
+                        (newPrice - currentPositionData.entry_price) * size :
+                        (currentPositionData.entry_price - newPrice) * size;
+
+                    tpLine = positionCandleSeries.createPriceLine({
+                        price: newPrice,
+                        color: '#00ff88',
+                        lineWidth: 2,
+                        lineStyle: LightweightCharts.LineStyle.Dashed,
+                        axisLabelVisible: true,
+                        title: `TP +${tpPnl.toFixed(2)}`,
+                    });
+                    document.getElementById('posChartTP').textContent = newPrice.toFixed(6);
+                }
+            });
+
+            container.addEventListener('mouseup', async (e) => {
+                if (!isDragging || !currentPositionData) {
+                    isDragging = false;
+                    return;
+                }
+
+                const rect = container.getBoundingClientRect();
+                const y = e.clientY - rect.top;
+                const newPrice = positionChart.priceScale('right').coordinateToPrice(y);
+
+                // Save new SL/TP to server
+                if (dragType === 'sl') {
+                    await updatePositionLevels(currentPositionId, newPrice, null);
+                    currentPositionData.sl = newPrice;
+                } else if (dragType === 'tp') {
+                    await updatePositionLevels(currentPositionId, null, newPrice);
+                    currentPositionData.tp = newPrice;
+                }
+
+                isDragging = false;
+                dragType = null;
+                container.style.cursor = 'crosshair';
+            });
+
+            container.addEventListener('mouseleave', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    dragType = null;
+                    container.style.cursor = 'crosshair';
+                }
+            });
+        }
+
+        async function updatePositionLevels(positionId, sl, tp) {
+            try {
+                const params = new URLSearchParams();
+                if (sl !== null) params.append('sl', sl);
+                if (tp !== null) params.append('tp', tp);
+
+                const response = await fetch(`/api/positions/${positionId}/update-levels?${params}`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    showToast(currentLang === 'ru' ? 'Уровни обновлены' : 'Levels updated');
+                } else {
+                    showToast(data.message || 'Update failed');
+                }
+            } catch (err) {
+                console.error('Failed to update levels:', err);
+                showToast('Update failed');
+            }
         }
 
         function addEntryMarker(position) {
