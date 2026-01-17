@@ -72,6 +72,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Static files
+app.mount("/static", StaticFiles(directory="/opt/aila/static"), name="static")
 
 # Clear logs on startup
 @app.on_event("startup")
