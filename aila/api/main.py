@@ -1225,7 +1225,7 @@ DASHBOARD_HTML = r"""
             <!-- Stats Row 1: Balance, PnL, Winrate -->
             <div class="stats-row">
                 <div class="stat-card">
-                    <div class="stat-title" data-i18n="balance">Balance (USDT)</div>
+                    <div class="stat-title" data-i18n="balance">Balance</div>
                     <div class="stat-value" id="balance">--</div>
                 </div>
                 <div class="stat-card">
@@ -2375,7 +2375,7 @@ DASHBOARD_HTML = r"""
                 fixedPercent: 'Fixed Percent',
                 reset: 'Reset',
                 saveSettings: 'Save Settings',
-                balance: 'Balance (USDT)',
+                balance: 'Balance',
                 openPositions: 'Open Positions',
                 sessionPnl: 'Session PnL',
                 winrate: 'Winrate',
@@ -2509,7 +2509,7 @@ DASHBOARD_HTML = r"""
                 fixedPercent: 'Фикс. процент',
                 reset: 'Сброс',
                 saveSettings: 'Сохранить',
-                balance: 'Баланс (USDT)',
+                balance: 'Баланс',
                 openPositions: 'Открытые позиции',
                 sessionPnl: 'PnL сессии',
                 winrate: 'Винрейт',
@@ -3105,7 +3105,7 @@ DASHBOARD_HTML = r"""
                 const response = await fetch('/api/stats');
                 const data = await response.json();
 
-                // Balance (USDT) - always from exchange
+                // Balance - always from exchange
                 document.getElementById('balance').textContent =
                     data.balance ? data.balance.toFixed(2) : '--';
 
