@@ -99,7 +99,9 @@ DASHBOARD_HTML = r"""
     <meta name="apple-mobile-web-app-title" content="AILA Bot">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="theme-color" content="#1a1a2e">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%231a1a2e' width='100' height='100' rx='20'/><text x='50' y='65' font-size='50' text-anchor='middle' fill='%2300d4ff'>A</text></svg>">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="icon" type="image/png" href="/static/aila-icon.png">
+    <link rel="apple-touch-icon" href="/static/aila-icon.png">
     <title>AILA Trading Bot v2.1</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
     <style>
@@ -126,11 +128,33 @@ DASHBOARD_HTML = r"""
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 20px;
+            padding: 12px 20px;
             background: rgba(255, 255, 255, 0.05);
             border-radius: 12px;
             margin-bottom: 20px;
             backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .lang-selector {
+            background: transparent;
+            border: none;
+            color: #888;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 5px;
+            letter-spacing: 1px;
+        }
+
+        .lang-selector:focus {
+            outline: none;
         }
 
         h1 {
@@ -147,8 +171,8 @@ DASHBOARD_HTML = r"""
         }
 
         .status-dot {
-            width: 12px;
-            height: 12px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
             background: #00ff88;
             animation: pulse 2s infinite;
@@ -415,49 +439,9 @@ DASHBOARD_HTML = r"""
             opacity: 0.5;
         }
 
-        .header-right {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-
-        .refresh-btn {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            background: rgba(0, 0, 0, 0.3);
-            color: #00d4ff;
-            font-size: 20px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-        }
-
-        .refresh-btn:hover {
-            background: rgba(0, 212, 255, 0.2);
-            transform: rotate(180deg);
-        }
-
-        .refresh-btn:active {
-            transform: rotate(360deg);
-        }
-
-        .lang-selector {
-            padding: 8px 12px;
-            border-radius: 6px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            background: rgba(0, 0, 0, 0.3);
+        .lang-selector option {
+            background: #1a1a2e;
             color: #e0e0e0;
-            font-size: 14px;
-            cursor: pointer;
-        }
-
-        .lang-selector:focus {
-            outline: none;
-            border-color: #00d4ff;
         }
 
         /* Charts Section */
@@ -1183,18 +1167,14 @@ DASHBOARD_HTML = r"""
 <body>
     <div class="container">
         <header>
-            <img src="/static/logo.png" alt="AILA" style="height: 45px;">
-            <div class="header-right">
-                <button class="refresh-btn" onclick="location.reload()" title="Refresh">↻</button>
-                <select class="lang-selector" id="langSelector" onchange="changeLanguage(this.value)">
-                    <option value="en">English</option>
-                    <option value="ru">Русский</option>
-                </select>
-                <div class="status">
-                    <div class="status-dot" id="statusDot"></div>
-                    <span id="statusText" data-i18n="connecting">Connecting...</span>
-                </div>
+            <div class="header-left">
+                <div class="status-dot" id="statusDot"></div>
+                <img src="/static/logo.png" alt="AILA" style="height: 30px; cursor: pointer;" onclick="location.reload()" title="Refresh">
             </div>
+            <select class="lang-selector" id="langSelector" onchange="changeLanguage(this.value)">
+                <option value="en">EN</option>
+                <option value="ru">RU</option>
+            </select>
         </header>
 
         <!-- Tabs Navigation -->
@@ -2934,7 +2914,6 @@ DASHBOARD_HTML = r"""
             ws.onopen = function() {
                 console.log('WebSocket connected');
                 document.getElementById('statusDot').classList.remove('disconnected');
-                document.getElementById('statusText').textContent = t('connected');
                 reconnectAttempts = 0;
             };
 
@@ -2945,7 +2924,6 @@ DASHBOARD_HTML = r"""
             ws.onclose = function() {
                 console.log('WebSocket disconnected');
                 document.getElementById('statusDot').classList.add('disconnected');
-                document.getElementById('statusText').textContent = t('disconnected');
 
                 // Reconnect
                 if (reconnectAttempts < maxReconnectAttempts) {

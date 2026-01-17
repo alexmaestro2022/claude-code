@@ -454,6 +454,7 @@ STRATEGY_ST3_MULTIPLIER=3.0
 - **Динамический баланс бота** - показывает initial_balance + PnL
 - **Статистика бота** - winrate, total trades, PnL history (обновляется при закрытии позиций)
 - **Копирование логов** - последние 100 строк
+- **Компактная шапка** - зелёная точка статуса слева, логотип (клик = refresh), выбор языка EN/RU справа
 
 ---
 
@@ -482,5 +483,5 @@ pkill -f "aila.scripts.run_web"; sleep 2; nohup /opt/aila/venv/bin/python -m ail
 
 ---
 
-**Последнее обновление:** 2026-01-15
+**Последнее обновление:** 2026-01-17
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
