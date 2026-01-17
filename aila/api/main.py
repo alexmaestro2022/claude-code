@@ -261,7 +261,7 @@ DASHBOARD_HTML = r"""
         .logs-container {
             background: rgba(0, 0, 0, 0.3);
             border-radius: 12px;
-            padding: 20px;
+            padding: 15px;
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
@@ -269,12 +269,40 @@ DASHBOARD_HTML = r"""
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
         }
 
-        .logs-header h2 {
-            font-size: 18px;
+        .log-icon-btn {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            color: #888;
+            transition: all 0.2s;
+        }
+
+        .log-icon-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
             color: #fff;
+        }
+
+        .log-icon-btn.active {
+            color: #00ff88;
+        }
+
+        .log-icon-btn.active:hover {
+            background: rgba(0, 255, 136, 0.1);
+        }
+
+        .log-icons-right {
+            display: flex;
+            gap: 5px;
         }
 
         .btn-group {
@@ -319,12 +347,12 @@ DASHBOARD_HTML = r"""
         .logs {
             background: #0d0d0d;
             border-radius: 8px;
-            padding: 15px;
-            height: 300px;
+            padding: 12px;
+            height: 200px;
             overflow-y: auto;
             font-family: 'Consolas', 'Monaco', monospace;
-            font-size: 13px;
-            line-height: 1.6;
+            font-size: 12px;
+            line-height: 1.5;
         }
 
         .log-line {
@@ -362,16 +390,6 @@ DASHBOARD_HTML = r"""
         .toast.show {
             transform: translateY(0);
             opacity: 1;
-        }
-
-        .auto-scroll-indicator {
-            font-size: 12px;
-            color: #888;
-            margin-left: 10px;
-        }
-
-        .auto-scroll-indicator.active {
-            color: #00ff88;
         }
 
         .controls {
@@ -1277,13 +1295,16 @@ DASHBOARD_HTML = r"""
 
             <div class="logs-container">
                 <div class="logs-header">
-                    <div style="display: flex; align-items: center;">
-                        <h2 data-i18n="liveLogs">Live Logs</h2>
-                        <span class="auto-scroll-indicator active" id="autoScrollIndicator" data-i18n="autoScrollOn">Auto-scroll ON</span>
-                    </div>
-                    <div class="btn-group">
-                        <button class="btn btn-secondary" onclick="clearLogs()" data-i18n="clear">Clear</button>
-                        <button class="btn btn-primary" onclick="copyLogs()" data-i18n="copyLogs">Copy Logs</button>
+                    <button class="log-icon-btn active" id="autoScrollBtn" onclick="toggleAutoScroll()" title="Auto-scroll">
+                        ⬇
+                    </button>
+                    <div class="log-icons-right">
+                        <button class="log-icon-btn" onclick="clearLogs()" title="Clear logs">
+                            🗑
+                        </button>
+                        <button class="log-icon-btn" onclick="copyLogs()" title="Copy logs">
+                            📋
+                        </button>
                     </div>
                 </div>
                 <div class="logs" id="logs"></div>
@@ -3088,16 +3109,26 @@ DASHBOARD_HTML = r"""
             const logsDiv = this;
             const isAtBottom = logsDiv.scrollHeight - logsDiv.scrollTop <= logsDiv.clientHeight + 50;
             autoScroll = isAtBottom;
-
-            const indicator = document.getElementById('autoScrollIndicator');
-            if (autoScroll) {
-                indicator.textContent = t('autoScrollOn');
-                indicator.classList.add('active');
-            } else {
-                indicator.textContent = t('autoScrollOff');
-                indicator.classList.remove('active');
-            }
+            updateAutoScrollBtn();
         });
+
+        // Update auto-scroll button state
+        function updateAutoScrollBtn() {
+            const btn = document.getElementById('autoScrollBtn');
+            if (autoScroll) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        }
+
+        // Toggle auto-scroll on button click
+        function toggleAutoScroll() {
+            const logsDiv = document.getElementById('logs');
+            autoScroll = true;
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+            updateAutoScrollBtn();
+        }
 
         // Fetch stats periodically
         async function fetchStats() {
