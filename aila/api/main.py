@@ -1466,13 +1466,55 @@ DASHBOARD_HTML = r"""
                     </div>
                 </div>
                 <div class="settings-row">
-                    <div class="setting-compact" style="flex: 1;">
+                    <div class="setting-compact" style="flex: 0 0 auto;">
                         <label data-i18n="maxLossLimit">Max Loss Limit (%)</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="newBotMaxLossEnabled" onchange="toggleMaxLossSlider('new')">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="settings-row" id="newMaxLossContainer" style="display: none;">
+                    <div class="setting-compact" style="flex: 1;">
                         <div class="range-container">
                             <span id="newMaxLossInfo" style="min-width: 90px; font-size: 12px; color: #ff6b6b;"><span id="newMaxLossAmount">-</span> USDT</span>
-                            <input type="range" class="range-slider range-slim" id="newBotMaxLoss" value="100" min="1" max="100" oninput="updateSliderValue(this, 'newMaxLossValue'); updateMaxLossInfo('new')">
-                            <span class="range-value" id="newMaxLossValue">100%</span>
+                            <input type="range" class="range-slider range-slim" id="newBotMaxLoss" value="50" min="1" max="100" oninput="updateSliderValue(this, 'newMaxLossValue'); updateMaxLossInfo('new')">
+                            <span class="range-value" id="newMaxLossValue">50%</span>
                         </div>
+                    </div>
+                </div>
+                <div class="settings-row">
+                    <div class="setting-compact" style="flex: 0 0 auto;">
+                        <label data-i18n="consecutiveLossesLimit">Consecutive Losses Limit</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="newBotConsecutiveLossesEnabled" onchange="toggleConsecutiveLossesSelect('new')">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-compact" id="newConsecutiveLossesContainer" style="display: none;">
+                        <label data-i18n="maxConsecutiveLosses">Max Losses</label>
+                        <select id="newBotMaxConsecutiveLosses">
+                            <option value="2">2</option>
+                            <option value="3" selected>3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                            <option value="6">6</option>
+                            <option value="7">7</option>
+                            <option value="8">8</option>
+                            <option value="9">9</option>
+                            <option value="10">10</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact" id="newCooldownContainer" style="display: none;">
+                        <label data-i18n="cooldownMinutes">Cooldown (min)</label>
+                        <select id="newBotCooldownMinutes">
+                            <option value="5">5</option>
+                            <option value="10">10</option>
+                            <option value="15">15</option>
+                            <option value="30" selected>30</option>
+                            <option value="60">60</option>
+                            <option value="120">120</option>
+                        </select>
                     </div>
                 </div>
             </div>
@@ -1793,50 +1835,58 @@ DASHBOARD_HTML = r"""
                 <div class="settings-block block-auto">
                     <div class="block-header">
                         <h4><span class="icon">🔍</span> <span data-i18n="assetFilters">Asset Filters</span></h4>
-                        <button class="btn-reset" onclick="resetAssetFilters('new')" title="Reset">↺</button>
-                    </div>
-                    <div class="settings-row">
-                        <div class="setting-compact">
-                            <label data-i18n="volume24hMin">Vol 24h Min</label>
-                            <input type="text" id="newBotMinVolume" value="3,000,000" oninput="formatMoneyInput(this)">
-                        </div>
-                        <div class="setting-compact">
-                            <label data-i18n="volume24hMax">Vol 24h Max</label>
-                            <input type="text" id="newBotMaxVolume" value="0" oninput="formatMoneyInput(this)">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="newBotAssetFiltersEnabled" checked onchange="toggleAssetFiltersInputs('new')">
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <button class="btn-reset" onclick="resetAssetFilters('new')" title="Reset">↺</button>
                         </div>
                     </div>
-                    <div class="settings-row">
-                        <div class="setting-compact">
-                            <label data-i18n="priceMin">Price Min $</label>
-                            <input type="number" id="newBotMinPrice" value="0" min="0" step="0.0001">
+                    <div id="newAssetFiltersInputs">
+                        <div class="settings-row">
+                            <div class="setting-compact">
+                                <label data-i18n="volume24hMin">Vol 24h Min</label>
+                                <input type="text" id="newBotMinVolume" value="3,000,000" oninput="formatMoneyInput(this)">
+                            </div>
+                            <div class="setting-compact">
+                                <label data-i18n="volume24hMax">Vol 24h Max</label>
+                                <input type="text" id="newBotMaxVolume" value="0" oninput="formatMoneyInput(this)">
+                            </div>
                         </div>
-                        <div class="setting-compact">
-                            <label data-i18n="priceMax">Price Max $</label>
-                            <input type="number" id="newBotMaxPrice" value="0" min="0" step="0.0001">
+                        <div class="settings-row">
+                            <div class="setting-compact">
+                                <label data-i18n="priceMin">Price Min $</label>
+                                <input type="number" id="newBotMinPrice" value="0" min="0" step="0.0001">
+                            </div>
+                            <div class="setting-compact">
+                                <label data-i18n="priceMax">Price Max $</label>
+                                <input type="number" id="newBotMaxPrice" value="0" min="0" step="0.0001">
+                            </div>
                         </div>
-                    </div>
-                    <div class="settings-row">
-                        <div class="setting-compact">
-                            <label data-i18n="changeMin">Change Min %</label>
-                            <input type="number" id="newBotMinChange" value="-30" step="0.1">
+                        <div class="settings-row">
+                            <div class="setting-compact">
+                                <label data-i18n="changeMin">Change Min %</label>
+                                <input type="number" id="newBotMinChange" value="-30" step="0.1">
+                            </div>
+                            <div class="setting-compact">
+                                <label data-i18n="changeMax">Change Max %</label>
+                                <input type="number" id="newBotMaxChange" value="20" step="0.1">
+                            </div>
                         </div>
-                        <div class="setting-compact">
-                            <label data-i18n="changeMax">Change Max %</label>
-                            <input type="number" id="newBotMaxChange" value="20" step="0.1">
-                        </div>
-                    </div>
-                    <div class="settings-row">
-                        <div class="setting-compact">
-                            <label data-i18n="volatilityPeriod">Volat Period</label>
-                            <input type="number" id="newBotVolatilityPeriod" value="12" min="0">
-                        </div>
-                        <div class="setting-compact">
-                            <label data-i18n="volatilityMin">Volat Min %</label>
-                            <input type="number" id="newBotMinVolatility" value="0.5" min="0" step="0.1">
-                        </div>
-                        <div class="setting-compact">
-                            <label data-i18n="volatilityMax">Volat Max %</label>
-                            <input type="number" id="newBotMaxVolatility" value="3" min="0" step="0.1">
+                        <div class="settings-row">
+                            <div class="setting-compact">
+                                <label data-i18n="volatilityPeriod">Volat Period</label>
+                                <input type="number" id="newBotVolatilityPeriod" value="12" min="0">
+                            </div>
+                            <div class="setting-compact">
+                                <label data-i18n="volatilityMin">Volat Min %</label>
+                                <input type="number" id="newBotMinVolatility" value="0.5" min="0" step="0.1">
+                            </div>
+                            <div class="setting-compact">
+                                <label data-i18n="volatilityMax">Volat Max %</label>
+                                <input type="number" id="newBotMaxVolatility" value="3" min="0" step="0.1">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1913,13 +1963,55 @@ DASHBOARD_HTML = r"""
                     </div>
                 </div>
                 <div class="settings-row">
-                    <div class="setting-compact" style="flex: 1;">
+                    <div class="setting-compact" style="flex: 0 0 auto;">
                         <label data-i18n="maxLossLimit">Max Loss Limit (%)</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="editBotMaxLossEnabled" onchange="toggleMaxLossSlider('edit')">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="settings-row" id="editMaxLossContainer" style="display: none;">
+                    <div class="setting-compact" style="flex: 1;">
                         <div class="range-container">
                             <span id="editMaxLossInfo" style="min-width: 90px; font-size: 12px; color: #ff6b6b;"><span id="editMaxLossAmount">-</span> USDT</span>
-                            <input type="range" class="range-slider range-slim" id="editBotMaxLoss" value="100" min="1" max="100" oninput="updateSliderValue(this, 'editMaxLossValue'); updateMaxLossInfo('edit')">
-                            <span class="range-value" id="editMaxLossValue">100%</span>
+                            <input type="range" class="range-slider range-slim" id="editBotMaxLoss" value="50" min="1" max="100" oninput="updateSliderValue(this, 'editMaxLossValue'); updateMaxLossInfo('edit')">
+                            <span class="range-value" id="editMaxLossValue">50%</span>
                         </div>
+                    </div>
+                </div>
+                <div class="settings-row">
+                    <div class="setting-compact" style="flex: 0 0 auto;">
+                        <label data-i18n="consecutiveLossesLimit">Consecutive Losses Limit</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="editBotConsecutiveLossesEnabled" onchange="toggleConsecutiveLossesSelect('edit')">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-compact" id="editConsecutiveLossesContainer" style="display: none;">
+                        <label data-i18n="maxConsecutiveLosses">Max Losses</label>
+                        <select id="editBotMaxConsecutiveLosses">
+                            <option value="2">2</option>
+                            <option value="3" selected>3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                            <option value="6">6</option>
+                            <option value="7">7</option>
+                            <option value="8">8</option>
+                            <option value="9">9</option>
+                            <option value="10">10</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact" id="editCooldownContainer" style="display: none;">
+                        <label data-i18n="cooldownMinutes">Cooldown (min)</label>
+                        <select id="editBotCooldownMinutes">
+                            <option value="5">5</option>
+                            <option value="10">10</option>
+                            <option value="15">15</option>
+                            <option value="30" selected>30</option>
+                            <option value="60">60</option>
+                            <option value="120">120</option>
+                        </select>
                     </div>
                 </div>
             </div>
@@ -2240,50 +2332,58 @@ DASHBOARD_HTML = r"""
                 <div class="settings-block block-auto">
                     <div class="block-header">
                         <h4><span class="icon">🔍</span> <span data-i18n="assetFilters">Asset Filters</span></h4>
-                        <button class="btn-reset" onclick="resetAssetFilters('edit')" title="Reset">↺</button>
-                    </div>
-                    <div class="settings-row">
-                        <div class="setting-compact">
-                            <label data-i18n="volume24hMin">Vol 24h Min</label>
-                            <input type="text" id="editBotMinVolume" value="3,000,000" oninput="formatMoneyInput(this)">
-                        </div>
-                        <div class="setting-compact">
-                            <label data-i18n="volume24hMax">Vol 24h Max</label>
-                            <input type="text" id="editBotMaxVolume" value="0" oninput="formatMoneyInput(this)">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="editBotAssetFiltersEnabled" checked onchange="toggleAssetFiltersInputs('edit')">
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <button class="btn-reset" onclick="resetAssetFilters('edit')" title="Reset">↺</button>
                         </div>
                     </div>
-                    <div class="settings-row">
-                        <div class="setting-compact">
-                            <label data-i18n="priceMin">Price Min $</label>
-                            <input type="number" id="editBotMinPrice" value="0" min="0" step="0.0001">
+                    <div id="editAssetFiltersInputs">
+                        <div class="settings-row">
+                            <div class="setting-compact">
+                                <label data-i18n="volume24hMin">Vol 24h Min</label>
+                                <input type="text" id="editBotMinVolume" value="3,000,000" oninput="formatMoneyInput(this)">
+                            </div>
+                            <div class="setting-compact">
+                                <label data-i18n="volume24hMax">Vol 24h Max</label>
+                                <input type="text" id="editBotMaxVolume" value="0" oninput="formatMoneyInput(this)">
+                            </div>
                         </div>
-                        <div class="setting-compact">
-                            <label data-i18n="priceMax">Price Max $</label>
-                            <input type="number" id="editBotMaxPrice" value="0" min="0" step="0.0001">
+                        <div class="settings-row">
+                            <div class="setting-compact">
+                                <label data-i18n="priceMin">Price Min $</label>
+                                <input type="number" id="editBotMinPrice" value="0" min="0" step="0.0001">
+                            </div>
+                            <div class="setting-compact">
+                                <label data-i18n="priceMax">Price Max $</label>
+                                <input type="number" id="editBotMaxPrice" value="0" min="0" step="0.0001">
+                            </div>
                         </div>
-                    </div>
-                    <div class="settings-row">
-                        <div class="setting-compact">
-                            <label data-i18n="changeMin">Change Min %</label>
-                            <input type="number" id="editBotMinChange" value="-30" step="0.1">
+                        <div class="settings-row">
+                            <div class="setting-compact">
+                                <label data-i18n="changeMin">Change Min %</label>
+                                <input type="number" id="editBotMinChange" value="-30" step="0.1">
+                            </div>
+                            <div class="setting-compact">
+                                <label data-i18n="changeMax">Change Max %</label>
+                                <input type="number" id="editBotMaxChange" value="20" step="0.1">
+                            </div>
                         </div>
-                        <div class="setting-compact">
-                            <label data-i18n="changeMax">Change Max %</label>
-                            <input type="number" id="editBotMaxChange" value="20" step="0.1">
-                        </div>
-                    </div>
-                    <div class="settings-row">
-                        <div class="setting-compact">
-                            <label data-i18n="volatilityPeriod">Volat Period</label>
-                            <input type="number" id="editBotVolatilityPeriod" value="12" min="0">
-                        </div>
-                        <div class="setting-compact">
-                            <label data-i18n="volatilityMin">Volat Min %</label>
-                            <input type="number" id="editBotMinVolatility" value="0.5" min="0" step="0.1">
-                        </div>
-                        <div class="setting-compact">
-                            <label data-i18n="volatilityMax">Volat Max %</label>
-                            <input type="number" id="editBotMaxVolatility" value="3" min="0" step="0.1">
+                        <div class="settings-row">
+                            <div class="setting-compact">
+                                <label data-i18n="volatilityPeriod">Volat Period</label>
+                                <input type="number" id="editBotVolatilityPeriod" value="12" min="0">
+                            </div>
+                            <div class="setting-compact">
+                                <label data-i18n="volatilityMin">Volat Min %</label>
+                                <input type="number" id="editBotMinVolatility" value="0.5" min="0" step="0.1">
+                            </div>
+                            <div class="setting-compact">
+                                <label data-i18n="volatilityMax">Volat Max %</label>
+                                <input type="number" id="editBotMaxVolatility" value="3" min="0" step="0.1">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2322,34 +2422,32 @@ DASHBOARD_HTML = r"""
     </div>
 
     <!-- Position Chart Modal -->
-    <div class="modal" id="positionChartModal" style="background: rgba(0,0,0,0.95);">
-        <div class="modal-content" style="max-width: 95%; width: 95%; height: 90vh; padding: 15px;">
-            <div class="modal-header" style="margin-bottom: 10px;">
-                <div style="display: flex; align-items: center; gap: 15px;">
-                    <h3 id="posChartSymbol" style="margin: 0;">BTCUSDT</h3>
-                    <span id="posChartSide" style="padding: 4px 10px; border-radius: 4px; font-weight: bold; font-size: 12px;">LONG</span>
-                    <span id="posChartTimeframe" style="color: #888; font-size: 14px;">1h</span>
+    <div class="modal" id="positionChartModal" style="background: rgba(0,0,0,0.98);">
+        <div class="modal-content" style="max-width: 100%; width: 100%; height: 100vh; padding: 0; border-radius: 0; margin: 0;">
+            <!-- Compact Header -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #0a0a0a; border-bottom: 1px solid #1a1a1a;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <h3 id="posChartSymbol" style="margin: 0; font-size: 16px; font-weight: 600;">BTCUSDT</h3>
+                    <span id="posChartSide" style="padding: 3px 8px; border-radius: 3px; font-weight: bold; font-size: 11px;">LONG</span>
+                    <span id="posChartTimeframe" style="color: #666; font-size: 12px;">1h</span>
                 </div>
-                <div style="display: flex; align-items: center; gap: 20px;">
-                    <div id="posChartPnl" style="text-align: right;">
-                        <span id="posChartPnlUsdt" style="font-size: 20px; font-weight: bold;">+0.00 USDT</span>
-                        <span id="posChartPnlPercent" style="font-size: 14px; margin-left: 10px;">(+0.00%)</span>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span id="posChartCurrentPrice" style="font-size: 15px; font-weight: bold; font-family: monospace;">--</span>
+                    <div style="text-align: right;">
+                        <span id="posChartPnlUsdt" style="font-size: 14px; font-weight: bold;">+0.00</span>
+                        <span id="posChartPnlPercent" style="font-size: 11px; margin-left: 4px; opacity: 0.8;">(+0.00%)</span>
                     </div>
-                    <button class="modal-close" onclick="closePositionChart()">&times;</button>
+                    <button class="modal-close" onclick="closePositionChart()" style="font-size: 24px; padding: 0 8px;">&times;</button>
                 </div>
             </div>
-            <div id="posChartPriceInfo" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 15px; background: rgba(0,0,0,0.3); border-radius: 5px; margin-bottom: 10px; font-family: monospace;">
-                <div style="display: flex; gap: 20px;">
-                    <span>Entry: <span id="posChartEntry" style="color: #00d4ff;">--</span></span>
-                    <span>SL: <span id="posChartSL" style="color: #ff4444;">--</span></span>
-                    <span>TP: <span id="posChartTP" style="color: #00ff88;">--</span></span>
-                </div>
-                <div style="display: flex; align-items: center; gap: 15px;">
-                    <span id="posChartCurrentPrice" style="color: #00ff88; font-size: 18px; font-weight: bold;">--</span>
-                    <span id="posChartCountdown" style="color: #ffcc00; font-size: 16px;">--:--</span>
-                </div>
+            <!-- Price Levels Bar -->
+            <div id="posChartPriceInfo" style="display: flex; justify-content: center; gap: 20px; padding: 6px 12px; background: #0d0d0d; font-family: monospace; font-size: 12px; border-bottom: 1px solid #1a1a1a;">
+                <span>◆ Entry: <span id="posChartEntry" style="color: #00d4ff;">--</span></span>
+                <span>▼ SL: <span id="posChartSL" style="color: #ff4444;">--</span></span>
+                <span>▲ TP: <span id="posChartTP" style="color: #00ff88;">--</span></span>
             </div>
-            <div id="positionChartContainer" style="height: calc(100% - 100px); width: 100%;"></div>
+            <!-- Chart Container -->
+            <div id="positionChartContainer" style="height: calc(100% - 70px); width: 100%; background: #000;"></div>
         </div>
     </div>
 
@@ -2484,6 +2582,9 @@ DASHBOARD_HTML = r"""
                 ofTotal: 'of',
                 maxLossLimit: 'Max Loss Limit (%)',
                 maxLossHint: 'Bot stops when loss reaches this % of allocated balance',
+                consecutiveLossesLimit: 'Consecutive Losses Limit',
+                maxConsecutiveLosses: 'Max Losses',
+                cooldownMinutes: 'Cooldown (min)',
                 basicSettings: 'Basic',
                 riskManagement: 'Risk Management',
                 signalFilters: 'Signal Filters',
@@ -2618,6 +2719,9 @@ DASHBOARD_HTML = r"""
                 ofTotal: 'из',
                 maxLossLimit: 'Лимит потерь (%)',
                 maxLossHint: 'Бот остановится когда убыток достигнет этого % от выделенного баланса',
+                consecutiveLossesLimit: 'Лимит убыточных сделок подряд',
+                maxConsecutiveLosses: 'Макс. сделок',
+                cooldownMinutes: 'Пауза (мин)',
                 basicSettings: 'Основное',
                 riskManagement: 'Риск-менеджмент',
                 signalFilters: 'Фильтры сигналов',
@@ -2855,6 +2959,33 @@ DASHBOARD_HTML = r"""
             }
         }
 
+        // Toggle Max Loss Limit slider visibility
+        function toggleMaxLossSlider(prefix) {
+            const checkbox = document.getElementById(prefix + 'BotMaxLossEnabled');
+            const container = document.getElementById(prefix + 'MaxLossContainer');
+
+            if (container) {
+                container.style.display = checkbox.checked ? 'flex' : 'none';
+                // Update max loss info when enabled
+                if (checkbox.checked) {
+                    updateMaxLossInfo(prefix);
+                }
+            }
+        }
+
+        // Toggle Consecutive Losses settings visibility
+        function toggleConsecutiveLossesSelect(prefix) {
+            const checkbox = document.getElementById(prefix + 'BotConsecutiveLossesEnabled');
+            const lossesContainer = document.getElementById(prefix + 'ConsecutiveLossesContainer');
+            const cooldownContainer = document.getElementById(prefix + 'CooldownContainer');
+
+            if (lossesContainer && cooldownContainer) {
+                const isEnabled = checkbox.checked;
+                lossesContainer.style.display = isEnabled ? 'flex' : 'none';
+                cooldownContainer.style.display = isEnabled ? 'flex' : 'none';
+            }
+        }
+
         // Toggle Trailing TP mode-specific options
         function toggleTrailingTpMode(prefix) {
             const mode = document.getElementById(prefix + 'BotTrailingTpMode').value;
@@ -2941,6 +3072,15 @@ DASHBOARD_HTML = r"""
             document.getElementById(prefix + 'BotVolatilityPeriod').value = '12';
             document.getElementById(prefix + 'BotMinVolatility').value = '0.5';
             document.getElementById(prefix + 'BotMaxVolatility').value = '3';
+        }
+
+        // Toggle asset filters inputs visibility
+        function toggleAssetFiltersInputs(prefix) {
+            const checkbox = document.getElementById(prefix + 'BotAssetFiltersEnabled');
+            const inputsContainer = document.getElementById(prefix + 'AssetFiltersInputs');
+            if (inputsContainer) {
+                inputsContainer.style.display = checkbox.checked ? 'block' : 'none';
+            }
         }
 
         // Reset create bot form to defaults
@@ -3877,18 +4017,6 @@ DASHBOARD_HTML = r"""
             }
         }
 
-        function openPositionChart(positionId) {
-            const pos = positionsData.find(p => p.id === positionId);
-            if (!pos) return;
-
-            // Find bot for this position
-            const bot = botsData.find(b => b.id === pos.bot_id);
-            if (!bot) return;
-
-            // Open fullscreen chart with position data
-            openFullscreenChartWithPosition(pos, bot);
-        }
-
         function renderBots() {
             const grid = document.getElementById('botsGrid');
 
@@ -4327,6 +4455,7 @@ DASHBOARD_HTML = r"""
                 st3_role: document.getElementById('newBotSt3Role').value,
                 trigger_confirm_candles: parseInt(document.getElementById('newBotTriggerConfirmCandles').value),
                 // Asset filters
+                asset_filters_enabled: document.getElementById('newBotAssetFiltersEnabled').checked,
                 filter_min_volume: parseMoneyValue(document.getElementById('newBotMinVolume').value),
                 filter_max_volume: parseMoneyValue(document.getElementById('newBotMaxVolume').value),
                 filter_min_price: parseFloat(document.getElementById('newBotMinPrice').value) || 0,
@@ -4337,7 +4466,13 @@ DASHBOARD_HTML = r"""
                 filter_min_volatility: parseFloat(document.getElementById('newBotMinVolatility').value) || 0,
                 filter_max_volatility: parseFloat(document.getElementById('newBotMaxVolatility').value) || 0,
                 balance_usage_percent: parseFloat(document.getElementById('newBotBalanceUsage').value) || 100,
-                max_loss_percent: parseFloat(document.getElementById('newBotMaxLoss').value) || 100,
+                // Daily loss limit settings
+                max_loss_enabled: document.getElementById('newBotMaxLossEnabled').checked,
+                max_loss_percent: parseFloat(document.getElementById('newBotMaxLoss').value) || 50,
+                // Consecutive losses settings
+                consecutive_losses_enabled: document.getElementById('newBotConsecutiveLossesEnabled').checked,
+                max_consecutive_losses: parseInt(document.getElementById('newBotMaxConsecutiveLosses').value) || 3,
+                cooldown_after_loss_streak: parseInt(document.getElementById('newBotCooldownMinutes').value) || 30,
             };
 
             try {
@@ -4544,6 +4679,7 @@ DASHBOARD_HTML = r"""
             updateSignalPreview('edit');
 
             // Asset filters
+            document.getElementById('editBotAssetFiltersEnabled').checked = bot.asset_filters_enabled !== false;
             document.getElementById('editBotMinVolume').value = (bot.filter_min_volume || 3000000).toLocaleString('en-US');
             document.getElementById('editBotMaxVolume').value = (bot.filter_max_volume || 0).toLocaleString('en-US');
             document.getElementById('editBotMinPrice').value = bot.filter_min_price || 0;
@@ -4553,18 +4689,27 @@ DASHBOARD_HTML = r"""
             document.getElementById('editBotVolatilityPeriod').value = bot.filter_volatility_period || 12;
             document.getElementById('editBotMinVolatility').value = bot.filter_min_volatility || 0.5;
             document.getElementById('editBotMaxVolatility').value = bot.filter_max_volatility || 3;
+            toggleAssetFiltersInputs('edit');
             document.getElementById('editBotBalanceUsage').value = bot.balance_usage_percent || 100;
-            document.getElementById('editBotMaxLoss').value = bot.max_loss_percent || 100;
+            // Daily loss limit settings
+            document.getElementById('editBotMaxLossEnabled').checked = bot.max_loss_enabled || false;
+            document.getElementById('editBotMaxLoss').value = bot.max_loss_percent || 50;
+            // Consecutive losses settings
+            document.getElementById('editBotConsecutiveLossesEnabled').checked = bot.consecutive_losses_enabled || false;
+            document.getElementById('editBotMaxConsecutiveLosses').value = bot.max_consecutive_losses || 3;
+            document.getElementById('editBotCooldownMinutes').value = bot.cooldown_after_loss_streak || 30;
 
             // Update slider displays
             document.getElementById('editBalanceValue').textContent = (bot.balance_usage_percent || 100) + '%';
-            document.getElementById('editMaxLossValue').textContent = (bot.max_loss_percent || 100) + '%';
+            document.getElementById('editMaxLossValue').textContent = (bot.max_loss_percent || 50) + '%';
 
             // Toggle visibility of conditional fields
             toggleEmaMode('edit');
             toggleTrailingOptions('edit');
             togglePartialTpOptions('edit');
             toggleTrailingTpOptions('edit');
+            toggleMaxLossSlider('edit');
+            toggleConsecutiveLossesSelect('edit');
 
             // Toggle SL options visibility
             toggleSlOptions('edit');
@@ -4629,6 +4774,7 @@ DASHBOARD_HTML = r"""
                 st3_role: document.getElementById('editBotSt3Role').value,
                 trigger_confirm_candles: parseInt(document.getElementById('editBotTriggerConfirmCandles').value),
                 // Asset filters
+                asset_filters_enabled: document.getElementById('editBotAssetFiltersEnabled').checked,
                 filter_min_volume: parseMoneyValue(document.getElementById('editBotMinVolume').value),
                 filter_max_volume: parseMoneyValue(document.getElementById('editBotMaxVolume').value),
                 filter_min_price: parseFloat(document.getElementById('editBotMinPrice').value) || 0,
@@ -4639,7 +4785,13 @@ DASHBOARD_HTML = r"""
                 filter_min_volatility: parseFloat(document.getElementById('editBotMinVolatility').value) || 0,
                 filter_max_volatility: parseFloat(document.getElementById('editBotMaxVolatility').value) || 0,
                 balance_usage_percent: parseFloat(document.getElementById('editBotBalanceUsage').value) || 100,
-                max_loss_percent: parseFloat(document.getElementById('editBotMaxLoss').value) || 100,
+                // Daily loss limit settings
+                max_loss_enabled: document.getElementById('editBotMaxLossEnabled').checked,
+                max_loss_percent: parseFloat(document.getElementById('editBotMaxLoss').value) || 50,
+                // Consecutive losses settings
+                consecutive_losses_enabled: document.getElementById('editBotConsecutiveLossesEnabled').checked,
+                max_consecutive_losses: parseInt(document.getElementById('editBotMaxConsecutiveLosses').value) || 3,
+                cooldown_after_loss_streak: parseInt(document.getElementById('editBotCooldownMinutes').value) || 30,
             };
 
             try {
@@ -5289,34 +5441,43 @@ DASHBOARD_HTML = r"""
             }
         }, 30000);
 
-        // ============== Position Chart Functions ==============
-        let positionChart = null;
-        let positionCandleSeries = null;
-        let positionChartData = null;
-        let positionChartInterval = null;
-        let positionChartCountdownInterval = null;
+        // ============== Position Chart (LightweightCharts) ==============
+        let posChart = null;
+        let posCandleSeries = null;
+        let posChartInterval = null;
         let currentPositionId = null;
         let currentPositionData = null;
-        let entryLine = null;
-        let slLine = null;
-        let tpLine = null;
+        let currentBot = null;
+
+        // Price lines
+        let entryPriceLine = null;
+        let slPriceLine = null;
+        let tpPriceLine = null;
 
         // Indicator series
-        let st1Series = null;
-        let st2Series = null;
-        let st3Series = null;
-        let ema200Series = null;
+        let emaLineSeries = null;
+        let st1LineSeries = null;
+        let st2LineSeries = null;
+        let st3LineSeries = null;
 
-        // Dragging state
-        let isDragging = false;
-        let dragType = null; // 'sl' or 'tp'
-        let dragStartY = 0;
-        let dragStartPrice = 0;
+        // Format price based on magnitude
+        function formatPrice(price) {
+            if (price >= 1000) return price.toFixed(2);
+            if (price >= 1) return price.toFixed(4);
+            return price.toFixed(6);
+        }
+
+        // Get interval in seconds
+        function getIntervalSeconds(tf) {
+            const map = { '1m': 60, '3m': 180, '5m': 300, '15m': 900, '30m': 1800,
+                          '1h': 3600, '2h': 7200, '4h': 14400, '6h': 21600, '12h': 43200,
+                          '1d': 86400, '1w': 604800 };
+            return map[tf] || 3600;
+        }
 
         async function openPositionChart(positionId) {
             currentPositionId = positionId;
 
-            // Find position data
             const position = positionsData.find(p => p.id === positionId);
             if (!position) {
                 showToast('Position not found');
@@ -5324,134 +5485,112 @@ DASHBOARD_HTML = r"""
             }
             currentPositionData = position;
 
-            // Find bot to get timeframe
             const bot = botsData.find(b => b.id === position.bot_id);
+            currentBot = bot;
             const timeframe = bot ? bot.timeframe : '1h';
 
-            // Update header info
+            // Update header
             document.getElementById('posChartSymbol').textContent = position.symbol;
+            document.getElementById('posChartTimeframe').textContent = timeframe;
 
             const sideEl = document.getElementById('posChartSide');
             sideEl.textContent = position.side.toUpperCase();
-            sideEl.style.background = position.side.toUpperCase() === 'LONG' ? '#00ff88' : '#ff4444';
-            sideEl.style.color = '#1a1a2e';
-
-            document.getElementById('posChartTimeframe').textContent = timeframe;
+            sideEl.style.background = position.side.toUpperCase() === 'LONG' ? '#00c853' : '#ff1744';
+            sideEl.style.color = '#000';
 
             // Update price info
-            document.getElementById('posChartEntry').textContent = position.entry_price.toFixed(6);
-            document.getElementById('posChartSL').textContent = position.sl.toFixed(6);
-            document.getElementById('posChartTP').textContent = position.tp.toFixed(6);
+            document.getElementById('posChartEntry').textContent = formatPrice(position.entry_price);
+            document.getElementById('posChartSL').textContent = formatPrice(position.sl);
+            document.getElementById('posChartTP').textContent = formatPrice(position.tp);
+            document.getElementById('posChartCurrentPrice').textContent = formatPrice(position.current_price);
+            document.getElementById('posChartCurrentPrice').style.color = position.pnl_usdt >= 0 ? '#00c853' : '#ff1744';
 
             updatePositionPnl(position);
 
             // Show modal
-            document.getElementById('positionChartModal').classList.add('active');
+            document.getElementById('positionChartModal').classList.add('show');
 
             // Create chart
-            await createPositionChart(position.symbol, timeframe, position);
-
-            // Load indicators with bot settings
-            await loadIndicators(position.symbol, timeframe, position.bot_id);
+            await createPositionChart(position, bot, timeframe);
 
             // Start real-time updates
-            startPositionChartUpdates(position.symbol, timeframe);
+            startChartUpdates(position.symbol, timeframe);
         }
 
-        function closePositionChart() {
-            document.getElementById('positionChartModal').classList.remove('active');
-
-            // Clean up
-            if (positionChartInterval) {
-                clearInterval(positionChartInterval);
-                positionChartInterval = null;
-            }
-            if (positionChartCountdownInterval) {
-                clearInterval(positionChartCountdownInterval);
-                positionChartCountdownInterval = null;
-            }
-            if (positionChart) {
-                positionChart.remove();
-                positionChart = null;
-            }
-            currentPositionId = null;
-            currentPositionData = null;
-            st1Series = null;
-            st2Series = null;
-            st3Series = null;
-            ema200Series = null;
-        }
-
-        function updatePositionPnl(position) {
-            const pnlUsdt = document.getElementById('posChartPnlUsdt');
-            const pnlPercent = document.getElementById('posChartPnlPercent');
-            const pnlSign = position.pnl_usdt >= 0 ? '+' : '';
-            const pnlColor = position.pnl_usdt >= 0 ? '#00ff88' : '#ff4444';
-
-            pnlUsdt.textContent = `${pnlSign}${position.pnl_usdt.toFixed(4)} USDT`;
-            pnlUsdt.style.color = pnlColor;
-            pnlPercent.textContent = `(${pnlSign}${position.pnl_percent.toFixed(2)}%)`;
-            pnlPercent.style.color = pnlColor;
-        }
-
-        async function createPositionChart(symbol, timeframe, position) {
+        async function createPositionChart(position, bot, timeframe) {
             const container = document.getElementById('positionChartContainer');
             container.innerHTML = '';
 
-            // Create chart
-            positionChart = LightweightCharts.createChart(container, {
+            // Create chart with professional dark theme
+            posChart = LightweightCharts.createChart(container, {
                 width: container.clientWidth,
                 height: container.clientHeight,
                 layout: {
-                    background: { type: 'solid', color: '#0d0d0d' },
-                    textColor: '#888',
+                    background: { type: 'solid', color: '#000000' },
+                    textColor: '#666666',
+                    fontSize: 11,
                 },
                 grid: {
-                    vertLines: { color: 'rgba(255, 255, 255, 0.05)' },
-                    horzLines: { color: 'rgba(255, 255, 255, 0.05)' },
+                    vertLines: { color: 'rgba(42, 46, 57, 0.5)', style: 1 },
+                    horzLines: { color: 'rgba(42, 46, 57, 0.5)', style: 1 },
                 },
                 rightPriceScale: {
-                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                    borderColor: '#2a2e39',
                     scaleMargins: { top: 0.1, bottom: 0.1 },
+                    borderVisible: true,
+                    entireTextOnly: true,
                 },
                 timeScale: {
-                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                    borderColor: '#2a2e39',
                     timeVisible: true,
                     secondsVisible: false,
+                    borderVisible: true,
                 },
                 crosshair: {
                     mode: LightweightCharts.CrosshairMode.Normal,
-                    vertLine: { color: 'rgba(0, 212, 255, 0.3)' },
-                    horzLine: { color: 'rgba(0, 212, 255, 0.3)' },
+                    vertLine: {
+                        color: 'rgba(255, 255, 255, 0.2)',
+                        width: 1,
+                        style: LightweightCharts.LineStyle.Dashed,
+                        labelBackgroundColor: '#2a2e39',
+                    },
+                    horzLine: {
+                        color: 'rgba(255, 255, 255, 0.2)',
+                        width: 1,
+                        style: LightweightCharts.LineStyle.Dashed,
+                        labelBackgroundColor: '#2a2e39',
+                    },
                 },
+                handleScale: { axisPressedMouseMove: true },
+                handleScroll: { mouseWheel: true, pressedMouseMove: true },
             });
 
-            // Candlestick series
-            positionCandleSeries = positionChart.addCandlestickSeries({
-                upColor: '#00ff88',
-                downColor: '#ff4444',
-                borderDownColor: '#ff4444',
-                borderUpColor: '#00ff88',
-                wickDownColor: '#ff4444',
-                wickUpColor: '#00ff88',
+            // Candlestick series with vibrant colors
+            posCandleSeries = posChart.addCandlestickSeries({
+                upColor: '#00c853',
+                downColor: '#ff1744',
+                borderUpColor: '#00c853',
+                borderDownColor: '#ff1744',
+                wickUpColor: '#00c853',
+                wickDownColor: '#ff1744',
             });
 
             // Load candle data
-            await loadPositionChartData(symbol, timeframe);
+            await loadChartData(position.symbol, timeframe);
 
-            // Add price lines (with drag support)
-            addPositionPriceLines(position);
+            // Add price lines for Entry, SL, TP
+            addPriceLines(position);
 
             // Add entry marker
             addEntryMarker(position);
 
-            // Setup drag handlers
-            setupDragHandlers(container);
+            // Load and add indicators
+            await loadIndicators(position.symbol, timeframe, bot);
 
-            // Resize handler
+            // Resize observer
             const resizeObserver = new ResizeObserver(() => {
-                if (positionChart) {
-                    positionChart.applyOptions({
+                if (posChart) {
+                    posChart.applyOptions({
                         width: container.clientWidth,
                         height: container.clientHeight,
                     });
@@ -5460,31 +5599,79 @@ DASHBOARD_HTML = r"""
             resizeObserver.observe(container);
         }
 
-        async function loadPositionChartData(symbol, timeframe) {
+        async function loadChartData(symbol, timeframe) {
             try {
-                const response = await fetch(`/api/klines/${symbol}?timeframe=${timeframe}&limit=200`);
+                const response = await fetch(`/api/klines/${symbol}?timeframe=${timeframe}&limit=300`);
                 const data = await response.json();
 
-                if (data.candles && data.candles.length > 0) {
-                    positionChartData = data;
-                    positionCandleSeries.setData(data.candles);
-                    positionChart.timeScale().fitContent();
-
-                    // Update current price
-                    const lastCandle = data.candles[data.candles.length - 1];
-                    document.getElementById('posChartCurrentPrice').textContent = lastCandle.close.toFixed(6);
+                if (data.klines && data.klines.length > 0) {
+                    posCandleSeries.setData(data.klines);
+                    posChart.timeScale().fitContent();
                 }
             } catch (err) {
                 console.error('Failed to load chart data:', err);
             }
         }
 
-        async function loadIndicators(symbol, timeframe, botId) {
+        function addPriceLines(position) {
+            const isLong = position.side.toUpperCase() === 'LONG';
+            const size = position.size || 0;
+
+            // Calculate PnL for labels
+            const slPnl = isLong ? (position.sl - position.entry_price) * size : (position.entry_price - position.sl) * size;
+            const tpPnl = isLong ? (position.tp - position.entry_price) * size : (position.entry_price - position.tp) * size;
+
+            // Entry line (cyan, solid)
+            entryPriceLine = posCandleSeries.createPriceLine({
+                price: position.entry_price,
+                color: '#00bcd4',
+                lineWidth: 1,
+                lineStyle: LightweightCharts.LineStyle.Solid,
+                axisLabelVisible: true,
+                title: 'Entry',
+            });
+
+            // Stop Loss line (red, dashed)
+            slPriceLine = posCandleSeries.createPriceLine({
+                price: position.sl,
+                color: '#ff1744',
+                lineWidth: 1,
+                lineStyle: LightweightCharts.LineStyle.Dashed,
+                axisLabelVisible: true,
+                title: `SL ${slPnl >= 0 ? '+' : ''}${slPnl.toFixed(2)}`,
+            });
+
+            // Take Profit line (green, dashed)
+            tpPriceLine = posCandleSeries.createPriceLine({
+                price: position.tp,
+                color: '#00c853',
+                lineWidth: 1,
+                lineStyle: LightweightCharts.LineStyle.Dashed,
+                axisLabelVisible: true,
+                title: `TP +${tpPnl.toFixed(2)}`,
+            });
+        }
+
+        function addEntryMarker(position) {
+            // Find the candle closest to entry time
+            const entryTime = position.entry_time ? Math.floor(new Date(position.entry_time).getTime() / 1000) : null;
+
+            if (entryTime) {
+                const isLong = position.side.toUpperCase() === 'LONG';
+                posCandleSeries.setMarkers([{
+                    time: entryTime,
+                    position: isLong ? 'belowBar' : 'aboveBar',
+                    color: '#00bcd4',
+                    shape: isLong ? 'arrowUp' : 'arrowDown',
+                    text: isLong ? 'BUY' : 'SELL',
+                }]);
+            }
+        }
+
+        async function loadIndicators(symbol, timeframe, bot) {
             try {
-                let url = `/api/indicators/${symbol}?timeframe=${timeframe}&limit=200`;
-                if (botId) {
-                    url += `&bot_id=${botId}`;
-                }
+                let url = `/api/indicators/${symbol}?timeframe=${timeframe}&limit=300`;
+                if (bot) url += `&bot_id=${bot.id}`;
 
                 const response = await fetch(url);
                 const data = await response.json();
@@ -5494,63 +5681,53 @@ DASHBOARD_HTML = r"""
                     return;
                 }
 
-                const indicators = data.indicators || {};
+                const ind = data.indicators || {};
 
-                // Helper function to add SuperTrend with direction-based coloring
-                function addSuperTrendSeries(stData, lineWidth, name) {
-                    if (!stData || !stData.data || stData.data.length === 0) return null;
-
-                    // Create two series for up/down colors (green/red like candles)
-                    const upColor = '#00ff88';  // Green for bullish
-                    const downColor = '#ff4444';  // Red for bearish
-
-                    // We'll use line series with color property per point
-                    const series = positionChart.addLineSeries({
-                        color: upColor,  // Default color
-                        lineWidth: lineWidth,
-                        priceLineVisible: false,
-                        lastValueVisible: false,
-                        crosshairMarkerVisible: false,
-                    });
-
-                    // Set data with color based on direction
-                    const coloredData = stData.data.map(d => ({
-                        time: d.time,
-                        value: d.value,
-                        color: d.direction === 1 ? upColor : downColor
-                    }));
-
-                    series.setData(coloredData);
-                    return series;
-                }
-
-                // Add EMA line (yellow) - only if enabled in settings
-                if (indicators.ema && indicators.ema.data && indicators.ema.data.length > 0) {
-                    ema200Series = positionChart.addLineSeries({
-                        color: '#ffcc00',
+                // EMA 200 - yellow thin line
+                if (ind.ema200 && ind.ema200.length > 0 && (!bot || bot.ema_enabled !== false)) {
+                    emaLineSeries = posChart.addLineSeries({
+                        color: '#ffeb3b',
                         lineWidth: 1,
                         lineStyle: LightweightCharts.LineStyle.Solid,
                         priceLineVisible: false,
                         lastValueVisible: false,
                         crosshairMarkerVisible: false,
                     });
-                    ema200Series.setData(indicators.ema.data);
+                    emaLineSeries.setData(ind.ema200);
                 }
 
-                // Add SuperTrend lines with different widths
-                // ST1 (Fast) - thin (1px)
-                if (indicators.st1) {
-                    st1Series = addSuperTrendSeries(indicators.st1, 1, 'ST1');
-                }
+                // SuperTrend lines with direction-based coloring
+                const addSuperTrend = (stData, lineWidth, enabled) => {
+                    if (!stData || stData.length === 0 || enabled === false) return null;
 
-                // ST2 (Medium) - medium (2px)
-                if (indicators.st2) {
-                    st2Series = addSuperTrendSeries(indicators.st2, 2, 'ST2');
-                }
+                    const series = posChart.addLineSeries({
+                        lineWidth: lineWidth,
+                        priceLineVisible: false,
+                        lastValueVisible: false,
+                        crosshairMarkerVisible: false,
+                    });
 
-                // ST3 (Slow) - thick (3px)
-                if (indicators.st3) {
-                    st3Series = addSuperTrendSeries(indicators.st3, 3, 'ST3');
+                    // Color based on direction
+                    const coloredData = stData.map(d => ({
+                        time: d.time,
+                        value: d.value,
+                        color: d.direction === 1 ? '#00c853' : '#ff1744'
+                    }));
+                    series.setData(coloredData);
+                    return series;
+                };
+
+                // ST1 (fast) - thin
+                if (ind.supertrend1) {
+                    st1LineSeries = addSuperTrend(ind.supertrend1, 1, bot?.st1_enabled);
+                }
+                // ST2 (medium) - medium
+                if (ind.supertrend2) {
+                    st2LineSeries = addSuperTrend(ind.supertrend2, 2, bot?.st2_enabled);
+                }
+                // ST3 (slow) - thick
+                if (ind.supertrend3) {
+                    st3LineSeries = addSuperTrend(ind.supertrend3, 3, bot?.st3_enabled);
                 }
 
             } catch (err) {
@@ -5558,258 +5735,93 @@ DASHBOARD_HTML = r"""
             }
         }
 
-        function addPositionPriceLines(position) {
-            // Calculate PnL for SL and TP
-            const isLong = position.side.toUpperCase() === 'LONG';
-            const size = position.size || 0;
+        function startChartUpdates(symbol, timeframe) {
+            const intervalMs = 1000; // Update every 1 second for real-time feel
 
-            // SL PnL calculation
-            let slPnl, tpPnl;
-            if (isLong) {
-                slPnl = (position.sl - position.entry_price) * size;
-                tpPnl = (position.tp - position.entry_price) * size;
-            } else {
-                slPnl = (position.entry_price - position.sl) * size;
-                tpPnl = (position.entry_price - position.tp) * size;
-            }
-
-            // Entry line
-            entryLine = positionCandleSeries.createPriceLine({
-                price: position.entry_price,
-                color: '#00d4ff',
-                lineWidth: 2,
-                lineStyle: LightweightCharts.LineStyle.Solid,
-                axisLabelVisible: true,
-                title: `Entry`,
-            });
-
-            // Stop Loss line (draggable)
-            slLine = positionCandleSeries.createPriceLine({
-                price: position.sl,
-                color: '#ff4444',
-                lineWidth: 2,
-                lineStyle: LightweightCharts.LineStyle.Dashed,
-                axisLabelVisible: true,
-                title: `SL ${slPnl.toFixed(2)}`,
-                draggable: true,
-            });
-
-            // Take Profit line (draggable)
-            tpLine = positionCandleSeries.createPriceLine({
-                price: position.tp,
-                color: '#00ff88',
-                lineWidth: 2,
-                lineStyle: LightweightCharts.LineStyle.Dashed,
-                axisLabelVisible: true,
-                title: `TP +${tpPnl.toFixed(2)}`,
-                draggable: true,
-            });
-        }
-
-        function setupDragHandlers(container) {
-            // Mouse events for dragging SL/TP lines
-            container.addEventListener('mousedown', (e) => {
-                if (!currentPositionData) return;
-
-                const rect = container.getBoundingClientRect();
-                const y = e.clientY - rect.top;
-                const price = positionChart.priceScale('right').coordinateToPrice(y);
-
-                const slPrice = currentPositionData.sl;
-                const tpPrice = currentPositionData.tp;
-
-                // Check if click is near SL or TP line (within 0.5% of price)
-                const threshold = Math.abs(slPrice * 0.005);
-
-                if (Math.abs(price - slPrice) < threshold) {
-                    isDragging = true;
-                    dragType = 'sl';
-                    dragStartY = y;
-                    dragStartPrice = slPrice;
-                    container.style.cursor = 'ns-resize';
-                } else if (Math.abs(price - tpPrice) < threshold) {
-                    isDragging = true;
-                    dragType = 'tp';
-                    dragStartY = y;
-                    dragStartPrice = tpPrice;
-                    container.style.cursor = 'ns-resize';
-                }
-            });
-
-            container.addEventListener('mousemove', (e) => {
-                if (!isDragging || !currentPositionData) return;
-
-                const rect = container.getBoundingClientRect();
-                const y = e.clientY - rect.top;
-                const newPrice = positionChart.priceScale('right').coordinateToPrice(y);
-
-                if (dragType === 'sl' && slLine) {
-                    // Update SL line position
-                    positionCandleSeries.removePriceLine(slLine);
-                    const isLong = currentPositionData.side.toUpperCase() === 'LONG';
-                    const size = currentPositionData.size || 0;
-                    const slPnl = isLong ?
-                        (newPrice - currentPositionData.entry_price) * size :
-                        (currentPositionData.entry_price - newPrice) * size;
-
-                    slLine = positionCandleSeries.createPriceLine({
-                        price: newPrice,
-                        color: '#ff4444',
-                        lineWidth: 2,
-                        lineStyle: LightweightCharts.LineStyle.Dashed,
-                        axisLabelVisible: true,
-                        title: `SL ${slPnl.toFixed(2)}`,
-                    });
-                    document.getElementById('posChartSL').textContent = newPrice.toFixed(6);
-                } else if (dragType === 'tp' && tpLine) {
-                    // Update TP line position
-                    positionCandleSeries.removePriceLine(tpLine);
-                    const isLong = currentPositionData.side.toUpperCase() === 'LONG';
-                    const size = currentPositionData.size || 0;
-                    const tpPnl = isLong ?
-                        (newPrice - currentPositionData.entry_price) * size :
-                        (currentPositionData.entry_price - newPrice) * size;
-
-                    tpLine = positionCandleSeries.createPriceLine({
-                        price: newPrice,
-                        color: '#00ff88',
-                        lineWidth: 2,
-                        lineStyle: LightweightCharts.LineStyle.Dashed,
-                        axisLabelVisible: true,
-                        title: `TP +${tpPnl.toFixed(2)}`,
-                    });
-                    document.getElementById('posChartTP').textContent = newPrice.toFixed(6);
-                }
-            });
-
-            container.addEventListener('mouseup', async (e) => {
-                if (!isDragging || !currentPositionData) {
-                    isDragging = false;
-                    return;
-                }
-
-                const rect = container.getBoundingClientRect();
-                const y = e.clientY - rect.top;
-                const newPrice = positionChart.priceScale('right').coordinateToPrice(y);
-
-                // Save new SL/TP to server
-                if (dragType === 'sl') {
-                    await updatePositionLevels(currentPositionId, newPrice, null);
-                    currentPositionData.sl = newPrice;
-                } else if (dragType === 'tp') {
-                    await updatePositionLevels(currentPositionId, null, newPrice);
-                    currentPositionData.tp = newPrice;
-                }
-
-                isDragging = false;
-                dragType = null;
-                container.style.cursor = 'crosshair';
-            });
-
-            container.addEventListener('mouseleave', () => {
-                if (isDragging) {
-                    isDragging = false;
-                    dragType = null;
-                    container.style.cursor = 'crosshair';
-                }
-            });
-        }
-
-        async function updatePositionLevels(positionId, sl, tp) {
-            try {
-                const params = new URLSearchParams();
-                if (sl !== null) params.append('sl', sl);
-                if (tp !== null) params.append('tp', tp);
-
-                const response = await fetch(`/api/positions/${positionId}/update-levels?${params}`, {
-                    method: 'POST'
-                });
-                const data = await response.json();
-
-                if (data.success) {
-                    showToast(currentLang === 'ru' ? 'Уровни обновлены' : 'Levels updated');
-                } else {
-                    showToast(data.message || 'Update failed');
-                }
-            } catch (err) {
-                console.error('Failed to update levels:', err);
-                showToast('Update failed');
-            }
-        }
-
-        function addEntryMarker(position) {
-            // Find the candle closest to entry time
-            if (!positionChartData || !positionChartData.candles) return;
-
-            const entryTime = position.opened_at ? new Date(position.opened_at).getTime() / 1000 : null;
-            if (!entryTime) return;
-
-            const isLong = position.side.toUpperCase() === 'LONG';
-
-            // Find closest candle
-            let closestCandle = positionChartData.candles[0];
-            let minDiff = Math.abs(closestCandle.time - entryTime);
-
-            for (const candle of positionChartData.candles) {
-                const diff = Math.abs(candle.time - entryTime);
-                if (diff < minDiff) {
-                    minDiff = diff;
-                    closestCandle = candle;
-                }
-            }
-
-            // Add marker
-            positionCandleSeries.setMarkers([{
-                time: closestCandle.time,
-                position: isLong ? 'belowBar' : 'aboveBar',
-                color: isLong ? '#00ff88' : '#ff4444',
-                shape: isLong ? 'arrowUp' : 'arrowDown',
-                text: 'Entry',
-            }]);
-        }
-
-        function startPositionChartUpdates(symbol, timeframe) {
-            // Update chart data every few seconds
-            positionChartInterval = setInterval(async () => {
+            posChartInterval = setInterval(async () => {
                 if (!currentPositionId) return;
 
-                // Reload candle data
-                await loadPositionChartData(symbol, timeframe);
-
-                // Update position info from positionsData
+                // Update position data
                 const position = positionsData.find(p => p.id === currentPositionId);
                 if (position) {
+                    currentPositionData = position;
                     updatePositionPnl(position);
-                    document.getElementById('posChartCurrentPrice').textContent = position.current_price.toFixed(6);
 
-                    // Update price color based on PnL
+                    // Update current price display
                     const priceEl = document.getElementById('posChartCurrentPrice');
-                    priceEl.style.color = position.pnl_usdt >= 0 ? '#00ff88' : '#ff4444';
+                    priceEl.textContent = formatPrice(position.current_price);
+                    priceEl.style.color = position.pnl_usdt >= 0 ? '#00c853' : '#ff1744';
+
+                    // Update price level displays
+                    document.getElementById('posChartEntry').textContent = formatPrice(position.entry_price);
+                    document.getElementById('posChartSL').textContent = formatPrice(position.sl);
+                    document.getElementById('posChartTP').textContent = formatPrice(position.tp);
+
+                    // Update price lines if SL/TP changed
+                    if (slPriceLine && position.sl !== slPriceLine.options().price) {
+                        posCandleSeries.removePriceLine(slPriceLine);
+                        posCandleSeries.removePriceLine(tpPriceLine);
+                        posCandleSeries.removePriceLine(entryPriceLine);
+                        addPriceLines(position);
+                    }
                 }
-            }, 5000);
 
-            // Countdown timer
-            const intervalSeconds = getIntervalSeconds(timeframe);
-            positionChartCountdownInterval = setInterval(() => {
-                const now = Math.floor(Date.now() / 1000);
-                const nextCandleTime = Math.ceil(now / intervalSeconds) * intervalSeconds;
-                const remaining = nextCandleTime - now;
-
-                const minutes = Math.floor(remaining / 60);
-                const seconds = remaining % 60;
-                document.getElementById('posChartCountdown').textContent =
-                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            }, 1000);
+                // Update candle data
+                try {
+                    const response = await fetch(`/api/klines/${symbol}?timeframe=${timeframe}&limit=2`);
+                    const data = await response.json();
+                    if (data.klines && data.klines.length > 0) {
+                        // Update last candle
+                        data.klines.forEach(candle => {
+                            posCandleSeries.update(candle);
+                        });
+                    }
+                } catch (err) {
+                    console.error('Chart update error:', err);
+                }
+            }, intervalMs);
         }
 
-        function getIntervalSeconds(timeframe) {
-            const tf = {
-                '1m': 60, '3m': 180, '5m': 300, '15m': 900, '30m': 1800,
-                '1h': 3600, '2h': 7200, '4h': 14400, '6h': 21600, '12h': 43200,
-                '1d': 86400, '1w': 604800
-            };
-            return tf[timeframe] || 3600;
+        function closePositionChart() {
+            document.getElementById('positionChartModal').classList.remove('show');
+
+            // Clean up
+            if (posChartInterval) {
+                clearInterval(posChartInterval);
+                posChartInterval = null;
+            }
+
+            if (posChart) {
+                posChart.remove();
+                posChart = null;
+            }
+
+            // Reset state
+            posCandleSeries = null;
+            entryPriceLine = null;
+            slPriceLine = null;
+            tpPriceLine = null;
+            emaLineSeries = null;
+            st1LineSeries = null;
+            st2LineSeries = null;
+            st3LineSeries = null;
+            currentPositionId = null;
+            currentPositionData = null;
+            currentBot = null;
         }
+
+        function updatePositionPnl(position) {
+            const pnlUsdt = document.getElementById('posChartPnlUsdt');
+            const pnlPercent = document.getElementById('posChartPnlPercent');
+            const pnlSign = position.pnl_usdt >= 0 ? '+' : '';
+            const pnlColor = position.pnl_usdt >= 0 ? '#00c853' : '#ff1744';
+
+            pnlUsdt.textContent = `${pnlSign}${position.pnl_usdt.toFixed(4)}`;
+            pnlUsdt.style.color = pnlColor;
+            pnlPercent.textContent = `(${pnlSign}${position.pnl_percent.toFixed(2)}%)`;
+            pnlPercent.style.color = pnlColor;
+        }
+
     </script>
 </body>
 </html>
@@ -6298,6 +6310,7 @@ async def create_bot(config: dict):
         "trailing_tp_activation": config.get("trailing_tp_activation", 0.5),
         "trailing_tp_step": config.get("trailing_tp_step", 1.0),
         # Auto-trade filters
+        "asset_filters_enabled": config.get("asset_filters_enabled", True),
         "filter_min_volume": config.get("filter_min_volume", 0),
         "filter_max_volume": config.get("filter_max_volume", 0),
         "filter_min_price": config.get("filter_min_price", 0),
@@ -6312,7 +6325,13 @@ async def create_bot(config: dict):
         "st3_role": config.get("st3_role", "trigger"),
         "trigger_confirm_candles": config.get("trigger_confirm_candles", 1),
         "balance_usage_percent": config.get("balance_usage_percent", 100),
-        "max_loss_percent": config.get("max_loss_percent", 10),
+        # Daily loss limit settings
+        "max_loss_enabled": config.get("max_loss_enabled", False),
+        "max_loss_percent": config.get("max_loss_percent", 50),
+        # Consecutive losses settings
+        "consecutive_losses_enabled": config.get("consecutive_losses_enabled", False),
+        "max_consecutive_losses": config.get("max_consecutive_losses", 3),
+        "cooldown_after_loss_streak": config.get("cooldown_after_loss_streak", 30),
         "status": "stopped",
         "created_at": datetime.now().isoformat(),
         # Trading statistics (persistent)
@@ -6427,6 +6446,8 @@ async def update_bot(bot_id: str, config: dict):
     if "trailing_tp_step" in config:
         bot["trailing_tp_step"] = float(config["trailing_tp_step"])
     # Auto-trade filters
+    if "asset_filters_enabled" in config:
+        bot["asset_filters_enabled"] = _to_bool(config["asset_filters_enabled"], True)
     if "filter_min_volume" in config:
         bot["filter_min_volume"] = float(config["filter_min_volume"])
     if "filter_max_volume" in config:
@@ -6464,8 +6485,18 @@ async def update_bot(bot_id: str, config: dict):
                 bot["initial_balance"] = total_balance * bot["balance_usage_percent"] / 100
         except Exception:
             pass
+    # Daily loss limit settings
+    if "max_loss_enabled" in config:
+        bot["max_loss_enabled"] = _to_bool(config["max_loss_enabled"], False)
     if "max_loss_percent" in config:
         bot["max_loss_percent"] = float(config["max_loss_percent"])
+    # Consecutive losses settings
+    if "consecutive_losses_enabled" in config:
+        bot["consecutive_losses_enabled"] = _to_bool(config["consecutive_losses_enabled"], False)
+    if "max_consecutive_losses" in config:
+        bot["max_consecutive_losses"] = int(config["max_consecutive_losses"])
+    if "cooldown_after_loss_streak" in config:
+        bot["cooldown_after_loss_streak"] = int(config["cooldown_after_loss_streak"])
 
     # If bot is running or paused, update engine's strategy config in real-time
     if bot.get("status") in ("running", "paused") and bot_id in bot_engines:
@@ -6610,6 +6641,7 @@ async def start_specific_bot(bot_id: str):
     bot_settings["tp_mode"] = bot.get("tp_mode", "rr")
     bot_settings["tp_fixed_percent"] = bot.get("tp_fixed_percent", 2.0)
     # Auto-trade filters
+    bot_settings["asset_filters_enabled"] = _to_bool(bot.get("asset_filters_enabled", True), True)
     bot_settings["filter_min_volume"] = bot.get("filter_min_volume", 0)
     bot_settings["filter_max_volume"] = bot.get("filter_max_volume", 0)
     bot_settings["filter_min_price"] = bot.get("filter_min_price", 0)
@@ -6634,9 +6666,14 @@ async def start_specific_bot(bot_id: str):
     bot_settings["trailing_tp_st_line"] = bot.get("trailing_tp_st_line", 2)
     bot_settings["trailing_tp_activation"] = bot.get("trailing_tp_activation", 0.5)
     bot_settings["trailing_tp_step"] = bot.get("trailing_tp_step", 1.0)
-    # Risk management
-    bot_settings["max_loss_percent"] = bot.get("max_loss_percent", 100)
+    # Risk management - Daily loss limit
+    bot_settings["max_loss_enabled"] = _to_bool(bot.get("max_loss_enabled", False), False)
+    bot_settings["max_loss_percent"] = bot.get("max_loss_percent", 50)
     bot_settings["balance_usage_percent"] = bot.get("balance_usage_percent", 100)
+    # Consecutive losses settings
+    bot_settings["consecutive_losses_enabled"] = _to_bool(bot.get("consecutive_losses_enabled", False), False)
+    bot_settings["max_consecutive_losses"] = bot.get("max_consecutive_losses", 3)
+    bot_settings["cooldown_after_loss_streak"] = bot.get("cooldown_after_loss_streak", 30)
 
     # Store per-bot settings
     bot_runtime_settings[bot_id] = bot_settings
@@ -6871,6 +6908,7 @@ async def resume_specific_bot(bot_id: str):
     bot_settings["tp_mode"] = bot.get("tp_mode", "rr")
     bot_settings["tp_fixed_percent"] = bot.get("tp_fixed_percent", 2.0)
     # Auto-trade filters
+    bot_settings["asset_filters_enabled"] = _to_bool(bot.get("asset_filters_enabled", True), True)
     bot_settings["filter_min_volume"] = bot.get("filter_min_volume", 0)
     bot_settings["filter_max_volume"] = bot.get("filter_max_volume", 0)
     bot_settings["filter_min_price"] = bot.get("filter_min_price", 0)

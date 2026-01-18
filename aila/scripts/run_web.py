@@ -328,7 +328,8 @@ def create_engine_config_for_bot(bot_id: str) -> TradingEngineConfig:
     """Create trading engine configuration for a specific bot."""
     bot_settings = get_bot_runtime_settings(bot_id)
     return TradingEngineConfig(
-        # Use max_loss_percent from bot settings (UI), fallback to global settings
+        # Daily loss limit settings
+        max_loss_enabled=bot_settings.get("max_loss_enabled", False),
         max_daily_loss_percent=bot_settings.get("max_loss_percent", settings.risk.max_daily_loss_percent),
         paper_trading=not settings.is_production,
         order_size=bot_settings.get("order_size", 100.0),
@@ -337,6 +338,10 @@ def create_engine_config_for_bot(bot_id: str) -> TradingEngineConfig:
         risk_per_trade=bot_settings.get("risk_per_trade", 2.0),
         # Margin mode
         margin_mode=bot_settings.get("margin_mode", "cross"),
+        # Consecutive losses settings
+        consecutive_losses_enabled=bot_settings.get("consecutive_losses_enabled", False),
+        max_consecutive_losses=bot_settings.get("max_consecutive_losses", 3),
+        cooldown_after_loss_streak=bot_settings.get("cooldown_after_loss_streak", 30),
     )
 
 
@@ -408,6 +413,10 @@ async def start_trading_for_bot(bot_id: str):
         # Update engine config with allocated balance for proper loss % calculation
         engine.config.allocated_balance = calculated_initial_balance
         add_log(f"[info    ] [{bot_name}] Connected. USDT Balance: {total_balance} | Allocated: {calculated_initial_balance:.2f} ({balance_usage_percent}%)")
+        # Log risk management settings
+        max_loss_status = "ON" if engine.config.max_loss_enabled else "OFF"
+        consec_loss_status = "ON" if engine.config.consecutive_losses_enabled else "OFF"
+        add_log(f"[info    ] [{bot_name}] Risk: MaxLoss={max_loss_status} ({engine.config.max_daily_loss_percent}%={calculated_initial_balance * engine.config.max_daily_loss_percent / 100:.2f} USDT) | ConsecLosses={consec_loss_status} (max={engine.config.max_consecutive_losses}, cooldown={engine.config.cooldown_after_loss_streak}min)")
     except Exception as e:
         add_log(f"[warning ] [{bot_name}] Failed to calculate initial_balance: {e}")
 

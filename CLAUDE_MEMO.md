@@ -313,12 +313,26 @@ echo "2.2.0" > /opt/aila/VERSION
 
 ## 9.1 Лимит потерь (Safety Limits)
 
+**ВАЖНО: Лимиты работают ТОЛЬКО если включены toggle переключатели!**
+
+**Настройки в UI:**
+- `max_loss_enabled` - toggle для Max Loss Limit
+- `consecutive_losses_enabled` - toggle для Consecutive Losses Limit
+- `max_consecutive_losses` - количество убыточных сделок подряд (2-10)
+- `cooldown_after_loss_streak` - пауза после серии убытков (5-120 мин)
+
 **Как работает:**
 ```python
 # engine.py _check_safety_limits()
-loss_percent = abs(daily_pnl_usdt) / allocated_balance * 100
-if loss_percent >= max_daily_loss_percent:
-    return False  # Остановить торговлю
+# Проверки выполняются ТОЛЬКО если включены соответствующие toggle!
+if self.config.max_loss_enabled:
+    loss_percent = abs(daily_pnl_usdt) / allocated_balance * 100
+    if loss_percent >= max_daily_loss_percent:
+        return False  # Остановить торговлю
+
+if self.config.consecutive_losses_enabled:
+    if consecutive_losses >= max_consecutive_losses:
+        # Проверить cooldown и остановить если нужно
 ```
 
 **Пример:**
@@ -328,9 +342,9 @@ if loss_percent >= max_daily_loss_percent:
 | 50 USDT | 50% | 25 USDT | 20% | 5 USDT |
 
 **Ключевые файлы:**
-- `engine.py` - `allocated_balance` в TradingEngineConfig + логика проверки
-- `run_web.py` - `engine.config.allocated_balance = calculated_initial_balance`
-- `main.py` - `bot_settings["max_loss_percent"]` копируется при start_bot
+- `engine.py` - TradingEngineConfig (max_loss_enabled, consecutive_losses_enabled и т.д.)
+- `run_web.py` - create_engine_config_for_bot() + логирование риск-настроек
+- `main.py` - UI формы с toggle переключателями + JS функции toggle*
 
 ---
 
@@ -481,6 +495,12 @@ STRATEGY_ST3_MULTIPLIER=3.0
   - Перетаскивание SL/TP мышью для ручного изменения
   - Обратный отсчёт до закрытия свечи
   - API: /api/klines/{symbol}, /api/indicators/{symbol}?bot_id=X, /api/positions/{id}/update-levels
+- **Safety Limits с toggle переключателями**:
+  - Max Loss Limit - теперь с toggle вкл/выкл (по умолчанию выкл, значение 50%)
+  - Consecutive Losses Limit - НОВАЯ функция с toggle (max losses 2-10, cooldown 5-120 мин)
+  - Лимиты применяются ТОЛЬКО если включены соответствующие toggle
+  - Логирование при старте бота: `Risk: MaxLoss=ON/OFF (...) | ConsecLosses=ON/OFF (...)`
+- **Asset Filters с toggle** - фильтры активов можно полностью отключить toggle переключателем
 
 ---
 
@@ -509,6 +529,6 @@ pkill -f "aila.scripts.run_web"; sleep 2; nohup /opt/aila/venv/bin/python -m ail
 
 ---
 
-**Последнее обновление:** 2026-01-17
+**Последнее обновление:** 2026-01-18
 **Текущая версия:** v2.1.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`

@@ -58,7 +58,9 @@ class TradingEngineConfig:
     margin_mode: str = "cross"  # cross | isolated
 
     # Safety
+    max_loss_enabled: bool = False  # Whether daily loss limit is active
     max_daily_loss_percent: float = 5.0
+    consecutive_losses_enabled: bool = False  # Whether consecutive losses limit is active
     max_consecutive_losses: int = 3
     cooldown_after_loss_streak: int = 60  # minutes
     allocated_balance: float = 0.0  # Bot's allocated deposit (for loss % calculation)
@@ -407,6 +409,11 @@ class TradingEngine:
             from ..api.main import runtime_settings
         except ImportError:
             return symbols  # Fallback: return all symbols
+
+        # Check if asset filters are enabled
+        if not runtime_settings.get("asset_filters_enabled", True):
+            logger.debug("Asset filters disabled, returning all symbols")
+            return symbols
 
         # Get filter settings
         min_volume = runtime_settings.get("filter_min_volume", 0)
@@ -1414,28 +1421,49 @@ class TradingEngine:
 
     def _check_safety_limits(self) -> bool:
         """Check if trading should continue based on safety limits."""
-        # Check consecutive losses
-        if self.stats.consecutive_losses >= self.config.max_consecutive_losses:
-            if self.stats.last_trade_time:
-                cooldown_end = self.stats.last_trade_time + timedelta(
-                    minutes=self.config.cooldown_after_loss_streak
-                )
-                if datetime.utcnow() < cooldown_end:
-                    return False
-                else:
-                    self.stats.consecutive_losses = 0
+        # Check consecutive losses (only if enabled)
+        if self.config.consecutive_losses_enabled:
+            if self.stats.consecutive_losses >= self.config.max_consecutive_losses:
+                if self.stats.last_trade_time:
+                    cooldown_end = self.stats.last_trade_time + timedelta(
+                        minutes=self.config.cooldown_after_loss_streak
+                    )
+                    if datetime.utcnow() < cooldown_end:
+                        logger.warning(
+                            "Safety: consecutive losses cooldown",
+                            consecutive_losses=self.stats.consecutive_losses,
+                            max_consecutive=self.config.max_consecutive_losses,
+                            cooldown_end=cooldown_end.isoformat()
+                        )
+                        return False
+                    else:
+                        self.stats.consecutive_losses = 0
 
-        # Check daily loss limit (as % of allocated balance)
-        if self.config.allocated_balance > 0:
-            # Calculate loss as percentage of allocated balance
+        # Check daily loss limit (only if enabled)
+        if self.config.max_loss_enabled:
             daily_pnl_usdt = float(self.stats.daily_pnl)
-            loss_percent = abs(daily_pnl_usdt) / self.config.allocated_balance * 100 if daily_pnl_usdt < 0 else 0
-            if loss_percent >= self.config.max_daily_loss_percent:
-                return False
-        else:
-            # Fallback: compare raw USDT values (legacy behavior)
-            if float(self.stats.daily_pnl) <= -self.config.max_daily_loss_percent:
-                return False
+            if self.config.allocated_balance > 0:
+                # Calculate loss as percentage of allocated balance
+                loss_percent = abs(daily_pnl_usdt) / self.config.allocated_balance * 100 if daily_pnl_usdt < 0 else 0
+                if loss_percent >= self.config.max_daily_loss_percent:
+                    logger.warning(
+                        "Safety: daily loss limit reached",
+                        daily_pnl=daily_pnl_usdt,
+                        allocated_balance=self.config.allocated_balance,
+                        loss_percent=f"{loss_percent:.2f}%",
+                        max_loss_percent=f"{self.config.max_daily_loss_percent}%"
+                    )
+                    return False
+            else:
+                # Fallback: compare raw USDT values (legacy behavior)
+                if daily_pnl_usdt <= -self.config.max_daily_loss_percent:
+                    logger.warning(
+                        "Safety: daily loss limit (fallback mode)",
+                        daily_pnl=daily_pnl_usdt,
+                        max_daily_loss=self.config.max_daily_loss_percent,
+                        allocated_balance=self.config.allocated_balance
+                    )
+                    return False
 
         return True
 
