@@ -5,18 +5,36 @@ FastAPI-based web interface for monitoring and controlling the trading bot.
 """
 
 import asyncio
+import hashlib
+import hmac
 import os
+import secrets
+import time
 from collections import deque
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Response
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Response, Request, Cookie
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from dotenv import load_dotenv
 
 import structlog
+
+# Load environment variables
+load_dotenv()
+
+# Telegram Auth Config
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_AUTH_BOT_TOKEN", "")
+TELEGRAM_BOT_USERNAME = os.getenv("TELEGRAM_BOT_USERNAME", "aila_zone_bot")
+ALLOWED_TELEGRAM_IDS = set(
+    int(x.strip()) for x in os.getenv("ALLOWED_TELEGRAM_IDS", "").split(",") if x.strip()
+)
+
+# Session storage (in-memory, simple approach)
+active_sessions: dict[str, dict] = {}
 
 logger = structlog.get_logger(__name__)
 
@@ -83,13 +101,226 @@ async def startup_event():
     log_buffer.append(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | --- Сервер перезапущен / Server restarted ---")
 
 
+# =============================================
+# Authentication Functions
+# =============================================
+
+def verify_telegram_auth(auth_data: dict) -> bool:
+    """Verify Telegram Login Widget data."""
+    if not TELEGRAM_BOT_TOKEN:
+        return False
+
+    # Extract hash and prepare data
+    received_hash = auth_data.get("hash", "")
+    data_check_arr = []
+
+    for key, value in sorted(auth_data.items()):
+        if key != "hash":
+            data_check_arr.append(f"{key}={value}")
+
+    data_check_string = "\n".join(data_check_arr)
+
+    # Create secret key from bot token
+    secret_key = hashlib.sha256(TELEGRAM_BOT_TOKEN.encode()).digest()
+
+    # Calculate hash
+    calculated_hash = hmac.new(
+        secret_key,
+        data_check_string.encode(),
+        hashlib.sha256
+    ).hexdigest()
+
+    return hmac.compare_digest(calculated_hash, received_hash)
+
+
+def create_session(telegram_id: int, username: str = "") -> str:
+    """Create a new session and return session token."""
+    session_token = secrets.token_urlsafe(32)
+    active_sessions[session_token] = {
+        "telegram_id": telegram_id,
+        "username": username,
+        "created_at": time.time(),
+    }
+    return session_token
+
+
+def verify_session(session_token: str) -> bool:
+    """Verify if session is valid (exists and not expired - 7 days)."""
+    if not session_token or session_token not in active_sessions:
+        return False
+
+    session = active_sessions[session_token]
+    # Check if session is expired (7 days = 604800 seconds)
+    if time.time() - session["created_at"] > 604800:
+        del active_sessions[session_token]
+        return False
+
+    return True
+
+
+def get_session_user(session_token: str) -> Optional[dict]:
+    """Get user info from session."""
+    if verify_session(session_token):
+        return active_sessions.get(session_token)
+    return None
+
+
+# Login page HTML
+LOGIN_HTML = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1a1a2e">
+    <link rel="icon" type="image/png" href="/static/aila-icon.png">
+    <title>AILA - Login</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-container {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 40px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 450px;
+            width: 100%;
+        }
+
+        .logo {
+            width: 300px;
+            height: auto;
+            margin-bottom: 20px;
+        }
+
+        .title {
+            font-size: 28px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 16px;
+        }
+
+        .description {
+            color: #888;
+            margin-bottom: 30px;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+
+        .telegram-login {
+            display: flex;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        .error-message {
+            background: rgba(255, 68, 68, 0.2);
+            border: 1px solid #ff4444;
+            color: #ff6b6b;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <img src="/static/logo.png" alt="AILA" class="logo">
+        <h1 class="title">AI Trading Platform</h1>
+        <p class="description" id="description"></p>
+
+        <div class="error-message" id="errorMessage"></div>
+
+        <div class="telegram-login">
+            <script async src="https://telegram.org/js/telegram-widget.js?22"
+                    data-telegram-login="BOT_USERNAME_PLACEHOLDER"
+                    data-size="large"
+                    data-auth-url="https://aila.zone/auth/telegram"
+                    data-request-access="write">
+            </script>
+        </div>
+    </div>
+
+    <script>
+        // Detect language
+        const browserLang = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
+        const isRussian = browserLang.startsWith('ru');
+        const detectedLang = isRussian ? 'ru' : 'en';
+
+        // Save detected language to cookie and localStorage for dashboard
+        document.cookie = 'ailaLang=' + detectedLang + '; path=/; max-age=31536000; SameSite=Lax';
+        localStorage.setItem('ailaLang', detectedLang);
+
+        // Set texts based on language
+        const texts = {
+            ru: {
+                description: 'Автоматическая торговля криптовалютой с искусственным интеллектом. AI анализирует рынок 24/7, самообучается на каждой сделке и постоянно улучшает результаты. Ранний доступ для первых пользователей.',
+                accessDenied: 'Доступ запрещён',
+                authError: 'Ошибка авторизации'
+            },
+            en: {
+                description: 'Automated crypto trading powered by AI. The system analyzes markets 24/7, learns from every trade, and continuously improves results. Early access for first users.',
+                accessDenied: 'Access denied',
+                authError: 'Authentication error'
+            }
+        };
+
+        const t = isRussian ? texts.ru : texts.en;
+        document.getElementById('description').textContent = t.description;
+
+        // Check for error in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const error = urlParams.get('error');
+        if (error) {
+            const errorEl = document.getElementById('errorMessage');
+            if (error === 'access_denied') {
+                errorEl.textContent = t.accessDenied;
+            } else if (error === 'invalid_auth') {
+                errorEl.textContent = t.authError;
+            } else {
+                errorEl.textContent = error;
+            }
+            errorEl.classList.add('show');
+        }
+    </script>
+</body>
+</html>
+""".replace("BOT_USERNAME_PLACEHOLDER", TELEGRAM_BOT_USERNAME)
+
+
 # Dashboard HTML with auto-refresh and copy button
 DASHBOARD_HTML = r"""
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -117,6 +348,7 @@ DASHBOARD_HTML = r"""
             color: #e0e0e0;
             min-height: 100vh;
             padding: 20px;
+            padding-top: calc(20px + env(safe-area-inset-top, 0px));
             padding-bottom: 50px; /* Space for fixed bottom panel */
         }
 
@@ -258,53 +490,6 @@ DASHBOARD_HTML = r"""
         .card-value.positive { color: #00ff88; }
         .card-value.negative { color: #ff4444; }
 
-        .logs-container {
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 12px;
-            padding: 15px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .logs-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-
-        .log-icon-btn {
-            width: 28px;
-            height: 28px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: transparent;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 16px;
-            color: #888;
-            transition: all 0.2s;
-        }
-
-        .log-icon-btn:hover {
-            background: rgba(255, 255, 255, 0.1);
-            color: #fff;
-        }
-
-        .log-icon-btn.active {
-            color: #00ff88;
-        }
-
-        .log-icon-btn.active:hover {
-            background: rgba(0, 255, 136, 0.1);
-        }
-
-        .log-icons-right {
-            display: flex;
-            gap: 5px;
-        }
-
         .btn-group {
             display: flex;
             gap: 10px;
@@ -372,6 +557,143 @@ DASHBOARD_HTML = r"""
         .log-trade-profit { color: #00ff88; font-weight: bold; }
         .log-trade-loss { color: #ff4444; font-weight: bold; }
 
+        /* Fullscreen Logs Modal */
+        .logs-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 10, 20, 0.98);
+            z-index: 2000;
+            flex-direction: column;
+        }
+
+        .logs-modal.show {
+            display: flex;
+        }
+
+        .logs-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            padding-top: calc(15px + env(safe-area-inset-top, 0px));
+            background: rgba(26, 26, 46, 0.95);
+            border-bottom: 1px solid rgba(0, 212, 255, 0.3);
+        }
+
+        .logs-modal-left,
+        .logs-modal-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logs-modal-title {
+            color: #00d4ff;
+            font-size: 16px;
+            margin: 0;
+            display: flex;
+            align-items: center;
+        }
+
+        .logs-modal-btn {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            cursor: pointer;
+            color: #888;
+            transition: all 0.2s;
+        }
+
+        .logs-modal-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .logs-modal-btn.active {
+            color: #00ff88;
+            border-color: rgba(0, 255, 136, 0.3);
+            background: rgba(0, 255, 136, 0.1);
+        }
+
+        .logs-modal-btn.active:hover {
+            background: rgba(0, 255, 136, 0.2);
+        }
+
+        .logs-modal-close {
+            color: #ff6666;
+            border-color: rgba(255, 100, 100, 0.3);
+        }
+
+        .logs-modal-close:hover {
+            background: rgba(255, 100, 100, 0.2);
+            color: #ff8888;
+            border-color: rgba(255, 100, 100, 0.5);
+        }
+
+        .logs-modal-body {
+            flex: 1;
+            padding: 15px 20px 20px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .logs-modal-body .logs {
+            flex: 1;
+            height: auto;
+            border-radius: 12px;
+            padding: 15px;
+        }
+
+        /* Mobile: move header to bottom */
+        @media (max-width: 767px) {
+            .logs-modal {
+                flex-direction: column-reverse;
+            }
+
+            .logs-modal-header {
+                border-bottom: none;
+                border-top: 1px solid rgba(0, 212, 255, 0.3);
+                padding: 8px 15px;
+                padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+            }
+
+            .logs-modal-body {
+                padding: 15px 15px 10px;
+                padding-top: calc(env(safe-area-inset-top, 0px) + 20px);
+            }
+
+            .logs-modal-title {
+                font-size: 14px;
+            }
+
+            .logs-modal-title svg {
+                width: 16px;
+                height: 16px;
+                margin-right: 6px;
+            }
+
+            .logs-modal-btn {
+                width: 32px;
+                height: 32px;
+            }
+
+            .logs-modal-btn svg {
+                width: 14px;
+                height: 14px;
+            }
+        }
+
         .toast {
             position: fixed;
             bottom: 20px;
@@ -384,7 +706,7 @@ DASHBOARD_HTML = r"""
             transform: translateY(100px);
             opacity: 0;
             transition: all 0.3s;
-            z-index: 1000;
+            z-index: 3000;
         }
 
         .toast.show {
@@ -483,7 +805,38 @@ DASHBOARD_HTML = r"""
         .settings-actions {
             display: flex;
             gap: 10px;
-            justify-content: flex-end;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Input with clear button */
+        .input-clearable {
+            position: relative;
+            display: flex;
+            align-items: center;
+            width: 100%;
+        }
+        .input-clearable input {
+            padding-left: 10px !important;
+            padding-right: 24px !important;
+            flex: 1;
+            width: 100%;
+        }
+        .input-clear-btn {
+            position: absolute;
+            right: 6px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #666;
+            font-size: 14px;
+            line-height: 1;
+            padding: 2px;
+            transition: color 0.2s;
+            z-index: 1;
+        }
+        .input-clear-btn:hover {
+            color: #999;
         }
 
         .running .btn-success {
@@ -493,6 +846,29 @@ DASHBOARD_HTML = r"""
         .lang-selector option {
             background: #1a1a2e;
             color: #e0e0e0;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logout-btn {
+            background: transparent;
+            border: 1px solid rgba(255, 68, 68, 0.3);
+            color: #ff6b6b;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 68, 68, 0.2);
+            border-color: #ff4444;
         }
 
         /* Charts Section */
@@ -658,6 +1034,16 @@ DASHBOARD_HTML = r"""
             50% { opacity: 0.4; box-shadow: 0 0 2px currentColor; }
         }
 
+        /* Spinning animation */
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .spin {
+            animation: spin 1s linear infinite;
+        }
+
         .status-indicator {
             width: 10px;
             height: 10px;
@@ -791,6 +1177,7 @@ DASHBOARD_HTML = r"""
             background: #1a1a2e;
             border-radius: 12px;
             padding: 30px;
+            padding-top: calc(30px + env(safe-area-inset-top, 0px));
             max-width: 500px;
             width: 90%;
             border: 1px solid rgba(255, 255, 255, 0.1);
@@ -995,6 +1382,11 @@ DASHBOARD_HTML = r"""
         }
         .settings-block h4 .icon {
             font-size: 14px;
+            display: flex;
+            align-items: center;
+        }
+        .settings-block h4 .icon svg {
+            display: block;
         }
         .block-risk {
             background: rgba(255,68,68,0.08);
@@ -1078,6 +1470,7 @@ DASHBOARD_HTML = r"""
             max-width: 480px !important;
             max-height: 95vh !important;
             padding: 20px !important;
+            padding-top: calc(20px + env(safe-area-inset-top, 0px)) !important;
         }
         .modal-compact .modal-header {
             margin-bottom: 12px;
@@ -1161,6 +1554,60 @@ DASHBOARD_HTML = r"""
             color: #00d4ff;
         }
 
+        /* API Stats Panel (Bottom Bar) */
+        .api-stats-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(26, 26, 46, 0.95);
+            border-top: 1px solid rgba(0, 212, 255, 0.3);
+            padding: 8px 20px;
+            padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+            font-size: 12px;
+            color: #888;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+        .api-stats-inner {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 32px;
+        }
+        .api-stats-left {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .api-stats-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        @media (max-width: 768px) {
+            .api-stats-panel {
+                padding: 8px 15px;
+                padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+            }
+            .api-stats-inner {
+                min-height: 32px;
+                gap: 8px;
+            }
+            .api-stats-left {
+                gap: 10px;
+                flex-wrap: wrap;
+            }
+            .api-stats-right {
+                gap: 8px;
+            }
+            body {
+                padding-bottom: calc(48px + env(safe-area-inset-bottom, 0px)) !important;
+            }
+        }
+
         /* Responsive */
         @media (max-width: 520px) {
             .modal-compact {
@@ -1169,6 +1616,7 @@ DASHBOARD_HTML = r"""
                 max-height: 100vh !important;
                 border-radius: 0 !important;
                 padding: 15px !important;
+                padding-top: calc(env(safe-area-inset-top, 0px) + 20px) !important;
             }
             .settings-row {
                 flex-wrap: wrap;
@@ -1178,6 +1626,72 @@ DASHBOARD_HTML = r"""
             }
             .settings-block {
                 padding: 10px;
+            }
+            /* ST1+ST2+ST3 on one line on mobile */
+            .block-signal .settings-row:first-child .setting-compact {
+                min-width: calc(33.33% - 7px);
+                flex: 1;
+            }
+            .block-signal .settings-row:first-child .setting-compact select {
+                font-size: 11px;
+                padding: 6px 4px;
+            }
+            .block-signal .settings-row:first-child .setting-compact label {
+                font-size: 11px;
+            }
+            /* Signal preview smaller on mobile */
+            .signal-preview {
+                font-size: 11px !important;
+                padding: 6px !important;
+            }
+            /* Volatility row - 3 columns on mobile */
+            .row-volatility .setting-compact {
+                min-width: calc(33.33% - 7px) !important;
+                flex: 1;
+            }
+            .row-volatility .setting-compact input {
+                font-size: 11px;
+                padding: 6px 4px;
+            }
+            .row-volatility .setting-compact label {
+                font-size: 11px;
+            }
+            /* Modal bottom panel - fixed at bottom, same height as logs panel */
+            .modal-compact .settings-actions {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                margin: 0;
+                padding: 8px 15px;
+                padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+                background: rgba(26, 26, 46, 0.98);
+                border-top: 1px solid rgba(0, 212, 255, 0.3);
+                z-index: 10;
+                display: flex;
+                gap: 15px;
+                justify-content: center;
+            }
+            .modal-compact .settings-actions .btn {
+                min-height: 36px;
+                flex: 1;
+                max-width: 45%;
+                font-size: 14px;
+            }
+            /* Add padding to content so it's not hidden behind fixed panel */
+            .modal-compact {
+                padding-bottom: calc(48px + env(safe-area-inset-bottom, 0px)) !important;
+            }
+            /* Safari browser (not PWA) - additional top padding */
+            body.safari-browser .modal-compact {
+                padding-top: calc(100px + env(safe-area-inset-top, 0px)) !important;
+            }
+            /* Safari browser (not PWA) - additional bottom padding for buttons */
+            body.safari-browser .modal-compact .settings-actions {
+                padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+            }
+            body.safari-browser .modal-compact {
+                padding-bottom: calc(130px + env(safe-area-inset-bottom, 0px)) !important;
             }
         }
 
@@ -1225,10 +1739,13 @@ DASHBOARD_HTML = r"""
                 <div class="status-dot" id="statusDot"></div>
                 <img src="/static/logo.png" alt="AILA" style="height: 30px; cursor: pointer;" onclick="location.reload()" title="Refresh">
             </div>
-            <select class="lang-selector" id="langSelector" onchange="changeLanguage(this.value)">
-                <option value="en">EN</option>
-                <option value="ru">RU</option>
-            </select>
+            <div class="header-right">
+                <select class="lang-selector" id="langSelector" onchange="changeLanguage(this.value)">
+                    <option value="en">EN</option>
+                    <option value="ru">RU</option>
+                </select>
+                <button class="logout-btn" onclick="window.location.href='/logout'" title="Logout">⏻</button>
+            </div>
         </header>
 
         <!-- Tabs Navigation -->
@@ -1293,22 +1810,6 @@ DASHBOARD_HTML = r"""
                 </div>
             </div>
 
-            <div class="logs-container">
-                <div class="logs-header">
-                    <button class="log-icon-btn active" id="autoScrollBtn" onclick="toggleAutoScroll()" title="Auto-scroll">
-                        ⬇
-                    </button>
-                    <div class="log-icons-right">
-                        <button class="log-icon-btn" onclick="clearLogs()" title="Clear logs">
-                            🗑
-                        </button>
-                        <button class="log-icon-btn" onclick="copyLogs()" title="Copy logs">
-                            📋
-                        </button>
-                    </div>
-                </div>
-                <div class="logs" id="logs"></div>
-            </div>
         </div>
 
         <!-- Charts Tab -->
@@ -1352,65 +1853,117 @@ DASHBOARD_HTML = r"""
     </div>
 
     <!-- API Stats Panel (bottom, aligned with container) -->
-    <div id="apiStatsPanel" style="
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background: rgba(26, 26, 46, 0.95);
-        border-top: 1px solid rgba(0, 212, 255, 0.3);
-        padding: 8px 20px;
-        font-size: 12px;
-        color: #888;
-        z-index: 1000;
-        backdrop-filter: blur(10px);
-    ">
-        <div style="max-width: 1600px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between;">
-            <div style="display: flex; align-items: center; gap: 15px;">
+    <div id="apiStatsPanel" class="api-stats-panel">
+        <div class="api-stats-inner">
+            <div class="api-stats-left">
                 <span style="color: #00d4ff; font-weight: bold;" id="versionDisplay">v2.1.0</span>
-                <div title="Ping to Bybit API">
-                    <span style="color: #00d4ff;">⚡</span>
-                    <span id="apiPing">--</span> ms
+                <div title="Ping to Bybit API" style="display: flex; align-items: center; gap: 4px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00d4ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    <span id="apiPing" style="color: #00d4ff;">--</span> <span style="color: #888;">ms</span>
                 </div>
-                <div title="API Requests per 5 sec / Bybit Limit">
-                    <span style="color: #00ff88;">📊</span>
-                    <span id="apiRequests">--</span>/<span id="apiLimit">600</span>/5s
-                </div>
-                <div title="Rate Usage">
-                    <span id="apiUsageBar" style="
-                        display: inline-block;
-                        width: 40px;
-                        height: 6px;
-                        background: rgba(255,255,255,0.1);
-                        border-radius: 3px;
-                        overflow: hidden;
-                    ">
-                        <span id="apiUsageFill" style="
-                            display: block;
-                            height: 100%;
-                            width: 0%;
-                            background: linear-gradient(90deg, #00ff88, #ffcc00);
-                            transition: width 0.3s;
-                        "></span>
-                    </span>
+                <div title="API Requests per 5 sec / Bybit Limit" style="display: flex; align-items: center; gap: 4px;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00ff88" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                    </svg>
+                    <span id="apiRequestsDisplay"><span id="apiRequests" style="color: #00ff88;">--</span>/<span id="apiLimit" style="color: #888;">600</span>/5s</span>
                 </div>
             </div>
-            <button id="restartServerBtn" onclick="restartServer()" title="Restart Server" style="
-                background: transparent;
-                border: 1px solid rgba(255, 100, 100, 0.5);
-                border-radius: 4px;
-                padding: 4px 8px;
-                cursor: pointer;
-                color: #ff6666;
-                font-size: 11px;
-                transition: all 0.2s;
-            " onmouseover="this.style.background='rgba(255,100,100,0.2)'" onmouseout="this.style.background='transparent'">
-                🔄 Restart
-            </button>
+            <div class="api-stats-right">
+                <button id="restartServerBtn" onclick="restartServer()" title="Restart Server" style="
+                    background: transparent;
+                    border: 1px solid rgba(255, 100, 100, 0.5);
+                    border-radius: 4px;
+                    padding: 4px 8px;
+                    cursor: pointer;
+                    color: #ff6666;
+                    font-size: 11px;
+                    transition: all 0.2s;
+                " onmouseover="this.style.background='rgba(255,100,100,0.2)'" onmouseout="this.style.background='transparent'">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;">
+                        <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
+                        <path d="M21 3v5h-5"/>
+                    </svg>
+                    Restart
+                </button>
+                <button id="openLogsBtn" onclick="openLogsModal()" title="Open Logs" style="
+                    background: transparent;
+                    border: 1px solid rgba(0, 212, 255, 0.5);
+                    border-radius: 4px;
+                    padding: 4px 8px;
+                    cursor: pointer;
+                    color: #00d4ff;
+                    font-size: 11px;
+                    transition: all 0.2s;
+                    display: flex;
+                    align-items: center;
+                    gap: 4px;
+                " onmouseover="this.style.background='rgba(0,212,255,0.2)'" onmouseout="this.style.background='transparent'">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                        <line x1="16" y1="13" x2="8" y2="13"/>
+                        <line x1="16" y1="17" x2="8" y2="17"/>
+                        <polyline points="10 9 9 9 8 9"/>
+                    </svg>
+                    Logs
+                </button>
+            </div>
         </div>
     </div>
 
     <div class="toast" id="toast">Logs copied to clipboard!</div>
+
+    <!-- Fullscreen Logs Modal -->
+    <div class="logs-modal" id="logsModal">
+        <div class="logs-modal-header">
+            <div class="logs-modal-left">
+                <button class="logs-modal-btn" id="modalAutoScrollBtn" onclick="toggleAutoScroll()" title="Auto-scroll">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 5v14"/>
+                        <path d="M19 12l-7 7-7-7"/>
+                    </svg>
+                </button>
+            </div>
+            <h3 class="logs-modal-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                    <polyline points="10 9 9 9 8 9"/>
+                </svg>
+                <span data-i18n="systemLogs">System Logs</span>
+            </h3>
+            <div class="logs-modal-right">
+                <button class="logs-modal-btn" onclick="clearLogs()" title="Clear logs">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        <line x1="10" y1="11" x2="10" y2="17"/>
+                        <line x1="14" y1="11" x2="14" y2="17"/>
+                    </svg>
+                </button>
+                <button class="logs-modal-btn" onclick="copyLogs()" title="Copy logs">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                    </svg>
+                </button>
+                <button class="logs-modal-btn logs-modal-close" onclick="closeLogsModal()" title="Close">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="logs-modal-body">
+            <div class="logs" id="logs"></div>
+        </div>
+    </div>
 
     <!-- Create Bot Modal -->
     <div class="modal" id="createBotModal">
@@ -1422,7 +1975,7 @@ DASHBOARD_HTML = r"""
 
             <!-- Basic Settings Block -->
             <div class="settings-block block-basic">
-                <h4><span class="icon">⚙️</span> <span data-i18n="basicSettings">Basic</span></h4>
+                <h4><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span> <span data-i18n="basicSettings">Basic</span></h4>
                 <div class="settings-row">
                     <div class="setting-compact">
                         <label data-i18n="botName">Name</label>
@@ -1454,7 +2007,7 @@ DASHBOARD_HTML = r"""
 
             <!-- Risk Management Block -->
             <div class="settings-block block-risk">
-                <h4><span class="icon">🛡️</span> <span data-i18n="riskManagement">Risk Management</span></h4>
+                <h4><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span> <span data-i18n="riskManagement">Risk Management</span></h4>
                 <div class="settings-row">
                     <div class="setting-compact" style="flex: 1;">
                         <label data-i18n="balanceUsage">Balance Usage (%)</label>
@@ -1521,7 +2074,7 @@ DASHBOARD_HTML = r"""
 
             <!-- Strategy Block -->
             <div class="settings-block block-strategy">
-                <h4><span class="icon">📊</span> <span data-i18n="strategySettings">Strategy</span></h4>
+                <h4><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> <span data-i18n="strategySettings">Strategy</span></h4>
                 <div class="settings-row">
                     <div class="setting-compact">
                         <label data-i18n="timeframe">Timeframe</label>
@@ -1583,8 +2136,8 @@ DASHBOARD_HTML = r"""
             </div>
 
             <!-- Take Profit Block -->
-            <div class="settings-block block-profit">
-                <h4><span class="icon">💰</span> <span data-i18n="takeProfitSettings">Take Profit</span></h4>
+            <div class="settings-block block-profit" id="newTpBlock">
+                <h4><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span> <span data-i18n="takeProfitSettings">Take Profit</span></h4>
                 <div class="settings-row">
                     <div class="setting-compact">
                         <label data-i18n="tpMode">TP Mode</label>
@@ -1637,9 +2190,9 @@ DASHBOARD_HTML = r"""
                     <div class="setting-compact" id="newTrailingTpStLineContainer">
                         <label data-i18n="trailingTpStLine">ST Line</label>
                         <select id="newBotTrailingTpStLine">
-                            <option value="1" selected>Fast</option>
-                            <option value="2">Medium</option>
-                            <option value="3">Slow</option>
+                            <option value="1" selected data-i18n="fast">Fast</option>
+                            <option value="2" data-i18n="mediumSpeed">Medium</option>
+                            <option value="3" data-i18n="slowSpeed">Slow</option>
                         </select>
                     </div>
                     <div class="setting-compact" id="newTrailingTpActivationContainer" style="display: none;">
@@ -1688,8 +2241,8 @@ DASHBOARD_HTML = r"""
             </div>
 
             <!-- Stop Loss Block -->
-            <div class="settings-block block-risk">
-                <h4><span class="icon">🛑</span> <span data-i18n="stopLossSettings">Stop Loss</span></h4>
+            <div class="settings-block block-risk" id="newSlBlock">
+                <h4><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></span> <span data-i18n="stopLossSettings">Stop Loss</span></h4>
                 <div class="settings-row">
                     <div class="setting-compact">
                         <label data-i18n="slMode">SL Mode</label>
@@ -1702,9 +2255,9 @@ DASHBOARD_HTML = r"""
                     <div class="setting-compact" id="newSlLineContainer">
                         <label data-i18n="slLine">SL Line</label>
                         <select id="newBotSlLine" style="min-width: 120px;">
-                            <option value="1">Fast</option>
-                            <option value="2" selected>Medium</option>
-                            <option value="3">Slow</option>
+                            <option value="1" data-i18n="fast">Fast</option>
+                            <option value="2" selected data-i18n="mediumSpeed">Medium</option>
+                            <option value="3" data-i18n="slowSpeed">Slow</option>
                         </select>
                     </div>
                     <div class="setting-compact" id="newSlPercentContainer" style="display: none;">
@@ -1748,9 +2301,9 @@ DASHBOARD_HTML = r"""
                     <div class="setting-compact" id="newTrailingStLineContainer">
                         <label data-i18n="trailingStLine">ST Line</label>
                         <select id="newBotTrailingStLine">
-                            <option value="1" selected>Fast</option>
-                            <option value="2">Medium</option>
-                            <option value="3">Slow</option>
+                            <option value="1" selected data-i18n="fast">Fast</option>
+                            <option value="2" data-i18n="mediumSpeed">Medium</option>
+                            <option value="3" data-i18n="slowSpeed">Slow</option>
                         </select>
                     </div>
                     <div class="setting-compact" id="newTrailingConfirmContainer">
@@ -1766,62 +2319,199 @@ DASHBOARD_HTML = r"""
 
             <!-- Signal Entry Block -->
             <div class="settings-block block-signal">
-                <h4><span class="icon">📊</span> <span data-i18n="signalEntry">Signal Entry</span></h4>
-                <div class="settings-row">
-                    <div class="setting-compact">
-                        <label>ST1 (Fast)</label>
-                        <select id="newBotSt1Role" onchange="updateSignalPreview('new')">
-                            <option value="off">❌ Выкл</option>
-                            <option value="confirm" selected>🟢 Подтв</option>
-                            <option value="trigger">🎯 Триггер</option>
-                        </select>
+                <h4><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span> <span data-i18n="signalEntry">Signal Entry</span></h4>
+
+                <!-- Strategy Selection -->
+                <div class="settings-row" style="margin-bottom: 10px;">
+                    <div class="setting-inline" style="flex: 1; padding: 8px; background: rgba(0,212,255,0.1); border-radius: 5px; border: 2px solid transparent;" id="newStrategySupertrend">
+                        <label style="font-weight: bold; color: #00d4ff;">SuperTrend</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="newBotStrategySupertrendEnabled" checked onchange="toggleStrategy('new', 'supertrend')">
+                            <span class="toggle-slider"></span>
+                        </label>
                     </div>
-                    <div class="setting-compact">
-                        <label>ST2 (Medium)</label>
-                        <select id="newBotSt2Role" onchange="updateSignalPreview('new')">
-                            <option value="off">❌ Выкл</option>
-                            <option value="confirm" selected>🟢 Подтв</option>
-                            <option value="trigger">🎯 Триггер</option>
-                        </select>
-                    </div>
-                    <div class="setting-compact">
-                        <label>ST3 (Slow)</label>
-                        <select id="newBotSt3Role" onchange="updateSignalPreview('new')">
-                            <option value="off">❌ Выкл</option>
-                            <option value="confirm">🟢 Подтв</option>
-                            <option value="trigger" selected>🎯 Триггер</option>
-                        </select>
+                    <div class="setting-inline" style="flex: 1; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 5px; border: 2px solid transparent;" id="newStrategyHeikinAshi">
+                        <label style="font-weight: bold; color: #888;">Heikin Ashi</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="newBotStrategyHeikinAshiEnabled" onchange="toggleStrategy('new', 'heikinashi')">
+                            <span class="toggle-slider"></span>
+                        </label>
                     </div>
                 </div>
-                <div class="settings-row">
-                    <div class="setting-compact">
-                        <label data-i18n="triggerConfirmCandles">Trigger Confirm</label>
-                        <select id="newBotTriggerConfirmCandles">
-                            <option value="1" selected>1 свеча</option>
-                            <option value="2">2 свечи</option>
-                            <option value="3">3 свечи</option>
-                        </select>
+
+                <!-- SuperTrend Settings -->
+                <div id="newSupertrendSettings">
+                    <div class="settings-row">
+                        <div class="setting-compact">
+                            <label>ST1 (Fast)</label>
+                            <select id="newBotSt1Role" onchange="updateSignalPreview('new')">
+                                <option value="off">— Off</option>
+                                <option value="confirm" selected>● Conf</option>
+                                <option value="trigger">◎ Trig</option>
+                            </select>
+                        </div>
+                        <div class="setting-compact">
+                            <label>ST2 (Medium)</label>
+                            <select id="newBotSt2Role" onchange="updateSignalPreview('new')">
+                                <option value="off">— Off</option>
+                                <option value="confirm" selected>● Conf</option>
+                                <option value="trigger">◎ Trig</option>
+                            </select>
+                        </div>
+                        <div class="setting-compact">
+                            <label>ST3 (Slow)</label>
+                            <select id="newBotSt3Role" onchange="updateSignalPreview('new')">
+                                <option value="off">— Off</option>
+                                <option value="confirm">● Conf</option>
+                                <option value="trigger" selected>◎ Trig</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="signal-preview" id="newSignalPreview" style="flex: 2; padding: 8px; background: rgba(0,212,255,0.1); border-radius: 5px; font-size: 12px;">
-                        <div style="color: #888;">📋 ST1🟢 + ST2🟢 + ST3🎯</div>
-                        <div style="color: #00d4ff;">💡 Вход когда ST3 разворачивается</div>
+                    <div class="settings-row">
+                        <div class="setting-compact">
+                            <label data-i18n="triggerConfirmCandles">Trigger Confirm</label>
+                            <select id="newBotTriggerConfirmCandles">
+                                <option value="1" selected data-i18n="candle1">1 candle</option>
+                                <option value="2" data-i18n="candles2">2 candles</option>
+                                <option value="3" data-i18n="candles3">3 candles</option>
+                            </select>
+                        </div>
+                        <div class="signal-preview" id="newSignalPreview" style="flex: 2; padding: 8px; background: rgba(0,212,255,0.1); border-radius: 5px; font-size: 12px;">
+                            <div id="signalFormulaPreview" style="color: #888;">ST1● + ST2● + ST3◎</div>
+                            <div id="signalDescPreview" style="color: #00d4ff;">Entry when ST3 reverses</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Heikin Ashi Settings -->
+                <div id="newHeikinAshiSettings" style="display: none;">
+                    <!-- Entry/Exit Settings -->
+                    <div class="settings-row">
+                        <div class="setting-compact">
+                            <label data-i18n="haEntryConfirm">Entry Confirm</label>
+                            <select id="newBotHaEntryCandles">
+                                <option value="1">1</option>
+                                <option value="2" selected>2</option>
+                                <option value="3">3</option>
+                            </select>
+                            <span style="color: #888; font-size: 11px;" data-i18n="candles">candles</span>
+                        </div>
+                    </div>
+                    <div class="settings-row" style="align-items: center;">
+                        <div class="setting-inline" style="flex: 1;">
+                            <label data-i18n="haExitOnColorChange">Exit on Color Change</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="newBotHaExitOnColorChange" checked onchange="toggleHaExitSettings('new')">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="settings-row" id="newHaExitConfirmRow">
+                        <div class="setting-compact">
+                            <label data-i18n="haExitConfirm">Exit Confirm</label>
+                            <select id="newBotHaExitCandles">
+                                <option value="1" selected>1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                            </select>
+                            <span style="color: #888; font-size: 11px;" data-i18n="candles">candles</span>
+                        </div>
+                    </div>
+
+                    <!-- EMA Filter -->
+                    <div class="settings-row" style="align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <div class="setting-inline" style="flex: 1;">
+                            <label data-i18n="haEmaFilter">EMA Filter</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="newBotHaEmaEnabled" checked onchange="toggleHaEmaSettings('new')">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="settings-row" id="newHaEmaSettingsRow">
+                        <div class="setting-compact">
+                            <label data-i18n="haEmaPeriod">EMA Period</label>
+                            <input type="number" id="newBotHaEmaPeriod" value="200" min="20" max="500" style="width: 70px;">
+                        </div>
+                        <div class="setting-compact">
+                            <label data-i18n="haEmaMode">Mode</label>
+                            <select id="newBotHaEmaMode">
+                                <option value="strict" selected data-i18n="strict">Strict</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Volatility Filter -->
+                    <div class="settings-row" style="align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <div class="setting-inline" style="flex: 1;">
+                            <label data-i18n="haVolatilityFilter">Volatility Filter (ATR)</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="newBotHaVolatilityEnabled" checked onchange="toggleHaVolatilitySettings('new')">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="settings-row" id="newHaVolatilitySettingsRow">
+                        <div class="setting-compact">
+                            <label data-i18n="haMinAtr">Min ATR %</label>
+                            <input type="number" id="newBotHaMinAtr" value="0.5" min="0.1" max="5" step="0.1" style="width: 70px;">
+                        </div>
+                    </div>
+
+                    <!-- Emergency Stop-Loss (always active) -->
+                    <div class="settings-row" style="align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <div class="setting-compact" style="flex: 1;">
+                            <label data-i18n="haEmergencySl">Emergency SL %</label>
+                            <input type="number" id="newBotHaEmergencySl" value="2" min="0.5" max="10" step="0.5" style="width: 70px;">
+                            <span class="info-wrapper">
+                                <span class="info-icon" onclick="toggleInfo(this)">i</span>
+                                <span class="info-tooltip" data-i18n-tooltip="haEmergencySlInfo">Always active even with color change exit. Safety net for flash crashes.</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Trailing Stop -->
+                    <div class="settings-row" style="align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <div class="setting-inline" style="flex: 1;">
+                            <label data-i18n="haTrailingStop">Trailing Stop</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="newBotHaTrailingEnabled" checked onchange="toggleHaTrailingSettings('new')">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="settings-row" id="newHaTrailingSettingsRow">
+                        <div class="setting-compact">
+                            <label data-i18n="haTrailingActivation">Activation %</label>
+                            <input type="number" id="newBotHaTrailingActivation" value="1" min="0.5" max="5" step="0.5" style="width: 70px;">
+                        </div>
+                        <div class="setting-compact">
+                            <label data-i18n="haTrailingDistance">Distance %</label>
+                            <input type="number" id="newBotHaTrailingDistance" value="0.5" min="0.1" max="3" step="0.1" style="width: 70px;">
+                        </div>
+                    </div>
+
+                    <div class="signal-preview" style="padding: 8px; background: rgba(255,170,0,0.1); border-radius: 5px; font-size: 12px; margin-top: 10px;">
+                        <div style="color: #ffaa00;" data-i18n="haDescription">🟢 LONG: Green candle confirmed | 🔴 SHORT: Red candle confirmed</div>
                     </div>
                 </div>
             </div>
 
             <!-- Signal Filters Block -->
             <div class="settings-block block-filters">
-                <h4><span class="icon">🎯</span> <span data-i18n="signalFilters">Signal Filters</span></h4>
+                <h4><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span> <span data-i18n="signalFilters">Signal Filters</span></h4>
                 <div class="settings-row" style="align-items: center;">
-                    <div class="setting-inline" style="flex: 1; min-width: 120px;">
-                        <label data-i18n="emaFilter">EMA 200</label>
+                    <div class="setting-inline" style="flex: 1;">
+                        <label data-i18n="emaFilter">EMA Filter</label>
                         <label class="toggle-switch">
                             <input type="checkbox" id="newBotEmaEnabled" checked onchange="toggleEmaMode('new')">
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
-                    <div class="setting-compact" id="newEmaModeContainer" style="flex: 1;">
-                        <label data-i18n="emaMode">EMA Mode</label>
+                </div>
+                <div class="settings-row" id="newEmaModeContainer">
+                    <div class="setting-compact">
+                        <label data-i18n="emaMode">EMA Filter Mode</label>
                         <select id="newBotEmaMode">
                             <option value="strict" selected data-i18n="strict">Strict</option>
                             <option value="soft" data-i18n="soft">Soft 50%</option>
@@ -1834,58 +2524,82 @@ DASHBOARD_HTML = r"""
             <div id="newAssetFiltersContainer">
                 <div class="settings-block block-auto">
                     <div class="block-header">
-                        <h4><span class="icon">🔍</span> <span data-i18n="assetFilters">Asset Filters</span></h4>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="newBotAssetFiltersEnabled" checked onchange="toggleAssetFiltersInputs('new')">
-                                <span class="toggle-slider"></span>
-                            </label>
-                            <button class="btn-reset" onclick="resetAssetFilters('new')" title="Reset">↺</button>
-                        </div>
+                        <h4><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></span> <span data-i18n="assetFilters">Asset Filters</span></h4>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="newBotAssetFiltersEnabled" checked onchange="toggleAssetFiltersInputs('new')">
+                            <span class="toggle-slider"></span>
+                        </label>
                     </div>
                     <div id="newAssetFiltersInputs">
                         <div class="settings-row">
                             <div class="setting-compact">
                                 <label data-i18n="volume24hMin">Vol 24h Min</label>
-                                <input type="text" id="newBotMinVolume" value="3,000,000" oninput="formatMoneyInput(this)">
+                                <div class="input-clearable">
+                                    <button type="button" class="input-clear-btn" onclick="clearInput(this)">&times;</button>
+                                    <input type="text" id="newBotMinVolume" value="3 000 000" oninput="formatMoneyInput(this)" onblur="handleEmptyInput(this)">
+                                </div>
                             </div>
                             <div class="setting-compact">
                                 <label data-i18n="volume24hMax">Vol 24h Max</label>
-                                <input type="text" id="newBotMaxVolume" value="0" oninput="formatMoneyInput(this)">
+                                <div class="input-clearable">
+                                    <button type="button" class="input-clear-btn" onclick="clearInput(this)">&times;</button>
+                                    <input type="text" id="newBotMaxVolume" value="-" oninput="formatMoneyInput(this)" onblur="handleEmptyInput(this)">
+                                </div>
                             </div>
                         </div>
                         <div class="settings-row">
                             <div class="setting-compact">
                                 <label data-i18n="priceMin">Price Min $</label>
-                                <input type="number" id="newBotMinPrice" value="0" min="0" step="0.0001">
+                                <div class="input-clearable">
+                                    <button type="button" class="input-clear-btn" onclick="clearInput(this)">&times;</button>
+                                    <input type="text" id="newBotMinPrice" value="-" oninput="formatMoneyInput(this)" onblur="handleEmptyInput(this)">
+                                </div>
                             </div>
                             <div class="setting-compact">
                                 <label data-i18n="priceMax">Price Max $</label>
-                                <input type="number" id="newBotMaxPrice" value="0" min="0" step="0.0001">
+                                <div class="input-clearable">
+                                    <button type="button" class="input-clear-btn" onclick="clearInput(this)">&times;</button>
+                                    <input type="text" id="newBotMaxPrice" value="-" oninput="formatMoneyInput(this)" onblur="handleEmptyInput(this)">
+                                </div>
                             </div>
                         </div>
                         <div class="settings-row">
                             <div class="setting-compact">
                                 <label data-i18n="changeMin">Change Min %</label>
-                                <input type="number" id="newBotMinChange" value="-30" step="0.1">
+                                <div class="input-clearable">
+                                    <button type="button" class="input-clear-btn" onclick="clearInput(this)">&times;</button>
+                                    <input type="text" id="newBotMinChange" value="-30" oninput="normalizeNumericInput(this)" onblur="handleEmptyInput(this)">
+                                </div>
                             </div>
                             <div class="setting-compact">
                                 <label data-i18n="changeMax">Change Max %</label>
-                                <input type="number" id="newBotMaxChange" value="20" step="0.1">
+                                <div class="input-clearable">
+                                    <button type="button" class="input-clear-btn" onclick="clearInput(this)">&times;</button>
+                                    <input type="text" id="newBotMaxChange" value="20" oninput="normalizeNumericInput(this)" onblur="handleEmptyInput(this)">
+                                </div>
                             </div>
                         </div>
-                        <div class="settings-row">
+                        <div class="settings-row row-volatility">
                             <div class="setting-compact">
                                 <label data-i18n="volatilityPeriod">Volat Period</label>
-                                <input type="number" id="newBotVolatilityPeriod" value="12" min="0">
+                                <div class="input-clearable">
+                                    <button type="button" class="input-clear-btn" onclick="clearInput(this)">&times;</button>
+                                    <input type="text" id="newBotVolatilityPeriod" value="12" oninput="normalizeNumericInput(this)" onblur="handleEmptyInput(this)">
+                                </div>
                             </div>
                             <div class="setting-compact">
                                 <label data-i18n="volatilityMin">Volat Min %</label>
-                                <input type="number" id="newBotMinVolatility" value="0.5" min="0" step="0.1">
+                                <div class="input-clearable">
+                                    <button type="button" class="input-clear-btn" onclick="clearInput(this)">&times;</button>
+                                    <input type="text" id="newBotMinVolatility" value="0.5" oninput="normalizeNumericInput(this)" onblur="handleEmptyInput(this)">
+                                </div>
                             </div>
                             <div class="setting-compact">
                                 <label data-i18n="volatilityMax">Volat Max %</label>
-                                <input type="number" id="newBotMaxVolatility" value="3" min="0" step="0.1">
+                                <div class="input-clearable">
+                                    <button type="button" class="input-clear-btn" onclick="clearInput(this)">&times;</button>
+                                    <input type="text" id="newBotMaxVolatility" value="3" oninput="normalizeNumericInput(this)" onblur="handleEmptyInput(this)">
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1902,7 +2616,6 @@ DASHBOARD_HTML = r"""
 
             <div class="settings-actions">
                 <button class="btn btn-secondary" onclick="closeModal('createBotModal')" data-i18n="cancel">Cancel</button>
-                <button class="btn-reset" onclick="resetCreateBotForm()" title="Reset" style="margin-left: auto; margin-right: 10px;">↺</button>
                 <button id="createBotBtn" class="btn btn-primary" onclick="createBot()" data-i18n="create">Create</button>
             </div>
         </div>
@@ -1919,7 +2632,7 @@ DASHBOARD_HTML = r"""
 
             <!-- Basic Settings Block -->
             <div class="settings-block block-basic">
-                <h4><span class="icon">⚙️</span> <span data-i18n="basicSettings">Basic</span></h4>
+                <h4><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span> <span data-i18n="basicSettings">Basic</span></h4>
                 <div class="settings-row">
                     <div class="setting-compact">
                         <label data-i18n="botName">Name</label>
@@ -1951,7 +2664,7 @@ DASHBOARD_HTML = r"""
 
             <!-- Risk Management Block -->
             <div class="settings-block block-risk">
-                <h4><span class="icon">🛡️</span> <span data-i18n="riskManagement">Risk Management</span></h4>
+                <h4><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span> <span data-i18n="riskManagement">Risk Management</span></h4>
                 <div class="settings-row">
                     <div class="setting-compact" style="flex: 1;">
                         <label data-i18n="balanceUsage">Balance Usage (%)</label>
@@ -2018,7 +2731,7 @@ DASHBOARD_HTML = r"""
 
             <!-- Strategy Block -->
             <div class="settings-block block-strategy">
-                <h4><span class="icon">📊</span> <span data-i18n="strategySettings">Strategy</span></h4>
+                <h4><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></span> <span data-i18n="strategySettings">Strategy</span></h4>
                 <div class="settings-row">
                     <div class="setting-compact">
                         <label data-i18n="timeframe">Timeframe</label>
@@ -2080,8 +2793,8 @@ DASHBOARD_HTML = r"""
             </div>
 
             <!-- Take Profit Block -->
-            <div class="settings-block block-profit">
-                <h4><span class="icon">💰</span> <span data-i18n="takeProfitSettings">Take Profit</span></h4>
+            <div class="settings-block block-profit" id="editTpBlock">
+                <h4><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span> <span data-i18n="takeProfitSettings">Take Profit</span></h4>
                 <div class="settings-row">
                     <div class="setting-compact">
                         <label data-i18n="tpMode">TP Mode</label>
@@ -2134,9 +2847,9 @@ DASHBOARD_HTML = r"""
                     <div class="setting-compact" id="editTrailingTpStLineContainer">
                         <label data-i18n="trailingTpStLine">ST Line</label>
                         <select id="editBotTrailingTpStLine">
-                            <option value="1">Fast</option>
-                            <option value="2" selected>Medium</option>
-                            <option value="3">Slow</option>
+                            <option value="1" data-i18n="fast">Fast</option>
+                            <option value="2" selected data-i18n="mediumSpeed">Medium</option>
+                            <option value="3" data-i18n="slowSpeed">Slow</option>
                         </select>
                     </div>
                     <div class="setting-compact" id="editTrailingTpActivationContainer" style="display: none;">
@@ -2185,8 +2898,8 @@ DASHBOARD_HTML = r"""
             </div>
 
             <!-- Stop Loss Block -->
-            <div class="settings-block block-risk">
-                <h4><span class="icon">🛑</span> <span data-i18n="stopLossSettings">Stop Loss</span></h4>
+            <div class="settings-block block-risk" id="editSlBlock">
+                <h4><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></span> <span data-i18n="stopLossSettings">Stop Loss</span></h4>
                 <div class="settings-row">
                     <div class="setting-compact">
                         <label data-i18n="slMode">SL Mode</label>
@@ -2199,9 +2912,9 @@ DASHBOARD_HTML = r"""
                     <div class="setting-compact" id="editSlLineContainer">
                         <label data-i18n="slLine">SL Line</label>
                         <select id="editBotSlLine" style="min-width: 120px;">
-                            <option value="1">Fast</option>
-                            <option value="2">Medium</option>
-                            <option value="3">Slow</option>
+                            <option value="1" data-i18n="fast">Fast</option>
+                            <option value="2" data-i18n="mediumSpeed">Medium</option>
+                            <option value="3" data-i18n="slowSpeed">Slow</option>
                         </select>
                     </div>
                     <div class="setting-compact" id="editSlPercentContainer" style="display: none;">
@@ -2245,9 +2958,9 @@ DASHBOARD_HTML = r"""
                     <div class="setting-compact" id="editTrailingStLineContainer" style="display: none;">
                         <label data-i18n="trailingStLine">ST Line</label>
                         <select id="editBotTrailingStLine">
-                            <option value="1">Fast</option>
-                            <option value="2" selected>Medium</option>
-                            <option value="3">Slow</option>
+                            <option value="1" data-i18n="fast">Fast</option>
+                            <option value="2" selected data-i18n="mediumSpeed">Medium</option>
+                            <option value="3" data-i18n="slowSpeed">Slow</option>
                         </select>
                     </div>
                     <div class="setting-compact" id="editTrailingConfirmContainer" style="display: none;">
@@ -2263,62 +2976,199 @@ DASHBOARD_HTML = r"""
 
             <!-- Signal Entry Block -->
             <div class="settings-block block-signal">
-                <h4><span class="icon">📊</span> <span data-i18n="signalEntry">Signal Entry</span></h4>
-                <div class="settings-row">
-                    <div class="setting-compact">
-                        <label>ST1 (Fast)</label>
-                        <select id="editBotSt1Role" onchange="updateSignalPreview('edit')">
-                            <option value="off">❌ Выкл</option>
-                            <option value="confirm" selected>🟢 Подтв</option>
-                            <option value="trigger">🎯 Триггер</option>
-                        </select>
+                <h4><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span> <span data-i18n="signalEntry">Signal Entry</span></h4>
+
+                <!-- Strategy Selection -->
+                <div class="settings-row" style="margin-bottom: 10px;">
+                    <div class="setting-inline" style="flex: 1; padding: 8px; background: rgba(0,212,255,0.1); border-radius: 5px; border: 2px solid transparent;" id="editStrategySupertrend">
+                        <label style="font-weight: bold; color: #00d4ff;">SuperTrend</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="editBotStrategySupertrendEnabled" checked onchange="toggleStrategy('edit', 'supertrend')">
+                            <span class="toggle-slider"></span>
+                        </label>
                     </div>
-                    <div class="setting-compact">
-                        <label>ST2 (Medium)</label>
-                        <select id="editBotSt2Role" onchange="updateSignalPreview('edit')">
-                            <option value="off">❌ Выкл</option>
-                            <option value="confirm" selected>🟢 Подтв</option>
-                            <option value="trigger">🎯 Триггер</option>
-                        </select>
-                    </div>
-                    <div class="setting-compact">
-                        <label>ST3 (Slow)</label>
-                        <select id="editBotSt3Role" onchange="updateSignalPreview('edit')">
-                            <option value="off">❌ Выкл</option>
-                            <option value="confirm">🟢 Подтв</option>
-                            <option value="trigger" selected>🎯 Триггер</option>
-                        </select>
+                    <div class="setting-inline" style="flex: 1; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 5px; border: 2px solid transparent;" id="editStrategyHeikinAshi">
+                        <label style="font-weight: bold; color: #888;">Heikin Ashi</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="editBotStrategyHeikinAshiEnabled" onchange="toggleStrategy('edit', 'heikinashi')">
+                            <span class="toggle-slider"></span>
+                        </label>
                     </div>
                 </div>
-                <div class="settings-row">
-                    <div class="setting-compact">
-                        <label data-i18n="triggerConfirmCandles">Trigger Confirm</label>
-                        <select id="editBotTriggerConfirmCandles">
-                            <option value="1" selected>1 свеча</option>
-                            <option value="2">2 свечи</option>
-                            <option value="3">3 свечи</option>
-                        </select>
+
+                <!-- SuperTrend Settings -->
+                <div id="editSupertrendSettings">
+                    <div class="settings-row">
+                        <div class="setting-compact">
+                            <label>ST1 (Fast)</label>
+                            <select id="editBotSt1Role" onchange="updateSignalPreview('edit')">
+                                <option value="off">— Off</option>
+                                <option value="confirm" selected>● Conf</option>
+                                <option value="trigger">◎ Trig</option>
+                            </select>
+                        </div>
+                        <div class="setting-compact">
+                            <label>ST2 (Medium)</label>
+                            <select id="editBotSt2Role" onchange="updateSignalPreview('edit')">
+                                <option value="off">— Off</option>
+                                <option value="confirm" selected>● Conf</option>
+                                <option value="trigger">◎ Trig</option>
+                            </select>
+                        </div>
+                        <div class="setting-compact">
+                            <label>ST3 (Slow)</label>
+                            <select id="editBotSt3Role" onchange="updateSignalPreview('edit')">
+                                <option value="off">— Off</option>
+                                <option value="confirm">● Conf</option>
+                                <option value="trigger" selected>◎ Trig</option>
+                            </select>
+                        </div>
                     </div>
-                    <div class="signal-preview" id="editSignalPreview" style="flex: 2; padding: 8px; background: rgba(0,212,255,0.1); border-radius: 5px; font-size: 12px;">
-                        <div style="color: #888;">📋 ST1🟢 + ST2🟢 + ST3🎯</div>
-                        <div style="color: #00d4ff;">💡 Вход когда ST3 разворачивается</div>
+                    <div class="settings-row">
+                        <div class="setting-compact">
+                            <label data-i18n="triggerConfirmCandles">Trigger Confirm</label>
+                            <select id="editBotTriggerConfirmCandles">
+                                <option value="1" selected data-i18n="candle1">1 candle</option>
+                                <option value="2" data-i18n="candles2">2 candles</option>
+                                <option value="3" data-i18n="candles3">3 candles</option>
+                            </select>
+                        </div>
+                        <div class="signal-preview" id="editSignalPreview" style="flex: 2; padding: 8px; background: rgba(0,212,255,0.1); border-radius: 5px; font-size: 12px;">
+                            <div id="editSignalFormulaPreview" style="color: #888;">ST1● + ST2● + ST3◎</div>
+                            <div id="editSignalDescPreview" style="color: #00d4ff;">Entry when ST3 reverses</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Heikin Ashi Settings -->
+                <div id="editHeikinAshiSettings" style="display: none;">
+                    <!-- Entry/Exit Settings -->
+                    <div class="settings-row">
+                        <div class="setting-compact">
+                            <label data-i18n="haEntryConfirm">Entry Confirm</label>
+                            <select id="editBotHaEntryCandles">
+                                <option value="1">1</option>
+                                <option value="2" selected>2</option>
+                                <option value="3">3</option>
+                            </select>
+                            <span style="color: #888; font-size: 11px;" data-i18n="candles">candles</span>
+                        </div>
+                    </div>
+                    <div class="settings-row" style="align-items: center;">
+                        <div class="setting-inline" style="flex: 1;">
+                            <label data-i18n="haExitOnColorChange">Exit on Color Change</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="editBotHaExitOnColorChange" checked onchange="toggleHaExitSettings('edit')">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="settings-row" id="editHaExitConfirmRow">
+                        <div class="setting-compact">
+                            <label data-i18n="haExitConfirm">Exit Confirm</label>
+                            <select id="editBotHaExitCandles">
+                                <option value="1" selected>1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                            </select>
+                            <span style="color: #888; font-size: 11px;" data-i18n="candles">candles</span>
+                        </div>
+                    </div>
+
+                    <!-- EMA Filter -->
+                    <div class="settings-row" style="align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <div class="setting-inline" style="flex: 1;">
+                            <label data-i18n="haEmaFilter">EMA Filter</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="editBotHaEmaEnabled" checked onchange="toggleHaEmaSettings('edit')">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="settings-row" id="editHaEmaSettingsRow">
+                        <div class="setting-compact">
+                            <label data-i18n="haEmaPeriod">EMA Period</label>
+                            <input type="number" id="editBotHaEmaPeriod" value="200" min="20" max="500" style="width: 70px;">
+                        </div>
+                        <div class="setting-compact">
+                            <label data-i18n="haEmaMode">Mode</label>
+                            <select id="editBotHaEmaMode">
+                                <option value="strict" selected data-i18n="strict">Strict</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Volatility Filter -->
+                    <div class="settings-row" style="align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <div class="setting-inline" style="flex: 1;">
+                            <label data-i18n="haVolatilityFilter">Volatility Filter (ATR)</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="editBotHaVolatilityEnabled" checked onchange="toggleHaVolatilitySettings('edit')">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="settings-row" id="editHaVolatilitySettingsRow">
+                        <div class="setting-compact">
+                            <label data-i18n="haMinAtr">Min ATR %</label>
+                            <input type="number" id="editBotHaMinAtr" value="0.5" min="0.1" max="5" step="0.1" style="width: 70px;">
+                        </div>
+                    </div>
+
+                    <!-- Emergency Stop-Loss (always active) -->
+                    <div class="settings-row" style="align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <div class="setting-compact" style="flex: 1;">
+                            <label data-i18n="haEmergencySl">Emergency SL %</label>
+                            <input type="number" id="editBotHaEmergencySl" value="2" min="0.5" max="10" step="0.5" style="width: 70px;">
+                            <span class="info-wrapper">
+                                <span class="info-icon" onclick="toggleInfo(this)">i</span>
+                                <span class="info-tooltip" data-i18n-tooltip="haEmergencySlInfo">Always active even with color change exit. Safety net for flash crashes.</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Trailing Stop -->
+                    <div class="settings-row" style="align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <div class="setting-inline" style="flex: 1;">
+                            <label data-i18n="haTrailingStop">Trailing Stop</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="editBotHaTrailingEnabled" checked onchange="toggleHaTrailingSettings('edit')">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="settings-row" id="editHaTrailingSettingsRow">
+                        <div class="setting-compact">
+                            <label data-i18n="haTrailingActivation">Activation %</label>
+                            <input type="number" id="editBotHaTrailingActivation" value="1" min="0.5" max="5" step="0.5" style="width: 70px;">
+                        </div>
+                        <div class="setting-compact">
+                            <label data-i18n="haTrailingDistance">Distance %</label>
+                            <input type="number" id="editBotHaTrailingDistance" value="0.5" min="0.1" max="3" step="0.1" style="width: 70px;">
+                        </div>
+                    </div>
+
+                    <div class="signal-preview" style="padding: 8px; background: rgba(255,170,0,0.1); border-radius: 5px; font-size: 12px; margin-top: 10px;">
+                        <div style="color: #ffaa00;" data-i18n="haDescription">🟢 LONG: Green candle confirmed | 🔴 SHORT: Red candle confirmed</div>
                     </div>
                 </div>
             </div>
 
             <!-- Signal Filters Block -->
             <div class="settings-block block-filters">
-                <h4><span class="icon">🎯</span> <span data-i18n="signalFilters">Signal Filters</span></h4>
+                <h4><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></span> <span data-i18n="signalFilters">Signal Filters</span></h4>
                 <div class="settings-row" style="align-items: center;">
-                    <div class="setting-inline" style="flex: 1; min-width: 120px;">
-                        <label data-i18n="emaFilter">EMA 200</label>
+                    <div class="setting-inline" style="flex: 1;">
+                        <label data-i18n="emaFilter">EMA Filter</label>
                         <label class="toggle-switch">
                             <input type="checkbox" id="editBotEmaEnabled" checked onchange="toggleEmaMode('edit')">
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
-                    <div class="setting-compact" id="editEmaModeContainer" style="flex: 1;">
-                        <label data-i18n="emaMode">EMA Mode</label>
+                </div>
+                <div class="settings-row" id="editEmaModeContainer">
+                    <div class="setting-compact">
+                        <label data-i18n="emaMode">EMA Filter Mode</label>
                         <select id="editBotEmaMode">
                             <option value="strict" data-i18n="strict">Strict</option>
                             <option value="soft" data-i18n="soft">Soft 50%</option>
@@ -2331,58 +3181,82 @@ DASHBOARD_HTML = r"""
             <div id="editAssetFiltersContainer" style="display: none;">
                 <div class="settings-block block-auto">
                     <div class="block-header">
-                        <h4><span class="icon">🔍</span> <span data-i18n="assetFilters">Asset Filters</span></h4>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <label class="toggle-switch">
-                                <input type="checkbox" id="editBotAssetFiltersEnabled" checked onchange="toggleAssetFiltersInputs('edit')">
-                                <span class="toggle-slider"></span>
-                            </label>
-                            <button class="btn-reset" onclick="resetAssetFilters('edit')" title="Reset">↺</button>
-                        </div>
+                        <h4><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg></span> <span data-i18n="assetFilters">Asset Filters</span></h4>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="editBotAssetFiltersEnabled" checked onchange="toggleAssetFiltersInputs('edit')">
+                            <span class="toggle-slider"></span>
+                        </label>
                     </div>
                     <div id="editAssetFiltersInputs">
                         <div class="settings-row">
                             <div class="setting-compact">
                                 <label data-i18n="volume24hMin">Vol 24h Min</label>
-                                <input type="text" id="editBotMinVolume" value="3,000,000" oninput="formatMoneyInput(this)">
+                                <div class="input-clearable">
+                                    <button type="button" class="input-clear-btn" onclick="clearInput(this)">&times;</button>
+                                    <input type="text" id="editBotMinVolume" value="3 000 000" oninput="formatMoneyInput(this)" onblur="handleEmptyInput(this)">
+                                </div>
                             </div>
                             <div class="setting-compact">
                                 <label data-i18n="volume24hMax">Vol 24h Max</label>
-                                <input type="text" id="editBotMaxVolume" value="0" oninput="formatMoneyInput(this)">
+                                <div class="input-clearable">
+                                    <button type="button" class="input-clear-btn" onclick="clearInput(this)">&times;</button>
+                                    <input type="text" id="editBotMaxVolume" value="-" oninput="formatMoneyInput(this)" onblur="handleEmptyInput(this)">
+                                </div>
                             </div>
                         </div>
                         <div class="settings-row">
                             <div class="setting-compact">
                                 <label data-i18n="priceMin">Price Min $</label>
-                                <input type="number" id="editBotMinPrice" value="0" min="0" step="0.0001">
+                                <div class="input-clearable">
+                                    <button type="button" class="input-clear-btn" onclick="clearInput(this)">&times;</button>
+                                    <input type="text" id="editBotMinPrice" value="-" oninput="formatMoneyInput(this)" onblur="handleEmptyInput(this)">
+                                </div>
                             </div>
                             <div class="setting-compact">
                                 <label data-i18n="priceMax">Price Max $</label>
-                                <input type="number" id="editBotMaxPrice" value="0" min="0" step="0.0001">
+                                <div class="input-clearable">
+                                    <button type="button" class="input-clear-btn" onclick="clearInput(this)">&times;</button>
+                                    <input type="text" id="editBotMaxPrice" value="-" oninput="formatMoneyInput(this)" onblur="handleEmptyInput(this)">
+                                </div>
                             </div>
                         </div>
                         <div class="settings-row">
                             <div class="setting-compact">
                                 <label data-i18n="changeMin">Change Min %</label>
-                                <input type="number" id="editBotMinChange" value="-30" step="0.1">
+                                <div class="input-clearable">
+                                    <button type="button" class="input-clear-btn" onclick="clearInput(this)">&times;</button>
+                                    <input type="text" id="editBotMinChange" value="-30" oninput="normalizeNumericInput(this)" onblur="handleEmptyInput(this)">
+                                </div>
                             </div>
                             <div class="setting-compact">
                                 <label data-i18n="changeMax">Change Max %</label>
-                                <input type="number" id="editBotMaxChange" value="20" step="0.1">
+                                <div class="input-clearable">
+                                    <button type="button" class="input-clear-btn" onclick="clearInput(this)">&times;</button>
+                                    <input type="text" id="editBotMaxChange" value="20" oninput="normalizeNumericInput(this)" onblur="handleEmptyInput(this)">
+                                </div>
                             </div>
                         </div>
-                        <div class="settings-row">
+                        <div class="settings-row row-volatility">
                             <div class="setting-compact">
                                 <label data-i18n="volatilityPeriod">Volat Period</label>
-                                <input type="number" id="editBotVolatilityPeriod" value="12" min="0">
+                                <div class="input-clearable">
+                                    <button type="button" class="input-clear-btn" onclick="clearInput(this)">&times;</button>
+                                    <input type="text" id="editBotVolatilityPeriod" value="12" oninput="normalizeNumericInput(this)" onblur="handleEmptyInput(this)">
+                                </div>
                             </div>
                             <div class="setting-compact">
                                 <label data-i18n="volatilityMin">Volat Min %</label>
-                                <input type="number" id="editBotMinVolatility" value="0.5" min="0" step="0.1">
+                                <div class="input-clearable">
+                                    <button type="button" class="input-clear-btn" onclick="clearInput(this)">&times;</button>
+                                    <input type="text" id="editBotMinVolatility" value="0.5" oninput="normalizeNumericInput(this)" onblur="handleEmptyInput(this)">
+                                </div>
                             </div>
                             <div class="setting-compact">
                                 <label data-i18n="volatilityMax">Volat Max %</label>
-                                <input type="number" id="editBotMaxVolatility" value="3" min="0" step="0.1">
+                                <div class="input-clearable">
+                                    <button type="button" class="input-clear-btn" onclick="clearInput(this)">&times;</button>
+                                    <input type="text" id="editBotMaxVolatility" value="3" oninput="normalizeNumericInput(this)" onblur="handleEmptyInput(this)">
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2399,17 +3273,19 @@ DASHBOARD_HTML = r"""
 
             <div class="settings-actions">
                 <button class="btn btn-secondary" onclick="closeModal('editBotModal')" data-i18n="cancel">Cancel</button>
-                <button class="btn-reset" onclick="resetEditBotForm()" title="Reset" style="margin-left: auto; margin-right: 10px;">↺</button>
-                <button id="saveEditBotBtn" class="btn btn-primary" onclick="saveEditBot()" data-i18n="save">Save</button>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <button class="btn-reset" onclick="resetEditBotForm()" title="Reset">↺</button>
+                    <button id="saveEditBotBtn" class="btn btn-primary" onclick="saveEditBot()" data-i18n="save">Save</button>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Fullscreen Chart Modal -->
     <div class="modal" id="fullscreenChartModal" style="background: rgba(0,0,0,0.95);">
-        <div class="modal-content" style="max-width: 95%; width: 95%; height: 90vh; padding: 15px;">
+        <div class="modal-content" style="max-width: 95%; width: 95%; height: 90vh; padding: 15px; padding-top: calc(15px + env(safe-area-inset-top, 0px));">
             <div class="modal-header" style="margin-bottom: 10px;">
-                <h3 id="fullscreenChartTitle">Chart</h3>
+                <h3 id="fullscreenChartTitle" style="display: flex; align-items: center;">Chart</h3>
                 <button class="modal-close" onclick="closeFullscreenChart()">&times;</button>
             </div>
             <div id="fullscreenChartInfo" style="display: flex; justify-content: space-between; align-items: center; padding: 8px 15px; background: rgba(0,255,136,0.1); border-radius: 5px; margin-bottom: 10px; font-family: monospace;">
@@ -2423,11 +3299,11 @@ DASHBOARD_HTML = r"""
 
     <!-- Position Chart Modal -->
     <div class="modal" id="positionChartModal" style="background: rgba(0,0,0,0.98);">
-        <div class="modal-content" style="max-width: 100%; width: 100%; height: 100vh; padding: 0; border-radius: 0; margin: 0;">
+        <div class="modal-content" style="max-width: 100%; width: 100%; height: 100vh; padding: 0; padding-top: env(safe-area-inset-top, 0px); border-radius: 0; margin: 0;">
             <!-- Compact Header -->
             <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: #0a0a0a; border-bottom: 1px solid #1a1a1a;">
                 <div style="display: flex; align-items: center; gap: 10px;">
-                    <h3 id="posChartSymbol" style="margin: 0; font-size: 16px; font-weight: 600;">BTCUSDT</h3>
+                    <h3 id="posChartSymbol" style="margin: 0; font-size: 16px; font-weight: 600; display: flex; align-items: center;">BTCUSDT</h3>
                     <span id="posChartSide" style="padding: 3px 8px; border-radius: 3px; font-weight: bold; font-size: 11px;">LONG</span>
                     <span id="posChartTimeframe" style="color: #666; font-size: 12px;">1h</span>
                 </div>
@@ -2452,6 +3328,19 @@ DASHBOARD_HTML = r"""
     </div>
 
     <script>
+        // Detect Safari browser (not PWA) for additional modal padding
+        (function() {
+            const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+            const isStandalone = window.navigator.standalone === true ||
+                                 window.matchMedia('(display-mode: standalone)').matches ||
+                                 window.matchMedia('(display-mode: fullscreen)').matches;
+            const isMobile = /iPhone|iPad|iPod/.test(navigator.userAgent);
+
+            if (isSafari && isMobile && !isStandalone) {
+                document.body.classList.add('safari-browser');
+            }
+        })();
+
         // Localization
         const i18n = {
             en: {
@@ -2533,6 +3422,7 @@ DASHBOARD_HTML = r"""
                 closedTrades: 'Closed Trades',
                 activeBots: 'Active Bots',
                 liveLogs: 'Live Logs',
+                systemLogs: 'System Logs',
                 autoScrollOn: 'Auto-scroll ON',
                 autoScrollOff: 'Auto-scroll OFF (scroll to bottom to enable)',
                 clear: 'Clear',
@@ -2589,7 +3479,30 @@ DASHBOARD_HTML = r"""
                 riskManagement: 'Risk Management',
                 signalFilters: 'Signal Filters',
                 signalEntry: 'Signal Entry',
-                triggerConfirmCandles: 'Trigger Confirm'
+                triggerConfirmCandles: 'Trigger Confirm',
+                fast: 'Fast',
+                mediumSpeed: 'Medium',
+                slowSpeed: 'Slow',
+                candle1: '1 candle',
+                candles2: '2 candles',
+                candles3: '3 candles',
+                candles: 'candles',
+                haEntryConfirm: 'Entry Confirm',
+                haExitOnColorChange: 'Exit on Color Change',
+                haExitConfirm: 'Exit Confirm',
+                haDescription: '🟢 LONG: Green candle confirmed | 🔴 SHORT: Red candle confirmed',
+                haEmaFilter: 'EMA Filter',
+                haEmaPeriod: 'EMA Period',
+                haEmaMode: 'Mode',
+                haVolatilityFilter: 'Volatility Filter (ATR)',
+                haMinAtr: 'Min ATR %',
+                haEmergencySl: 'Emergency SL %',
+                haEmergencySlInfo: 'Always active even with color change exit. Safety net for flash crashes.',
+                haTrailingStop: 'Trailing Stop',
+                haTrailingActivation: 'Activation %',
+                haTrailingDistance: 'Distance %',
+                haDefaultsApplied: 'Recommended settings applied',
+                strict: 'Strict'
             },
             ru: {
                 connecting: 'Подключение...',
@@ -2670,6 +3583,7 @@ DASHBOARD_HTML = r"""
                 closedTrades: 'Закрытые сделки',
                 activeBots: 'Активные боты',
                 liveLogs: 'Логи',
+                systemLogs: 'Системные логи',
                 autoScrollOn: 'Авто-прокрутка ВКЛ',
                 autoScrollOff: 'Авто-прокрутка ВЫКЛ (прокрутите вниз для включения)',
                 clear: 'Очистить',
@@ -2722,15 +3636,48 @@ DASHBOARD_HTML = r"""
                 consecutiveLossesLimit: 'Лимит убыточных сделок подряд',
                 maxConsecutiveLosses: 'Макс. сделок',
                 cooldownMinutes: 'Пауза (мин)',
-                basicSettings: 'Основное',
+                basicSettings: 'Основные',
                 riskManagement: 'Риск-менеджмент',
                 signalFilters: 'Фильтры сигналов',
                 signalEntry: 'Сигнал входа',
-                triggerConfirmCandles: 'Подтв. триггера'
+                triggerConfirmCandles: 'Подтв. триггера',
+                fast: 'Быстрый',
+                mediumSpeed: 'Средний',
+                slowSpeed: 'Медленный',
+                candle1: '1 свеча',
+                candles2: '2 свечи',
+                candles3: '3 свечи',
+                candles: 'свечей',
+                haEntryConfirm: 'Подтв. входа',
+                haExitOnColorChange: 'Выход по смене цвета',
+                haExitConfirm: 'Подтв. выхода',
+                haDescription: '🟢 LONG: Подтв. зелёной свечи | 🔴 SHORT: Подтв. красной свечи',
+                haEmaFilter: 'EMA Фильтр',
+                haEmaPeriod: 'Период EMA',
+                haEmaMode: 'Режим',
+                haVolatilityFilter: 'Фильтр волатильности (ATR)',
+                haMinAtr: 'Мин ATR %',
+                haEmergencySl: 'Экстренный SL %',
+                haEmergencySlInfo: 'Всегда активен даже при выходе по смене цвета. Защита от резких обвалов.',
+                haTrailingStop: 'Трейлинг стоп',
+                haTrailingActivation: 'Активация %',
+                haTrailingDistance: 'Дистанция %',
+                haDefaultsApplied: 'Применены рекомендуемые настройки',
+                strict: 'Строгий'
             }
         };
 
-        let currentLang = localStorage.getItem('ailaLang') || 'en';
+        // Get language from cookie or localStorage
+        function getCookie(name) {
+            const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+            return match ? match[2] : null;
+        }
+
+        function setCookie(name, value) {
+            document.cookie = name + '=' + value + '; path=/; max-age=31536000; SameSite=Lax';
+        }
+
+        let currentLang = getCookie('ailaLang') || localStorage.getItem('ailaLang') || 'en';
 
         function t(key) {
             return i18n[currentLang][key] || i18n['en'][key] || key;
@@ -2739,6 +3686,7 @@ DASHBOARD_HTML = r"""
         function changeLanguage(lang) {
             currentLang = lang;
             localStorage.setItem('ailaLang', lang);
+            setCookie('ailaLang', lang);
             updateUI();
             // Send language to server for log messages
             fetch('/api/language', {
@@ -2818,6 +3766,197 @@ DASHBOARD_HTML = r"""
             }
         }
 
+        // Strategy selection toggle (SuperTrend / Heikin Ashi - mutually exclusive)
+        function toggleStrategy(prefix, strategy) {
+            const stEnabled = document.getElementById(prefix + 'BotStrategySupertrendEnabled');
+            const haEnabled = document.getElementById(prefix + 'BotStrategyHeikinAshiEnabled');
+            const stSettings = document.getElementById(prefix + 'SupertrendSettings');
+            const haSettings = document.getElementById(prefix + 'HeikinAshiSettings');
+            const stContainer = document.getElementById(prefix + 'StrategySupertrend');
+            const haContainer = document.getElementById(prefix + 'StrategyHeikinAshi');
+
+            if (strategy === 'supertrend') {
+                stEnabled.checked = true;
+                haEnabled.checked = false;
+                stSettings.style.display = 'block';
+                haSettings.style.display = 'none';
+                stContainer.style.background = 'rgba(0,212,255,0.1)';
+                stContainer.querySelector('label').style.color = '#00d4ff';
+                haContainer.style.background = 'rgba(255,255,255,0.05)';
+                haContainer.querySelector('label').style.color = '#888';
+                // Show TP/SL blocks
+                toggleTpSlVisibility(prefix, true);
+            } else if (strategy === 'heikinashi') {
+                stEnabled.checked = false;
+                haEnabled.checked = true;
+                stSettings.style.display = 'none';
+                haSettings.style.display = 'block';
+                stContainer.style.background = 'rgba(255,255,255,0.05)';
+                stContainer.querySelector('label').style.color = '#888';
+                haContainer.style.background = 'rgba(255,170,0,0.1)';
+                haContainer.querySelector('label').style.color = '#ffaa00';
+                // Apply recommended defaults and show notification
+                applyHaRecommendedDefaults(prefix);
+            }
+        }
+
+        // Toggle Heikin Ashi exit settings (show/hide exit confirm + TP/SL blocks)
+        function toggleHaExitSettings(prefix) {
+            const exitOnColorChange = document.getElementById(prefix + 'BotHaExitOnColorChange').checked;
+            const exitConfirmRow = document.getElementById(prefix + 'HaExitConfirmRow');
+
+            // Show/hide exit confirm candles setting
+            if (exitConfirmRow) {
+                exitConfirmRow.style.display = exitOnColorChange ? 'flex' : 'none';
+            }
+
+            // If Heikin Ashi is active and exit on color change is enabled, hide TP/SL
+            const haEnabled = document.getElementById(prefix + 'BotStrategyHeikinAshiEnabled');
+            if (haEnabled && haEnabled.checked) {
+                toggleTpSlVisibility(prefix, !exitOnColorChange);
+            }
+        }
+
+        // Toggle TP and SL blocks visibility
+        function toggleTpSlVisibility(prefix, visible) {
+            const tpBlock = document.getElementById(prefix + 'TpBlock');
+            const slBlock = document.getElementById(prefix + 'SlBlock');
+
+            if (tpBlock) {
+                tpBlock.style.display = visible ? 'block' : 'none';
+            }
+            if (slBlock) {
+                slBlock.style.display = visible ? 'block' : 'none';
+            }
+        }
+
+        // Toggle Heikin Ashi EMA filter settings
+        function toggleHaEmaSettings(prefix) {
+            const enabled = document.getElementById(prefix + 'BotHaEmaEnabled').checked;
+            const settingsRow = document.getElementById(prefix + 'HaEmaSettingsRow');
+            if (settingsRow) {
+                settingsRow.style.display = enabled ? 'flex' : 'none';
+            }
+        }
+
+        // Toggle Heikin Ashi Volatility filter settings
+        function toggleHaVolatilitySettings(prefix) {
+            const enabled = document.getElementById(prefix + 'BotHaVolatilityEnabled').checked;
+            const settingsRow = document.getElementById(prefix + 'HaVolatilitySettingsRow');
+            if (settingsRow) {
+                settingsRow.style.display = enabled ? 'flex' : 'none';
+            }
+        }
+
+        // Toggle Heikin Ashi Trailing Stop settings
+        function toggleHaTrailingSettings(prefix) {
+            const enabled = document.getElementById(prefix + 'BotHaTrailingEnabled').checked;
+            const settingsRow = document.getElementById(prefix + 'HaTrailingSettingsRow');
+            if (settingsRow) {
+                settingsRow.style.display = enabled ? 'flex' : 'none';
+            }
+        }
+
+        // Apply recommended defaults when selecting Heikin Ashi strategy
+        function applyHaRecommendedDefaults(prefix) {
+            // Recommended defaults for Heikin Ashi strategy
+            const defaults = {
+                haEntryCandles: 2,       // Confirmation candles for entry
+                haExitOnColorChange: true,  // Exit on color change
+                haExitCandles: 1,        // Exit confirmation candles
+                haEmaEnabled: true,      // EMA filter enabled
+                haEmaPeriod: 200,        // EMA period
+                haEmaMode: 'strict',     // EMA mode
+                haVolatilityEnabled: true,  // Volatility filter enabled
+                haMinAtr: 0.5,           // Minimum ATR %
+                haEmergencySl: 2,        // Emergency stop-loss %
+                haTrailingEnabled: true, // Trailing stop enabled
+                haTrailingActivation: 1, // Trailing activation %
+                haTrailingDistance: 0.5  // Trailing distance %
+            };
+
+            // Apply defaults
+            const setValueIfExists = (id, value) => {
+                const el = document.getElementById(id);
+                if (el) {
+                    if (el.type === 'checkbox') {
+                        el.checked = value;
+                    } else {
+                        el.value = value;
+                    }
+                    // Highlight the field briefly
+                    el.style.transition = 'box-shadow 0.3s';
+                    el.style.boxShadow = '0 0 8px #ffaa00';
+                    setTimeout(() => {
+                        el.style.boxShadow = '';
+                    }, 1500);
+                }
+            };
+
+            setValueIfExists(prefix + 'BotHaEntryCandles', defaults.haEntryCandles);
+            setValueIfExists(prefix + 'BotHaExitOnColorChange', defaults.haExitOnColorChange);
+            setValueIfExists(prefix + 'BotHaExitCandles', defaults.haExitCandles);
+            setValueIfExists(prefix + 'BotHaEmaEnabled', defaults.haEmaEnabled);
+            setValueIfExists(prefix + 'BotHaEmaPeriod', defaults.haEmaPeriod);
+            setValueIfExists(prefix + 'BotHaEmaMode', defaults.haEmaMode);
+            setValueIfExists(prefix + 'BotHaVolatilityEnabled', defaults.haVolatilityEnabled);
+            setValueIfExists(prefix + 'BotHaMinAtr', defaults.haMinAtr);
+            setValueIfExists(prefix + 'BotHaEmergencySl', defaults.haEmergencySl);
+            setValueIfExists(prefix + 'BotHaTrailingEnabled', defaults.haTrailingEnabled);
+            setValueIfExists(prefix + 'BotHaTrailingActivation', defaults.haTrailingActivation);
+            setValueIfExists(prefix + 'BotHaTrailingDistance', defaults.haTrailingDistance);
+
+            // Update toggle states
+            toggleHaExitSettings(prefix);
+            toggleHaEmaSettings(prefix);
+            toggleHaVolatilitySettings(prefix);
+            toggleHaTrailingSettings(prefix);
+
+            // Show notification
+            showHaDefaultsNotification();
+        }
+
+        // Show notification that HA defaults were applied
+        function showHaDefaultsNotification() {
+            // Remove existing notification if any
+            const existing = document.querySelector('.ha-defaults-notification');
+            if (existing) existing.remove();
+
+            const notification = document.createElement('div');
+            notification.className = 'ha-defaults-notification';
+            notification.innerHTML = `
+                <span style="margin-right: 8px;">✓</span>
+                <span data-i18n="haDefaultsApplied">Recommended settings applied</span>
+            `;
+            notification.style.cssText = `
+                position: fixed;
+                top: 80px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: linear-gradient(135deg, #ffaa00, #ff8800);
+                color: #000;
+                padding: 12px 24px;
+                border-radius: 8px;
+                font-weight: 600;
+                z-index: 10001;
+                box-shadow: 0 4px 20px rgba(255, 170, 0, 0.4);
+                animation: slideInDown 0.3s ease-out;
+            `;
+            document.body.appendChild(notification);
+
+            // Translate if needed
+            const span = notification.querySelector('[data-i18n]');
+            if (span && i18n[currentLang] && i18n[currentLang]['haDefaultsApplied']) {
+                span.textContent = i18n[currentLang]['haDefaultsApplied'];
+            }
+
+            // Remove after 3 seconds
+            setTimeout(() => {
+                notification.style.animation = 'fadeOut 0.3s ease-out';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
         // Signal Entry configuration
         function updateSignalPreview(prefix) {
             const st1Role = document.getElementById(prefix + 'BotSt1Role').value;
@@ -2854,7 +3993,7 @@ DASHBOARD_HTML = r"""
             }
 
             // Build preview text
-            const roleIcons = { off: '❌', confirm: '🟢', trigger: '🎯' };
+            const roleIcons = { off: '—', confirm: '●', trigger: '◎' };
             const stNames = ['ST1', 'ST2', 'ST3'];
             const activeLines = [];
             let triggerName = '';
@@ -2869,16 +4008,16 @@ DASHBOARD_HTML = r"""
             if (previewEl) {
                 if (activeCount === 0) {
                     previewEl.innerHTML = `
-                        <div style="color: #ff4444;">⚠️ Выберите хотя бы одну линию</div>
+                        <div style="color: #ff4444;">Select at least one line</div>
                     `;
                 } else if (triggerCount === 0) {
                     previewEl.innerHTML = `
-                        <div style="color: #ff4444;">⚠️ Выберите триггер (🎯)</div>
+                        <div style="color: #ff4444;">Select a trigger (◎)</div>
                     `;
                 } else {
                     previewEl.innerHTML = `
-                        <div style="color: #888;">📋 ${activeLines.join(' + ')}</div>
-                        <div style="color: #00d4ff;">💡 Вход когда ${triggerName} разворачивается</div>
+                        <div style="color: #888;">${activeLines.join(' + ')}</div>
+                        <div style="color: #00d4ff;">Entry when ${triggerName} reverses</div>
                     `;
                 }
             }
@@ -3047,26 +4186,51 @@ DASHBOARD_HTML = r"""
             if (hiddenInput) hiddenInput.value = value;
         }
 
-        // Format money input with thousands separator
-        function formatMoneyInput(input) {
-            let value = input.value.replace(/[^\d]/g, '');
-            if (value) {
-                value = parseInt(value).toLocaleString('en-US');
-            }
-            input.value = value || '0';
+        // Normalize numeric input: replace comma with dot
+        function normalizeNumericInput(input) {
+            input.value = input.value.replace(/,/g, '.');
         }
 
-        // Parse money input to number
+        // Clear input field and set to "-"
+        function clearInput(btn) {
+            const input = btn.parentElement.querySelector('input');
+            if (input) {
+                input.value = '-';
+                input.focus();
+            }
+        }
+
+        // Handle empty input - replace with "-"
+        function handleEmptyInput(input) {
+            const val = input.value.trim();
+            if (val === '' || val === '0') {
+                input.value = '-';
+            }
+        }
+
+        // Format money input with space as thousands separator, show "-" for 0
+        function formatMoneyInput(input) {
+            let value = input.value.replace(/[^\d]/g, '');
+            if (value && parseInt(value) > 0) {
+                value = parseInt(value).toLocaleString('ru-RU').replace(/\s/g, ' ');
+            } else {
+                value = '-';
+            }
+            input.value = value;
+        }
+
+        // Parse money input to number (handles "-" as 0)
         function parseMoneyValue(value) {
+            if (value === '-' || value === '') return 0;
             return parseFloat(value.replace(/[^\d]/g, '')) || 0;
         }
 
         // Reset asset filters to defaults
         function resetAssetFilters(prefix) {
-            document.getElementById(prefix + 'BotMinVolume').value = '3,000,000';
-            document.getElementById(prefix + 'BotMaxVolume').value = '0';
-            document.getElementById(prefix + 'BotMinPrice').value = '0';
-            document.getElementById(prefix + 'BotMaxPrice').value = '0';
+            document.getElementById(prefix + 'BotMinVolume').value = '3 000 000';
+            document.getElementById(prefix + 'BotMaxVolume').value = '-';
+            document.getElementById(prefix + 'BotMinPrice').value = '-';
+            document.getElementById(prefix + 'BotMaxPrice').value = '-';
             document.getElementById(prefix + 'BotMinChange').value = '-30';
             document.getElementById(prefix + 'BotMaxChange').value = '20';
             document.getElementById(prefix + 'BotVolatilityPeriod').value = '12';
@@ -3286,11 +4450,13 @@ DASHBOARD_HTML = r"""
 
         // Update auto-scroll button state
         function updateAutoScrollBtn() {
-            const btn = document.getElementById('autoScrollBtn');
-            if (autoScroll) {
-                btn.classList.add('active');
-            } else {
-                btn.classList.remove('active');
+            const btn = document.getElementById('modalAutoScrollBtn');
+            if (btn) {
+                if (autoScroll) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
             }
         }
 
@@ -3301,6 +4467,36 @@ DASHBOARD_HTML = r"""
             logsDiv.scrollTop = logsDiv.scrollHeight;
             updateAutoScrollBtn();
         }
+
+        // Open logs modal
+        function openLogsModal() {
+            const modal = document.getElementById('logsModal');
+            modal.classList.add('show');
+            document.body.style.overflow = 'hidden';
+            // Scroll to bottom
+            const logsDiv = document.getElementById('logs');
+            if (autoScroll && logsDiv) {
+                logsDiv.scrollTop = logsDiv.scrollHeight;
+            }
+            updateAutoScrollBtn();
+        }
+
+        // Close logs modal
+        function closeLogsModal() {
+            const modal = document.getElementById('logsModal');
+            modal.classList.remove('show');
+            document.body.style.overflow = '';
+        }
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const logsModal = document.getElementById('logsModal');
+                if (logsModal.classList.contains('show')) {
+                    closeLogsModal();
+                }
+            }
+        });
 
         // Fetch stats periodically
         async function fetchStats() {
@@ -3424,20 +4620,22 @@ DASHBOARD_HTML = r"""
                         pingEl.style.color = '#ff4444';  // Red - Slow
                     }
 
-                    document.getElementById('apiRequests').textContent = data.requests_per_5s || 0;
+                    const requestsEl = document.getElementById('apiRequests');
+                    const requests = data.requests_per_5s || 0;
+                    requestsEl.textContent = requests;
                     document.getElementById('apiLimit').textContent = data.rate_limit || 600;
 
+                    // API usage color based on percentage
+                    // < 50% = normal (green)
+                    // 50-80% = medium (orange)
+                    // > 80% = high load (red)
                     const usage = data.rate_usage || 0;
-                    const fillEl = document.getElementById('apiUsageFill');
-                    fillEl.style.width = usage + '%';
-
-                    // Rate usage color
                     if (usage > 80) {
-                        fillEl.style.background = 'linear-gradient(90deg, #ff4444, #ff6666)';
+                        requestsEl.style.color = '#ff4444';  // Red - High load
                     } else if (usage > 50) {
-                        fillEl.style.background = 'linear-gradient(90deg, #ffcc00, #ffaa00)';
+                        requestsEl.style.color = '#ffaa00';  // Orange - Medium load
                     } else {
-                        fillEl.style.background = 'linear-gradient(90deg, #00ff88, #00cc66)';
+                        requestsEl.style.color = '#00ff88';  // Green - Normal
                     }
                 }
             } catch (err) {
@@ -3458,8 +4656,9 @@ DASHBOARD_HTML = r"""
             }
 
             const btn = document.getElementById('restartServerBtn');
+            const originalContent = btn.innerHTML;
             btn.disabled = true;
-            btn.innerHTML = '⏳';
+            btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spin"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
             btn.style.color = '#ffcc00';
 
             try {
@@ -3467,25 +4666,17 @@ DASHBOARD_HTML = r"""
                 const data = await response.json();
 
                 if (data.status === 'restarting') {
-                    btn.innerHTML = '🔄';
+                    btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
                     btn.style.color = '#00ff88';
 
-                    // Show message
-                    const msg = currentLang === 'ru'
-                        ? 'Сервер перезагружается... Страница обновится автоматически.'
-                        : 'Server restarting... Page will refresh automatically.';
-                    alert(msg);
-
-                    // Wait and reload page
-                    setTimeout(() => {
-                        location.reload();
-                    }, 3000);
+                    // Show restart overlay
+                    showRestartOverlay();
                 } else {
                     throw new Error(data.error || 'Unknown error');
                 }
             } catch (err) {
                 console.error('Restart failed:', err);
-                btn.innerHTML = '❌';
+                btn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
                 btn.style.color = '#ff4444';
 
                 const errMsg = currentLang === 'ru'
@@ -3494,10 +4685,136 @@ DASHBOARD_HTML = r"""
                 alert(errMsg);
 
                 setTimeout(() => {
-                    btn.innerHTML = '🔄 Restart';
+                    btn.innerHTML = originalContent;
                     btn.style.color = '#ff6666';
                     btn.disabled = false;
                 }, 2000);
+            }
+        }
+
+        // Show restart overlay with auto-refresh
+        function showRestartOverlay() {
+            const overlay = document.createElement('div');
+            overlay.id = 'restartOverlay';
+            overlay.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(26, 26, 46, 0.95);
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                z-index: 10000;
+            `;
+
+            const spinner = document.createElement('div');
+            spinner.style.cssText = `
+                width: 50px;
+                height: 50px;
+                border: 3px solid rgba(0, 212, 255, 0.3);
+                border-top-color: #00d4ff;
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+                margin-bottom: 20px;
+            `;
+
+            const message = document.createElement('div');
+            message.id = 'restartMessage';
+            message.style.cssText = `
+                color: #fff;
+                font-size: 18px;
+                text-align: center;
+                margin-bottom: 10px;
+            `;
+            message.textContent = currentLang === 'ru' ? 'Перезапуск сервера...' : 'Restarting server...';
+
+            const countdown = document.createElement('div');
+            countdown.id = 'restartCountdown';
+            countdown.style.cssText = `
+                color: #888;
+                font-size: 14px;
+            `;
+
+            const refreshBtn = document.createElement('button');
+            refreshBtn.id = 'manualRefreshBtn';
+            refreshBtn.style.cssText = `
+                display: none;
+                margin-top: 20px;
+                padding: 12px 24px;
+                background: #00d4ff;
+                color: #1a1a2e;
+                border: none;
+                border-radius: 8px;
+                font-size: 16px;
+                cursor: pointer;
+                font-weight: 500;
+            `;
+            refreshBtn.textContent = currentLang === 'ru' ? 'Обновить страницу' : 'Refresh page';
+            refreshBtn.onclick = () => location.reload();
+
+            overlay.appendChild(spinner);
+            overlay.appendChild(message);
+            overlay.appendChild(countdown);
+            overlay.appendChild(refreshBtn);
+            document.body.appendChild(overlay);
+
+            // Add spin animation if not exists
+            if (!document.getElementById('restartSpinStyle')) {
+                const style = document.createElement('style');
+                style.id = 'restartSpinStyle';
+                style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+                document.head.appendChild(style);
+            }
+
+            // Countdown and auto-refresh
+            let seconds = 5;
+            const updateCountdown = () => {
+                countdown.textContent = currentLang === 'ru'
+                    ? `Обновление через ${seconds} сек...`
+                    : `Refreshing in ${seconds} sec...`;
+            };
+            updateCountdown();
+
+            const timer = setInterval(() => {
+                seconds--;
+                if (seconds > 0) {
+                    updateCountdown();
+                } else {
+                    clearInterval(timer);
+                    tryRefresh();
+                }
+            }, 1000);
+
+            // Try to refresh and check if server is back
+            async function tryRefresh() {
+                countdown.textContent = currentLang === 'ru' ? 'Проверка сервера...' : 'Checking server...';
+
+                try {
+                    const response = await fetch('/api/status', {
+                        method: 'GET',
+                        cache: 'no-store'
+                    });
+                    if (response.ok) {
+                        location.reload();
+                    } else {
+                        throw new Error('Server not ready');
+                    }
+                } catch (e) {
+                    // Server not ready, show manual refresh button
+                    message.textContent = currentLang === 'ru'
+                        ? 'Сервер ещё перезапускается...'
+                        : 'Server is still restarting...';
+                    countdown.textContent = currentLang === 'ru'
+                        ? 'Подождите или обновите вручную'
+                        : 'Please wait or refresh manually';
+                    refreshBtn.style.display = 'block';
+
+                    // Keep trying every 3 seconds
+                    setTimeout(tryRefresh, 3000);
+                }
             }
         }
 
@@ -3716,6 +5033,7 @@ DASHBOARD_HTML = r"""
 
         // Modal functions
         let allTradingPairs = [];
+        let coinIcons = {};  // Cache for coin icons: symbol -> icon_url
 
         async function loadTradingPairsCache() {
             try {
@@ -3728,9 +5046,42 @@ DASHBOARD_HTML = r"""
             }
         }
 
-        // Load pairs on page load (only once)
+        async function loadCoinIcons() {
+            try {
+                const response = await fetch('/api/coin-icons');
+                const data = await response.json();
+                coinIcons = data.icons || {};
+                console.log('Loaded', Object.keys(coinIcons).length, 'coin icons');
+            } catch (err) {
+                console.error('Failed to load coin icons:', err);
+                coinIcons = {};
+            }
+        }
+
+        // Get coin icon HTML (with fallback to first letter)
+        function getCoinIconHtml(symbol, size = 16) {
+            // Extract base coin from pair (e.g., "BTC" from "BTCUSDT")
+            const baseCoin = symbol.replace(/USDT$|USDC$|BUSD$|USD$/, '');
+            const iconUrl = coinIcons[baseCoin];
+
+            if (iconUrl) {
+                return `<img src="${iconUrl}" alt="${baseCoin}" style="width: ${size}px; height: ${size}px; border-radius: 50%; vertical-align: middle; margin-right: 6px; object-fit: cover;">`;
+            } else {
+                // Fallback: first letter in a circle
+                const firstLetter = baseCoin.charAt(0).toUpperCase();
+                const colors = ['#f7931a', '#627eea', '#26a17b', '#e84142', '#8247e5', '#00d4aa', '#ff6b35', '#3498db'];
+                const colorIndex = baseCoin.charCodeAt(0) % colors.length;
+                const bgColor = colors[colorIndex];
+                return `<span style="display: inline-flex; align-items: center; justify-content: center; width: ${size}px; height: ${size}px; border-radius: 50%; background: ${bgColor}; color: #fff; font-size: ${Math.round(size * 0.6)}px; font-weight: bold; vertical-align: middle; margin-right: 6px;">${firstLetter}</span>`;
+            }
+        }
+
+        // Load pairs and icons on page load (only once)
         if (allTradingPairs.length === 0) {
             loadTradingPairsCache();
+        }
+        if (Object.keys(coinIcons).length === 0) {
+            loadCoinIcons();
         }
 
         function showPairDropdown(prefix) {
@@ -3779,8 +5130,8 @@ DASHBOARD_HTML = r"""
                 const item = document.createElement('div');
                 item.className = 'pair-dropdown-item';
                 item.id = `pair-item-${prefix}-${index}`;
-                item.style.cssText = 'padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #333;';
-                item.innerHTML = `<strong>${pair.symbol}</strong>`;
+                item.style.cssText = 'padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #333; display: flex; align-items: center;';
+                item.innerHTML = `${getCoinIconHtml(pair.symbol, 18)}<strong>${pair.symbol}</strong>`;
                 item.onmouseover = () => item.style.background = '#2a2a4e';
                 item.onmouseout = () => item.style.background = 'transparent';
                 item.onclick = () => selectPair(prefix, pair.symbol);
@@ -3965,10 +5316,10 @@ DASHBOARD_HTML = r"""
                     cursor: pointer;
                 " onclick="openPositionChart('${pos.id}')">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <div style="font-size: 16px; font-weight: bold; color: #fff;">
-                            ${sideIcon} ${pos.symbol}
+                        <div style="font-size: 16px; font-weight: bold; color: #fff; display: flex; align-items: center;">
+                            ${getCoinIconHtml(pos.symbol, 16)}${pos.symbol}
                         </div>
-                        <span style="color: ${sideColor}; font-weight: bold;">${pos.side.toUpperCase()}</span>
+                        <span style="color: ${sideColor}; font-weight: bold;">${sideIcon} ${pos.side.toUpperCase()}</span>
                     </div>
                     <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
                         <span style="color: #888; font-size: 12px;">Entry: ${pos.entry_price.toFixed(6)}</span>
@@ -4454,6 +5805,21 @@ DASHBOARD_HTML = r"""
                 st2_role: document.getElementById('newBotSt2Role').value,
                 st3_role: document.getElementById('newBotSt3Role').value,
                 trigger_confirm_candles: parseInt(document.getElementById('newBotTriggerConfirmCandles').value),
+                // Strategy type selection
+                strategy_type: document.getElementById('newBotStrategyHeikinAshiEnabled').checked ? 'heikinashi' : 'supertrend',
+                // Heikin Ashi settings
+                ha_entry_candles: parseInt(document.getElementById('newBotHaEntryCandles').value),
+                ha_exit_on_color_change: document.getElementById('newBotHaExitOnColorChange').checked,
+                ha_exit_candles: parseInt(document.getElementById('newBotHaExitCandles').value),
+                ha_ema_enabled: document.getElementById('newBotHaEmaEnabled').checked,
+                ha_ema_period: parseInt(document.getElementById('newBotHaEmaPeriod').value) || 200,
+                ha_ema_mode: document.getElementById('newBotHaEmaMode').value,
+                ha_volatility_enabled: document.getElementById('newBotHaVolatilityEnabled').checked,
+                ha_min_atr: parseFloat(document.getElementById('newBotHaMinAtr').value) || 0.5,
+                ha_emergency_sl: parseFloat(document.getElementById('newBotHaEmergencySl').value) || 2,
+                ha_trailing_enabled: document.getElementById('newBotHaTrailingEnabled').checked,
+                ha_trailing_activation: parseFloat(document.getElementById('newBotHaTrailingActivation').value) || 1,
+                ha_trailing_distance: parseFloat(document.getElementById('newBotHaTrailingDistance').value) || 0.5,
                 // Asset filters
                 asset_filters_enabled: document.getElementById('newBotAssetFiltersEnabled').checked,
                 filter_min_volume: parseMoneyValue(document.getElementById('newBotMinVolume').value),
@@ -4678,17 +6044,56 @@ DASHBOARD_HTML = r"""
             document.getElementById('editBotTriggerConfirmCandles').value = bot.trigger_confirm_candles || 1;
             updateSignalPreview('edit');
 
-            // Asset filters
+            // Strategy type and Heikin Ashi settings
+            const strategyType = bot.strategy_type || 'supertrend';
+            document.getElementById('editBotHaEntryCandles').value = bot.ha_entry_candles || 2;
+            document.getElementById('editBotHaExitOnColorChange').checked = bot.ha_exit_on_color_change !== false;
+            document.getElementById('editBotHaExitCandles').value = bot.ha_exit_candles || 1;
+            document.getElementById('editBotHaEmaEnabled').checked = bot.ha_ema_enabled !== false;
+            document.getElementById('editBotHaEmaPeriod').value = bot.ha_ema_period || 200;
+            document.getElementById('editBotHaEmaMode').value = bot.ha_ema_mode || 'strict';
+            document.getElementById('editBotHaVolatilityEnabled').checked = bot.ha_volatility_enabled !== false;
+            document.getElementById('editBotHaMinAtr').value = bot.ha_min_atr || 0.5;
+            document.getElementById('editBotHaEmergencySl').value = bot.ha_emergency_sl || 2;
+            document.getElementById('editBotHaTrailingEnabled').checked = bot.ha_trailing_enabled !== false;
+            document.getElementById('editBotHaTrailingActivation').value = bot.ha_trailing_activation || 1;
+            document.getElementById('editBotHaTrailingDistance').value = bot.ha_trailing_distance || 0.5;
+            // Set the strategy toggle without applying defaults for edit mode
+            if (strategyType === 'heikinashi') {
+                // Manually set up the HA view without triggering applyHaRecommendedDefaults
+                const stEnabled = document.getElementById('editBotStrategySupertrendEnabled');
+                const haEnabled = document.getElementById('editBotStrategyHeikinAshiEnabled');
+                const stSettings = document.getElementById('editSupertrendSettings');
+                const haSettings = document.getElementById('editHeikinAshiSettings');
+                const stContainer = document.getElementById('editStrategySupertrend');
+                const haContainer = document.getElementById('editStrategyHeikinAshi');
+                stEnabled.checked = false;
+                haEnabled.checked = true;
+                stSettings.style.display = 'none';
+                haSettings.style.display = 'block';
+                stContainer.style.background = 'rgba(255,255,255,0.05)';
+                stContainer.querySelector('label').style.color = '#888';
+                haContainer.style.background = 'rgba(255,170,0,0.1)';
+                haContainer.querySelector('label').style.color = '#ffaa00';
+                toggleHaExitSettings('edit');
+                toggleHaEmaSettings('edit');
+                toggleHaVolatilitySettings('edit');
+                toggleHaTrailingSettings('edit');
+            } else {
+                toggleStrategy('edit', strategyType);
+            }
+
+            // Asset filters - format with spaces, show "-" for 0
             document.getElementById('editBotAssetFiltersEnabled').checked = bot.asset_filters_enabled !== false;
-            document.getElementById('editBotMinVolume').value = (bot.filter_min_volume || 3000000).toLocaleString('en-US');
-            document.getElementById('editBotMaxVolume').value = (bot.filter_max_volume || 0).toLocaleString('en-US');
-            document.getElementById('editBotMinPrice').value = bot.filter_min_price || 0;
-            document.getElementById('editBotMaxPrice').value = bot.filter_max_price || 0;
-            document.getElementById('editBotMinChange').value = bot.filter_min_change || -30;
-            document.getElementById('editBotMaxChange').value = bot.filter_max_change || 20;
+            document.getElementById('editBotMinVolume').value = (bot.filter_min_volume || 3000000) > 0 ? (bot.filter_min_volume || 3000000).toLocaleString('ru-RU').replace(/\s/g, ' ') : '-';
+            document.getElementById('editBotMaxVolume').value = (bot.filter_max_volume || 0) > 0 ? (bot.filter_max_volume).toLocaleString('ru-RU').replace(/\s/g, ' ') : '-';
+            document.getElementById('editBotMinPrice').value = (bot.filter_min_price || 0) > 0 ? (bot.filter_min_price).toLocaleString('ru-RU').replace(/\s/g, ' ') : '-';
+            document.getElementById('editBotMaxPrice').value = (bot.filter_max_price || 0) > 0 ? (bot.filter_max_price).toLocaleString('ru-RU').replace(/\s/g, ' ') : '-';
+            document.getElementById('editBotMinChange').value = bot.filter_min_change !== undefined ? bot.filter_min_change : -30;
+            document.getElementById('editBotMaxChange').value = bot.filter_max_change !== undefined ? bot.filter_max_change : 20;
             document.getElementById('editBotVolatilityPeriod').value = bot.filter_volatility_period || 12;
-            document.getElementById('editBotMinVolatility').value = bot.filter_min_volatility || 0.5;
-            document.getElementById('editBotMaxVolatility').value = bot.filter_max_volatility || 3;
+            document.getElementById('editBotMinVolatility').value = bot.filter_min_volatility !== undefined ? bot.filter_min_volatility : 0.5;
+            document.getElementById('editBotMaxVolatility').value = bot.filter_max_volatility !== undefined ? bot.filter_max_volatility : 3;
             toggleAssetFiltersInputs('edit');
             document.getElementById('editBotBalanceUsage').value = bot.balance_usage_percent || 100;
             // Daily loss limit settings
@@ -4773,6 +6178,21 @@ DASHBOARD_HTML = r"""
                 st2_role: document.getElementById('editBotSt2Role').value,
                 st3_role: document.getElementById('editBotSt3Role').value,
                 trigger_confirm_candles: parseInt(document.getElementById('editBotTriggerConfirmCandles').value),
+                // Strategy type selection
+                strategy_type: document.getElementById('editBotStrategyHeikinAshiEnabled').checked ? 'heikinashi' : 'supertrend',
+                // Heikin Ashi settings
+                ha_entry_candles: parseInt(document.getElementById('editBotHaEntryCandles').value),
+                ha_exit_on_color_change: document.getElementById('editBotHaExitOnColorChange').checked,
+                ha_exit_candles: parseInt(document.getElementById('editBotHaExitCandles').value),
+                ha_ema_enabled: document.getElementById('editBotHaEmaEnabled').checked,
+                ha_ema_period: parseInt(document.getElementById('editBotHaEmaPeriod').value) || 200,
+                ha_ema_mode: document.getElementById('editBotHaEmaMode').value,
+                ha_volatility_enabled: document.getElementById('editBotHaVolatilityEnabled').checked,
+                ha_min_atr: parseFloat(document.getElementById('editBotHaMinAtr').value) || 0.5,
+                ha_emergency_sl: parseFloat(document.getElementById('editBotHaEmergencySl').value) || 2,
+                ha_trailing_enabled: document.getElementById('editBotHaTrailingEnabled').checked,
+                ha_trailing_activation: parseFloat(document.getElementById('editBotHaTrailingActivation').value) || 1,
+                ha_trailing_distance: parseFloat(document.getElementById('editBotHaTrailingDistance').value) || 0.5,
                 // Asset filters
                 asset_filters_enabled: document.getElementById('editBotAssetFiltersEnabled').checked,
                 filter_min_volume: parseMoneyValue(document.getElementById('editBotMinVolume').value),
@@ -4874,7 +6294,7 @@ DASHBOARD_HTML = r"""
             if (!bot) return;
 
             const symbol = Array.isArray(bot.trading_pairs) ? bot.trading_pairs[0] : bot.trading_pairs;
-            document.getElementById('fullscreenChartTitle').textContent = `${bot.name} - ${symbol} (${bot.timeframe})`;
+            document.getElementById('fullscreenChartTitle').innerHTML = `${bot.name} - ${getCoinIconHtml(symbol, 16)}${symbol} (${bot.timeframe})`;
 
             document.getElementById('fullscreenChartModal').classList.add('show');
 
@@ -5097,7 +6517,7 @@ DASHBOARD_HTML = r"""
         async function openFullscreenChartWithPosition(pos, bot) {
             const symbol = pos.symbol;
             const sideEmoji = pos.side.toUpperCase() === 'LONG' ? '📈' : '📉';
-            document.getElementById('fullscreenChartTitle').textContent = `${sideEmoji} ${symbol} - ${pos.side.toUpperCase()} (${bot.timeframe})`;
+            document.getElementById('fullscreenChartTitle').innerHTML = `${sideEmoji} ${getCoinIconHtml(symbol, 16)}${symbol} - ${pos.side.toUpperCase()} (${bot.timeframe})`;
 
             document.getElementById('fullscreenChartModal').classList.add('show');
             await new Promise(resolve => setTimeout(resolve, 100));
@@ -5259,7 +6679,7 @@ DASHBOARD_HTML = r"""
                 container.className = 'chart-container';
                 container.innerHTML = `
                     <div class="chart-header">
-                        <span class="chart-symbol">${symbol}</span>
+                        <span class="chart-symbol" style="display: flex; align-items: center;">${getCoinIconHtml(symbol, 14)}${symbol}</span>
                         <span class="chart-price" id="price-${symbol}">--</span>
                     </div>
                     <div class="chart-wrapper" id="chart-${symbol}"></div>
@@ -5388,8 +6808,9 @@ DASHBOARD_HTML = r"""
 
             grid.innerHTML = filteredPairs.map(pair => `
                 <div class="pair-chip ${selectedPairs.has(pair.symbol) ? 'selected' : ''}"
-                     onclick="togglePair('${pair.symbol}')">
-                    ${pair.symbol}
+                     onclick="togglePair('${pair.symbol}')"
+                     style="display: inline-flex; align-items: center; gap: 4px;">
+                    ${getCoinIconHtml(pair.symbol, 14)}${pair.symbol}
                 </div>
             `).join('');
         }
@@ -5489,8 +6910,8 @@ DASHBOARD_HTML = r"""
             currentBot = bot;
             const timeframe = bot ? bot.timeframe : '1h';
 
-            // Update header
-            document.getElementById('posChartSymbol').textContent = position.symbol;
+            // Update header (with coin icon)
+            document.getElementById('posChartSymbol').innerHTML = getCoinIconHtml(position.symbol, 16) + position.symbol;
             document.getElementById('posChartTimeframe').textContent = timeframe;
 
             const sideEl = document.getElementById('posChartSide');
@@ -5828,9 +7249,76 @@ DASHBOARD_HTML = r"""
 """
 
 
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request, aila_session: Optional[str] = Cookie(None)):
+    """Serve the login page."""
+    # If already logged in, redirect to dashboard
+    if verify_session(aila_session):
+        return RedirectResponse(url="/", status_code=302)
+
+    return Response(
+        content=LOGIN_HTML,
+        media_type="text/html",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        }
+    )
+
+
+@app.get("/auth/telegram")
+async def telegram_auth(request: Request):
+    """Handle Telegram Login Widget callback."""
+    # Get all query parameters
+    auth_data = dict(request.query_params)
+
+    # Verify the authentication data
+    if not verify_telegram_auth(auth_data):
+        return RedirectResponse(url="/login?error=invalid_auth", status_code=302)
+
+    # Check if user is allowed
+    telegram_id = int(auth_data.get("id", 0))
+    if telegram_id not in ALLOWED_TELEGRAM_IDS:
+        return RedirectResponse(url="/login?error=access_denied", status_code=302)
+
+    # Create session
+    username = auth_data.get("username", "") or auth_data.get("first_name", "User")
+    session_token = create_session(telegram_id, username)
+
+    # Redirect to dashboard with session cookie
+    response = RedirectResponse(url="/", status_code=302)
+    response.set_cookie(
+        key="aila_session",
+        value=session_token,
+        max_age=604800,  # 7 days
+        httponly=True,
+        secure=True,
+        samesite="lax",
+    )
+    return response
+
+
+@app.get("/logout")
+async def logout(aila_session: Optional[str] = Cookie(None)):
+    """Clear session and redirect to login."""
+    # Remove session from storage
+    if aila_session and aila_session in active_sessions:
+        del active_sessions[aila_session]
+
+    # Clear cookie and redirect
+    response = RedirectResponse(url="/login", status_code=302)
+    response.delete_cookie(key="aila_session")
+    return response
+
+
 @app.get("/", response_class=HTMLResponse)
-async def dashboard():
-    """Serve the main dashboard."""
+async def dashboard(request: Request, aila_session: Optional[str] = Cookie(None)):
+    """Serve the main dashboard (requires authentication)."""
+    # Check authentication
+    if not verify_session(aila_session):
+        return RedirectResponse(url="/login", status_code=302)
+
     return Response(
         content=DASHBOARD_HTML,
         media_type="text/html",
@@ -6025,6 +7513,12 @@ async def save_settings(settings: dict):
 # Trading pairs cache
 trading_pairs_cache = {
     "pairs": [],
+    "last_update": None,
+}
+
+# Coin icons cache - stores icon URLs by coin symbol (e.g., "BTC" -> "https://...")
+coin_icons_cache = {
+    "icons": {},  # symbol -> icon_url
     "last_update": None,
 }
 
@@ -6258,6 +7752,99 @@ async def get_bots():
     }
 
 
+async def load_all_usdt_perpetual_pairs() -> list[str]:
+    """Load all USDT perpetual pairs from cache or exchange API."""
+    import httpx
+    import re
+    from datetime import datetime, timedelta
+
+    dated_futures_pattern = re.compile(r'-\d{2}[A-Z]{3}\d{2}$')
+
+    # Check if cache is fresh
+    if trading_pairs_cache["pairs"] and trading_pairs_cache["last_update"]:
+        if datetime.now() - trading_pairs_cache["last_update"] < timedelta(minutes=10):
+            return [
+                p["symbol"] for p in trading_pairs_cache["pairs"]
+                if p.get("symbol")
+                and p["symbol"] not in ("undefined", "null", "")
+                and not dated_futures_pattern.search(p["symbol"])
+            ]
+
+    # Try to load from connected client first
+    client = bot_state.get("client")
+    if client:
+        try:
+            pairs = client.get_trading_pairs()
+            result = []
+            seen_symbols = set()
+            for pair in pairs:
+                if pair.quote_asset == "USDT" and pair.status == "Trading":
+                    if pair.symbol not in seen_symbols and not dated_futures_pattern.search(pair.symbol):
+                        seen_symbols.add(pair.symbol)
+                        result.append({
+                            "symbol": pair.symbol,
+                            "base": pair.base_asset,
+                            "quote": pair.quote_asset,
+                            "minQty": str(pair.min_order_qty),
+                            "minNotional": str(getattr(pair, 'min_notional', '5')),
+                            "maxLeverage": pair.max_leverage,
+                            "leverageStep": getattr(pair, 'leverage_step', 0.01),
+                        })
+            result.sort(key=lambda x: x["symbol"])
+            trading_pairs_cache["pairs"] = result
+            trading_pairs_cache["last_update"] = datetime.now()
+            return [p["symbol"] for p in result]
+        except Exception as e:
+            logger.error("Failed to get trading pairs from client", error=str(e))
+
+    # Fallback: fetch directly from Bybit public API
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as http_client:
+            response = await http_client.get(
+                "https://api.bybit.com/v5/market/instruments-info",
+                params={"category": "linear"}
+            )
+            data = response.json()
+
+            if data.get("retCode") == 0:
+                result = []
+                for item in data.get("result", {}).get("list", []):
+                    symbol = item.get("symbol", "")
+                    if (item.get("quoteCoin") == "USDT"
+                        and item.get("status") == "Trading"
+                        and not dated_futures_pattern.search(symbol)):
+                        lot_filter = item.get("lotSizeFilter", {})
+                        leverage_filter = item.get("leverageFilter", {})
+                        result.append({
+                            "symbol": symbol,
+                            "base": item.get("baseCoin"),
+                            "quote": item.get("quoteCoin"),
+                            "minQty": lot_filter.get("minOrderQty", "0.001"),
+                            "minNotional": lot_filter.get("minNotionalValue", "5"),
+                            "maxLeverage": int(float(leverage_filter.get("maxLeverage", "100"))),
+                            "leverageStep": float(leverage_filter.get("leverageStep", "0.01")),
+                        })
+                result.sort(key=lambda x: x["symbol"])
+                trading_pairs_cache["pairs"] = result
+                trading_pairs_cache["last_update"] = datetime.now()
+                logger.info(f"Loaded {len(result)} USDT perpetual pairs from Bybit API")
+                return [p["symbol"] for p in result]
+    except Exception as e:
+        logger.error("Failed to fetch trading pairs from Bybit API", error=str(e))
+
+    # Return from stale cache if available
+    if trading_pairs_cache["pairs"]:
+        return [
+            p["symbol"] for p in trading_pairs_cache["pairs"]
+            if p.get("symbol")
+            and p["symbol"] not in ("undefined", "null", "")
+            and not dated_futures_pattern.search(p["symbol"])
+        ]
+
+    # Last fallback
+    return ["BTCUSDT", "ETHUSDT"]
+
+
 @app.post("/api/bots")
 async def create_bot(config: dict):
     """Create a new bot configuration."""
@@ -6267,11 +7854,15 @@ async def create_bot(config: dict):
     import uuid
     bot_id = str(uuid.uuid4())[:8]
 
+    # Load all USDT perpetual pairs by default
+    all_pairs = await load_all_usdt_perpetual_pairs()
+    add_log(f"[info    ] Loaded {len(all_pairs)} USDT perpetual pairs for new bot")
+
     bot_config = {
         "id": bot_id,
         "name": config.get("name", f"Bot {len(bots_registry) + 1}"),
         "bot_mode": config.get("bot_mode", "manual"),
-        "trading_pairs": config.get("trading_pairs", ["BTCUSDT"]),
+        "trading_pairs": config.get("trading_pairs", all_pairs),
         # max_trading_pairs from JS maps to max_simultaneous_orders
         "max_simultaneous_orders": config.get("max_trading_pairs", config.get("max_simultaneous_orders", 1)),
         "timeframe": config.get("timeframe", "15m"),
@@ -6324,6 +7915,21 @@ async def create_bot(config: dict):
         "st2_role": config.get("st2_role", "confirm"),
         "st3_role": config.get("st3_role", "trigger"),
         "trigger_confirm_candles": config.get("trigger_confirm_candles", 1),
+        # Strategy selection (supertrend / heikinashi)
+        "strategy_type": config.get("strategy_type", "supertrend"),
+        # Heikin Ashi settings
+        "ha_entry_candles": config.get("ha_entry_candles", 2),
+        "ha_exit_on_color_change": _to_bool(config.get("ha_exit_on_color_change", True), True),
+        "ha_exit_candles": config.get("ha_exit_candles", 1),
+        "ha_ema_enabled": _to_bool(config.get("ha_ema_enabled", True), True),
+        "ha_ema_period": config.get("ha_ema_period", 200),
+        "ha_ema_mode": config.get("ha_ema_mode", "strict"),
+        "ha_volatility_enabled": _to_bool(config.get("ha_volatility_enabled", True), True),
+        "ha_min_atr": config.get("ha_min_atr", 0.5),
+        "ha_emergency_sl": config.get("ha_emergency_sl", 2.0),
+        "ha_trailing_enabled": _to_bool(config.get("ha_trailing_enabled", True), True),
+        "ha_trailing_activation": config.get("ha_trailing_activation", 1.0),
+        "ha_trailing_distance": config.get("ha_trailing_distance", 0.5),
         "balance_usage_percent": config.get("balance_usage_percent", 100),
         # Daily loss limit settings
         "max_loss_enabled": config.get("max_loss_enabled", False),
@@ -6655,6 +8261,20 @@ async def start_specific_bot(bot_id: str):
     bot_settings["st2_role"] = bot.get("st2_role", "confirm")
     bot_settings["st3_role"] = bot.get("st3_role", "trigger")
     bot_settings["trigger_confirm_candles"] = bot.get("trigger_confirm_candles", 1)
+    # Strategy type and Heikin Ashi settings
+    bot_settings["strategy_type"] = bot.get("strategy_type", "supertrend")
+    bot_settings["ha_entry_candles"] = bot.get("ha_entry_candles", 2)
+    bot_settings["ha_exit_on_color_change"] = _to_bool(bot.get("ha_exit_on_color_change", True), True)
+    bot_settings["ha_exit_candles"] = bot.get("ha_exit_candles", 1)
+    bot_settings["ha_ema_enabled"] = _to_bool(bot.get("ha_ema_enabled", True), True)
+    bot_settings["ha_ema_period"] = bot.get("ha_ema_period", 200)
+    bot_settings["ha_ema_mode"] = bot.get("ha_ema_mode", "strict")
+    bot_settings["ha_volatility_enabled"] = _to_bool(bot.get("ha_volatility_enabled", True), True)
+    bot_settings["ha_min_atr"] = bot.get("ha_min_atr", 0.5)
+    bot_settings["ha_emergency_sl"] = bot.get("ha_emergency_sl", 2.0)
+    bot_settings["ha_trailing_enabled"] = _to_bool(bot.get("ha_trailing_enabled", True), True)
+    bot_settings["ha_trailing_activation"] = bot.get("ha_trailing_activation", 1.0)
+    bot_settings["ha_trailing_distance"] = bot.get("ha_trailing_distance", 0.5)
     # Partial TP settings
     bot_settings["partial_tp_enabled"] = _to_bool(bot.get("partial_tp_enabled", True), True)
     bot_settings["partial_tp_close_percent"] = bot.get("partial_tp_close_percent", 50)
@@ -6923,6 +8543,20 @@ async def resume_specific_bot(bot_id: str):
     bot_settings["st2_role"] = bot.get("st2_role", "confirm")
     bot_settings["st3_role"] = bot.get("st3_role", "trigger")
     bot_settings["trigger_confirm_candles"] = bot.get("trigger_confirm_candles", 1)
+    # Strategy type and Heikin Ashi settings
+    bot_settings["strategy_type"] = bot.get("strategy_type", "supertrend")
+    bot_settings["ha_entry_candles"] = bot.get("ha_entry_candles", 2)
+    bot_settings["ha_exit_on_color_change"] = _to_bool(bot.get("ha_exit_on_color_change", True), True)
+    bot_settings["ha_exit_candles"] = bot.get("ha_exit_candles", 1)
+    bot_settings["ha_ema_enabled"] = _to_bool(bot.get("ha_ema_enabled", True), True)
+    bot_settings["ha_ema_period"] = bot.get("ha_ema_period", 200)
+    bot_settings["ha_ema_mode"] = bot.get("ha_ema_mode", "strict")
+    bot_settings["ha_volatility_enabled"] = _to_bool(bot.get("ha_volatility_enabled", True), True)
+    bot_settings["ha_min_atr"] = bot.get("ha_min_atr", 0.5)
+    bot_settings["ha_emergency_sl"] = bot.get("ha_emergency_sl", 2.0)
+    bot_settings["ha_trailing_enabled"] = _to_bool(bot.get("ha_trailing_enabled", True), True)
+    bot_settings["ha_trailing_activation"] = bot.get("ha_trailing_activation", 1.0)
+    bot_settings["ha_trailing_distance"] = bot.get("ha_trailing_distance", 0.5)
     bot_settings["paused"] = False
 
     # Store updated per-bot settings
@@ -7212,6 +8846,68 @@ async def get_trading_pairs():
         return {"pairs": trading_pairs_cache["pairs"]}
 
     return {"pairs": [], "error": "Failed to load trading pairs"}
+
+
+@app.get("/api/coin-icons")
+async def get_coin_icons():
+    """Get coin icons from CryptoCompare API with caching."""
+    import httpx
+    from datetime import datetime, timedelta
+
+    # Return cached data if fresh (less than 24 hours old - icons don't change often)
+    if coin_icons_cache["icons"] and coin_icons_cache["last_update"]:
+        if datetime.now() - coin_icons_cache["last_update"] < timedelta(hours=24):
+            return {"icons": coin_icons_cache["icons"]}
+
+    # Fetch from CryptoCompare API (free, no API key required for basic usage)
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as http_client:
+            # Get coin list with images
+            response = await http_client.get(
+                "https://min-api.cryptocompare.com/data/all/coinlist",
+                params={"summary": "true"}
+            )
+            data = response.json()
+
+            if data.get("Response") == "Success":
+                icons = {}
+                base_url = "https://www.cryptocompare.com"
+                coin_data = data.get("Data", {})
+
+                for symbol, info in coin_data.items():
+                    image_url = info.get("ImageUrl")
+                    if image_url:
+                        # Full URL for the icon
+                        icons[symbol.upper()] = f"{base_url}{image_url}"
+
+                # Cache the result
+                coin_icons_cache["icons"] = icons
+                coin_icons_cache["last_update"] = datetime.now()
+
+                logger.info(f"Loaded {len(icons)} coin icons from CryptoCompare")
+                return {"icons": icons}
+
+    except Exception as e:
+        logger.error("Failed to fetch coin icons from CryptoCompare", error=str(e))
+
+    # Return cached data if available (even if stale)
+    if coin_icons_cache["icons"]:
+        return {"icons": coin_icons_cache["icons"]}
+
+    return {"icons": {}}
+
+
+@app.get("/api/coin-icon/{symbol}")
+async def get_coin_icon(symbol: str):
+    """Get icon URL for a specific coin symbol."""
+    # Ensure cache is populated
+    if not coin_icons_cache["icons"]:
+        await get_coin_icons()
+
+    symbol_upper = symbol.upper()
+    icon_url = coin_icons_cache["icons"].get(symbol_upper)
+
+    return {"symbol": symbol_upper, "icon": icon_url}
 
 
 @app.get("/api/klines/{symbol}")

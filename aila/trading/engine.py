@@ -18,8 +18,264 @@ from ..core.risk import PositionSizer, PositionSizingConfig, StopLossConfig, Sto
 from ..core.strategy import Signal, SignalType, TripleSuperTrendStrategy
 from ..exchange import BybitClient, FuturesTrader, SpotTrader
 from ..exchange.models import AccountType, MarginMode, Position, PositionSide
+from ..core.strategy.signals import SignalStrength
 
 logger = structlog.get_logger(__name__)
+
+
+def calculate_heikin_ashi(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Calculate Heikin Ashi candles from OHLC data.
+
+    Heikin Ashi formulas:
+    - HA Close = (Open + High + Low + Close) / 4
+    - HA Open = (previous HA Open + previous HA Close) / 2
+    - HA High = max(High, HA Open, HA Close)
+    - HA Low = min(Low, HA Open, HA Close)
+
+    Args:
+        df: DataFrame with 'open', 'high', 'low', 'close' columns
+
+    Returns:
+        DataFrame with HA columns: 'ha_open', 'ha_high', 'ha_low', 'ha_close', 'ha_color'
+    """
+    ha_df = df.copy()
+
+    # HA Close = (Open + High + Low + Close) / 4
+    ha_df['ha_close'] = (df['open'] + df['high'] + df['low'] + df['close']) / 4
+
+    # HA Open - first candle uses regular open, subsequent use (prev_ha_open + prev_ha_close) / 2
+    ha_df['ha_open'] = 0.0
+    ha_df.iloc[0, ha_df.columns.get_loc('ha_open')] = (df['open'].iloc[0] + df['close'].iloc[0]) / 2
+
+    for i in range(1, len(ha_df)):
+        ha_df.iloc[i, ha_df.columns.get_loc('ha_open')] = (
+            ha_df['ha_open'].iloc[i-1] + ha_df['ha_close'].iloc[i-1]
+        ) / 2
+
+    # HA High = max(High, HA Open, HA Close)
+    ha_df['ha_high'] = ha_df[['high', 'ha_open', 'ha_close']].max(axis=1)
+
+    # HA Low = min(Low, HA Open, HA Close)
+    ha_df['ha_low'] = ha_df[['low', 'ha_open', 'ha_close']].min(axis=1)
+
+    # HA Color: green if HA Close > HA Open, red otherwise
+    ha_df['ha_color'] = (ha_df['ha_close'] > ha_df['ha_open']).map({True: 'green', False: 'red'})
+
+    return ha_df
+
+
+def generate_heikin_ashi_signal(
+    df: pd.DataFrame,
+    symbol: str,
+    entry_candles: int = 2,
+    current_position_side: str = None,
+    exit_on_color_change: bool = True,
+    exit_candles: int = 1,
+    ema_enabled: bool = True,
+    ema_period: int = 200,
+    ema_mode: str = "strict",
+    volatility_enabled: bool = True,
+    min_atr_percent: float = 0.5
+) -> Signal:
+    """
+    Generate Heikin Ashi trading signal with EMA and volatility filters.
+
+    Entry logic:
+    - LONG: N consecutive green candles (color changed to green)
+    - SHORT: N consecutive red candles (color changed to red)
+    - EMA Filter (if enabled): LONG only above EMA, SHORT only below EMA
+    - Volatility Filter (if enabled): ATR % must be above minimum threshold
+
+    Exit logic (if enabled):
+    - Exit LONG: N consecutive red candles
+    - Exit SHORT: N consecutive green candles
+
+    Args:
+        df: DataFrame with OHLC data
+        symbol: Trading symbol
+        entry_candles: Number of consecutive candles for entry confirmation
+        current_position_side: Current position side ('long', 'short', or None)
+        exit_on_color_change: Whether to generate exit signals on color change
+        exit_candles: Number of consecutive candles for exit confirmation
+        ema_enabled: Whether to use EMA filter
+        ema_period: EMA period for filter
+        ema_mode: EMA filter mode ('strict' = price must be on correct side)
+        volatility_enabled: Whether to use volatility filter
+        min_atr_percent: Minimum ATR % threshold for volatility filter
+
+    Returns:
+        Signal object
+    """
+    from datetime import datetime
+
+    # Calculate Heikin Ashi
+    ha_df = calculate_heikin_ashi(df)
+
+    if len(ha_df) < max(entry_candles + 1, ema_period if ema_enabled else 0, 14):
+        return Signal(
+            signal_type=SignalType.NO_SIGNAL,
+            symbol=symbol,
+            price=float(df['close'].iloc[-1]),
+        )
+
+    current_price = float(df['close'].iloc[-1])
+
+    # Calculate EMA if enabled
+    ema_value = None
+    ema_filter_pass = True
+    ema_filter_result = "N/A"
+    if ema_enabled and len(df) >= ema_period:
+        ema_value = df['close'].ewm(span=ema_period, adjust=False).mean().iloc[-1]
+        ema_filter_result = f"Price: {current_price:.4f}, EMA{ema_period}: {ema_value:.4f}"
+
+    # Calculate ATR for volatility filter
+    atr_percent = None
+    volatility_filter_pass = True
+    volatility_filter_result = "N/A"
+    if volatility_enabled and len(df) >= 14:
+        high_low = df['high'] - df['low']
+        high_close = abs(df['high'] - df['close'].shift())
+        low_close = abs(df['low'] - df['close'].shift())
+        true_range = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
+        atr = true_range.rolling(window=14).mean().iloc[-1]
+        atr_percent = (atr / current_price) * 100
+        volatility_filter_result = f"ATR%: {atr_percent:.2f}%, Min: {min_atr_percent}%"
+        if atr_percent < min_atr_percent:
+            volatility_filter_pass = False
+
+    # Get the last N candles for confirmation
+    last_colors = ha_df['ha_color'].iloc[-entry_candles:].tolist()
+    prev_color = ha_df['ha_color'].iloc[-(entry_candles + 1)]
+
+    # Check for exit signal first (if in position and exit on color change is enabled)
+    if current_position_side and exit_on_color_change:
+        exit_colors = ha_df['ha_color'].iloc[-exit_candles:].tolist()
+
+        if current_position_side == 'long':
+            # Exit LONG: N consecutive red candles
+            if all(c == 'red' for c in exit_colors):
+                logger.info(
+                    f"[Heikin Ashi] CLOSE LONG on {symbol}, Exit: {exit_candles} red candles",
+                    symbol=symbol,
+                    exit_candles=exit_candles,
+                    colors=exit_colors
+                )
+                return Signal(
+                    signal_type=SignalType.CLOSE_LONG,
+                    symbol=symbol,
+                    price=current_price,
+                    strength=SignalStrength.NORMAL,
+                    metadata={"strategy": "heikin_ashi", "reason": "color_change_exit", "candles": exit_candles}
+                )
+
+        elif current_position_side == 'short':
+            # Exit SHORT: N consecutive green candles
+            if all(c == 'green' for c in exit_colors):
+                logger.info(
+                    f"[Heikin Ashi] CLOSE SHORT on {symbol}, Exit: {exit_candles} green candles",
+                    symbol=symbol,
+                    exit_candles=exit_candles,
+                    colors=exit_colors
+                )
+                return Signal(
+                    signal_type=SignalType.CLOSE_SHORT,
+                    symbol=symbol,
+                    price=current_price,
+                    strength=SignalStrength.NORMAL,
+                    metadata={"strategy": "heikin_ashi", "reason": "color_change_exit", "candles": exit_candles}
+                )
+
+    # Check for entry signal (only if not in position)
+    if not current_position_side:
+        # LONG: Previous candle was red, now N consecutive green candles
+        if prev_color == 'red' and all(c == 'green' for c in last_colors):
+            # Check EMA filter for LONG
+            if ema_enabled and ema_value is not None:
+                if current_price <= ema_value:
+                    ema_filter_pass = False
+                    logger.debug(
+                        f"[Heikin Ashi] {symbol} LONG blocked by EMA filter: {ema_filter_result}",
+                        symbol=symbol
+                    )
+
+            # Check volatility filter
+            if not volatility_filter_pass:
+                logger.debug(
+                    f"[Heikin Ashi] {symbol} LONG blocked by volatility filter: {volatility_filter_result}",
+                    symbol=symbol
+                )
+
+            # Generate signal if all filters pass
+            if ema_filter_pass and volatility_filter_pass:
+                ema_status = f"PASS ({ema_filter_result})" if ema_enabled else "OFF"
+                vol_status = f"PASS ({volatility_filter_result})" if volatility_enabled else "OFF"
+                logger.info(
+                    f"[Heikin Ashi] LONG signal on {symbol}, EMA filter: {ema_status}, Volatility: {vol_status}",
+                    symbol=symbol,
+                    entry_candles=entry_candles,
+                    price=current_price
+                )
+                return Signal(
+                    signal_type=SignalType.LONG,
+                    symbol=symbol,
+                    price=current_price,
+                    strength=SignalStrength.NORMAL,
+                    metadata={
+                        "strategy": "heikin_ashi",
+                        "entry_candles": entry_candles,
+                        "ema_filter": ema_status,
+                        "volatility_filter": vol_status
+                    }
+                )
+
+        # SHORT: Previous candle was green, now N consecutive red candles
+        if prev_color == 'green' and all(c == 'red' for c in last_colors):
+            # Check EMA filter for SHORT
+            ema_filter_pass = True
+            if ema_enabled and ema_value is not None:
+                if current_price >= ema_value:
+                    ema_filter_pass = False
+                    logger.debug(
+                        f"[Heikin Ashi] {symbol} SHORT blocked by EMA filter: {ema_filter_result}",
+                        symbol=symbol
+                    )
+
+            # Check volatility filter
+            if not volatility_filter_pass:
+                logger.debug(
+                    f"[Heikin Ashi] {symbol} SHORT blocked by volatility filter: {volatility_filter_result}",
+                    symbol=symbol
+                )
+
+            # Generate signal if all filters pass
+            if ema_filter_pass and volatility_filter_pass:
+                ema_status = f"PASS ({ema_filter_result})" if ema_enabled else "OFF"
+                vol_status = f"PASS ({volatility_filter_result})" if volatility_enabled else "OFF"
+                logger.info(
+                    f"[Heikin Ashi] SHORT signal on {symbol}, EMA filter: {ema_status}, Volatility: {vol_status}",
+                    symbol=symbol,
+                    entry_candles=entry_candles,
+                    price=current_price
+                )
+                return Signal(
+                    signal_type=SignalType.SHORT,
+                    symbol=symbol,
+                    price=current_price,
+                    strength=SignalStrength.NORMAL,
+                    metadata={
+                        "strategy": "heikin_ashi",
+                        "entry_candles": entry_candles,
+                        "ema_filter": ema_status,
+                        "volatility_filter": vol_status
+                    }
+                )
+
+    return Signal(
+        signal_type=SignalType.NO_SIGNAL,
+        symbol=symbol,
+        price=current_price,
+    )
 
 
 class EngineState(Enum):
@@ -527,8 +783,120 @@ class TradingEngine:
                 logger.warning("Insufficient candle data", symbol=symbol, count=len(df))
                 return False
 
-            # Generate signal
-            signal = self.strategy.process(df, symbol)
+            # Check strategy type from runtime settings
+            from ..api.main import runtime_settings
+            strategy_type = runtime_settings.get("strategy_type", "supertrend")
+
+            if strategy_type == "heikinashi":
+                # Use Heikin Ashi strategy
+                ha_entry_candles = runtime_settings.get("ha_entry_candles", 2)
+                ha_exit_on_color_change = runtime_settings.get("ha_exit_on_color_change", True)
+                ha_exit_candles = runtime_settings.get("ha_exit_candles", 1)
+                ha_ema_enabled = runtime_settings.get("ha_ema_enabled", True)
+                ha_ema_period = runtime_settings.get("ha_ema_period", 200)
+                ha_ema_mode = runtime_settings.get("ha_ema_mode", "strict")
+                ha_volatility_enabled = runtime_settings.get("ha_volatility_enabled", True)
+                ha_min_atr = runtime_settings.get("ha_min_atr", 0.5)
+                ha_emergency_sl = runtime_settings.get("ha_emergency_sl", 2.0)
+                ha_trailing_enabled = runtime_settings.get("ha_trailing_enabled", True)
+                ha_trailing_activation = runtime_settings.get("ha_trailing_activation", 1.0)
+                ha_trailing_distance = runtime_settings.get("ha_trailing_distance", 0.5)
+
+                # Get current position side if any
+                current_position_side = None
+                if symbol in self._active_positions:
+                    current_position_side = self._active_positions[symbol].get("side")
+
+                    # Check emergency stop-loss (always active for HA)
+                    position = self._active_positions[symbol]
+                    entry_price = position.get("entry_price", 0)
+                    current_price = float(df['close'].iloc[-1])
+
+                    if entry_price > 0:
+                        if current_position_side == "long":
+                            pnl_percent = ((current_price - entry_price) / entry_price) * 100
+                            if pnl_percent <= -ha_emergency_sl:
+                                logger.warning(
+                                    f"[Heikin Ashi] EMERGENCY SL triggered on {symbol}: {pnl_percent:.2f}% (threshold: -{ha_emergency_sl}%)",
+                                    symbol=symbol,
+                                    pnl_percent=pnl_percent
+                                )
+                                await self._close_position(symbol, reason="ha_emergency_sl")
+                                return True
+                        elif current_position_side == "short":
+                            pnl_percent = ((entry_price - current_price) / entry_price) * 100
+                            if pnl_percent <= -ha_emergency_sl:
+                                logger.warning(
+                                    f"[Heikin Ashi] EMERGENCY SL triggered on {symbol}: {pnl_percent:.2f}% (threshold: -{ha_emergency_sl}%)",
+                                    symbol=symbol,
+                                    pnl_percent=pnl_percent
+                                )
+                                await self._close_position(symbol, reason="ha_emergency_sl")
+                                return True
+
+                    # Check trailing stop (if enabled and activated)
+                    if ha_trailing_enabled:
+                        high_watermark = position.get("ha_high_watermark", entry_price)
+
+                        if current_position_side == "long":
+                            profit_percent = ((current_price - entry_price) / entry_price) * 100
+                            if profit_percent >= ha_trailing_activation:
+                                # Update high watermark
+                                if current_price > high_watermark:
+                                    self._active_positions[symbol]["ha_high_watermark"] = current_price
+                                    high_watermark = current_price
+
+                                # Check trailing stop
+                                drawdown = ((high_watermark - current_price) / high_watermark) * 100
+                                if drawdown >= ha_trailing_distance:
+                                    logger.info(
+                                        f"[Heikin Ashi] TRAILING STOP on {symbol}: drawdown {drawdown:.2f}% from high {high_watermark:.4f}",
+                                        symbol=symbol,
+                                        drawdown=drawdown
+                                    )
+                                    await self._close_position(symbol, reason="ha_trailing_stop")
+                                    return True
+                        elif current_position_side == "short":
+                            profit_percent = ((entry_price - current_price) / entry_price) * 100
+                            if profit_percent >= ha_trailing_activation:
+                                # Update low watermark (for shorts, lower is better)
+                                low_watermark = position.get("ha_low_watermark", entry_price)
+                                if current_price < low_watermark or low_watermark == entry_price:
+                                    self._active_positions[symbol]["ha_low_watermark"] = current_price
+                                    low_watermark = current_price
+
+                                # Check trailing stop
+                                drawdown = ((current_price - low_watermark) / low_watermark) * 100
+                                if drawdown >= ha_trailing_distance:
+                                    logger.info(
+                                        f"[Heikin Ashi] TRAILING STOP on {symbol}: drawdown {drawdown:.2f}% from low {low_watermark:.4f}",
+                                        symbol=symbol,
+                                        drawdown=drawdown
+                                    )
+                                    await self._close_position(symbol, reason="ha_trailing_stop")
+                                    return True
+
+                signal = generate_heikin_ashi_signal(
+                    df=df,
+                    symbol=symbol,
+                    entry_candles=ha_entry_candles,
+                    current_position_side=current_position_side,
+                    exit_on_color_change=ha_exit_on_color_change,
+                    exit_candles=ha_exit_candles,
+                    ema_enabled=ha_ema_enabled,
+                    ema_period=ha_ema_period,
+                    ema_mode=ha_ema_mode,
+                    volatility_enabled=ha_volatility_enabled,
+                    min_atr_percent=ha_min_atr
+                )
+
+                # Handle exit signals for Heikin Ashi
+                if signal.signal_type in (SignalType.CLOSE_LONG, SignalType.CLOSE_SHORT):
+                    await self._close_position(symbol, reason="heikin_ashi_color_change")
+                    return True
+            else:
+                # Use SuperTrend strategy (default)
+                signal = self.strategy.process(df, symbol)
 
             # Process signal
             if signal.signal_type != SignalType.NO_SIGNAL:
@@ -536,8 +904,8 @@ class TradingEngine:
                 self.stats.signals_processed += 1
                 return True
 
-            # Check for exit signals on existing positions
-            if symbol in self._active_positions:
+            # Check for exit signals on existing positions (for SuperTrend strategy)
+            if symbol in self._active_positions and strategy_type != "heikinashi":
                 await self._check_position_exit(symbol, df)
 
             return False
