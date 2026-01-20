@@ -501,6 +501,8 @@ STRATEGY_ST3_MULTIPLIER=3.0
   - Лимиты применяются ТОЛЬКО если включены соответствующие toggle
   - Логирование при старте бота: `Risk: MaxLoss=ON/OFF (...) | ConsecLosses=ON/OFF (...)`
 - **Asset Filters с toggle** - фильтры активов можно полностью отключить toggle переключателем
+- **Telegram авторизация** - вход через Telegram Login Widget с проверкой разрешённых ID
+- **Стратегия Heikin Ashi** - альтернативная торговая стратегия (см. раздел 16)
 
 ---
 
@@ -529,6 +531,87 @@ pkill -f "aila.scripts.run_web"; sleep 2; nohup /opt/aila/venv/bin/python -m ail
 
 ---
 
-**Последнее обновление:** 2026-01-18
-**Текущая версия:** v2.1.0 (см. файл `/opt/aila/VERSION`)
+---
+
+## 16. Стратегия Heikin Ashi
+
+### Что это:
+Альтернативная торговая стратегия, использующая свечи Heikin Ashi вместо Triple SuperTrend.
+
+### Расчёт свечей Heikin Ashi:
+```python
+HA Close = (Open + High + Low + Close) / 4
+HA Open = (prev_HA_Open + prev_HA_Close) / 2
+HA High = max(High, HA_Open, HA_Close)
+HA Low = min(Low, HA_Open, HA_Close)
+HA Color = green если HA_Close > HA_Open, иначе red
+```
+
+### Сигналы входа:
+- **LONG**: N последовательных зелёных свечей (после красной)
+- **SHORT**: N последовательных красных свечей (после зелёной)
+
+### Сигналы выхода:
+- **Exit LONG**: N последовательных красных свечей
+- **Exit SHORT**: N последовательных зелёных свечей
+
+### Фильтры:
+| Фильтр | Описание |
+|--------|----------|
+| **EMA Filter** | LONG только выше EMA, SHORT только ниже EMA |
+| **ATR Volatility** | Минимальный ATR% для входа (фильтр низкой волатильности) |
+
+### Риск-менеджмент для HA:
+- **Emergency SL** - аварийный стоп-лосс (% от цены входа)
+- **Trailing Stop** - trailing с активацией после N% прибыли
+
+### Настройки runtime_settings:
+```python
+strategy_type = "heikinashi"  # или "supertrend"
+ha_entry_candles = 2          # свечей для входа
+ha_exit_on_color_change = True
+ha_exit_candles = 1           # свечей для выхода
+ha_ema_enabled = True
+ha_ema_period = 200
+ha_volatility_enabled = True
+ha_min_atr = 0.5              # минимальный ATR%
+ha_emergency_sl = 2.0         # аварийный SL%
+ha_trailing_enabled = True
+ha_trailing_activation = 1.0  # активация после N% прибыли
+ha_trailing_distance = 0.5    # расстояние trailing%
+```
+
+### Ключевые функции (engine.py):
+- `calculate_heikin_ashi(df)` - расчёт свечей HA
+- `generate_heikin_ashi_signal(...)` - генерация сигналов с фильтрами
+
+---
+
+## 17. Telegram авторизация
+
+### Как работает:
+Вход в веб-интерфейс через Telegram Login Widget.
+
+### Настройки (.env):
+```bash
+TELEGRAM_AUTH_BOT_TOKEN=your_bot_token
+TELEGRAM_BOT_USERNAME=aila_zone_bot
+ALLOWED_TELEGRAM_IDS=123456789,987654321
+```
+
+### Логика:
+1. Пользователь нажимает кнопку входа через Telegram
+2. Telegram возвращает данные с подписью (hash)
+3. Сервер проверяет подпись через HMAC-SHA256
+4. Проверяется что telegram_id в списке ALLOWED_TELEGRAM_IDS
+5. Создаётся сессия (cookie)
+
+### Файлы:
+- `aila/api/main.py` - функции `verify_telegram_auth()`, session storage
+- `static/` - иконки и manifest.json для PWA
+
+---
+
+**Последнее обновление:** 2026-01-20
+**Текущая версия:** v2.2.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
