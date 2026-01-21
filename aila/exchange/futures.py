@@ -53,6 +53,7 @@ class FuturesTrader:
         self,
         client: BybitClient,
         default_leverage: int = 10,
+        default_margin_mode: MarginMode = MarginMode.CROSS,
     ):
         """
         Initialize futures trader.
@@ -60,10 +61,13 @@ class FuturesTrader:
         Args:
             client: Configured BybitClient instance
             default_leverage: Default leverage to use
+            default_margin_mode: Default margin mode to use
         """
         self.client = client
         self.default_leverage = default_leverage
+        self.default_margin_mode = default_margin_mode
         self._leverage_cache: dict[str, int] = {}
+        self._margin_mode_cache: dict[str, MarginMode] = {}
 
     def open_long(
         self,
@@ -74,6 +78,7 @@ class FuturesTrader:
         stop_loss: Optional[Decimal] = None,
         take_profit: Optional[Decimal] = None,
         reduce_only: bool = False,
+        margin_mode: Optional[MarginMode] = None,
     ) -> Optional[Order]:
         """
         Open a long position.
@@ -99,6 +104,7 @@ class FuturesTrader:
             stop_loss=stop_loss,
             take_profit=take_profit,
             reduce_only=reduce_only,
+            margin_mode=margin_mode,
         )
 
     def open_short(
@@ -110,6 +116,7 @@ class FuturesTrader:
         stop_loss: Optional[Decimal] = None,
         take_profit: Optional[Decimal] = None,
         reduce_only: bool = False,
+        margin_mode: Optional[MarginMode] = None,
     ) -> Optional[Order]:
         """
         Open a short position.
@@ -122,6 +129,7 @@ class FuturesTrader:
             stop_loss: Stop-loss price
             take_profit: Take-profit price
             reduce_only: Whether this order should only reduce position
+            margin_mode: CROSS or ISOLATED (uses default if not specified)
 
         Returns:
             Order object or None if failed
@@ -135,6 +143,7 @@ class FuturesTrader:
             stop_loss=stop_loss,
             take_profit=take_profit,
             reduce_only=reduce_only,
+            margin_mode=margin_mode,
         )
 
     def _open_position(
@@ -147,12 +156,22 @@ class FuturesTrader:
         stop_loss: Optional[Decimal] = None,
         take_profit: Optional[Decimal] = None,
         reduce_only: bool = False,
+        margin_mode: Optional[MarginMode] = None,
     ) -> Optional[Order]:
         """Internal method to open a position."""
         pair = self.client.get_trading_pair(symbol)
         if pair is None:
             logger.error("Trading pair not found", symbol=symbol)
             return None
+
+        # Set margin mode FIRST (must be done before leverage on Bybit)
+        mode = margin_mode or self.default_margin_mode
+        if symbol not in self._margin_mode_cache or self._margin_mode_cache[symbol] != mode:
+            if self.set_margin_mode(symbol, mode):
+                self._margin_mode_cache[symbol] = mode
+                logger.info("Margin mode set", symbol=symbol, mode=mode.value)
+            else:
+                logger.warning("Failed to set margin mode, continuing with current mode", symbol=symbol, requested=mode.value)
 
         # Set leverage if needed
         lev = leverage or self.default_leverage

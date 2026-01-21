@@ -396,9 +396,12 @@ class TradingEngine:
 
         # Initialize traders based on account type
         if client.config.account_type == AccountType.FUTURES:
+            # Get default margin mode from engine config
+            default_margin = MarginMode(self.config.margin_mode) if self.config.margin_mode else MarginMode.CROSS
             self.trader = FuturesTrader(
                 client,
                 default_leverage=client.config.default_leverage,
+                default_margin_mode=default_margin,
             )
         else:
             self.trader = SpotTrader(client)
@@ -1147,15 +1150,14 @@ class TradingEngine:
             }
 
             if isinstance(self.trader, FuturesTrader):
-                # Set margin mode before opening position
-                self.trader.set_margin_mode(signal.symbol, margin_mode)
-
+                # Open position with margin mode (set inside _open_position before leverage)
                 if signal.is_long:
                     order = self.trader.open_long(
                         symbol=signal.symbol,
                         quantity=quantity,
                         stop_loss=sl_decimal,
                         take_profit=tp_decimal,
+                        margin_mode=margin_mode,
                     )
                 else:
                     order = self.trader.open_short(
@@ -1163,6 +1165,7 @@ class TradingEngine:
                         quantity=quantity,
                         stop_loss=sl_decimal,
                         take_profit=tp_decimal,
+                        margin_mode=margin_mode,
                     )
 
                 # Audit: Log and verify/correct position
