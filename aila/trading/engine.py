@@ -1211,6 +1211,14 @@ class TradingEngine:
 
             # Collect signal data for verification
             signal_metadata = signal.metadata or {}
+            # DEBUG: Log signal metadata for EMA debugging
+            logger.debug(
+                "[ENGINE DEBUG] Signal metadata",
+                symbol=signal.symbol,
+                metadata_keys=list(signal_metadata.keys()),
+                ema_filter_passed=signal_metadata.get("ema_filter_passed", "NOT_FOUND"),
+                ema_position=signal_metadata.get("ema_position", "NOT_FOUND"),
+            )
             signal_data = {
                 "side": side,
                 "st1_state": signal_metadata.get("st1_state", {}),

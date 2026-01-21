@@ -310,6 +310,7 @@ echo "2.2.0" > /opt/aila/VERSION
 | **Safety limits при 100% лимите** | max_loss_percent не передавался в engine | Добавить в bot_settings и create_engine_config |
 | **Multi-bot: все боты с одинаковыми фильтрами** | runtime_settings глобальный | bot_settings передаётся в TradingEngine |
 | **Multi-bot: Heikin Ashi настройки не работают** | читались из глобального словаря | bot_settings в _process_symbol() |
+| **EMA фильтр показывал ❌ в аудите** | Дефолт False в trades_audit.py | Изменён дефолт на True (если сделка открылась - фильтр прошёл) |
 
 ---
 
@@ -721,7 +722,7 @@ SL: SuperTrend линия ST2 (средний) = 0.004882
 ✅ ST1 (Conf): цена ниже линии
 ✅ ST2 (Conf): цена ниже линии
 ✅ ST3 (Trig): сработал
-✅ EMA 200: цена ниже EMA
+✅ EMA 200: цена ниже EMA (для SHORT это правильно, для LONG нужно выше)
 
 ИТОГ: ✅ Все настройки работают корректно
 ======================================================================

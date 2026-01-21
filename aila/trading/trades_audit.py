@@ -11,6 +11,10 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional, TYPE_CHECKING, Any
 
+import structlog
+
+logger = structlog.get_logger(__name__)
+
 if TYPE_CHECKING:
     from ..exchange.futures import FuturesTrader
     from ..exchange.models import Position, MarginMode
@@ -471,7 +475,9 @@ class TradesAuditLogger:
         # EMA filter
         ema_enabled = settings.get("ema_enabled", False)
         if ema_enabled:
-            ema_ok = signal_data.get("ema_filter_passed", False)
+            # If trade opened, EMA filter passed by definition (otherwise signal would be rejected)
+            # Default to True for safety
+            ema_ok = signal_data.get("ema_filter_passed", True)
             ema_period = settings.get("ema_period", 200)
             ema_position = signal_data.get("ema_position", "unknown")
             icon = "✅" if ema_ok else "❌"

@@ -461,6 +461,16 @@ class TripleSuperTrendStrategy(BaseStrategy):
             "ema_position": "выше EMA" if ema_trend > 0 else ("ниже EMA" if ema_trend < 0 else "N/A"),
         }
 
+        # DEBUG: Log EMA filter passed value
+        logger.debug(
+            "[STRATEGY DEBUG] EMA filter metadata",
+            symbol=symbol,
+            signal_type=signal_type,
+            ema_filter_result=ema_filter_result,
+            ema_filter_passed=metadata["ema_filter_passed"],
+            ema_position=metadata["ema_position"],
+        )
+
         if signal_type == 'long':
             return Signal.long(
                 symbol=symbol,
