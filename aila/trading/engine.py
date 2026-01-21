@@ -1117,27 +1117,75 @@ class TradingEngine:
             return True, ""  # On error, pass through
 
     async def _execute_entry(self, signal: Signal, quantity: Decimal) -> Optional[Any]:
-        """Execute entry order."""
+        """Execute entry order with audit logging and auto-correction."""
         try:
+            # Prepare parameters for logging
+            margin_mode = MarginMode(self.config.margin_mode) if isinstance(self.trader, FuturesTrader) else None
+            leverage = self.client.config.default_leverage if hasattr(self.client, 'config') else None
+            sl_decimal = Decimal(str(signal.stop_loss)) if signal.stop_loss else None
+            tp_decimal = Decimal(str(signal.take_profit)) if signal.take_profit else None
+            side = "LONG" if signal.is_long else "SHORT"
+
+            # Collect bot settings for audit
+            bot_settings_for_audit = {
+                "leverage": leverage,
+                "order_size": float(self.config.order_size),
+                "tp_mode": getattr(self.strategy.config, "tp_mode", "risk_ratio"),
+                "tp_risk_ratio": getattr(self.strategy.config, "tp_risk_ratio", 2.0),
+                "sl_mode": getattr(self.strategy.config, "sl_mode", "supertrend"),
+                "sl_fixed_percent": getattr(self.strategy.config, "sl_fixed_percent", 1.0),
+                "margin_mode": margin_mode.value if margin_mode else "N/A",
+            }
+
+            # Collect sent parameters for audit
+            sent_params = {
+                "leverage": leverage,
+                "quantity": quantity,
+                "take_profit": tp_decimal,
+                "stop_loss": sl_decimal,
+                "margin_mode": margin_mode.value if margin_mode else "N/A",
+            }
+
             if isinstance(self.trader, FuturesTrader):
                 # Set margin mode before opening position
-                margin_mode = MarginMode(self.config.margin_mode)
                 self.trader.set_margin_mode(signal.symbol, margin_mode)
 
                 if signal.is_long:
                     order = self.trader.open_long(
                         symbol=signal.symbol,
                         quantity=quantity,
-                        stop_loss=Decimal(str(signal.stop_loss)) if signal.stop_loss else None,
-                        take_profit=Decimal(str(signal.take_profit)) if signal.take_profit else None,
+                        stop_loss=sl_decimal,
+                        take_profit=tp_decimal,
                     )
                 else:
                     order = self.trader.open_short(
                         symbol=signal.symbol,
                         quantity=quantity,
-                        stop_loss=Decimal(str(signal.stop_loss)) if signal.stop_loss else None,
-                        take_profit=Decimal(str(signal.take_profit)) if signal.take_profit else None,
+                        stop_loss=sl_decimal,
+                        take_profit=tp_decimal,
                     )
+
+                # Audit: Log and verify/correct position
+                if order:
+                    try:
+                        from .trades_audit import get_audit_logger
+                        audit_logger = get_audit_logger(self.trader)
+                        audit_result = audit_logger.log_trade_open(
+                            symbol=signal.symbol,
+                            side=side,
+                            bot_settings=bot_settings_for_audit,
+                            sent_params=sent_params,
+                            order_result={"order_id": order.order_id if hasattr(order, 'order_id') else str(order)}
+                        )
+
+                        # Log critical errors to main log
+                        if audit_result.get("errors"):
+                            for error in audit_result["errors"]:
+                                logger.error(f"Trade audit error: {error}", symbol=signal.symbol)
+
+                    except Exception as audit_error:
+                        logger.warning(f"Trade audit failed: {audit_error}", symbol=signal.symbol)
+
             else:
                 # Spot trading
                 if signal.is_long:
