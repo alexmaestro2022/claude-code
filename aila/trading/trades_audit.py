@@ -84,18 +84,32 @@ class TradesAuditLogger:
         lines.append("")
 
         # === ALL BOT SETTINGS ===
-        lines.append("=== ВСЕ НАСТРОЙКИ БОТА ===")
+        lines.append("=== ОСНОВНЫЕ ===")
         lines.extend(self._format_basic_settings(bot_settings))
         lines.append("")
+
+        lines.append("=== РИСК-МЕНЕДЖМЕНТ ===")
+        lines.extend(self._format_risk_settings(bot_settings))
+        lines.append("")
+
+        lines.append("=== НАСТРОЙКИ СТРАТЕГИИ ===")
         lines.extend(self._format_strategy_settings(bot_settings))
         lines.append("")
+
+        lines.append("=== ТЕЙК-ПРОФИТ ===")
         lines.extend(self._format_tp_settings(bot_settings, sent_params))
         lines.append("")
+
+        lines.append("=== СТОП-ЛОСС ===")
         lines.extend(self._format_sl_settings(bot_settings, sent_params))
         lines.append("")
-        lines.extend(self._format_filter_settings(bot_settings))
+
+        lines.append("=== ФИЛЬТРЫ СИГНАЛОВ ===")
+        lines.extend(self._format_ema_filter_settings(bot_settings))
         lines.append("")
-        lines.extend(self._format_risk_settings(bot_settings))
+
+        lines.append("=== ФИЛЬТРЫ АКТИВОВ ===")
+        lines.extend(self._format_asset_filter_settings(bot_settings))
         lines.append("")
 
         # === EXCHANGE VERIFICATION ===
@@ -139,260 +153,268 @@ class TradesAuditLogger:
 
         return audit_results
 
-    def _format_basic_settings(self, settings: dict) -> list[str]:
-        """Format basic bot settings."""
+    def _format_basic_settings(self, s: dict) -> list[str]:
+        """Format basic bot settings - ALWAYS show all."""
         lines = []
 
         # Bot name and mode
-        bot_name = settings.get("bot_name", "N/A")
-        mode = settings.get("mode", "manual")
+        bot_name = s.get("bot_name", "N/A")
+        mode = s.get("mode", "manual")
         mode_display = "Автопоиск" if mode == "auto" else "Ручной"
-        max_pairs = settings.get("max_trading_pairs", "N/A")
+        max_pairs = s.get("max_trading_pairs", "N/A")
 
-        lines.append(f"Бот: {bot_name}")
-        lines.append(f"Режим: {mode_display}")
-        if mode == "auto":
-            lines.append(f"Макс. пар: {max_pairs}")
+        lines.append(f"Название бота: {bot_name}")
+        lines.append(f"Режим бота: {mode_display}")
+        lines.append(f"Макс. торговых пар: {max_pairs}")
 
-        # Timeframe, leverage, size, margin
-        timeframe = settings.get("timeframe", "N/A")
-        leverage = settings.get("leverage", "N/A")
-        order_size = settings.get("order_size", "N/A")
-        margin_mode = settings.get("margin_mode", "N/A")
+        return lines
+
+    def _format_risk_settings(self, s: dict) -> list[str]:
+        """Format risk management settings - ALWAYS show all."""
+        lines = []
+
+        # Allocated balance / usage
+        allocated = s.get("allocated_balance", 0)
+        lines.append(f"Использование баланса: {allocated} USDT")
+
+        # Max loss limit
+        max_loss_enabled = s.get("max_loss_enabled", False)
+        max_loss = s.get("max_daily_loss_percent", 5.0)
+        if max_loss_enabled:
+            lines.append(f"Лимит потерь %: {max_loss}% (вкл)")
+        else:
+            lines.append(f"Лимит потерь %: выкл")
+
+        # Consecutive losses limit
+        cons_loss_enabled = s.get("consecutive_losses_enabled", False)
+        max_cons = s.get("max_consecutive_losses", 3)
+        cooldown = s.get("cooldown_after_loss_streak", 60)
+        if cons_loss_enabled:
+            lines.append(f"Лимит убытков подряд: {max_cons} (пауза {cooldown} мин)")
+        else:
+            lines.append(f"Лимит убытков подряд: выкл")
+
+        return lines
+
+    def _format_strategy_settings(self, s: dict) -> list[str]:
+        """Format strategy entry settings - ALWAYS show all."""
+        lines = []
+
+        # Basic strategy settings
+        timeframe = s.get("timeframe", "N/A")
+        leverage = s.get("leverage", "N/A")
+        order_size = s.get("order_size", "N/A")
+        margin_mode = s.get("margin_mode", "N/A")
 
         lines.append(f"Таймфрейм: {timeframe}")
         lines.append(f"Плечо: {leverage}x")
 
         # Position sizing
-        sizing_mode = settings.get("position_sizing_mode", "fixed_amount")
+        sizing_mode = s.get("position_sizing_mode", "fixed_amount")
+        risk_per_trade = s.get("risk_per_trade", "N/A")
         if sizing_mode == "fixed_amount":
-            lines.append(f"Размер: {order_size} USDT (Fixed)")
+            lines.append(f"Размер ордера: {order_size} USDT (Fixed)")
         elif sizing_mode == "risk_percent":
-            risk_percent = settings.get("risk_per_trade", "N/A")
-            lines.append(f"Размер: {risk_percent}% от баланса")
+            lines.append(f"Размер позиции: {risk_per_trade}% от баланса")
         else:
-            lines.append(f"Размер: {order_size} USDT")
+            lines.append(f"Размер ордера: {order_size} USDT")
 
         # Margin mode
         margin_display = "Isolated" if margin_mode and "isolated" in str(margin_mode).lower() else "Cross"
-        lines.append(f"Маржа: {margin_display}")
+        lines.append(f"Режим маржи: {margin_display}")
 
-        return lines
+        lines.append("")
 
-    def _format_strategy_settings(self, settings: dict) -> list[str]:
-        """Format strategy entry settings."""
-        lines = []
-
-        strategy_type = settings.get("strategy_type", "supertrend")
+        # Strategy type
+        strategy_type = s.get("strategy_type", "supertrend")
 
         if strategy_type == "heikinashi":
-            lines.append("Стратегия: Heikin Ashi")
-            ha_entry = settings.get("ha_entry_candles", 2)
-            ha_exit = settings.get("ha_exit_on_color_change", True)
-            emergency_sl = settings.get("ha_emergency_sl_percent", 5.0)
-            lines.append(f"- Подтв. входа: {ha_entry} свечей")
-            lines.append(f"- Выход по смене цвета: {'вкл' if ha_exit else 'выкл'}")
-            lines.append(f"- Аварийный SL: {emergency_sl}%")
+            lines.append("=== СИГНАЛ ВХОДА (Heikin Ashi) ===")
+            ha_entry = s.get("ha_entry_candles", 2)
+            ha_exit = s.get("ha_exit_on_color_change", True)
+            ha_exit_candles = s.get("ha_exit_candles", 1)
+            emergency_sl = s.get("ha_emergency_sl_percent", 5.0)
+            lines.append(f"Подтверждение входа: {ha_entry} свечей")
+            lines.append(f"Выход по смене цвета: {'вкл' if ha_exit else 'выкл'}")
+            lines.append(f"Подтверждение выхода: {ha_exit_candles} свечей")
+            lines.append(f"Аварийный SL: {emergency_sl}%")
         else:
-            lines.append("Стратегия: SuperTrend")
+            lines.append("=== СИГНАЛ ВХОДА (SuperTrend) ===")
 
             # ST1
-            st1_period = settings.get("st1_period", 10)
-            st1_mult = settings.get("st1_multiplier", 1.0)
-            st1_role = settings.get("st1_role", "confirm")
+            st1_period = s.get("st1_period", 10)
+            st1_mult = s.get("st1_multiplier", 1.0)
+            st1_role = s.get("st1_role", "confirm")
             st1_role_display = self._role_display(st1_role)
-            lines.append(f"- ST1: {st1_role_display} ({st1_period}, {st1_mult})")
+            lines.append(f"ST1: {st1_role_display} (период={st1_period}, множитель={st1_mult})")
 
             # ST2
-            st2_period = settings.get("st2_period", 11)
-            st2_mult = settings.get("st2_multiplier", 2.0)
-            st2_role = settings.get("st2_role", "confirm")
+            st2_period = s.get("st2_period", 11)
+            st2_mult = s.get("st2_multiplier", 2.0)
+            st2_role = s.get("st2_role", "confirm")
             st2_role_display = self._role_display(st2_role)
-            lines.append(f"- ST2: {st2_role_display} ({st2_period}, {st2_mult})")
+            lines.append(f"ST2: {st2_role_display} (период={st2_period}, множитель={st2_mult})")
 
             # ST3
-            st3_period = settings.get("st3_period", 12)
-            st3_mult = settings.get("st3_multiplier", 3.0)
-            st3_role = settings.get("st3_role", "trigger")
+            st3_period = s.get("st3_period", 12)
+            st3_mult = s.get("st3_multiplier", 3.0)
+            st3_role = s.get("st3_role", "trigger")
             st3_role_display = self._role_display(st3_role)
-            lines.append(f"- ST3: {st3_role_display} ({st3_period}, {st3_mult})")
+            lines.append(f"ST3: {st3_role_display} (период={st3_period}, множитель={st3_mult})")
 
             # Confirm candles
-            confirm_candles = settings.get("trigger_confirm_candles", 1)
-            lines.append(f"- Подтв. свечей: {confirm_candles}")
+            confirm_candles = s.get("trigger_confirm_candles", 1)
+            lines.append(f"Подтверждение свечей: {confirm_candles}")
+
+            # Trigger confirm
+            trigger_confirm = s.get("trigger_confirm_mode", "close")
+            lines.append(f"Подтверждение триггера: {trigger_confirm}")
 
         return lines
 
     def _role_display(self, role: str) -> str:
         """Convert role code to display name."""
         roles = {
-            "trigger": "Trig",
-            "confirm": "Conf",
+            "trigger": "Триггер",
+            "confirm": "Подтверждение",
             "off": "Выкл"
         }
         return roles.get(role, role)
 
-    def _format_tp_settings(self, settings: dict, sent_params: dict) -> list[str]:
-        """Format take-profit settings."""
+    def _format_tp_settings(self, s: dict, sent_params: dict) -> list[str]:
+        """Format take-profit settings - ALWAYS show all."""
         lines = []
 
-        tp_mode = settings.get("tp_mode", "risk_ratio")
+        tp_mode = s.get("tp_mode", "risk_ratio")
         tp_value = sent_params.get("take_profit", "N/A")
+        tp_rr = s.get("tp_risk_ratio", 2.0)
+        tp_percent = s.get("tp_fixed_percent", 4.0)
 
+        # TP Mode
         if tp_mode == "risk_ratio" or tp_mode == "rr":
-            tp_rr = settings.get("tp_risk_ratio", 2.0)
-            lines.append(f"TP: R:R {tp_rr}:1 = {tp_value}")
+            lines.append(f"Режим TP: R:R {tp_rr}:1")
         elif tp_mode == "fixed_percent":
-            tp_percent = settings.get("tp_fixed_percent", 4.0)
-            lines.append(f"TP: Фиксированный {tp_percent}% = {tp_value}")
+            lines.append(f"Режим TP: Фиксированный {tp_percent}%")
         else:
-            lines.append(f"TP: {tp_mode} = {tp_value}")
+            lines.append(f"Режим TP: {tp_mode}")
 
-        # Trailing TP
-        trailing_tp_enabled = settings.get("trailing_tp_enabled", False)
+        lines.append(f"Значение TP: {tp_value}")
+
+        # Trailing TP - ALWAYS show
+        trailing_tp_enabled = s.get("trailing_tp_enabled", False)
+        trailing_mode = s.get("trailing_tp_mode", "st_line")
+        trailing_st_line = s.get("trailing_tp_st_line", 2)
+        trailing_activation = s.get("trailing_tp_activation", 0.5)
+        trailing_step = s.get("trailing_tp_step", 1.0)
+
+        lines.append(f"Trailing TP: {'вкл' if trailing_tp_enabled else 'выкл'}")
         if trailing_tp_enabled:
-            trailing_mode = settings.get("trailing_tp_mode", "st_line")
+            lines.append(f"- Trailing режим: {trailing_mode}")
             if trailing_mode == "st_line":
-                st_line = settings.get("trailing_tp_st_line", 2)
-                st_names = {1: "Быстрый", 2: "Средний", 3: "Медленный"}
-                lines.append(f"- Trailing TP: вкл (ST Line {st_names.get(st_line, st_line)})")
+                st_names = {1: "ST1 (быстрый)", 2: "ST2 (средний)", 3: "ST3 (медленный)"}
+                lines.append(f"- Trailing ST линия: {st_names.get(trailing_st_line, trailing_st_line)}")
             else:
-                activation = settings.get("trailing_tp_activation", 0.5)
-                step = settings.get("trailing_tp_step", 1.0)
-                lines.append(f"- Trailing TP: вкл ({activation}% активация, {step}% шаг)")
+                lines.append(f"- Trailing активация: {trailing_activation}%")
+                lines.append(f"- Trailing шаг: {trailing_step}%")
 
-        # Partial TP
-        partial_tp_enabled = settings.get("partial_tp_enabled", False)
+        # Partial TP - ALWAYS show
+        partial_tp_enabled = s.get("partial_tp_enabled", False)
+        partial_close_percent = s.get("partial_tp_close_percent", 50)
+        partial_sl_move = s.get("partial_tp_sl_move", "entry")
+
+        lines.append(f"Partial TP: {'вкл' if partial_tp_enabled else 'выкл'}")
         if partial_tp_enabled:
-            close_percent = settings.get("partial_tp_close_percent", 50)
-            sl_move = settings.get("partial_tp_sl_move", "entry")
-            sl_move_display = "TP1" if sl_move == "tp1" else "безубыток"
-            lines.append(f"- Partial TP: вкл ({close_percent}% на TP1, SL→{sl_move_display})")
+            sl_move_display = "на TP1" if partial_sl_move == "tp1" else "на безубыток"
+            lines.append(f"- Partial % закрытия: {partial_close_percent}%")
+            lines.append(f"- Partial SL: {sl_move_display}")
 
         return lines
 
-    def _format_sl_settings(self, settings: dict, sent_params: dict) -> list[str]:
-        """Format stop-loss settings."""
+    def _format_sl_settings(self, s: dict, sent_params: dict) -> list[str]:
+        """Format stop-loss settings - ALWAYS show all."""
         lines = []
 
-        sl_mode = settings.get("sl_mode", "supertrend_line")
+        sl_mode = s.get("sl_mode", "supertrend_line")
         sl_value = sent_params.get("stop_loss", "N/A")
+        sl_line = s.get("sl_supertrend_line", 2)
+        sl_percent = s.get("sl_fixed_percent", 2.0)
 
+        # SL Mode
         if sl_mode == "supertrend_line":
-            sl_line = settings.get("sl_supertrend_line", 2)
             st_names = {1: "ST1 (быстрый)", 2: "ST2 (средний)", 3: "ST3 (медленный)"}
-            lines.append(f"SL: SuperTrend линия {st_names.get(sl_line, sl_line)} = {sl_value}")
+            lines.append(f"Режим SL: SuperTrend линия {st_names.get(sl_line, sl_line)}")
         elif sl_mode == "fixed_percent":
-            sl_percent = settings.get("sl_fixed_percent", 2.0)
-            lines.append(f"SL: Фиксированный {sl_percent}% = {sl_value}")
+            lines.append(f"Режим SL: Фиксированный {sl_percent}%")
         else:
-            lines.append(f"SL: {sl_mode} = {sl_value}")
+            lines.append(f"Режим SL: {sl_mode}")
+
+        lines.append(f"Значение SL: {sl_value}")
 
         return lines
 
-    def _format_filter_settings(self, settings: dict) -> list[str]:
-        """Format signal and asset filter settings."""
+    def _format_ema_filter_settings(self, s: dict) -> list[str]:
+        """Format EMA filter settings - ALWAYS show all."""
         lines = []
-        lines.append("Фильтры:")
 
-        has_filters = False
+        ema_enabled = s.get("ema_enabled", False)
+        ema_period = s.get("ema_period", 200)
+        ema_mode = s.get("ema_filter_mode", "strict")
+        mode_display = "строгий" if ema_mode == "strict" else "мягкий"
 
-        # EMA filter
-        ema_enabled = settings.get("ema_enabled", False)
+        lines.append(f"EMA фильтр: {'вкл' if ema_enabled else 'выкл'}")
         if ema_enabled:
-            ema_period = settings.get("ema_period", 200)
-            ema_mode = settings.get("ema_filter_mode", "strict")
-            mode_display = "строгий" if ema_mode == "strict" else "мягкий"
-            lines.append(f"- EMA {ema_period}: вкл, {mode_display}")
-            has_filters = True
+            lines.append(f"- EMA период: {ema_period}")
+            lines.append(f"- EMA режим: {mode_display}")
 
-        # Asset filters
-        asset_filters_enabled = settings.get("asset_filters_enabled", False)
+        return lines
+
+    def _format_asset_filter_settings(self, s: dict) -> list[str]:
+        """Format asset filter settings - ALWAYS show all."""
+        lines = []
+
+        asset_filters_enabled = s.get("asset_filters_enabled", False)
+        lines.append(f"Фильтр активов: {'вкл' if asset_filters_enabled else 'выкл'}")
+
         if asset_filters_enabled:
             # Volume
-            vol_min = settings.get("volume_24h_min", 0)
-            vol_max = settings.get("volume_24h_max", 0)
-            if vol_min > 0 or vol_max > 0:
-                vol_str = self._format_range(vol_min, vol_max, suffix="M", divisor=1_000_000)
-                lines.append(f"- Объём 24ч: {vol_str}")
-                has_filters = True
+            vol_min = s.get("volume_24h_min", 0)
+            vol_max = s.get("volume_24h_max", 0)
+            lines.append(f"- Объём 24ч мин: {self._format_volume(vol_min)}")
+            lines.append(f"- Объём 24ч макс: {self._format_volume(vol_max)}")
 
             # Price
-            price_min = settings.get("price_min", 0)
-            price_max = settings.get("price_max", 0)
-            if price_min > 0 or price_max > 0:
-                price_str = self._format_range(price_min, price_max, suffix="$")
-                lines.append(f"- Цена: {price_str}")
-                has_filters = True
+            price_min = s.get("price_min", 0)
+            price_max = s.get("price_max", 0)
+            lines.append(f"- Цена мин: {price_min}$" if price_min > 0 else "- Цена мин: не задан")
+            lines.append(f"- Цена макс: {price_max}$" if price_max > 0 else "- Цена макс: не задан")
 
             # Change %
-            change_min = settings.get("change_24h_min", 0)
-            change_max = settings.get("change_24h_max", 0)
-            if change_min != 0 or change_max != 0:
-                change_str = self._format_range(change_min, change_max, suffix="%")
-                lines.append(f"- Изменение 24ч: {change_str}")
-                has_filters = True
+            change_min = s.get("change_24h_min", 0)
+            change_max = s.get("change_24h_max", 0)
+            lines.append(f"- Изм. % мин: {change_min}%" if change_min != 0 else "- Изм. % мин: не задан")
+            lines.append(f"- Изм. % макс: {change_max}%" if change_max != 0 else "- Изм. % макс: не задан")
 
             # Volatility
-            vol_period = settings.get("volatility_period", 0)
-            vol_min_pct = settings.get("volatility_min", 0)
-            vol_max_pct = settings.get("volatility_max", 0)
-            if vol_period > 0 and (vol_min_pct > 0 or vol_max_pct > 0):
-                vol_range = self._format_range(vol_min_pct, vol_max_pct, suffix="%")
-                lines.append(f"- Волатильность ({vol_period} свечей): {vol_range}")
-                has_filters = True
-
-        if not has_filters:
-            lines.append("- нет активных фильтров")
+            vol_period = s.get("volatility_period", 0)
+            vol_min_pct = s.get("volatility_min", 0)
+            vol_max_pct = s.get("volatility_max", 0)
+            lines.append(f"- Период волат.: {vol_period} свечей" if vol_period > 0 else "- Период волат.: не задан")
+            lines.append(f"- Волат. мин %: {vol_min_pct}%" if vol_min_pct > 0 else "- Волат. мин %: не задан")
+            lines.append(f"- Волат. макс %: {vol_max_pct}%" if vol_max_pct > 0 else "- Волат. макс %: не задан")
 
         return lines
 
-    def _format_range(self, min_val: float, max_val: float, suffix: str = "", divisor: float = 1) -> str:
-        """Format a min-max range for display."""
-        if divisor > 1:
-            min_val = min_val / divisor if min_val else 0
-            max_val = max_val / divisor if max_val else 0
-
-        if min_val > 0 and max_val > 0:
-            return f"{min_val}{suffix} - {max_val}{suffix}"
-        elif min_val > 0:
-            return f"> {min_val}{suffix}"
-        elif max_val > 0:
-            return f"< {max_val}{suffix}"
-        return "не задан"
-
-    def _format_risk_settings(self, settings: dict) -> list[str]:
-        """Format risk management settings."""
-        lines = []
-        lines.append("Риск:")
-
-        has_risk = False
-
-        # Allocated balance / usage
-        allocated = settings.get("allocated_balance", 0)
-        if allocated > 0:
-            lines.append(f"- Депозит бота: {allocated} USDT")
-            has_risk = True
-
-        # Max loss limit
-        max_loss_enabled = settings.get("max_loss_enabled", False)
-        if max_loss_enabled:
-            max_loss = settings.get("max_daily_loss_percent", 5.0)
-            lines.append(f"- Лимит потерь: {max_loss}%")
-            has_risk = True
-
-        # Consecutive losses limit
-        cons_loss_enabled = settings.get("consecutive_losses_enabled", False)
-        if cons_loss_enabled:
-            max_cons = settings.get("max_consecutive_losses", 3)
-            cooldown = settings.get("cooldown_after_loss_streak", 60)
-            lines.append(f"- Макс. убытков подряд: {max_cons} (пауза {cooldown} мин)")
-            has_filters = True
-
-        if not has_risk:
-            lines.append("- лимиты не активны")
-
-        return lines
+    def _format_volume(self, value: float) -> str:
+        """Format volume value."""
+        if value <= 0:
+            return "не задан"
+        if value >= 1_000_000_000:
+            return f"{value / 1_000_000_000:.1f}B"
+        if value >= 1_000_000:
+            return f"{value / 1_000_000:.1f}M"
+        if value >= 1_000:
+            return f"{value / 1_000:.1f}K"
+        return str(value)
 
     def _format_signal_verification(self, signal_data: dict, settings: dict) -> list[str]:
         """Format signal verification results."""
@@ -463,12 +485,27 @@ class TradesAuditLogger:
             vol = asset_filters["volume_24h"]
             vol_ok = vol.get("passed", True)
             vol_value = vol.get("value", 0)
-            vol_display = f"{vol_value/1_000_000:.1f}M" if vol_value >= 1_000_000 else f"{vol_value:,.0f}"
+            vol_min = settings.get("volume_24h_min", 0)
+            vol_display = self._format_volume(vol_value)
+            vol_min_display = self._format_volume(vol_min)
             icon = "✅" if vol_ok else "❌"
-            if vol_ok:
-                lines.append(f"{icon} Объём 24ч: {vol_display}")
-            else:
-                lines.append(f"{icon} Объём 24ч: {vol_display} (не прошёл фильтр)")
+            lines.append(f"{icon} Объём 24ч: {vol_display} > {vol_min_display} (мин)")
+
+        # Price
+        if "price" in asset_filters:
+            price = asset_filters["price"]
+            price_ok = price.get("passed", True)
+            price_value = price.get("value", 0)
+            icon = "✅" if price_ok else "❌"
+            lines.append(f"{icon} Цена: {price_value}$")
+
+        # Change
+        if "change_24h" in asset_filters:
+            change = asset_filters["change_24h"]
+            change_ok = change.get("passed", True)
+            change_value = change.get("value", 0)
+            icon = "✅" if change_ok else "❌"
+            lines.append(f"{icon} Изменение 24ч: {change_value:.2f}%")
 
         # Volatility
         if "volatility" in asset_filters:

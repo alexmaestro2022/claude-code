@@ -1157,10 +1157,12 @@ class TradingEngine:
                 "st3_multiplier": getattr(strat_cfg, "st3_multiplier", 3.0),
                 "st3_role": getattr(strat_cfg, "st3_role", "trigger"),
                 "trigger_confirm_candles": getattr(strat_cfg, "trigger_confirm_candles", 1),
+                "trigger_confirm_mode": getattr(strat_cfg, "trigger_confirm_mode", "close"),
 
                 # Heikin Ashi settings
                 "ha_entry_candles": self.bot_settings.get("ha_entry_candles", 2),
                 "ha_exit_on_color_change": self.bot_settings.get("ha_exit_on_color_change", True),
+                "ha_exit_candles": self.bot_settings.get("ha_exit_candles", 1),
                 "ha_emergency_sl_percent": self.bot_settings.get("ha_emergency_sl_percent", 5.0),
 
                 # Take-profit settings
