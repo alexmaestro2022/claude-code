@@ -984,6 +984,32 @@ DASHBOARD_HTML = r"""
             font-size: 18px;
         }
 
+        .bots-header-buttons {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 2px solid #00d4ff;
+            color: #00d4ff;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+        }
+
+        .btn-outline:hover {
+            background: rgba(0, 212, 255, 0.15);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 212, 255, 0.2);
+        }
+
         .bots-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -1781,14 +1807,14 @@ DASHBOARD_HTML = r"""
             display: none;
             position: absolute;
             top: 100%;
-            left: 0;
+            right: 0;
             background: rgba(30, 30, 50, 0.98);
             min-width: 200px;
             border-radius: 8px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
             z-index: 1000;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            margin-top: 5px;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            margin-top: 8px;
         }
 
         .strategy-dropdown-content.show {
@@ -1842,12 +1868,6 @@ DASHBOARD_HTML = r"""
             <button class="tab active" onclick="showTab('dashboard')" data-i18n="dashboard">Dashboard</button>
             <button class="tab" onclick="showTab('charts')" data-i18n="charts">Charts</button>
             <button class="tab" onclick="showTab('pairs')" data-i18n="tradingPairs">Trading Pairs</button>
-            <div class="strategy-dropdown">
-                <button class="tab" onclick="toggleStrategyDropdown(event)" data-i18n="strategies">Strategies</button>
-                <div class="strategy-dropdown-content" id="strategyDropdown">
-                    <a href="#" onclick="openStrategySettings('3ema_pullback'); return false;">3 EMA Pullback</a>
-                </div>
-            </div>
         </div>
 
         <!-- Dashboard Tab -->
@@ -1888,7 +1908,17 @@ DASHBOARD_HTML = r"""
             <div class="bots-section">
                 <div class="bots-header">
                     <h3 data-i18n="botsManager">Bots</h3>
-                    <button class="btn btn-primary" onclick="showCreateBotModal()" data-i18n="createBot">+ Create Bot</button>
+                    <div class="bots-header-buttons">
+                        <div class="strategy-dropdown">
+                            <button class="btn btn-outline" onclick="toggleStrategyDropdown(event)">
+                                <span style="margin-right: 6px;">📊</span><span data-i18n="strategies">Strategies</span>
+                            </button>
+                            <div class="strategy-dropdown-content" id="strategyDropdown">
+                                <a href="#" onclick="openStrategySettings('3ema_pullback'); return false;">3 EMA Pullback</a>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" onclick="showCreateBotModal()" data-i18n="createBot">+ Create Bot</button>
+                    </div>
                 </div>
                 <div class="bots-grid" id="botsGrid">
                     <!-- Bots will be loaded here -->
