@@ -85,16 +85,12 @@ from aila.api.main import (
     app, add_log, log_buffer, bot_state as api_bot_state, runtime_settings,
     get_log_message, LOG_MESSAGES, bot_engines, bot_clients, bot_runtime_settings,
     bots_registry, get_bot_runtime_settings, register_position, close_position_record,
-    ema_pullback_settings, ema_strategy_state
+    ema_strategy_state, strategy_runners
 )
 from aila.strategies.ema_pullback_runner import EmaPullbackRunner, set_runner, get_runner
 
 # Set the actual add_log callback now that it's imported
 _log_callback = add_log
-
-# 3 EMA Pullback Strategy runner
-ema_strategy_runner: EmaPullbackRunner = None
-ema_strategy_task = None
 
 logger = structlog.get_logger(__name__)
 
@@ -589,11 +585,9 @@ async def stop_trading_for_bot(bot_id: str):
 # 3 EMA Pullback Strategy Functions
 # ============================================================================
 
-async def start_ema_strategy():
-    """Start the 3 EMA Pullback strategy."""
-    global ema_strategy_runner, ema_strategy_task
-
-    add_log("[info    ] Starting 3 EMA Pullback Strategy...")
+async def start_ema_strategy(strategy_id: str, settings: dict):
+    """Start a 3 EMA Pullback strategy by ID."""
+    add_log(f"[info    ] Starting 3 EMA Strategy: {settings.get('name', 'Unknown')}...")
 
     # Get or create background client for strategy
     client = get_background_client()
@@ -601,45 +595,33 @@ async def start_ema_strategy():
         add_log("[error   ] Failed to get client for strategy")
         return False
 
-    # Create runner with current settings
-    ema_strategy_runner = EmaPullbackRunner(client, ema_pullback_settings)
-    ema_strategy_runner.set_log_callback(add_log)
-    set_runner(ema_strategy_runner)
+    # Create runner with strategy settings
+    runner = EmaPullbackRunner(client, settings)
+    runner.set_log_callback(add_log)
+
+    # Store in strategy_runners dict (from main.py)
+    strategy_runners[strategy_id] = runner
 
     # Start runner
-    success = await ema_strategy_runner.start()
+    success = await runner.start()
     if success:
-        add_log("[info    ] 3 EMA Pullback Strategy started")
+        add_log(f"[info    ] 3 EMA Strategy started: {settings.get('name', 'Unknown')}")
     else:
-        add_log("[error   ] Failed to start 3 EMA Pullback Strategy")
+        add_log(f"[error   ] Failed to start strategy: {settings.get('name', 'Unknown')}")
+        if strategy_id in strategy_runners:
+            del strategy_runners[strategy_id]
 
     return success
 
 
-async def stop_ema_strategy():
-    """Stop the 3 EMA Pullback strategy."""
-    global ema_strategy_runner, ema_strategy_task
-
-    if ema_strategy_runner:
-        add_log("[info    ] Stopping 3 EMA Pullback Strategy...")
-        await ema_strategy_runner.stop()
-        ema_strategy_runner = None
-        set_runner(None)
-        add_log("[info    ] 3 EMA Pullback Strategy stopped")
-
-
-def update_ema_strategy_settings(new_settings: dict):
-    """Update 3 EMA strategy settings."""
-    global ema_strategy_runner
-
-    # Update global settings
-    ema_pullback_settings.update(new_settings)
-
-    # Update runner if active
-    if ema_strategy_runner:
-        ema_strategy_runner.update_settings(new_settings)
-
-    add_log(f"[info    ] 3 EMA strategy settings updated: enabled={new_settings.get('enabled')}")
+async def stop_ema_strategy_by_id(strategy_id: str):
+    """Stop a 3 EMA Pullback strategy by ID."""
+    if strategy_id in strategy_runners:
+        runner = strategy_runners[strategy_id]
+        add_log(f"[info    ] Stopping strategy {strategy_id}...")
+        await runner.stop()
+        del strategy_runners[strategy_id]
+        add_log(f"[info    ] Strategy stopped: {strategy_id}")
 
 
 # Background client for balance display (independent of bots)
@@ -1307,9 +1289,9 @@ def main():
     api_bot_state["start_callback_for_bot"] = start_trading_for_bot
     api_bot_state["stop_callback_for_bot"] = stop_trading_for_bot
 
-    # 3 EMA Pullback Strategy callbacks
-    ema_strategy_state["start_callback"] = start_ema_strategy
-    ema_strategy_state["stop_callback"] = stop_ema_strategy
+    # 3 EMA Pullback Strategy callbacks (for multiple strategies)
+    ema_strategy_state["start_callback"] = start_ema_strategy  # start_ema_strategy(strategy_id, settings)
+    ema_strategy_state["stop_callback"] = stop_ema_strategy_by_id  # stop_ema_strategy_by_id(strategy_id)
 
     # Start web server in background thread
     web_thread = threading.Thread(target=run_uvicorn, daemon=True)

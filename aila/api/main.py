@@ -1911,10 +1911,17 @@ DASHBOARD_HTML = r"""
                     <div class="bots-header-buttons">
                         <div class="strategy-dropdown">
                             <button class="btn btn-outline" onclick="toggleStrategyDropdown(event)">
-                                <span style="margin-right: 6px;">📊</span><span data-i18n="strategies">Strategies</span>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><path d="M3 3v18h18"/><polyline points="18 9 12 15 9 12 3 18"/></svg>
+                                <span data-i18n="strategies">Strategies</span>
                             </button>
                             <div class="strategy-dropdown-content" id="strategyDropdown">
-                                <a href="#" onclick="openStrategySettings('3ema_pullback'); return false;">3 EMA Pullback</a>
+                                <a href="#" onclick="showCreateStrategyModal(); return false;" style="color: #00ff88; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><path d="M12 5v14M5 12h14"/></svg>
+                                    <span data-i18n="createStrategy">Create Strategy</span>
+                                </a>
+                                <div id="strategyDropdownList">
+                                    <!-- Dynamic list of strategies -->
+                                </div>
                             </div>
                         </div>
                         <button class="btn btn-primary" onclick="showCreateBotModal()" data-i18n="createBot">+ Create Bot</button>
@@ -1922,6 +1929,33 @@ DASHBOARD_HTML = r"""
                 </div>
                 <div class="bots-grid" id="botsGrid">
                     <!-- Bots will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Strategies Section -->
+            <div class="bots-section" id="strategiesSection">
+                <div class="bots-header">
+                    <h3 data-i18n="strategiesManager">Strategies</h3>
+                    <button class="btn btn-outline" onclick="showCreateStrategyModal()" style="border-color: #00d4ff; color: #00d4ff;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><path d="M12 5v14M5 12h14"/></svg>
+                        <span data-i18n="createStrategy">Create Strategy</span>
+                    </button>
+                </div>
+                <div class="bots-grid" id="strategiesGrid">
+                    <!-- Strategies will be loaded here -->
+                    <div id="noStrategiesPlaceholder" class="no-bots-placeholder" style="padding: 30px; text-align: center; color: #666;">
+                        <span data-i18n="noStrategies">No strategies created yet</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Strategy Positions Section -->
+            <div class="positions-section" id="strategyPositionsSection" style="margin-bottom: 20px; display: none;">
+                <div class="bots-header">
+                    <h3 data-i18n="strategyPositions">Strategy Positions</h3>
+                </div>
+                <div class="positions-grid" id="strategyPositionsGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px;">
+                    <!-- Strategy positions will be loaded here -->
                 </div>
             </div>
 
@@ -3453,12 +3487,14 @@ DASHBOARD_HTML = r"""
     </div>
 
     <!-- 3 EMA Pullback Strategy Settings Modal -->
+    <!-- Create/Edit Strategy Modal -->
     <div class="modal" id="strategyModal">
-        <div class="modal-content modal-compact" style="overflow-y: auto; max-width: 600px; max-height: 90vh;">
+        <div class="modal-content modal-compact" style="overflow-y: auto; max-width: 650px; max-height: 90vh;">
             <div class="modal-header">
-                <h3 data-i18n="strategy3EMA">3 EMA Pullback Strategy</h3>
+                <h3 id="strategyModalTitle" data-i18n="createStrategy">Create Strategy</h3>
                 <button class="modal-close" onclick="closeModal('strategyModal')">&times;</button>
             </div>
+            <input type="hidden" id="strategyEditId" value="">
 
             <!-- Block 1: Basic Settings -->
             <div class="settings-block block-basic">
@@ -3466,27 +3502,31 @@ DASHBOARD_HTML = r"""
                 <div class="settings-row">
                     <div class="setting-compact">
                         <label data-i18n="strategyName">Name</label>
-                        <input type="text" id="strategyName" value="3 EMA Scalping">
+                        <input type="text" id="strategyName" placeholder="3 EMA Scalper">
                     </div>
                     <div class="setting-compact">
-                        <label data-i18n="strategyStatus">Status</label>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="strategyEnabled">
-                            <span class="toggle-slider"></span>
-                        </label>
+                        <label data-i18n="botMode">Mode</label>
+                        <select id="strategyMode" onchange="toggleStrategyMode()">
+                            <option value="auto_search" selected data-i18n="autoSearchMode">Auto Search</option>
+                            <option value="manual" data-i18n="manualMode">Manual</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="settings-row" id="strategyPairContainer" style="display: none;">
+                    <div class="setting-compact" style="position: relative;">
+                        <label data-i18n="tradingPair">Trading Pair</label>
+                        <input type="text" id="strategyPairSearch" placeholder="BTCUSDT" oninput="filterStrategyPairs()" onfocus="showStrategyPairDropdown()" autocomplete="off">
+                        <div id="strategyPairDropdown" class="pair-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; max-height: 200px; overflow-y: auto; background: #1a1a2e; border: 1px solid #333; border-radius: 5px; z-index: 1000;"></div>
+                        <input type="hidden" id="strategyPair" value="BTCUSDT">
+                    </div>
+                </div>
+                <div class="settings-row" id="strategyMaxPairsContainer">
+                    <div class="setting-compact">
+                        <label data-i18n="maxTradingPairs">Max Trading Pairs</label>
+                        <input type="number" id="strategyMaxPairs" value="1" min="1" max="20">
                     </div>
                 </div>
                 <div class="settings-row">
-                    <div class="setting-compact">
-                        <label data-i18n="maxPairs">Max Pairs</label>
-                        <select id="strategyMaxPairs">
-                            <option value="1">1</option>
-                            <option value="2">2</option>
-                            <option value="3">3</option>
-                            <option value="5">5</option>
-                            <option value="10">10</option>
-                        </select>
-                    </div>
                     <div class="setting-compact">
                         <label data-i18n="timeframe">Timeframe</label>
                         <select id="strategyTimeframe">
@@ -3494,92 +3534,109 @@ DASHBOARD_HTML = r"""
                             <option value="3m">3m</option>
                             <option value="5m">5m</option>
                             <option value="15m">15m</option>
+                            <option value="30m">30m</option>
+                            <option value="1h">1h</option>
                         </select>
                     </div>
-                </div>
-                <div class="settings-row">
                     <div class="setting-compact">
                         <label data-i18n="leverage">Leverage</label>
-                        <select id="strategyLeverage">
+                        <select id="strategyLeverage" onchange="updateStrategyDepositInfo()">
                             <option value="1">1x</option>
                             <option value="2">2x</option>
-                            <option value="3">3x</option>
                             <option value="5">5x</option>
                             <option value="10" selected>10x</option>
-                            <option value="15">15x</option>
                             <option value="20">20x</option>
-                            <option value="25">25x</option>
                             <option value="50">50x</option>
                         </select>
                     </div>
                     <div class="setting-compact">
-                        <label data-i18n="orderSize">Order Size (USDT)</label>
-                        <input type="number" id="strategyOrderSize" value="10" min="5" step="1">
+                        <label data-i18n="orderSize">Order (USDT)</label>
+                        <input type="number" id="strategyOrderSize" value="10" min="5" max="100000" step="1" oninput="updateStrategyDepositInfo()">
+                    </div>
+                    <div class="setting-compact" style="flex: 0.8;">
+                        <label>&nbsp;</label>
+                        <div id="strategyDepositInfo" class="info-badge warning" style="height: 36px; display: flex; align-items: center;">
+                            <span id="strategyDepositUsed">1</span> USDT
+                        </div>
                     </div>
                 </div>
                 <div class="settings-row">
                     <div class="setting-compact">
-                        <label data-i18n="positionSizeMode">Position Size Mode</label>
-                        <select id="strategyPositionMode">
-                            <option value="fixed" data-i18n="fixedUsdt">Fixed USDT</option>
-                            <option value="percent" data-i18n="percentBalance">% of Balance</option>
+                        <label data-i18n="positionSizingMode">Position Sizing</label>
+                        <select id="strategyPositionMode" onchange="toggleStrategyRiskPercent()">
+                            <option value="fixed_amount" selected>Fixed USDT</option>
+                            <option value="risk_percent">Risk %</option>
                         </select>
                     </div>
+                    <div class="setting-compact" id="strategyRiskPercentContainer" style="display: none;">
+                        <label data-i18n="riskPerTrade">Risk per Trade (%)</label>
+                        <input type="number" id="strategyRiskPercent" value="2" min="0.1" max="10" step="0.1">
+                    </div>
                     <div class="setting-compact">
-                        <label data-i18n="marginMode">Margin Mode</label>
+                        <label data-i18n="leverageMode">Margin Mode</label>
                         <select id="strategyMarginMode">
-                            <option value="isolated" selected>Isolated</option>
                             <option value="cross">Cross</option>
+                            <option value="isolated" selected>Isolated</option>
                         </select>
                     </div>
                 </div>
             </div>
 
-            <!-- Block 2: Risk Management -->
+            <!-- Block 2: Risk Management (copied from bot) -->
             <div class="settings-block block-risk">
                 <h4><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span> <span data-i18n="riskManagement">Risk Management</span></h4>
                 <div class="settings-row">
                     <div class="setting-compact" style="flex: 1;">
                         <label data-i18n="balanceUsage">Balance Usage (%)</label>
                         <div class="range-container">
-                            <input type="range" class="range-slider range-slim" id="strategyBalanceUsage" value="30" min="1" max="100" oninput="updateSliderValue(this, 'strategyBalanceValue')">
-                            <span class="range-value" id="strategyBalanceValue">30%</span>
+                            <span id="strategyBalanceUsageInfo" style="min-width: 90px; font-size: 12px; color: #00ff88;"><span id="strategyAllocatedBalance">-</span> / <span id="strategyTotalBalance">-</span></span>
+                            <input type="range" class="range-slider range-slim" id="strategyBalanceUsage" value="100" min="1" max="100" oninput="updateSliderValue(this, 'strategyBalanceValue'); updateStrategyBalanceInfo()">
+                            <span class="range-value" id="strategyBalanceValue">100%</span>
                         </div>
                     </div>
                 </div>
                 <div class="settings-row">
-                    <div class="setting-compact">
-                        <label data-i18n="riskPerTrade">Risk per Trade (%)</label>
-                        <input type="number" id="strategyRiskPerTrade" value="2" min="0.5" max="5" step="0.1">
+                    <div class="setting-compact" style="flex: 0 0 auto;">
+                        <label data-i18n="maxLossLimit">Max Loss Limit (%)</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="strategyMaxLossEnabled" onchange="toggleStrategyMaxLoss()">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="settings-row" id="strategyMaxLossContainer" style="display: none;">
+                    <div class="setting-compact" style="flex: 1;">
+                        <div class="range-container">
+                            <span id="strategyMaxLossInfo" style="min-width: 90px; font-size: 12px; color: #ff6b6b;"><span id="strategyMaxLossAmount">-</span> USDT</span>
+                            <input type="range" class="range-slider range-slim" id="strategyMaxLoss" value="50" min="1" max="100" oninput="updateSliderValue(this, 'strategyMaxLossValue'); updateStrategyMaxLossInfo()">
+                            <span class="range-value" id="strategyMaxLossValue">50%</span>
+                        </div>
                     </div>
                 </div>
                 <div class="settings-row">
                     <div class="setting-compact" style="flex: 0 0 auto;">
-                        <label data-i18n="dailyLossLimit">Daily Loss Limit (%)</label>
+                        <label data-i18n="consecutiveLossesLimit">Consecutive Losses Limit</label>
                         <label class="toggle-switch">
-                            <input type="checkbox" id="strategyDailyLossEnabled" checked onchange="toggleStrategyDailyLoss()">
+                            <input type="checkbox" id="strategyConsecutiveLossesEnabled" onchange="toggleStrategyConsecutiveLosses()">
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
-                    <div class="setting-compact" id="strategyDailyLossContainer">
-                        <input type="number" id="strategyDailyLoss" value="5" min="1" max="50" step="0.5">
-                    </div>
-                </div>
-                <div class="settings-row">
-                    <div class="setting-compact" style="flex: 0 0 auto;">
-                        <label data-i18n="maxLosingStreak">Max Losing Streak</label>
-                        <label class="toggle-switch">
-                            <input type="checkbox" id="strategyLosingStreakEnabled" checked onchange="toggleStrategyLosingStreak()">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                    <div class="setting-compact" id="strategyLosingStreakContainer">
-                        <select id="strategyMaxLosingStreak">
-                            <option value="1">1</option>
+                    <div class="setting-compact" id="strategyConsecutiveLossesContainer" style="display: none;">
+                        <label data-i18n="maxConsecutiveLosses">Max Losses</label>
+                        <select id="strategyMaxConsecutiveLosses">
                             <option value="2">2</option>
                             <option value="3" selected>3</option>
                             <option value="5">5</option>
                             <option value="10">10</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact" id="strategyCooldownContainer" style="display: none;">
+                        <label data-i18n="cooldownMinutes">Cooldown (min)</label>
+                        <select id="strategyCooldownMinutes">
+                            <option value="5">5</option>
+                            <option value="15">15</option>
+                            <option value="30" selected>30</option>
+                            <option value="60">60</option>
                         </select>
                     </div>
                 </div>
@@ -3597,7 +3654,7 @@ DASHBOARD_HTML = r"""
                 </div>
             </div>
 
-            <!-- Block 3.1: EMA Parameters -->
+            <!-- Block 3: EMA Parameters -->
             <div class="settings-block block-strategy">
                 <h4><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg></span> <span data-i18n="emaParams">EMA Parameters</span></h4>
                 <div class="settings-row">
@@ -3616,7 +3673,7 @@ DASHBOARD_HTML = r"""
                 </div>
             </div>
 
-            <!-- Block 3.2: Trend Filter -->
+            <!-- Block 4: Trend Filter -->
             <div class="settings-block block-strategy">
                 <h4><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span> <span data-i18n="trendFilter">Trend Filter</span></h4>
                 <div class="settings-row">
@@ -3637,7 +3694,6 @@ DASHBOARD_HTML = r"""
                             <option value="1" selected>1x</option>
                             <option value="1.5">1.5x</option>
                             <option value="2">2x</option>
-                            <option value="3">3x</option>
                         </select>
                     </div>
                     <div class="setting-compact">
@@ -3647,7 +3703,7 @@ DASHBOARD_HTML = r"""
                 </div>
             </div>
 
-            <!-- Block 3.3: Entry Conditions -->
+            <!-- Block 5: Entry Conditions -->
             <div class="settings-block block-strategy">
                 <h4><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> <span data-i18n="entryConditions">Entry Conditions</span></h4>
                 <div class="settings-row">
@@ -3674,9 +3730,9 @@ DASHBOARD_HTML = r"""
                 </div>
             </div>
 
-            <!-- Block 3.4: Stop Loss -->
-            <div class="settings-block block-sl">
-                <h4><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg></span> <span data-i18n="stopLoss">Stop Loss</span></h4>
+            <!-- Block 6: Stop Loss -->
+            <div class="settings-block block-risk">
+                <h4><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></span> <span data-i18n="stopLoss">Stop Loss</span></h4>
                 <div class="settings-row">
                     <div class="setting-compact">
                         <label data-i18n="slMode">SL Mode</label>
@@ -3685,23 +3741,19 @@ DASHBOARD_HTML = r"""
                             <option value="fixed" data-i18n="slFixed">Fixed %</option>
                         </select>
                     </div>
-                </div>
-                <div class="settings-row" id="strategySlBufferContainer">
-                    <div class="setting-compact">
+                    <div class="setting-compact" id="strategySlBufferContainer">
                         <label data-i18n="slBuffer">SL Buffer (%)</label>
                         <input type="number" id="strategySlBuffer" value="0.1" min="0.05" max="0.5" step="0.01">
                     </div>
-                </div>
-                <div class="settings-row" id="strategySlFixedContainer" style="display: none;">
-                    <div class="setting-compact">
+                    <div class="setting-compact" id="strategySlFixedContainer" style="display: none;">
                         <label data-i18n="slFixedPct">Fixed SL (%)</label>
                         <input type="number" id="strategySlFixed" value="1" min="0.5" max="5" step="0.1">
                     </div>
                 </div>
             </div>
 
-            <!-- Block 3.5: Take Profit -->
-            <div class="settings-block block-tp">
+            <!-- Block 7: Take Profit -->
+            <div class="settings-block block-profit">
                 <h4><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span> <span data-i18n="takeProfit">Take Profit</span></h4>
                 <div class="settings-row">
                     <div class="setting-compact">
@@ -3711,32 +3763,28 @@ DASHBOARD_HTML = r"""
                             <option value="fixed_rr" data-i18n="tpFixedRR">Fixed R:R</option>
                         </select>
                     </div>
-                </div>
-                <div class="settings-row" id="strategyRrContainer" style="display: none;">
-                    <div class="setting-compact">
+                    <div class="setting-compact" id="strategyRrContainer" style="display: none;">
                         <label data-i18n="rrRatio">R:R Ratio</label>
                         <select id="strategyRrRatio">
                             <option value="1">1:1</option>
                             <option value="1.5" selected>1.5:1</option>
                             <option value="2">2:1</option>
-                            <option value="2.5">2.5:1</option>
                             <option value="3">3:1</option>
-                            <option value="5">5:1</option>
                         </select>
                     </div>
                 </div>
                 <div id="strategyTrailingContainer">
                     <div class="settings-row">
-                        <div class="setting-compact">
-                            <label data-i18n="trailingBe">Move to Breakeven</label>
+                        <div class="setting-inline" style="flex: 0 0 auto;">
+                            <label data-i18n="trailingBe">Move to BE</label>
                             <label class="toggle-switch">
                                 <input type="checkbox" id="strategyTrailingBe" checked onchange="toggleStrategyTrailingBe()">
                                 <span class="toggle-slider"></span>
                             </label>
                         </div>
                         <div class="setting-compact" id="strategyBeAfterContainer">
-                            <label data-i18n="beAfterProfit">BE After Profit (%)</label>
-                            <input type="number" id="strategyBeAfterProfit" value="0.3" min="0.1" max="1" step="0.1">
+                            <label data-i18n="beAfterProfit">BE After (%)</label>
+                            <input type="number" id="strategyBeAfterProfit" value="0.3" min="0.1" max="2" step="0.1">
                         </div>
                     </div>
                     <div class="settings-row">
@@ -3750,24 +3798,24 @@ DASHBOARD_HTML = r"""
                         </div>
                         <div class="setting-compact">
                             <label data-i18n="trailingBuffer">Trail Buffer (%)</label>
-                            <input type="number" id="strategyTrailingBuffer" value="0.1" min="0.05" max="0.3" step="0.01">
+                            <input type="number" id="strategyTrailingBuffer" value="0.1" min="0.05" max="0.5" step="0.01">
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Block 3.6: Trade Direction -->
-            <div class="settings-block block-direction">
-                <h4><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg></span> <span data-i18n="tradeDirection">Trade Direction</span></h4>
+            <!-- Block 8: Trade Direction -->
+            <div class="settings-block block-signal">
+                <h4><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></span> <span data-i18n="tradeDirection">Trade Direction</span></h4>
                 <div class="settings-row">
-                    <div class="setting-compact">
+                    <div class="setting-inline" style="flex: 1;">
                         <label data-i18n="tradeLong">Trade LONG</label>
                         <label class="toggle-switch">
                             <input type="checkbox" id="strategyTradeLong" checked>
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
-                    <div class="setting-compact">
+                    <div class="setting-inline" style="flex: 1;">
                         <label data-i18n="tradeShort">Trade SHORT</label>
                         <label class="toggle-switch">
                             <input type="checkbox" id="strategyTradeShort" checked>
@@ -3777,26 +3825,9 @@ DASHBOARD_HTML = r"""
                 </div>
             </div>
 
-            <!-- Strategy Status and Controls -->
-            <div class="settings-block" style="margin-top: 15px; background: rgba(0,212,255,0.08); border-color: rgba(0,212,255,0.3);">
-                <div class="settings-row" style="justify-content: space-between; align-items: center;">
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <span data-i18n="strategyStatus">Strategy Status:</span>
-                        <span id="strategyStatusIndicator" style="padding: 4px 12px; border-radius: 12px; font-size: 12px; background: #333; color: #888;">Stopped</span>
-                    </div>
-                    <div style="display: flex; gap: 10px;">
-                        <button class="btn btn-success" id="strategyStartBtn" onclick="startStrategy()" style="padding: 8px 20px;" data-i18n="start">Start</button>
-                        <button class="btn btn-danger" id="strategyStopBtn" onclick="stopStrategy()" style="padding: 8px 20px; display: none;" data-i18n="stop">Stop</button>
-                    </div>
-                </div>
-                <div id="strategyPositionsInfo" style="margin-top: 10px; font-size: 12px; color: #888; display: none;">
-                    <span data-i18n="openPositions">Open Positions:</span> <span id="strategyPositionsCount">0</span>
-                </div>
-            </div>
-
-            <!-- Save Button -->
+            <!-- Save/Cancel Buttons -->
             <div class="modal-footer" style="margin-top: 20px; display: flex; gap: 10px;">
-                <button class="btn btn-primary" onclick="saveStrategySettings()" style="flex: 1;" data-i18n="save">Save</button>
+                <button class="btn btn-primary" onclick="saveStrategy()" style="flex: 1;" data-i18n="save">Save</button>
                 <button class="btn btn-secondary" onclick="closeModal('strategyModal')" style="flex: 1;" data-i18n="cancel">Cancel</button>
             </div>
         </div>
@@ -3919,6 +3950,15 @@ DASHBOARD_HTML = r"""
                 strategySaved: 'Strategy settings saved!',
                 strategyStarted: 'Strategy started!',
                 strategyStopped: 'Strategy stopped!',
+                createStrategy: 'Create Strategy',
+                editStrategy: 'Edit Strategy',
+                strategyCreated: 'Strategy created!',
+                strategyUpdated: 'Strategy updated!',
+                strategyDeleted: 'Strategy deleted!',
+                confirmDeleteStrategy: 'Delete this strategy?',
+                noStrategies: 'No strategies created yet',
+                strategiesManager: 'Strategies',
+                strategyPositions: 'Strategy Positions',
                 maxPairs: 'Max Pairs',
                 emaParams: 'EMA Parameters',
                 trendFilter: 'Trend Filter',
@@ -4122,6 +4162,15 @@ DASHBOARD_HTML = r"""
                 strategySaved: 'Настройки стратегии сохранены!',
                 strategyStarted: 'Стратегия запущена!',
                 strategyStopped: 'Стратегия остановлена!',
+                createStrategy: 'Создать стратегию',
+                editStrategy: 'Редактировать стратегию',
+                strategyCreated: 'Стратегия создана!',
+                strategyUpdated: 'Стратегия обновлена!',
+                strategyDeleted: 'Стратегия удалена!',
+                confirmDeleteStrategy: 'Удалить эту стратегию?',
+                noStrategies: 'Стратегий пока нет',
+                strategiesManager: 'Стратегии',
+                strategyPositions: 'Позиции стратегий',
                 maxPairs: 'Макс. пар',
                 emaParams: 'Параметры EMA',
                 trendFilter: 'Фильтр тренда',
@@ -5067,6 +5116,11 @@ DASHBOARD_HTML = r"""
                 document.getElementById('balance').textContent =
                     data.balance ? data.balance.toFixed(2) : '--';
 
+                // Update global balance for strategies
+                if (data.balance) {
+                    globalBalanceForStrategy = data.balance;
+                }
+
                 // Open Positions
                 document.getElementById('positions').textContent =
                     data.positions !== undefined ? data.positions : '--';
@@ -5137,6 +5191,7 @@ DASHBOARD_HTML = r"""
         loadVersion();
         fetchStats();
         loadBots();  // Load bots immediately on dashboard
+        loadStrategies();  // Load strategies on dashboard
         loadAllPositions();  // Load positions on startup
         // Send current language to server
         fetch('/api/language', {
@@ -5813,6 +5868,12 @@ DASHBOARD_HTML = r"""
         }
 
         // Strategy Dropdown and Settings
+        // ============================================================
+        // STRATEGIES MANAGEMENT
+        // ============================================================
+        let strategiesData = [];
+        let globalBalanceForStrategy = 0;
+
         function toggleStrategyDropdown(event) {
             event.stopPropagation();
             const dropdown = document.getElementById('strategyDropdown');
@@ -5827,179 +5888,355 @@ DASHBOARD_HTML = r"""
             }
         });
 
-        function openStrategySettings(strategyType) {
-            // Close dropdown
-            document.getElementById('strategyDropdown').classList.remove('show');
-
-            if (strategyType === '3ema_pullback') {
-                // Load current settings and status
-                loadStrategySettings();
-                loadStrategyStatus();
-                // Show modal
-                document.getElementById('strategyModal').classList.add('show');
+        // Load all strategies and render
+        async function loadStrategies() {
+            try {
+                const response = await fetch('/api/strategies');
+                const data = await response.json();
+                strategiesData = data.strategies || [];
+                renderStrategies();
+                updateStrategyDropdownList();
+            } catch (err) {
+                console.error('Failed to load strategies:', err);
             }
         }
 
-        async function loadStrategySettings() {
+        // Update dropdown list with created strategies
+        function updateStrategyDropdownList() {
+            const list = document.getElementById('strategyDropdownList');
+            if (!list) return;
+            if (strategiesData.length === 0) {
+                list.innerHTML = '<div style="padding: 8px 16px; color: #666; font-size: 12px;">' + (t('noStrategies') || 'No strategies') + '</div>';
+            } else {
+                list.innerHTML = strategiesData.map(s => `
+                    <a href="#" onclick="scrollToStrategy('${s.id}'); return false;" style="display: flex; align-items: center; gap: 8px;">
+                        <span class="status-indicator ${s.status}" style="width: 8px; height: 8px;"></span>
+                        ${s.name}
+                    </a>
+                `).join('');
+            }
+        }
+
+        function scrollToStrategy(id) {
+            document.getElementById('strategyDropdown').classList.remove('show');
+            const card = document.querySelector(`[data-strategy-id="${id}"]`);
+            if (card) {
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                card.style.boxShadow = '0 0 20px rgba(0, 212, 255, 0.5)';
+                setTimeout(() => card.style.boxShadow = '', 2000);
+            }
+        }
+
+        // Show create strategy modal
+        function showCreateStrategyModal() {
+            document.getElementById('strategyDropdown').classList.remove('show');
+            document.getElementById('strategyEditId').value = '';
+            document.getElementById('strategyModalTitle').textContent = t('createStrategy') || 'Create Strategy';
+            resetStrategyForm();
+            updateStrategyBalanceInfo();
+            document.getElementById('strategyModal').classList.add('show');
+        }
+
+        // Show edit strategy modal
+        async function showEditStrategyModal(id) {
             try {
-                const response = await fetch('/api/strategy/3ema_pullback/settings');
+                const response = await fetch(`/api/strategies/${id}`);
                 const data = await response.json();
-                if (data.settings) {
-                    populateStrategyForm(data.settings);
+                if (data.strategy) {
+                    document.getElementById('strategyEditId').value = id;
+                    document.getElementById('strategyModalTitle').textContent = t('editStrategy') || 'Edit Strategy';
+                    populateStrategyForm(data.strategy);
+                    document.getElementById('strategyModal').classList.add('show');
                 }
             } catch (err) {
-                console.error('Failed to load strategy settings:', err);
+                console.error('Failed to load strategy:', err);
             }
         }
 
-        function populateStrategyForm(s) {
-            // Basic
-            document.getElementById('strategyName').value = s.name || '3 EMA Scalping';
-            document.getElementById('strategyEnabled').checked = s.enabled || false;
-            document.getElementById('strategyMaxPairs').value = s.max_pairs || 1;
-            document.getElementById('strategyTimeframe').value = s.timeframe || '1m';
-            document.getElementById('strategyLeverage').value = s.leverage || 10;
-            document.getElementById('strategyOrderSize').value = s.order_size_usdt || 10;
-            document.getElementById('strategyPositionMode').value = s.position_size_mode || 'fixed';
-            document.getElementById('strategyMarginMode').value = s.margin_mode || 'isolated';
-
-            // Risk
-            document.getElementById('strategyBalanceUsage').value = s.balance_usage_pct || 30;
-            document.getElementById('strategyBalanceValue').textContent = (s.balance_usage_pct || 30) + '%';
-            document.getElementById('strategyRiskPerTrade').value = s.risk_per_trade || 2;
-            document.getElementById('strategyDailyLossEnabled').checked = s.daily_loss_limit_enabled !== false;
-            document.getElementById('strategyDailyLoss').value = s.daily_loss_limit_pct || 5;
-            document.getElementById('strategyLosingStreakEnabled').checked = s.max_losing_streak_enabled !== false;
-            document.getElementById('strategyMaxLosingStreak').value = s.max_losing_streak || 3;
-            document.getElementById('strategyDailyTradesEnabled').checked = s.max_daily_trades_enabled || false;
-            document.getElementById('strategyMaxDailyTrades').value = s.max_daily_trades || 10;
-
-            // EMA
-            document.getElementById('strategyEmaFast').value = s.ema_fast || 50;
-            document.getElementById('strategyEmaMedium').value = s.ema_medium || 100;
-            document.getElementById('strategyEmaSlow').value = s.ema_slow || 150;
-
-            // Trend
-            document.getElementById('strategySlopeMin').value = s.slope_min || 0.1;
-            document.getElementById('strategySlopeCandles').value = s.slope_candles || 5;
-            document.getElementById('strategyEmaDistanceAtr').value = s.ema_distance_atr_mult || 1;
-            document.getElementById('strategyAtrPeriod').value = s.atr_period || 14;
-
-            // Entry
-            document.getElementById('strategyTouchMode').value = s.touch_mode || 'low_high';
-            document.getElementById('strategyTouchTolerance').value = s.touch_tolerance || 0.1;
-            document.getElementById('strategyForbidEma150').checked = s.forbid_ema150_touch !== false;
-
-            // SL
-            document.getElementById('strategySlMode').value = s.sl_mode || 'pullback';
-            document.getElementById('strategySlBuffer').value = s.sl_buffer || 0.1;
-            document.getElementById('strategySlFixed').value = s.sl_fixed_pct || 1;
-
-            // TP
-            document.getElementById('strategyTpMode').value = s.tp_mode || 'trailing';
-            document.getElementById('strategyRrRatio').value = s.rr_ratio || 1.5;
-            document.getElementById('strategyTrailingBe').checked = s.trailing_be_enabled !== false;
-            document.getElementById('strategyBeAfterProfit').value = s.be_after_profit_pct || 0.3;
-            document.getElementById('strategyTrailingMode').value = s.trailing_mode || 'new_high_low';
-            document.getElementById('strategyTrailingBuffer').value = s.trailing_buffer || 0.1;
-
-            // Direction
-            document.getElementById('strategyTradeLong').checked = s.trade_long !== false;
-            document.getElementById('strategyTradeShort').checked = s.trade_short !== false;
-
-            // Update UI visibility
-            toggleStrategyDailyLoss();
-            toggleStrategyLosingStreak();
+        function resetStrategyForm() {
+            document.getElementById('strategyName').value = '';
+            document.getElementById('strategyMode').value = 'auto_search';
+            document.getElementById('strategyMaxPairs').value = 1;
+            document.getElementById('strategyTimeframe').value = '1m';
+            document.getElementById('strategyLeverage').value = 10;
+            document.getElementById('strategyOrderSize').value = 10;
+            document.getElementById('strategyPositionMode').value = 'fixed_amount';
+            document.getElementById('strategyMarginMode').value = 'isolated';
+            document.getElementById('strategyBalanceUsage').value = 100;
+            document.getElementById('strategyBalanceValue').textContent = '100%';
+            document.getElementById('strategyMaxLossEnabled').checked = false;
+            document.getElementById('strategyMaxLoss').value = 50;
+            document.getElementById('strategyConsecutiveLossesEnabled').checked = false;
+            document.getElementById('strategyDailyTradesEnabled').checked = false;
+            document.getElementById('strategyEmaFast').value = 50;
+            document.getElementById('strategyEmaMedium').value = 100;
+            document.getElementById('strategyEmaSlow').value = 150;
+            document.getElementById('strategySlopeMin').value = 0.1;
+            document.getElementById('strategySlopeCandles').value = 5;
+            document.getElementById('strategySlMode').value = 'pullback';
+            document.getElementById('strategyTpMode').value = 'trailing';
+            document.getElementById('strategyTrailingBe').checked = true;
+            document.getElementById('strategyTradeLong').checked = true;
+            document.getElementById('strategyTradeShort').checked = true;
+            toggleStrategyMode();
+            toggleStrategyMaxLoss();
+            toggleStrategyConsecutiveLosses();
             toggleStrategyDailyTrades();
             toggleStrategySlMode();
             toggleStrategyTpMode();
             toggleStrategyTrailingBe();
         }
 
-        async function saveStrategySettings() {
-            const settings = {
-                // Basic
-                name: document.getElementById('strategyName').value,
-                enabled: document.getElementById('strategyEnabled').checked,
+        function populateStrategyForm(s) {
+            document.getElementById('strategyName').value = s.name || '';
+            document.getElementById('strategyMode').value = s.mode || 'auto_search';
+            document.getElementById('strategyPair').value = s.trading_pair || 'BTCUSDT';
+            document.getElementById('strategyPairSearch').value = s.trading_pair || 'BTCUSDT';
+            document.getElementById('strategyMaxPairs').value = s.max_pairs || 1;
+            document.getElementById('strategyTimeframe').value = s.timeframe || '1m';
+            document.getElementById('strategyLeverage').value = s.leverage || 10;
+            document.getElementById('strategyOrderSize').value = s.order_size_usdt || 10;
+            document.getElementById('strategyPositionMode').value = s.position_size_mode || 'fixed_amount';
+            document.getElementById('strategyMarginMode').value = s.margin_mode || 'isolated';
+            document.getElementById('strategyBalanceUsage').value = s.balance_usage_pct || 100;
+            document.getElementById('strategyBalanceValue').textContent = (s.balance_usage_pct || 100) + '%';
+            document.getElementById('strategyMaxLossEnabled').checked = s.max_loss_enabled || false;
+            document.getElementById('strategyMaxLoss').value = s.max_loss_pct || 50;
+            document.getElementById('strategyConsecutiveLossesEnabled').checked = s.consecutive_losses_enabled || false;
+            document.getElementById('strategyMaxConsecutiveLosses').value = s.max_consecutive_losses || 3;
+            document.getElementById('strategyCooldownMinutes').value = s.cooldown_minutes || 30;
+            document.getElementById('strategyDailyTradesEnabled').checked = s.max_daily_trades_enabled || false;
+            document.getElementById('strategyMaxDailyTrades').value = s.max_daily_trades || 10;
+            document.getElementById('strategyEmaFast').value = s.ema_fast || 50;
+            document.getElementById('strategyEmaMedium').value = s.ema_medium || 100;
+            document.getElementById('strategyEmaSlow').value = s.ema_slow || 150;
+            document.getElementById('strategySlopeMin').value = s.slope_min || 0.1;
+            document.getElementById('strategySlopeCandles').value = s.slope_candles || 5;
+            document.getElementById('strategyEmaDistanceAtr').value = s.ema_distance_atr_mult || 1;
+            document.getElementById('strategyAtrPeriod').value = s.atr_period || 14;
+            document.getElementById('strategyTouchMode').value = s.touch_mode || 'low_high';
+            document.getElementById('strategyTouchTolerance').value = s.touch_tolerance || 0.1;
+            document.getElementById('strategyForbidEma150').checked = s.forbid_ema150_touch !== false;
+            document.getElementById('strategySlMode').value = s.sl_mode || 'pullback';
+            document.getElementById('strategySlBuffer').value = s.sl_buffer || 0.1;
+            document.getElementById('strategySlFixed').value = s.sl_fixed_pct || 1;
+            document.getElementById('strategyTpMode').value = s.tp_mode || 'trailing';
+            document.getElementById('strategyRrRatio').value = s.rr_ratio || 1.5;
+            document.getElementById('strategyTrailingBe').checked = s.trailing_be_enabled !== false;
+            document.getElementById('strategyBeAfterProfit').value = s.be_after_profit_pct || 0.3;
+            document.getElementById('strategyTrailingMode').value = s.trailing_mode || 'new_high_low';
+            document.getElementById('strategyTrailingBuffer').value = s.trailing_buffer || 0.1;
+            document.getElementById('strategyTradeLong').checked = s.trade_long !== false;
+            document.getElementById('strategyTradeShort').checked = s.trade_short !== false;
+
+            toggleStrategyMode();
+            toggleStrategyMaxLoss();
+            toggleStrategyConsecutiveLosses();
+            toggleStrategyDailyTrades();
+            toggleStrategySlMode();
+            toggleStrategyTpMode();
+            toggleStrategyTrailingBe();
+            updateStrategyBalanceInfo();
+            updateStrategyDepositInfo();
+        }
+
+        // Save strategy (create or update)
+        async function saveStrategy() {
+            const editId = document.getElementById('strategyEditId').value;
+            const config = {
+                name: document.getElementById('strategyName').value || '3 EMA Strategy',
+                mode: document.getElementById('strategyMode').value,
+                trading_pair: document.getElementById('strategyPair').value,
                 max_pairs: parseInt(document.getElementById('strategyMaxPairs').value),
                 timeframe: document.getElementById('strategyTimeframe').value,
                 leverage: parseInt(document.getElementById('strategyLeverage').value),
                 order_size_usdt: parseFloat(document.getElementById('strategyOrderSize').value),
                 position_size_mode: document.getElementById('strategyPositionMode').value,
+                risk_percent: parseFloat(document.getElementById('strategyRiskPercent')?.value || 2),
                 margin_mode: document.getElementById('strategyMarginMode').value,
-
-                // Risk
                 balance_usage_pct: parseInt(document.getElementById('strategyBalanceUsage').value),
-                risk_per_trade: parseFloat(document.getElementById('strategyRiskPerTrade').value),
-                daily_loss_limit_enabled: document.getElementById('strategyDailyLossEnabled').checked,
-                daily_loss_limit_pct: parseFloat(document.getElementById('strategyDailyLoss').value),
-                max_losing_streak_enabled: document.getElementById('strategyLosingStreakEnabled').checked,
-                max_losing_streak: parseInt(document.getElementById('strategyMaxLosingStreak').value),
+                max_loss_enabled: document.getElementById('strategyMaxLossEnabled').checked,
+                max_loss_pct: parseInt(document.getElementById('strategyMaxLoss').value),
+                consecutive_losses_enabled: document.getElementById('strategyConsecutiveLossesEnabled').checked,
+                max_consecutive_losses: parseInt(document.getElementById('strategyMaxConsecutiveLosses').value),
+                cooldown_minutes: parseInt(document.getElementById('strategyCooldownMinutes').value),
                 max_daily_trades_enabled: document.getElementById('strategyDailyTradesEnabled').checked,
                 max_daily_trades: parseInt(document.getElementById('strategyMaxDailyTrades').value),
-
-                // EMA
                 ema_fast: parseInt(document.getElementById('strategyEmaFast').value),
                 ema_medium: parseInt(document.getElementById('strategyEmaMedium').value),
                 ema_slow: parseInt(document.getElementById('strategyEmaSlow').value),
-
-                // Trend
                 slope_min: parseFloat(document.getElementById('strategySlopeMin').value),
                 slope_candles: parseInt(document.getElementById('strategySlopeCandles').value),
                 ema_distance_atr_mult: parseFloat(document.getElementById('strategyEmaDistanceAtr').value),
                 atr_period: parseInt(document.getElementById('strategyAtrPeriod').value),
-
-                // Entry
                 touch_mode: document.getElementById('strategyTouchMode').value,
                 touch_tolerance: parseFloat(document.getElementById('strategyTouchTolerance').value),
                 forbid_ema150_touch: document.getElementById('strategyForbidEma150').checked,
-
-                // SL
                 sl_mode: document.getElementById('strategySlMode').value,
                 sl_buffer: parseFloat(document.getElementById('strategySlBuffer').value),
                 sl_fixed_pct: parseFloat(document.getElementById('strategySlFixed').value),
-
-                // TP
                 tp_mode: document.getElementById('strategyTpMode').value,
                 rr_ratio: parseFloat(document.getElementById('strategyRrRatio').value),
                 trailing_be_enabled: document.getElementById('strategyTrailingBe').checked,
                 be_after_profit_pct: parseFloat(document.getElementById('strategyBeAfterProfit').value),
                 trailing_mode: document.getElementById('strategyTrailingMode').value,
                 trailing_buffer: parseFloat(document.getElementById('strategyTrailingBuffer').value),
-
-                // Direction
                 trade_long: document.getElementById('strategyTradeLong').checked,
                 trade_short: document.getElementById('strategyTradeShort').checked
             };
 
             try {
-                const response = await fetch('/api/strategy/3ema_pullback/settings', {
-                    method: 'POST',
+                const url = editId ? `/api/strategies/${editId}` : '/api/strategies';
+                const method = editId ? 'PUT' : 'POST';
+                const response = await fetch(url, {
+                    method: method,
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(settings)
+                    body: JSON.stringify(config)
                 });
                 const data = await response.json();
                 if (data.success) {
                     closeModal('strategyModal');
-                    addLog(t('strategySaved') || 'Strategy settings saved');
+                    loadStrategies();
+                    addLog(editId ? (t('strategyUpdated') || 'Strategy updated') : (t('strategyCreated') || 'Strategy created'));
                 } else {
-                    alert(data.error || 'Failed to save settings');
+                    alert(data.error || 'Failed to save strategy');
                 }
             } catch (err) {
-                console.error('Failed to save strategy settings:', err);
-                alert('Failed to save strategy settings');
+                console.error('Failed to save strategy:', err);
+                alert('Failed to save strategy');
             }
         }
 
-        // Strategy toggle functions
-        function toggleStrategyDailyLoss() {
-            const enabled = document.getElementById('strategyDailyLossEnabled').checked;
-            document.getElementById('strategyDailyLossContainer').style.display = enabled ? 'block' : 'none';
+        // Delete strategy
+        async function deleteStrategy(id) {
+            if (!confirm(t('confirmDeleteStrategy') || 'Delete this strategy?')) return;
+            try {
+                const response = await fetch(`/api/strategies/${id}`, { method: 'DELETE' });
+                const data = await response.json();
+                if (data.success) {
+                    loadStrategies();
+                    addLog(t('strategyDeleted') || 'Strategy deleted');
+                }
+            } catch (err) {
+                console.error('Failed to delete strategy:', err);
+            }
         }
 
-        function toggleStrategyLosingStreak() {
-            const enabled = document.getElementById('strategyLosingStreakEnabled').checked;
-            document.getElementById('strategyLosingStreakContainer').style.display = enabled ? 'block' : 'none';
+        // Start strategy
+        async function startSpecificStrategy(id) {
+            try {
+                const response = await fetch(`/api/strategies/${id}/start`, { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    loadStrategies();
+                    addLog(t('strategyStarted') || 'Strategy started');
+                } else {
+                    alert(data.error || 'Failed to start strategy');
+                }
+            } catch (err) {
+                console.error('Failed to start strategy:', err);
+            }
+        }
+
+        // Stop strategy
+        async function stopSpecificStrategy(id) {
+            try {
+                const response = await fetch(`/api/strategies/${id}/stop`, { method: 'POST' });
+                const data = await response.json();
+                if (data.success) {
+                    loadStrategies();
+                    addLog(t('strategyStopped') || 'Strategy stopped');
+                } else {
+                    alert(data.error || 'Failed to stop strategy');
+                }
+            } catch (err) {
+                console.error('Failed to stop strategy:', err);
+            }
+        }
+
+        // Render strategies as cards
+        function renderStrategies() {
+            const grid = document.getElementById('strategiesGrid');
+            const placeholder = document.getElementById('noStrategiesPlaceholder');
+
+            if (strategiesData.length === 0) {
+                grid.innerHTML = '';
+                if (placeholder) placeholder.style.display = 'block';
+                return;
+            }
+
+            if (placeholder) placeholder.style.display = 'none';
+
+            grid.innerHTML = strategiesData.map(s => {
+                const totalTrades = s.total_trades || 0;
+                const winRate = totalTrades > 0 ? ((s.winning_trades || 0) / totalTrades * 100) : 0;
+                const pnl = s.total_pnl || 0;
+                const pnlColor = pnl > 0 ? '#00ff88' : (pnl < 0 ? '#ff4444' : '#888');
+                const pnlSign = pnl >= 0 ? '+' : '';
+                const isRunning = s.status === 'running';
+                const indicatorClass = s.status === 'error' ? 'error' : s.status;
+
+                return `
+                <div class="bot-card ${isRunning ? 'running' : ''}" style="min-width: 380px;" data-strategy-id="${s.id}">
+                    <div class="bot-header">
+                        <span class="status-indicator ${indicatorClass}"></span>
+                        <span class="bot-name">${s.name}</span>
+                        <span style="font-size: 14px; color: ${pnlColor}; margin-left: 10px;">${pnlSign}${pnl.toFixed(2)} USDT</span>
+                    </div>
+                    <div class="bot-details" style="font-size: 12px;">
+                        <div><strong>Type:</strong> 3 EMA Pullback | <strong>Mode:</strong> ${s.mode === 'auto_search' ? '<span style="color: #ffcc00;">Auto</span>' : 'Manual'}</div>
+                        <div><strong>TF:</strong> ${s.timeframe} | <strong>Lev:</strong> ${s.leverage}x | <strong>Order:</strong> ${s.order_size_usdt} USDT</div>
+                        <div><strong>EMA:</strong> ${s.ema_fast}/${s.ema_medium}/${s.ema_slow} | <strong>SL:</strong> ${s.sl_mode} | <strong>TP:</strong> ${s.tp_mode}</div>
+                    </div>
+                    <div class="bot-stats" style="margin: 10px 0; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div style="text-align: center; flex: 1;">
+                                <div style="font-size: 18px; font-weight: bold; color: #00d4ff;">0</div>
+                                <div style="font-size: 10px; color: #888;">Open</div>
+                            </div>
+                            <div style="text-align: center; flex: 1.5;">
+                                <div style="font-size: 16px; font-weight: bold; color: ${pnlColor};">${pnlSign}${pnl.toFixed(2)}</div>
+                                <div style="font-size: 10px; color: #888;">PnL</div>
+                            </div>
+                            <div style="text-align: center; flex: 1;">
+                                <div style="font-size: 18px; font-weight: bold; color: ${winRate >= 50 ? '#00ff88' : '#888'};">${winRate.toFixed(0)}%</div>
+                                <div style="font-size: 10px; color: #888;">Win</div>
+                            </div>
+                            <div style="text-align: center; flex: 1;">
+                                <div style="font-size: 18px; font-weight: bold; color: #888;">${totalTrades}</div>
+                                <div style="font-size: 10px; color: #888;">Trades</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bot-actions">
+                        ${isRunning ?
+                            `<button class="btn btn-danger" onclick="stopSpecificStrategy('${s.id}')">${t('stop')}</button>` :
+                            `<button class="btn btn-success" onclick="startSpecificStrategy('${s.id}')">${t('start')}</button>`
+                        }
+                        <button class="btn btn-primary" onclick="showEditStrategyModal('${s.id}')" ${isRunning ? 'disabled' : ''}>${t('edit')}</button>
+                        <button class="btn btn-secondary" onclick="deleteStrategy('${s.id}')" ${isRunning ? 'disabled' : ''}>${t('delete')}</button>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        // Strategy toggle functions
+        function toggleStrategyMode() {
+            const mode = document.getElementById('strategyMode').value;
+            document.getElementById('strategyPairContainer').style.display = mode === 'manual' ? 'flex' : 'none';
+            document.getElementById('strategyMaxPairsContainer').style.display = mode === 'auto_search' ? 'flex' : 'none';
+        }
+
+        function toggleStrategyMaxLoss() {
+            const enabled = document.getElementById('strategyMaxLossEnabled').checked;
+            document.getElementById('strategyMaxLossContainer').style.display = enabled ? 'flex' : 'none';
+        }
+
+        function toggleStrategyConsecutiveLosses() {
+            const enabled = document.getElementById('strategyConsecutiveLossesEnabled').checked;
+            document.getElementById('strategyConsecutiveLossesContainer').style.display = enabled ? 'block' : 'none';
+            document.getElementById('strategyCooldownContainer').style.display = enabled ? 'block' : 'none';
         }
 
         function toggleStrategyDailyTrades() {
@@ -6007,15 +6244,21 @@ DASHBOARD_HTML = r"""
             document.getElementById('strategyDailyTradesContainer').style.display = enabled ? 'block' : 'none';
         }
 
+        function toggleStrategyRiskPercent() {
+            const mode = document.getElementById('strategyPositionMode').value;
+            const container = document.getElementById('strategyRiskPercentContainer');
+            if (container) container.style.display = mode === 'risk_percent' ? 'block' : 'none';
+        }
+
         function toggleStrategySlMode() {
             const mode = document.getElementById('strategySlMode').value;
-            document.getElementById('strategySlBufferContainer').style.display = mode === 'pullback' ? 'flex' : 'none';
-            document.getElementById('strategySlFixedContainer').style.display = mode === 'fixed' ? 'flex' : 'none';
+            document.getElementById('strategySlBufferContainer').style.display = mode === 'pullback' ? 'block' : 'none';
+            document.getElementById('strategySlFixedContainer').style.display = mode === 'fixed' ? 'block' : 'none';
         }
 
         function toggleStrategyTpMode() {
             const mode = document.getElementById('strategyTpMode').value;
-            document.getElementById('strategyRrContainer').style.display = mode === 'fixed_rr' ? 'flex' : 'none';
+            document.getElementById('strategyRrContainer').style.display = mode === 'fixed_rr' ? 'block' : 'none';
             document.getElementById('strategyTrailingContainer').style.display = mode === 'trailing' ? 'block' : 'none';
         }
 
@@ -6024,84 +6267,53 @@ DASHBOARD_HTML = r"""
             document.getElementById('strategyBeAfterContainer').style.display = enabled ? 'block' : 'none';
         }
 
-        // Strategy Start/Stop functions
-        async function startStrategy() {
-            try {
-                // Save settings first
-                await saveStrategySettings();
-
-                const response = await fetch('/api/strategy/3ema_pullback/start', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-                const data = await response.json();
-
-                if (data.success) {
-                    addLog(t('strategyStarted') || 'Strategy started');
-                    updateStrategyStatusUI(true);
-                } else {
-                    alert(data.error || 'Failed to start strategy');
-                }
-            } catch (err) {
-                console.error('Failed to start strategy:', err);
-                alert('Failed to start strategy');
-            }
+        function updateStrategyDepositInfo() {
+            const leverage = parseInt(document.getElementById('strategyLeverage').value) || 10;
+            const orderSize = parseFloat(document.getElementById('strategyOrderSize').value) || 10;
+            const margin = orderSize / leverage;
+            document.getElementById('strategyDepositUsed').textContent = margin.toFixed(2);
         }
 
-        async function stopStrategy() {
-            try {
-                const response = await fetch('/api/strategy/3ema_pullback/stop', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-                const data = await response.json();
-
-                if (data.success) {
-                    addLog(t('strategyStopped') || 'Strategy stopped');
-                    updateStrategyStatusUI(false);
-                } else {
-                    alert(data.error || 'Failed to stop strategy');
-                }
-            } catch (err) {
-                console.error('Failed to stop strategy:', err);
-                alert('Failed to stop strategy');
-            }
-        }
-
-        function updateStrategyStatusUI(running) {
-            const indicator = document.getElementById('strategyStatusIndicator');
-            const startBtn = document.getElementById('strategyStartBtn');
-            const stopBtn = document.getElementById('strategyStopBtn');
-            const posInfo = document.getElementById('strategyPositionsInfo');
-
-            if (running) {
-                indicator.textContent = t('running') || 'Running';
-                indicator.style.background = 'rgba(0, 255, 136, 0.2)';
-                indicator.style.color = '#00ff88';
-                startBtn.style.display = 'none';
-                stopBtn.style.display = 'block';
-                posInfo.style.display = 'block';
+        function updateStrategyBalanceInfo() {
+            const usagePct = parseInt(document.getElementById('strategyBalanceUsage').value) || 100;
+            const totalEl = document.getElementById('strategyTotalBalance');
+            const allocatedEl = document.getElementById('strategyAllocatedBalance');
+            if (globalBalanceForStrategy > 0) {
+                const allocated = globalBalanceForStrategy * usagePct / 100;
+                if (totalEl) totalEl.textContent = globalBalanceForStrategy.toFixed(2);
+                if (allocatedEl) allocatedEl.textContent = allocated.toFixed(2);
             } else {
-                indicator.textContent = t('stopped') || 'Stopped';
-                indicator.style.background = '#333';
-                indicator.style.color = '#888';
-                startBtn.style.display = 'block';
-                stopBtn.style.display = 'none';
-                posInfo.style.display = 'none';
+                if (totalEl) totalEl.textContent = '-';
+                if (allocatedEl) allocatedEl.textContent = '-';
             }
         }
 
-        async function loadStrategyStatus() {
-            try {
-                const response = await fetch('/api/strategy/3ema_pullback/status');
-                const data = await response.json();
-                updateStrategyStatusUI(data.running);
-                if (data.positions !== undefined) {
-                    document.getElementById('strategyPositionsCount').textContent = data.positions;
-                }
-            } catch (err) {
-                console.error('Failed to load strategy status:', err);
-            }
+        function updateStrategyMaxLossInfo() {
+            const usagePct = parseInt(document.getElementById('strategyBalanceUsage').value) || 100;
+            const maxLossPct = parseInt(document.getElementById('strategyMaxLoss').value) || 50;
+            const allocated = globalBalanceForStrategy * usagePct / 100;
+            const maxLossAmount = allocated * maxLossPct / 100;
+            const el = document.getElementById('strategyMaxLossAmount');
+            if (el) el.textContent = maxLossAmount.toFixed(2);
+        }
+
+        // Pair search for strategy
+        function filterStrategyPairs() {
+            const search = document.getElementById('strategyPairSearch').value.toUpperCase();
+            const dropdown = document.getElementById('strategyPairDropdown');
+            const pairs = availablePairs.filter(p => p.toUpperCase().includes(search)).slice(0, 20);
+            dropdown.innerHTML = pairs.map(p => `<div style="padding: 8px; cursor: pointer; hover: background: #333;" onclick="selectStrategyPair('${p}')">${p}</div>`).join('');
+        }
+
+        function showStrategyPairDropdown() {
+            filterStrategyPairs();
+            document.getElementById('strategyPairDropdown').style.display = 'block';
+        }
+
+        function selectStrategyPair(pair) {
+            document.getElementById('strategyPair').value = pair;
+            document.getElementById('strategyPairSearch').value = pair;
+            document.getElementById('strategyPairDropdown').style.display = 'none';
         }
 
         // Bots Management
@@ -8361,99 +8573,235 @@ async def save_settings(settings: dict):
         return {"success": False, "message": str(e)}
 
 
-# 3 EMA Pullback Strategy settings storage
-ema_pullback_settings = {
-    "name": "3 EMA Scalping",
-    "enabled": False,
-    "max_pairs": 1,
-    "timeframe": "1m",
-    "leverage": 10,
-    "order_size_usdt": 10,
-    "position_size_mode": "fixed",
-    "margin_mode": "isolated",
-    "balance_usage_pct": 30,
-    "risk_per_trade": 2.0,
-    "daily_loss_limit_enabled": True,
-    "daily_loss_limit_pct": 5.0,
-    "max_losing_streak_enabled": True,
-    "max_losing_streak": 3,
-    "max_daily_trades_enabled": False,
-    "max_daily_trades": 10,
-    "ema_fast": 50,
-    "ema_medium": 100,
-    "ema_slow": 150,
-    "slope_min": 0.1,
-    "slope_candles": 5,
-    "ema_distance_atr_mult": 1.0,
-    "atr_period": 14,
-    "touch_mode": "low_high",
-    "touch_tolerance": 0.1,
-    "forbid_ema150_touch": True,
-    "sl_mode": "pullback",
-    "sl_buffer": 0.1,
-    "sl_fixed_pct": 1.0,
-    "tp_mode": "trailing",
-    "rr_ratio": 1.5,
-    "trailing_be_enabled": True,
-    "be_after_profit_pct": 0.3,
-    "trailing_mode": "new_high_low",
-    "trailing_buffer": 0.1,
-    "trade_long": True,
-    "trade_short": True,
-}
+# ============================================================
+# 3 EMA Pullback Strategies Storage (multiple strategies)
+# ============================================================
+import uuid
+from datetime import datetime
 
+strategies_storage = []  # List of strategy configs with unique IDs
 
-@app.get("/api/strategy/3ema_pullback/settings")
-async def get_strategy_settings():
-    """Get 3 EMA Pullback strategy settings."""
-    return {"settings": ema_pullback_settings}
+# Default strategy template
+def get_default_strategy_config():
+    return {
+        "id": str(uuid.uuid4()),
+        "name": "3 EMA Strategy",
+        "type": "3ema_pullback",
+        "status": "stopped",  # stopped, running, searching, error
+        "created_at": datetime.now().isoformat(),
+        "mode": "auto_search",  # auto_search or manual
+        "trading_pair": "BTCUSDT",
+        "max_pairs": 1,
+        "timeframe": "1m",
+        "leverage": 10,
+        "order_size_usdt": 10,
+        "position_size_mode": "fixed_amount",
+        "risk_percent": 2.0,
+        "margin_mode": "isolated",
+        "balance_usage_pct": 100,
+        "max_loss_enabled": False,
+        "max_loss_pct": 50,
+        "consecutive_losses_enabled": False,
+        "max_consecutive_losses": 3,
+        "cooldown_minutes": 30,
+        "max_daily_trades_enabled": False,
+        "max_daily_trades": 10,
+        "ema_fast": 50,
+        "ema_medium": 100,
+        "ema_slow": 150,
+        "slope_min": 0.1,
+        "slope_candles": 5,
+        "ema_distance_atr_mult": 1.0,
+        "atr_period": 14,
+        "touch_mode": "low_high",
+        "touch_tolerance": 0.1,
+        "forbid_ema150_touch": True,
+        "sl_mode": "pullback",
+        "sl_buffer": 0.1,
+        "sl_fixed_pct": 1.0,
+        "tp_mode": "trailing",
+        "rr_ratio": 1.5,
+        "trailing_be_enabled": True,
+        "be_after_profit_pct": 0.3,
+        "trailing_mode": "new_high_low",
+        "trailing_buffer": 0.1,
+        "trade_long": True,
+        "trade_short": True,
+        # Statistics
+        "total_trades": 0,
+        "winning_trades": 0,
+        "losing_trades": 0,
+        "total_pnl": 0.0,
+    }
 
+# Strategy runners storage (strategy_id -> runner)
+strategy_runners = {}
 
-@app.post("/api/strategy/3ema_pullback/settings")
-async def save_strategy_settings(settings: dict):
-    """Save 3 EMA Pullback strategy settings."""
-    try:
-        # Update settings
-        for key, value in settings.items():
-            if key in ema_pullback_settings:
-                ema_pullback_settings[key] = value
-
-        # Log settings change
-        import logging
-        logger = logging.getLogger("strategy_3ema")
-        logger.info(f"Strategy settings updated: enabled={ema_pullback_settings['enabled']}, "
-                    f"timeframe={ema_pullback_settings['timeframe']}, "
-                    f"leverage={ema_pullback_settings['leverage']}x")
-
-        return {"success": True, "message": "Strategy settings saved"}
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-
-
-# Strategy state and callbacks
+# State and callbacks for strategies
 ema_strategy_state = {
-    "running": False,
     "start_callback": None,
     "stop_callback": None,
 }
 
 
-@app.get("/api/strategy/3ema_pullback/status")
-async def get_strategy_status():
-    """Get 3 EMA Pullback strategy status."""
-    from aila.strategies.ema_pullback_runner import get_runner
-    runner = get_runner()
-    if runner:
-        return {
-            "running": runner.running,
-            "positions": len(runner.get_positions()),
-            "stats": runner.get_stats()
-        }
-    return {
-        "running": False,
-        "positions": 0,
-        "stats": None
-    }
+@app.get("/api/strategies")
+async def get_all_strategies():
+    """Get all strategies."""
+    # Update status from runners
+    for strategy in strategies_storage:
+        if strategy["id"] in strategy_runners:
+            runner = strategy_runners[strategy["id"]]
+            strategy["status"] = "running" if runner.running else "stopped"
+            stats = runner.get_stats()
+            if stats:
+                strategy["total_trades"] = stats.get("total_trades", 0)
+                strategy["winning_trades"] = stats.get("winning_trades", 0)
+                strategy["losing_trades"] = stats.get("losing_trades", 0)
+                strategy["total_pnl"] = stats.get("total_pnl", 0.0)
+    return {"strategies": strategies_storage}
+
+
+@app.post("/api/strategies")
+async def create_strategy(config: dict):
+    """Create a new strategy."""
+    try:
+        strategy = get_default_strategy_config()
+        # Update with provided config
+        for key, value in config.items():
+            if key in strategy and key not in ["id", "created_at", "type"]:
+                strategy[key] = value
+
+        strategies_storage.append(strategy)
+
+        import logging
+        logger = logging.getLogger("strategy_3ema")
+        logger.info(f"Strategy created: {strategy['name']} (id={strategy['id']})")
+
+        return {"success": True, "strategy": strategy}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.get("/api/strategies/{strategy_id}")
+async def get_strategy(strategy_id: str):
+    """Get a specific strategy."""
+    for strategy in strategies_storage:
+        if strategy["id"] == strategy_id:
+            # Update status from runner
+            if strategy_id in strategy_runners:
+                runner = strategy_runners[strategy_id]
+                strategy["status"] = "running" if runner.running else "stopped"
+            return {"strategy": strategy}
+    return {"error": "Strategy not found"}
+
+
+@app.put("/api/strategies/{strategy_id}")
+async def update_strategy(strategy_id: str, config: dict):
+    """Update a strategy."""
+    try:
+        for i, strategy in enumerate(strategies_storage):
+            if strategy["id"] == strategy_id:
+                # Update with provided config
+                for key, value in config.items():
+                    if key in strategy and key not in ["id", "created_at", "type"]:
+                        strategies_storage[i][key] = value
+
+                import logging
+                logger = logging.getLogger("strategy_3ema")
+                logger.info(f"Strategy updated: {strategies_storage[i]['name']} (id={strategy_id})")
+
+                return {"success": True, "strategy": strategies_storage[i]}
+        return {"success": False, "error": "Strategy not found"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.delete("/api/strategies/{strategy_id}")
+async def delete_strategy(strategy_id: str):
+    """Delete a strategy."""
+    try:
+        # Stop if running
+        if strategy_id in strategy_runners:
+            runner = strategy_runners[strategy_id]
+            if runner.running:
+                await runner.stop()
+            del strategy_runners[strategy_id]
+
+        # Remove from storage
+        for i, strategy in enumerate(strategies_storage):
+            if strategy["id"] == strategy_id:
+                del strategies_storage[i]
+                return {"success": True}
+        return {"success": False, "error": "Strategy not found"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/api/strategies/{strategy_id}/start")
+async def start_strategy(strategy_id: str):
+    """Start a strategy."""
+    try:
+        for strategy in strategies_storage:
+            if strategy["id"] == strategy_id:
+                # Check if callback is set
+                if ema_strategy_state.get("start_callback"):
+                    await ema_strategy_state["start_callback"](strategy_id, strategy)
+                    strategy["status"] = "running"
+                    return {"success": True, "message": "Strategy started"}
+                else:
+                    return {"success": False, "error": "Strategy runner not initialized"}
+        return {"success": False, "error": "Strategy not found"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/api/strategies/{strategy_id}/stop")
+async def stop_strategy(strategy_id: str):
+    """Stop a strategy."""
+    try:
+        for strategy in strategies_storage:
+            if strategy["id"] == strategy_id:
+                if strategy_id in strategy_runners:
+                    runner = strategy_runners[strategy_id]
+                    if runner.running:
+                        await runner.stop()
+                    strategy["status"] = "stopped"
+                    return {"success": True, "message": "Strategy stopped"}
+                strategy["status"] = "stopped"
+                return {"success": True, "message": "Strategy was not running"}
+        return {"success": False, "error": "Strategy not found"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.get("/api/strategies/{strategy_id}/status")
+async def get_strategy_status(strategy_id: str):
+    """Get strategy status."""
+    for strategy in strategies_storage:
+        if strategy["id"] == strategy_id:
+            result = {
+                "running": strategy["status"] == "running",
+                "status": strategy["status"],
+                "positions": 0,
+                "stats": None
+            }
+            if strategy_id in strategy_runners:
+                runner = strategy_runners[strategy_id]
+                result["running"] = runner.running
+                result["status"] = "running" if runner.running else "stopped"
+                result["positions"] = len(runner.get_positions())
+                result["stats"] = runner.get_stats()
+            return result
+    return {"running": False, "status": "not_found", "positions": 0, "stats": None}
+
+
+@app.get("/api/strategies/{strategy_id}/positions")
+async def get_strategy_positions(strategy_id: str):
+    """Get open positions for a strategy."""
+    if strategy_id in strategy_runners:
+        runner = strategy_runners[strategy_id]
+        return {"positions": runner.get_positions()}
+    return {"positions": []}
 
 
 @app.post("/api/strategy/3ema_pullback/start")
