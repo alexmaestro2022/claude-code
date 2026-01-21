@@ -457,7 +457,7 @@ class TripleSuperTrendStrategy(BaseStrategy):
                 "just_triggered": st3_trigger,
                 "value": st3_value,
             },
-            "ema_filter_passed": ema_filter_result in ["PASS", "PASS_SOFT", "N/A"],
+            "ema_filter_passed": ema_filter_result.lower() in ["passed", "n/a"] or "soft" in ema_filter_result.lower(),
             "ema_position": "выше EMA" if ema_trend > 0 else ("ниже EMA" if ema_trend < 0 else "N/A"),
         }
 
