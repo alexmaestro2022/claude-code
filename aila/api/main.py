@@ -1448,6 +1448,21 @@ DASHBOARD_HTML = r"""
             border-color: rgba(255,255,255,0.1);
         }
         .block-basic h4 { color: #888; }
+        .block-sl {
+            background: rgba(255,68,68,0.08);
+            border-color: rgba(255,68,68,0.3);
+        }
+        .block-sl h4 { color: #ff6b6b; }
+        .block-tp {
+            background: rgba(0,255,136,0.08);
+            border-color: rgba(0,255,136,0.3);
+        }
+        .block-tp h4 { color: #00ff88; }
+        .block-direction {
+            background: rgba(138,43,226,0.08);
+            border-color: rgba(138,43,226,0.3);
+        }
+        .block-direction h4 { color: #ba55d3; }
 
         /* Compact Settings Grid */
         .settings-row {
@@ -1755,6 +1770,55 @@ DASHBOARD_HTML = r"""
         .tab-content.active {
             display: block;
         }
+
+        /* Strategy dropdown */
+        .strategy-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .strategy-dropdown-content {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: rgba(30, 30, 50, 0.98);
+            min-width: 200px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-top: 5px;
+        }
+
+        .strategy-dropdown-content.show {
+            display: block;
+        }
+
+        .strategy-dropdown-content a {
+            color: #e0e0e0;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+            transition: all 0.2s;
+        }
+
+        .strategy-dropdown-content a:hover {
+            background: rgba(0, 212, 255, 0.1);
+            color: #00d4ff;
+        }
+
+        .strategy-dropdown-content a:first-child {
+            border-radius: 8px 8px 0 0;
+        }
+
+        .strategy-dropdown-content a:last-child {
+            border-radius: 0 0 8px 8px;
+        }
+
+        .strategy-dropdown-content a:only-child {
+            border-radius: 8px;
+        }
     </style>
 </head>
 <body>
@@ -1778,6 +1842,12 @@ DASHBOARD_HTML = r"""
             <button class="tab active" onclick="showTab('dashboard')" data-i18n="dashboard">Dashboard</button>
             <button class="tab" onclick="showTab('charts')" data-i18n="charts">Charts</button>
             <button class="tab" onclick="showTab('pairs')" data-i18n="tradingPairs">Trading Pairs</button>
+            <div class="strategy-dropdown">
+                <button class="tab" onclick="toggleStrategyDropdown(event)" data-i18n="strategies">Strategies</button>
+                <div class="strategy-dropdown-content" id="strategyDropdown">
+                    <a href="#" onclick="openStrategySettings('3ema_pullback'); return false;">3 EMA Pullback</a>
+                </div>
+            </div>
         </div>
 
         <!-- Dashboard Tab -->
@@ -3352,6 +3422,339 @@ DASHBOARD_HTML = r"""
         </div>
     </div>
 
+    <!-- 3 EMA Pullback Strategy Settings Modal -->
+    <div class="modal" id="strategyModal">
+        <div class="modal-content modal-compact" style="overflow-y: auto; max-width: 600px; max-height: 90vh;">
+            <div class="modal-header">
+                <h3 data-i18n="strategy3EMA">3 EMA Pullback Strategy</h3>
+                <button class="modal-close" onclick="closeModal('strategyModal')">&times;</button>
+            </div>
+
+            <!-- Block 1: Basic Settings -->
+            <div class="settings-block block-basic">
+                <h4><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span> <span data-i18n="basicSettings">Basic</span></h4>
+                <div class="settings-row">
+                    <div class="setting-compact">
+                        <label data-i18n="strategyName">Name</label>
+                        <input type="text" id="strategyName" value="3 EMA Scalping">
+                    </div>
+                    <div class="setting-compact">
+                        <label data-i18n="strategyStatus">Status</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="strategyEnabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="settings-row">
+                    <div class="setting-compact">
+                        <label data-i18n="maxPairs">Max Pairs</label>
+                        <select id="strategyMaxPairs">
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="5">5</option>
+                            <option value="10">10</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact">
+                        <label data-i18n="timeframe">Timeframe</label>
+                        <select id="strategyTimeframe">
+                            <option value="1m" selected>1m</option>
+                            <option value="3m">3m</option>
+                            <option value="5m">5m</option>
+                            <option value="15m">15m</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="settings-row">
+                    <div class="setting-compact">
+                        <label data-i18n="leverage">Leverage</label>
+                        <select id="strategyLeverage">
+                            <option value="1">1x</option>
+                            <option value="2">2x</option>
+                            <option value="3">3x</option>
+                            <option value="5">5x</option>
+                            <option value="10" selected>10x</option>
+                            <option value="15">15x</option>
+                            <option value="20">20x</option>
+                            <option value="25">25x</option>
+                            <option value="50">50x</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact">
+                        <label data-i18n="orderSize">Order Size (USDT)</label>
+                        <input type="number" id="strategyOrderSize" value="10" min="5" step="1">
+                    </div>
+                </div>
+                <div class="settings-row">
+                    <div class="setting-compact">
+                        <label data-i18n="positionSizeMode">Position Size Mode</label>
+                        <select id="strategyPositionMode">
+                            <option value="fixed" data-i18n="fixedUsdt">Fixed USDT</option>
+                            <option value="percent" data-i18n="percentBalance">% of Balance</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact">
+                        <label data-i18n="marginMode">Margin Mode</label>
+                        <select id="strategyMarginMode">
+                            <option value="isolated" selected>Isolated</option>
+                            <option value="cross">Cross</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Block 2: Risk Management -->
+            <div class="settings-block block-risk">
+                <h4><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span> <span data-i18n="riskManagement">Risk Management</span></h4>
+                <div class="settings-row">
+                    <div class="setting-compact" style="flex: 1;">
+                        <label data-i18n="balanceUsage">Balance Usage (%)</label>
+                        <div class="range-container">
+                            <input type="range" class="range-slider range-slim" id="strategyBalanceUsage" value="30" min="1" max="100" oninput="updateSliderValue(this, 'strategyBalanceValue')">
+                            <span class="range-value" id="strategyBalanceValue">30%</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-row">
+                    <div class="setting-compact">
+                        <label data-i18n="riskPerTrade">Risk per Trade (%)</label>
+                        <input type="number" id="strategyRiskPerTrade" value="2" min="0.5" max="5" step="0.1">
+                    </div>
+                </div>
+                <div class="settings-row">
+                    <div class="setting-compact" style="flex: 0 0 auto;">
+                        <label data-i18n="dailyLossLimit">Daily Loss Limit (%)</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="strategyDailyLossEnabled" checked onchange="toggleStrategyDailyLoss()">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-compact" id="strategyDailyLossContainer">
+                        <input type="number" id="strategyDailyLoss" value="5" min="1" max="50" step="0.5">
+                    </div>
+                </div>
+                <div class="settings-row">
+                    <div class="setting-compact" style="flex: 0 0 auto;">
+                        <label data-i18n="maxLosingStreak">Max Losing Streak</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="strategyLosingStreakEnabled" checked onchange="toggleStrategyLosingStreak()">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-compact" id="strategyLosingStreakContainer">
+                        <select id="strategyMaxLosingStreak">
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3" selected>3</option>
+                            <option value="5">5</option>
+                            <option value="10">10</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="settings-row">
+                    <div class="setting-compact" style="flex: 0 0 auto;">
+                        <label data-i18n="maxDailyTrades">Max Daily Trades</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="strategyDailyTradesEnabled" onchange="toggleStrategyDailyTrades()">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-compact" id="strategyDailyTradesContainer" style="display: none;">
+                        <input type="number" id="strategyMaxDailyTrades" value="10" min="1" max="100">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Block 3.1: EMA Parameters -->
+            <div class="settings-block block-strategy">
+                <h4><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg></span> <span data-i18n="emaParams">EMA Parameters</span></h4>
+                <div class="settings-row">
+                    <div class="setting-compact">
+                        <label>EMA Fast</label>
+                        <input type="number" id="strategyEmaFast" value="50" min="10" max="100">
+                    </div>
+                    <div class="setting-compact">
+                        <label>EMA Medium</label>
+                        <input type="number" id="strategyEmaMedium" value="100" min="50" max="200">
+                    </div>
+                    <div class="setting-compact">
+                        <label>EMA Slow</label>
+                        <input type="number" id="strategyEmaSlow" value="150" min="100" max="300">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Block 3.2: Trend Filter -->
+            <div class="settings-block block-strategy">
+                <h4><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span> <span data-i18n="trendFilter">Trend Filter</span></h4>
+                <div class="settings-row">
+                    <div class="setting-compact">
+                        <label data-i18n="minSlope">Min Slope (%)</label>
+                        <input type="number" id="strategySlopeMin" value="0.1" min="0.01" max="1" step="0.01">
+                    </div>
+                    <div class="setting-compact">
+                        <label data-i18n="slopeCandles">Candles for Slope</label>
+                        <input type="number" id="strategySlopeCandles" value="5" min="3" max="20">
+                    </div>
+                </div>
+                <div class="settings-row">
+                    <div class="setting-compact">
+                        <label data-i18n="emaDistanceAtr">EMA Distance (ATR mult)</label>
+                        <select id="strategyEmaDistanceAtr">
+                            <option value="0.5">0.5x</option>
+                            <option value="1" selected>1x</option>
+                            <option value="1.5">1.5x</option>
+                            <option value="2">2x</option>
+                            <option value="3">3x</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact">
+                        <label data-i18n="atrPeriod">ATR Period</label>
+                        <input type="number" id="strategyAtrPeriod" value="14" min="7" max="21">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Block 3.3: Entry Conditions -->
+            <div class="settings-block block-strategy">
+                <h4><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span> <span data-i18n="entryConditions">Entry Conditions</span></h4>
+                <div class="settings-row">
+                    <div class="setting-compact">
+                        <label data-i18n="ema100TouchMode">EMA100 Touch Mode</label>
+                        <select id="strategyTouchMode">
+                            <option value="low_high" selected data-i18n="lowHighTouch">Low/High touches</option>
+                            <option value="close" data-i18n="closeTouch">Close touches</option>
+                        </select>
+                    </div>
+                    <div class="setting-compact">
+                        <label data-i18n="touchTolerance">Touch Tolerance (%)</label>
+                        <input type="number" id="strategyTouchTolerance" value="0.1" min="0" max="0.5" step="0.01">
+                    </div>
+                </div>
+                <div class="settings-row">
+                    <div class="setting-compact">
+                        <label data-i18n="forbidEma150Touch">Forbid EMA150 Touch</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="strategyForbidEma150" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Block 3.4: Stop Loss -->
+            <div class="settings-block block-sl">
+                <h4><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg></span> <span data-i18n="stopLoss">Stop Loss</span></h4>
+                <div class="settings-row">
+                    <div class="setting-compact">
+                        <label data-i18n="slMode">SL Mode</label>
+                        <select id="strategySlMode" onchange="toggleStrategySlMode()">
+                            <option value="pullback" selected data-i18n="slPullback">Below/Above Pullback</option>
+                            <option value="fixed" data-i18n="slFixed">Fixed %</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="settings-row" id="strategySlBufferContainer">
+                    <div class="setting-compact">
+                        <label data-i18n="slBuffer">SL Buffer (%)</label>
+                        <input type="number" id="strategySlBuffer" value="0.1" min="0.05" max="0.5" step="0.01">
+                    </div>
+                </div>
+                <div class="settings-row" id="strategySlFixedContainer" style="display: none;">
+                    <div class="setting-compact">
+                        <label data-i18n="slFixedPct">Fixed SL (%)</label>
+                        <input type="number" id="strategySlFixed" value="1" min="0.5" max="5" step="0.1">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Block 3.5: Take Profit -->
+            <div class="settings-block block-tp">
+                <h4><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span> <span data-i18n="takeProfit">Take Profit</span></h4>
+                <div class="settings-row">
+                    <div class="setting-compact">
+                        <label data-i18n="tpMode">TP Mode</label>
+                        <select id="strategyTpMode" onchange="toggleStrategyTpMode()">
+                            <option value="trailing" selected data-i18n="tpTrailing">Trailing</option>
+                            <option value="fixed_rr" data-i18n="tpFixedRR">Fixed R:R</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="settings-row" id="strategyRrContainer" style="display: none;">
+                    <div class="setting-compact">
+                        <label data-i18n="rrRatio">R:R Ratio</label>
+                        <select id="strategyRrRatio">
+                            <option value="1">1:1</option>
+                            <option value="1.5" selected>1.5:1</option>
+                            <option value="2">2:1</option>
+                            <option value="2.5">2.5:1</option>
+                            <option value="3">3:1</option>
+                            <option value="5">5:1</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="strategyTrailingContainer">
+                    <div class="settings-row">
+                        <div class="setting-compact">
+                            <label data-i18n="trailingBe">Move to Breakeven</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="strategyTrailingBe" checked onchange="toggleStrategyTrailingBe()">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+                        <div class="setting-compact" id="strategyBeAfterContainer">
+                            <label data-i18n="beAfterProfit">BE After Profit (%)</label>
+                            <input type="number" id="strategyBeAfterProfit" value="0.3" min="0.1" max="1" step="0.1">
+                        </div>
+                    </div>
+                    <div class="settings-row">
+                        <div class="setting-compact">
+                            <label data-i18n="trailingMode">Trailing Mode</label>
+                            <select id="strategyTrailingMode">
+                                <option value="new_high_low" selected data-i18n="trailNewHighLow">On New High/Low</option>
+                                <option value="ema50" data-i18n="trailEma50">Follow EMA50</option>
+                                <option value="candles" data-i18n="trailCandles">By Candles</option>
+                            </select>
+                        </div>
+                        <div class="setting-compact">
+                            <label data-i18n="trailingBuffer">Trail Buffer (%)</label>
+                            <input type="number" id="strategyTrailingBuffer" value="0.1" min="0.05" max="0.3" step="0.01">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Block 3.6: Trade Direction -->
+            <div class="settings-block block-direction">
+                <h4><span class="icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg></span> <span data-i18n="tradeDirection">Trade Direction</span></h4>
+                <div class="settings-row">
+                    <div class="setting-compact">
+                        <label data-i18n="tradeLong">Trade LONG</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="strategyTradeLong" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-compact">
+                        <label data-i18n="tradeShort">Trade SHORT</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="strategyTradeShort" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Save Button -->
+            <div class="modal-footer" style="margin-top: 20px; display: flex; gap: 10px;">
+                <button class="btn btn-primary" onclick="saveStrategySettings()" style="flex: 1;" data-i18n="save">Save</button>
+                <button class="btn btn-secondary" onclick="closeModal('strategyModal')" style="flex: 1;" data-i18n="cancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Detect Safari browser (not PWA) for additional modal padding
         (function() {
@@ -3461,6 +3864,46 @@ DASHBOARD_HTML = r"""
                 settingsSaved: 'Settings saved! Restart bot to apply.',
                 failedSave: 'Failed to save',
                 logsCleared: '--- Logs cleared ---',
+                // Strategy translations
+                strategies: 'Strategies',
+                strategy3EMA: '3 EMA Pullback Strategy',
+                strategyName: 'Strategy Name',
+                strategyStatus: 'Status',
+                strategySaved: 'Strategy settings saved!',
+                maxPairs: 'Max Pairs',
+                emaParams: 'EMA Parameters',
+                trendFilter: 'Trend Filter',
+                minSlope: 'Min Slope (%)',
+                slopeCandles: 'Candles for Slope',
+                emaDistanceAtr: 'EMA Distance (ATR mult)',
+                atrPeriod: 'ATR Period',
+                entryConditions: 'Entry Conditions',
+                ema100TouchMode: 'EMA100 Touch Mode',
+                lowHighTouch: 'Low/High touches',
+                closeTouch: 'Close touches',
+                touchTolerance: 'Touch Tolerance (%)',
+                forbidEma150Touch: 'Forbid EMA150 Touch',
+                slPullback: 'Below/Above Pullback',
+                slFixed: 'Fixed %',
+                slBuffer: 'SL Buffer (%)',
+                slFixedPct: 'Fixed SL (%)',
+                tpTrailing: 'Trailing',
+                tpFixedRR: 'Fixed R:R',
+                rrRatio: 'R:R Ratio',
+                trailingBe: 'Move to Breakeven',
+                beAfterProfit: 'BE After Profit (%)',
+                trailNewHighLow: 'On New High/Low',
+                trailEma50: 'Follow EMA50',
+                trailCandles: 'By Candles',
+                trailingBuffer: 'Trail Buffer (%)',
+                tradeDirection: 'Trade Direction',
+                tradeLong: 'Trade LONG',
+                tradeShort: 'Trade SHORT',
+                dailyLossLimit: 'Daily Loss Limit (%)',
+                maxLosingStreak: 'Max Losing Streak',
+                maxDailyTrades: 'Max Daily Trades',
+                fixedUsdt: 'Fixed USDT',
+                percentBalance: '% of Balance',
                 dashboard: 'Dashboard',
                 botsManager: 'Bots Manager',
                 charts: 'Charts',
@@ -3622,6 +4065,46 @@ DASHBOARD_HTML = r"""
                 settingsSaved: 'Настройки сохранены! Перезапустите бот.',
                 failedSave: 'Ошибка сохранения',
                 logsCleared: '--- Логи очищены ---',
+                // Strategy translations
+                strategies: 'Стратегии',
+                strategy3EMA: 'Стратегия 3 EMA Pullback',
+                strategyName: 'Название стратегии',
+                strategyStatus: 'Статус',
+                strategySaved: 'Настройки стратегии сохранены!',
+                maxPairs: 'Макс. пар',
+                emaParams: 'Параметры EMA',
+                trendFilter: 'Фильтр тренда',
+                minSlope: 'Мин. наклон (%)',
+                slopeCandles: 'Свечей для наклона',
+                emaDistanceAtr: 'Расстояние EMA (ATR)',
+                atrPeriod: 'Период ATR',
+                entryConditions: 'Условия входа',
+                ema100TouchMode: 'Режим касания EMA100',
+                lowHighTouch: 'Low/High касается',
+                closeTouch: 'Close касается',
+                touchTolerance: 'Допуск касания (%)',
+                forbidEma150Touch: 'Запрет касания EMA150',
+                slPullback: 'Под/над откатом',
+                slFixed: 'Фикс. %',
+                slBuffer: 'Буфер SL (%)',
+                slFixedPct: 'Фикс. SL (%)',
+                tpTrailing: 'Трейлинг',
+                tpFixedRR: 'Фикс. R:R',
+                rrRatio: 'Соотношение R:R',
+                trailingBe: 'Перенос в безубыток',
+                beAfterProfit: 'BE после профита (%)',
+                trailNewHighLow: 'На новых High/Low',
+                trailEma50: 'По EMA50',
+                trailCandles: 'По свечам',
+                trailingBuffer: 'Буфер трейлинга (%)',
+                tradeDirection: 'Направление торговли',
+                tradeLong: 'Торговать LONG',
+                tradeShort: 'Торговать SHORT',
+                dailyLossLimit: 'Лимит потерь за день (%)',
+                maxLosingStreak: 'Макс. убытков подряд',
+                maxDailyTrades: 'Макс. сделок в день',
+                fixedUsdt: 'Фикс. USDT',
+                percentBalance: '% от баланса',
                 dashboard: 'Панель',
                 botsManager: 'Управление ботами',
                 charts: 'Графики',
@@ -5276,6 +5759,217 @@ DASHBOARD_HTML = r"""
             // Hide dropdowns
             const dropdowns = document.querySelectorAll('.pair-dropdown');
             dropdowns.forEach(d => d.style.display = 'none');
+        }
+
+        // Strategy Dropdown and Settings
+        function toggleStrategyDropdown(event) {
+            event.stopPropagation();
+            const dropdown = document.getElementById('strategyDropdown');
+            dropdown.classList.toggle('show');
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            const dropdown = document.getElementById('strategyDropdown');
+            if (dropdown && !e.target.closest('.strategy-dropdown')) {
+                dropdown.classList.remove('show');
+            }
+        });
+
+        function openStrategySettings(strategyType) {
+            // Close dropdown
+            document.getElementById('strategyDropdown').classList.remove('show');
+
+            if (strategyType === '3ema_pullback') {
+                // Load current settings
+                loadStrategySettings();
+                // Show modal
+                document.getElementById('strategyModal').classList.add('show');
+            }
+        }
+
+        async function loadStrategySettings() {
+            try {
+                const response = await fetch('/api/strategy/3ema_pullback/settings');
+                const data = await response.json();
+                if (data.settings) {
+                    populateStrategyForm(data.settings);
+                }
+            } catch (err) {
+                console.error('Failed to load strategy settings:', err);
+            }
+        }
+
+        function populateStrategyForm(s) {
+            // Basic
+            document.getElementById('strategyName').value = s.name || '3 EMA Scalping';
+            document.getElementById('strategyEnabled').checked = s.enabled || false;
+            document.getElementById('strategyMaxPairs').value = s.max_pairs || 1;
+            document.getElementById('strategyTimeframe').value = s.timeframe || '1m';
+            document.getElementById('strategyLeverage').value = s.leverage || 10;
+            document.getElementById('strategyOrderSize').value = s.order_size_usdt || 10;
+            document.getElementById('strategyPositionMode').value = s.position_size_mode || 'fixed';
+            document.getElementById('strategyMarginMode').value = s.margin_mode || 'isolated';
+
+            // Risk
+            document.getElementById('strategyBalanceUsage').value = s.balance_usage_pct || 30;
+            document.getElementById('strategyBalanceValue').textContent = (s.balance_usage_pct || 30) + '%';
+            document.getElementById('strategyRiskPerTrade').value = s.risk_per_trade || 2;
+            document.getElementById('strategyDailyLossEnabled').checked = s.daily_loss_limit_enabled !== false;
+            document.getElementById('strategyDailyLoss').value = s.daily_loss_limit_pct || 5;
+            document.getElementById('strategyLosingStreakEnabled').checked = s.max_losing_streak_enabled !== false;
+            document.getElementById('strategyMaxLosingStreak').value = s.max_losing_streak || 3;
+            document.getElementById('strategyDailyTradesEnabled').checked = s.max_daily_trades_enabled || false;
+            document.getElementById('strategyMaxDailyTrades').value = s.max_daily_trades || 10;
+
+            // EMA
+            document.getElementById('strategyEmaFast').value = s.ema_fast || 50;
+            document.getElementById('strategyEmaMedium').value = s.ema_medium || 100;
+            document.getElementById('strategyEmaSlow').value = s.ema_slow || 150;
+
+            // Trend
+            document.getElementById('strategySlopeMin').value = s.slope_min || 0.1;
+            document.getElementById('strategySlopeCandles').value = s.slope_candles || 5;
+            document.getElementById('strategyEmaDistanceAtr').value = s.ema_distance_atr_mult || 1;
+            document.getElementById('strategyAtrPeriod').value = s.atr_period || 14;
+
+            // Entry
+            document.getElementById('strategyTouchMode').value = s.touch_mode || 'low_high';
+            document.getElementById('strategyTouchTolerance').value = s.touch_tolerance || 0.1;
+            document.getElementById('strategyForbidEma150').checked = s.forbid_ema150_touch !== false;
+
+            // SL
+            document.getElementById('strategySlMode').value = s.sl_mode || 'pullback';
+            document.getElementById('strategySlBuffer').value = s.sl_buffer || 0.1;
+            document.getElementById('strategySlFixed').value = s.sl_fixed_pct || 1;
+
+            // TP
+            document.getElementById('strategyTpMode').value = s.tp_mode || 'trailing';
+            document.getElementById('strategyRrRatio').value = s.rr_ratio || 1.5;
+            document.getElementById('strategyTrailingBe').checked = s.trailing_be_enabled !== false;
+            document.getElementById('strategyBeAfterProfit').value = s.be_after_profit_pct || 0.3;
+            document.getElementById('strategyTrailingMode').value = s.trailing_mode || 'new_high_low';
+            document.getElementById('strategyTrailingBuffer').value = s.trailing_buffer || 0.1;
+
+            // Direction
+            document.getElementById('strategyTradeLong').checked = s.trade_long !== false;
+            document.getElementById('strategyTradeShort').checked = s.trade_short !== false;
+
+            // Update UI visibility
+            toggleStrategyDailyLoss();
+            toggleStrategyLosingStreak();
+            toggleStrategyDailyTrades();
+            toggleStrategySlMode();
+            toggleStrategyTpMode();
+            toggleStrategyTrailingBe();
+        }
+
+        async function saveStrategySettings() {
+            const settings = {
+                // Basic
+                name: document.getElementById('strategyName').value,
+                enabled: document.getElementById('strategyEnabled').checked,
+                max_pairs: parseInt(document.getElementById('strategyMaxPairs').value),
+                timeframe: document.getElementById('strategyTimeframe').value,
+                leverage: parseInt(document.getElementById('strategyLeverage').value),
+                order_size_usdt: parseFloat(document.getElementById('strategyOrderSize').value),
+                position_size_mode: document.getElementById('strategyPositionMode').value,
+                margin_mode: document.getElementById('strategyMarginMode').value,
+
+                // Risk
+                balance_usage_pct: parseInt(document.getElementById('strategyBalanceUsage').value),
+                risk_per_trade: parseFloat(document.getElementById('strategyRiskPerTrade').value),
+                daily_loss_limit_enabled: document.getElementById('strategyDailyLossEnabled').checked,
+                daily_loss_limit_pct: parseFloat(document.getElementById('strategyDailyLoss').value),
+                max_losing_streak_enabled: document.getElementById('strategyLosingStreakEnabled').checked,
+                max_losing_streak: parseInt(document.getElementById('strategyMaxLosingStreak').value),
+                max_daily_trades_enabled: document.getElementById('strategyDailyTradesEnabled').checked,
+                max_daily_trades: parseInt(document.getElementById('strategyMaxDailyTrades').value),
+
+                // EMA
+                ema_fast: parseInt(document.getElementById('strategyEmaFast').value),
+                ema_medium: parseInt(document.getElementById('strategyEmaMedium').value),
+                ema_slow: parseInt(document.getElementById('strategyEmaSlow').value),
+
+                // Trend
+                slope_min: parseFloat(document.getElementById('strategySlopeMin').value),
+                slope_candles: parseInt(document.getElementById('strategySlopeCandles').value),
+                ema_distance_atr_mult: parseFloat(document.getElementById('strategyEmaDistanceAtr').value),
+                atr_period: parseInt(document.getElementById('strategyAtrPeriod').value),
+
+                // Entry
+                touch_mode: document.getElementById('strategyTouchMode').value,
+                touch_tolerance: parseFloat(document.getElementById('strategyTouchTolerance').value),
+                forbid_ema150_touch: document.getElementById('strategyForbidEma150').checked,
+
+                // SL
+                sl_mode: document.getElementById('strategySlMode').value,
+                sl_buffer: parseFloat(document.getElementById('strategySlBuffer').value),
+                sl_fixed_pct: parseFloat(document.getElementById('strategySlFixed').value),
+
+                // TP
+                tp_mode: document.getElementById('strategyTpMode').value,
+                rr_ratio: parseFloat(document.getElementById('strategyRrRatio').value),
+                trailing_be_enabled: document.getElementById('strategyTrailingBe').checked,
+                be_after_profit_pct: parseFloat(document.getElementById('strategyBeAfterProfit').value),
+                trailing_mode: document.getElementById('strategyTrailingMode').value,
+                trailing_buffer: parseFloat(document.getElementById('strategyTrailingBuffer').value),
+
+                // Direction
+                trade_long: document.getElementById('strategyTradeLong').checked,
+                trade_short: document.getElementById('strategyTradeShort').checked
+            };
+
+            try {
+                const response = await fetch('/api/strategy/3ema_pullback/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(settings)
+                });
+                const data = await response.json();
+                if (data.success) {
+                    closeModal('strategyModal');
+                    addLog(t('strategySaved') || 'Strategy settings saved');
+                } else {
+                    alert(data.error || 'Failed to save settings');
+                }
+            } catch (err) {
+                console.error('Failed to save strategy settings:', err);
+                alert('Failed to save strategy settings');
+            }
+        }
+
+        // Strategy toggle functions
+        function toggleStrategyDailyLoss() {
+            const enabled = document.getElementById('strategyDailyLossEnabled').checked;
+            document.getElementById('strategyDailyLossContainer').style.display = enabled ? 'block' : 'none';
+        }
+
+        function toggleStrategyLosingStreak() {
+            const enabled = document.getElementById('strategyLosingStreakEnabled').checked;
+            document.getElementById('strategyLosingStreakContainer').style.display = enabled ? 'block' : 'none';
+        }
+
+        function toggleStrategyDailyTrades() {
+            const enabled = document.getElementById('strategyDailyTradesEnabled').checked;
+            document.getElementById('strategyDailyTradesContainer').style.display = enabled ? 'block' : 'none';
+        }
+
+        function toggleStrategySlMode() {
+            const mode = document.getElementById('strategySlMode').value;
+            document.getElementById('strategySlBufferContainer').style.display = mode === 'pullback' ? 'flex' : 'none';
+            document.getElementById('strategySlFixedContainer').style.display = mode === 'fixed' ? 'flex' : 'none';
+        }
+
+        function toggleStrategyTpMode() {
+            const mode = document.getElementById('strategyTpMode').value;
+            document.getElementById('strategyRrContainer').style.display = mode === 'fixed_rr' ? 'flex' : 'none';
+            document.getElementById('strategyTrailingContainer').style.display = mode === 'trailing' ? 'block' : 'none';
+        }
+
+        function toggleStrategyTrailingBe() {
+            const enabled = document.getElementById('strategyTrailingBe').checked;
+            document.getElementById('strategyBeAfterContainer').style.display = enabled ? 'block' : 'none';
         }
 
         // Bots Management
@@ -7533,6 +8227,75 @@ async def save_settings(settings: dict):
         return {"success": True, "message": "Settings saved"}
     except Exception as e:
         return {"success": False, "message": str(e)}
+
+
+# 3 EMA Pullback Strategy settings storage
+ema_pullback_settings = {
+    "name": "3 EMA Scalping",
+    "enabled": False,
+    "max_pairs": 1,
+    "timeframe": "1m",
+    "leverage": 10,
+    "order_size_usdt": 10,
+    "position_size_mode": "fixed",
+    "margin_mode": "isolated",
+    "balance_usage_pct": 30,
+    "risk_per_trade": 2.0,
+    "daily_loss_limit_enabled": True,
+    "daily_loss_limit_pct": 5.0,
+    "max_losing_streak_enabled": True,
+    "max_losing_streak": 3,
+    "max_daily_trades_enabled": False,
+    "max_daily_trades": 10,
+    "ema_fast": 50,
+    "ema_medium": 100,
+    "ema_slow": 150,
+    "slope_min": 0.1,
+    "slope_candles": 5,
+    "ema_distance_atr_mult": 1.0,
+    "atr_period": 14,
+    "touch_mode": "low_high",
+    "touch_tolerance": 0.1,
+    "forbid_ema150_touch": True,
+    "sl_mode": "pullback",
+    "sl_buffer": 0.1,
+    "sl_fixed_pct": 1.0,
+    "tp_mode": "trailing",
+    "rr_ratio": 1.5,
+    "trailing_be_enabled": True,
+    "be_after_profit_pct": 0.3,
+    "trailing_mode": "new_high_low",
+    "trailing_buffer": 0.1,
+    "trade_long": True,
+    "trade_short": True,
+}
+
+
+@app.get("/api/strategy/3ema_pullback/settings")
+async def get_strategy_settings():
+    """Get 3 EMA Pullback strategy settings."""
+    return {"settings": ema_pullback_settings}
+
+
+@app.post("/api/strategy/3ema_pullback/settings")
+async def save_strategy_settings(settings: dict):
+    """Save 3 EMA Pullback strategy settings."""
+    try:
+        # Update settings
+        for key, value in settings.items():
+            if key in ema_pullback_settings:
+                ema_pullback_settings[key] = value
+
+        # Log settings change
+        import logging
+        logger = logging.getLogger("strategy_3ema")
+        logger.info(f"Strategy settings updated: enabled={ema_pullback_settings['enabled']}, "
+                    f"timeframe={ema_pullback_settings['timeframe']}, "
+                    f"leverage={ema_pullback_settings['leverage']}x")
+
+        return {"success": True, "message": "Strategy settings saved"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 
 # Trading pairs cache
