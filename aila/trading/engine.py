@@ -1129,15 +1129,96 @@ class TradingEngine:
             tp_decimal = Decimal(str(signal.take_profit)) if signal.take_profit else None
             side = "LONG" if signal.is_long else "SHORT"
 
-            # Collect bot settings for audit
+            # Collect ALL bot settings for comprehensive audit
+            strat_cfg = self.strategy.config
             bot_settings_for_audit = {
+                # Basic settings
+                "bot_name": self.bot_settings.get("bot_name", "N/A"),
+                "mode": self.bot_settings.get("mode", "manual"),
+                "max_trading_pairs": self.bot_settings.get("max_trading_pairs", 10),
+                "timeframe": getattr(strat_cfg, "timeframe", self.bot_settings.get("timeframe", "15m")),
                 "leverage": leverage,
                 "order_size": float(self.config.order_size),
-                "tp_mode": getattr(self.strategy.config, "tp_mode", "risk_ratio"),
-                "tp_risk_ratio": getattr(self.strategy.config, "tp_risk_ratio", 2.0),
-                "sl_mode": getattr(self.strategy.config, "sl_mode", "supertrend"),
-                "sl_fixed_percent": getattr(self.strategy.config, "sl_fixed_percent", 1.0),
+                "position_sizing_mode": self.config.position_sizing_mode,
+                "risk_per_trade": self.config.risk_per_trade,
                 "margin_mode": margin_mode.value if margin_mode else "N/A",
+
+                # Strategy type
+                "strategy_type": self.bot_settings.get("strategy_type", "supertrend"),
+
+                # SuperTrend settings
+                "st1_period": getattr(strat_cfg, "st1_period", 10),
+                "st1_multiplier": getattr(strat_cfg, "st1_multiplier", 1.0),
+                "st1_role": getattr(strat_cfg, "st1_role", "confirm"),
+                "st2_period": getattr(strat_cfg, "st2_period", 11),
+                "st2_multiplier": getattr(strat_cfg, "st2_multiplier", 2.0),
+                "st2_role": getattr(strat_cfg, "st2_role", "confirm"),
+                "st3_period": getattr(strat_cfg, "st3_period", 12),
+                "st3_multiplier": getattr(strat_cfg, "st3_multiplier", 3.0),
+                "st3_role": getattr(strat_cfg, "st3_role", "trigger"),
+                "trigger_confirm_candles": getattr(strat_cfg, "trigger_confirm_candles", 1),
+
+                # Heikin Ashi settings
+                "ha_entry_candles": self.bot_settings.get("ha_entry_candles", 2),
+                "ha_exit_on_color_change": self.bot_settings.get("ha_exit_on_color_change", True),
+                "ha_emergency_sl_percent": self.bot_settings.get("ha_emergency_sl_percent", 5.0),
+
+                # Take-profit settings
+                "tp_mode": getattr(strat_cfg, "tp_mode", "risk_ratio"),
+                "tp_risk_ratio": getattr(strat_cfg, "tp_risk_ratio", 2.0),
+                "tp_fixed_percent": getattr(strat_cfg, "tp_fixed_percent", 4.0),
+                "trailing_tp_enabled": getattr(strat_cfg, "trailing_tp_enabled", False),
+                "trailing_tp_mode": getattr(strat_cfg, "trailing_tp_mode", "st_line"),
+                "trailing_tp_st_line": getattr(strat_cfg, "trailing_tp_st_line", 2),
+                "trailing_tp_activation": getattr(strat_cfg, "trailing_tp_activation", 0.5),
+                "trailing_tp_step": getattr(strat_cfg, "trailing_tp_step", 1.0),
+                "partial_tp_enabled": getattr(strat_cfg, "partial_tp_enabled", False),
+                "partial_tp_close_percent": getattr(strat_cfg, "partial_tp_close_percent", 50),
+                "partial_tp_sl_move": getattr(strat_cfg, "partial_tp_sl_move", "entry"),
+
+                # Stop-loss settings
+                "sl_mode": getattr(strat_cfg, "sl_mode", "supertrend_line"),
+                "sl_supertrend_line": getattr(strat_cfg, "sl_supertrend_line", 2),
+                "sl_fixed_percent": getattr(strat_cfg, "sl_fixed_percent", 2.0),
+
+                # EMA filter
+                "ema_enabled": getattr(strat_cfg, "ema_enabled", False),
+                "ema_period": getattr(strat_cfg, "ema_period", 200),
+                "ema_filter_mode": getattr(strat_cfg, "ema_filter_mode", "strict"),
+
+                # Asset filters
+                "asset_filters_enabled": self.bot_settings.get("asset_filters_enabled", False),
+                "volume_24h_min": self.bot_settings.get("volume_24h_min", 0),
+                "volume_24h_max": self.bot_settings.get("volume_24h_max", 0),
+                "price_min": self.bot_settings.get("price_min", 0),
+                "price_max": self.bot_settings.get("price_max", 0),
+                "change_24h_min": self.bot_settings.get("change_24h_min", 0),
+                "change_24h_max": self.bot_settings.get("change_24h_max", 0),
+                "volatility_period": self.bot_settings.get("volatility_period", 0),
+                "volatility_min": self.bot_settings.get("volatility_min", 0),
+                "volatility_max": self.bot_settings.get("volatility_max", 0),
+
+                # Risk management
+                "allocated_balance": self.config.allocated_balance,
+                "max_loss_enabled": self.config.max_loss_enabled,
+                "max_daily_loss_percent": self.config.max_daily_loss_percent,
+                "consecutive_losses_enabled": self.config.consecutive_losses_enabled,
+                "max_consecutive_losses": self.config.max_consecutive_losses,
+                "cooldown_after_loss_streak": self.config.cooldown_after_loss_streak,
+            }
+
+            # Collect signal data for verification
+            signal_metadata = signal.metadata or {}
+            signal_data = {
+                "side": side,
+                "st1_state": signal_metadata.get("st1_state", {}),
+                "st2_state": signal_metadata.get("st2_state", {}),
+                "st3_state": signal_metadata.get("st3_state", {}),
+                "ema_filter_passed": signal_metadata.get("ema_filter_passed", True),
+                "ema_position": signal_metadata.get("ema_position", "N/A"),
+                "ha_confirmed": signal_metadata.get("ha_confirmed", False),
+                "ha_candles_count": signal_metadata.get("ha_candles_count", 0),
+                "asset_filters": signal_metadata.get("asset_filters", {}),
             }
 
             # Collect sent parameters for audit
@@ -1178,7 +1259,8 @@ class TradingEngine:
                             side=side,
                             bot_settings=bot_settings_for_audit,
                             sent_params=sent_params,
-                            order_result={"order_id": order.order_id if hasattr(order, 'order_id') else str(order)}
+                            order_result={"order_id": order.order_id if hasattr(order, 'order_id') else str(order)},
+                            signal_data=signal_data,
                         )
 
                         # Log critical errors to main log

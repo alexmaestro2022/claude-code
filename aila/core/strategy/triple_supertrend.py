@@ -421,7 +421,8 @@ class TripleSuperTrendStrategy(BaseStrategy):
                 f"EMA: {dir_str(ema_trend)} value={ema_value:.6f} | Filter: {ema_filter_result}"
             )
 
-        # Generate entry signal
+        # Generate entry signal with comprehensive state for audit
+        is_long = (signal_type == 'long')
         metadata = {
             "strategy": self.name,
             "entry_mode": entry_mode,
@@ -437,6 +438,27 @@ class TripleSuperTrendStrategy(BaseStrategy):
             "st3_dir_prev": st3_dir_prev,
             "ema_enabled": self.config.ema_enabled,
             "prev_signal": prev_signal,
+            # Structured state for audit logging
+            "st1_state": {
+                "direction": st1_dir_curr,
+                "aligned": (st1_dir_curr > 0) == is_long,
+                "just_triggered": st1_trigger,
+                "value": st1_value,
+            },
+            "st2_state": {
+                "direction": st2_dir_curr,
+                "aligned": (st2_dir_curr > 0) == is_long,
+                "just_triggered": st2_trigger,
+                "value": st2_value,
+            },
+            "st3_state": {
+                "direction": st3_dir_curr,
+                "aligned": (st3_dir_curr > 0) == is_long,
+                "just_triggered": st3_trigger,
+                "value": st3_value,
+            },
+            "ema_filter_passed": ema_filter_result in ["PASS", "PASS_SOFT", "N/A"],
+            "ema_position": "выше EMA" if ema_trend > 0 else ("ниже EMA" if ema_trend < 0 else "N/A"),
         }
 
         if signal_type == 'long':
