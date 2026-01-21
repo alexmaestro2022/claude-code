@@ -613,6 +613,13 @@ ALLOWED_TELEGRAM_IDS=123456789,987654321
 - `aila/api/main.py` - функции `verify_telegram_auth()`, session storage
 - `static/` - иконки и manifest.json для PWA
 
+### Видео фон на странице логина:
+- Видео файл: `/static/bg-video.mp4` (оригинал: `/static/bg-video-original.mp4`)
+- CSS: `#bg-video` (position: fixed, z-index: -2, object-fit: cover)
+- Overlay: `.video-overlay` (чёрный полупрозрачный слой rgba(0,0,0,0.5), z-index: -1)
+- HTML: `<video autoplay loop muted playsinline>` + `<div class="video-overlay">`
+- Фон body заменён с градиента на `background: #000`
+
 ---
 
 ## 18. Multi-bot режим - архитектура настроек

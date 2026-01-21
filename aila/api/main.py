@@ -188,7 +188,7 @@ LOGIN_HTML = """
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            background: #000;
             color: #e0e0e0;
             min-height: 100vh;
             display: flex;
@@ -247,9 +247,34 @@ LOGIN_HTML = """
         .error-message.show {
             display: block;
         }
+
+        #bg-video {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -2;
+        }
+
+        .video-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: -1;
+        }
     </style>
 </head>
 <body>
+    <video autoplay loop muted playsinline id="bg-video">
+        <source src="/static/bg-video.mp4" type="video/mp4">
+    </video>
+    <div class="video-overlay"></div>
+
     <div class="login-container">
         <img src="/static/logo.png" alt="AILA" class="logo">
         <h1 class="title">AI Trading Platform</h1>
