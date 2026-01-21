@@ -3747,6 +3747,23 @@ DASHBOARD_HTML = r"""
                 </div>
             </div>
 
+            <!-- Strategy Status and Controls -->
+            <div class="settings-block" style="margin-top: 15px; background: rgba(0,212,255,0.08); border-color: rgba(0,212,255,0.3);">
+                <div class="settings-row" style="justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span data-i18n="strategyStatus">Strategy Status:</span>
+                        <span id="strategyStatusIndicator" style="padding: 4px 12px; border-radius: 12px; font-size: 12px; background: #333; color: #888;">Stopped</span>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-success" id="strategyStartBtn" onclick="startStrategy()" style="padding: 8px 20px;" data-i18n="start">Start</button>
+                        <button class="btn btn-danger" id="strategyStopBtn" onclick="stopStrategy()" style="padding: 8px 20px; display: none;" data-i18n="stop">Stop</button>
+                    </div>
+                </div>
+                <div id="strategyPositionsInfo" style="margin-top: 10px; font-size: 12px; color: #888; display: none;">
+                    <span data-i18n="openPositions">Open Positions:</span> <span id="strategyPositionsCount">0</span>
+                </div>
+            </div>
+
             <!-- Save Button -->
             <div class="modal-footer" style="margin-top: 20px; display: flex; gap: 10px;">
                 <button class="btn btn-primary" onclick="saveStrategySettings()" style="flex: 1;" data-i18n="save">Save</button>
@@ -3870,6 +3887,8 @@ DASHBOARD_HTML = r"""
                 strategyName: 'Strategy Name',
                 strategyStatus: 'Status',
                 strategySaved: 'Strategy settings saved!',
+                strategyStarted: 'Strategy started!',
+                strategyStopped: 'Strategy stopped!',
                 maxPairs: 'Max Pairs',
                 emaParams: 'EMA Parameters',
                 trendFilter: 'Trend Filter',
@@ -4071,6 +4090,8 @@ DASHBOARD_HTML = r"""
                 strategyName: 'Название стратегии',
                 strategyStatus: 'Статус',
                 strategySaved: 'Настройки стратегии сохранены!',
+                strategyStarted: 'Стратегия запущена!',
+                strategyStopped: 'Стратегия остановлена!',
                 maxPairs: 'Макс. пар',
                 emaParams: 'Параметры EMA',
                 trendFilter: 'Фильтр тренда',
@@ -5781,8 +5802,9 @@ DASHBOARD_HTML = r"""
             document.getElementById('strategyDropdown').classList.remove('show');
 
             if (strategyType === '3ema_pullback') {
-                // Load current settings
+                // Load current settings and status
                 loadStrategySettings();
+                loadStrategyStatus();
                 // Show modal
                 document.getElementById('strategyModal').classList.add('show');
             }
@@ -5970,6 +5992,86 @@ DASHBOARD_HTML = r"""
         function toggleStrategyTrailingBe() {
             const enabled = document.getElementById('strategyTrailingBe').checked;
             document.getElementById('strategyBeAfterContainer').style.display = enabled ? 'block' : 'none';
+        }
+
+        // Strategy Start/Stop functions
+        async function startStrategy() {
+            try {
+                // Save settings first
+                await saveStrategySettings();
+
+                const response = await fetch('/api/strategy/3ema_pullback/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    addLog(t('strategyStarted') || 'Strategy started');
+                    updateStrategyStatusUI(true);
+                } else {
+                    alert(data.error || 'Failed to start strategy');
+                }
+            } catch (err) {
+                console.error('Failed to start strategy:', err);
+                alert('Failed to start strategy');
+            }
+        }
+
+        async function stopStrategy() {
+            try {
+                const response = await fetch('/api/strategy/3ema_pullback/stop', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    addLog(t('strategyStopped') || 'Strategy stopped');
+                    updateStrategyStatusUI(false);
+                } else {
+                    alert(data.error || 'Failed to stop strategy');
+                }
+            } catch (err) {
+                console.error('Failed to stop strategy:', err);
+                alert('Failed to stop strategy');
+            }
+        }
+
+        function updateStrategyStatusUI(running) {
+            const indicator = document.getElementById('strategyStatusIndicator');
+            const startBtn = document.getElementById('strategyStartBtn');
+            const stopBtn = document.getElementById('strategyStopBtn');
+            const posInfo = document.getElementById('strategyPositionsInfo');
+
+            if (running) {
+                indicator.textContent = t('running') || 'Running';
+                indicator.style.background = 'rgba(0, 255, 136, 0.2)';
+                indicator.style.color = '#00ff88';
+                startBtn.style.display = 'none';
+                stopBtn.style.display = 'block';
+                posInfo.style.display = 'block';
+            } else {
+                indicator.textContent = t('stopped') || 'Stopped';
+                indicator.style.background = '#333';
+                indicator.style.color = '#888';
+                startBtn.style.display = 'block';
+                stopBtn.style.display = 'none';
+                posInfo.style.display = 'none';
+            }
+        }
+
+        async function loadStrategyStatus() {
+            try {
+                const response = await fetch('/api/strategy/3ema_pullback/status');
+                const data = await response.json();
+                updateStrategyStatusUI(data.running);
+                if (data.positions !== undefined) {
+                    document.getElementById('strategyPositionsCount').textContent = data.positions;
+                }
+            } catch (err) {
+                console.error('Failed to load strategy status:', err);
+            }
         }
 
         // Bots Management
@@ -8296,6 +8398,73 @@ async def save_strategy_settings(settings: dict):
         return {"success": True, "message": "Strategy settings saved"}
     except Exception as e:
         return {"success": False, "error": str(e)}
+
+
+# Strategy state and callbacks
+ema_strategy_state = {
+    "running": False,
+    "start_callback": None,
+    "stop_callback": None,
+}
+
+
+@app.get("/api/strategy/3ema_pullback/status")
+async def get_strategy_status():
+    """Get 3 EMA Pullback strategy status."""
+    from aila.strategies.ema_pullback_runner import get_runner
+    runner = get_runner()
+    if runner:
+        return {
+            "running": runner.running,
+            "positions": len(runner.get_positions()),
+            "stats": runner.get_stats()
+        }
+    return {
+        "running": False,
+        "positions": 0,
+        "stats": None
+    }
+
+
+@app.post("/api/strategy/3ema_pullback/start")
+async def start_strategy():
+    """Start 3 EMA Pullback strategy."""
+    try:
+        if ema_strategy_state.get("start_callback"):
+            success = await ema_strategy_state["start_callback"]()
+            if success:
+                ema_strategy_state["running"] = True
+                return {"success": True, "message": "Strategy started"}
+            else:
+                return {"success": False, "error": "Failed to start strategy"}
+        else:
+            return {"success": False, "error": "Strategy runner not initialized"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.post("/api/strategy/3ema_pullback/stop")
+async def stop_strategy():
+    """Stop 3 EMA Pullback strategy."""
+    try:
+        if ema_strategy_state.get("stop_callback"):
+            await ema_strategy_state["stop_callback"]()
+            ema_strategy_state["running"] = False
+            return {"success": True, "message": "Strategy stopped"}
+        else:
+            return {"success": False, "error": "Strategy runner not initialized"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+@app.get("/api/strategy/3ema_pullback/positions")
+async def get_strategy_positions():
+    """Get open positions for 3 EMA Pullback strategy."""
+    from aila.strategies.ema_pullback_runner import get_runner
+    runner = get_runner()
+    if runner:
+        return {"positions": runner.get_positions()}
+    return {"positions": []}
 
 
 # Trading pairs cache

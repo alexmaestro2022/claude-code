@@ -773,15 +773,35 @@ SL: SuperTrend линия ST2 (средний) = 0.004882
 - `/opt/aila/aila/strategies/__init__.py` — модуль стратегий
 - `/opt/aila/aila/strategies/ema_pullback.py` — логика стратегии
 - `/opt/aila/aila/strategies/ema_pullback_settings.py` — дефолтные настройки
+- `/opt/aila/aila/strategies/ema_pullback_runner.py` — runner торгового цикла
 - `/opt/aila/logs/strategy_3ema_audit.log` — логи стратегии
+
+### Runner (торговый цикл):
+Класс `EmaPullbackRunner` запускает независимый торговый цикл:
+- `_main_loop()` — сканирование пар, генерация сигналов, открытие позиций
+- `_trailing_loop()` — управление открытыми позициями (трейлинг SL, BE)
+- `_execute_signal()` — размещение ордеров через Bybit API
+- `_update_trailing()` — обновление SL при новых хаях/лоях
+
+Глобальный runner: `get_runner()` / `set_runner()` в `ema_pullback_runner.py`
+
+Интеграция в `run_web.py`:
+- `start_ema_strategy()` — создаёт runner и запускает asyncio task
+- `stop_ema_strategy()` — останавливает runner
+- Callbacks привязаны в `main()` к `ema_strategy_state`
 
 ### API Endpoints:
 - `GET /api/strategy/3ema_pullback/settings` — получить настройки
 - `POST /api/strategy/3ema_pullback/settings` — сохранить настройки
+- `GET /api/strategy/3ema_pullback/status` — статус стратегии (running/stopped)
+- `POST /api/strategy/3ema_pullback/start` — запустить стратегию
+- `POST /api/strategy/3ema_pullback/stop` — остановить стратегию
+- `GET /api/strategy/3ema_pullback/positions` — открытые позиции стратегии
 
 ### UI:
 - Кнопка "Стратегии" в навигации (выпадающий список)
-- Окно настроек стратегии (аналогично настройкам бота)
+- Окно настроек стратегии с кнопками Start/Stop
+- Статус стратегии (Running/Stopped) отображается в модальном окне
 
 ---
 
