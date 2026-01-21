@@ -308,6 +308,8 @@ echo "2.2.0" > /opt/aila/VERSION
 | **EMA фильтр не отключался** | JS отправлял строку "false" | _to_bool() конвертирует в boolean |
 | **Qty invalid при partial/trailing TP** | qty не округлён до step_size | Использовать trading_pair.round_quantity() |
 | **Safety limits при 100% лимите** | max_loss_percent не передавался в engine | Добавить в bot_settings и create_engine_config |
+| **Multi-bot: все боты с одинаковыми фильтрами** | runtime_settings глобальный | bot_settings передаётся в TradingEngine |
+| **Multi-bot: Heikin Ashi настройки не работают** | читались из глобального словаря | bot_settings в _process_symbol() |
 
 ---
 
@@ -612,6 +614,47 @@ ALLOWED_TELEGRAM_IDS=123456789,987654321
 
 ---
 
-**Последнее обновление:** 2026-01-20
+## 18. Multi-bot режим - архитектура настроек
+
+### Проблема (ИСПРАВЛЕНО 2026-01-21):
+При запуске нескольких ботов настройки читались из глобального `runtime_settings`,
+а не из индивидуальных настроек бота. Это приводило к тому, что все боты
+использовали одинаковые фильтры и настройки стратегии.
+
+### Решение:
+Добавлен параметр `bot_settings` в TradingEngine, который передаётся при создании.
+
+**Файлы изменены:**
+- `engine.py` - добавлен `bot_settings` в `__init__()`, изменены методы:
+  - `_fast_filter_by_tickers()` - использует `self.bot_settings`
+  - `_process_symbol()` - использует `self.bot_settings` для Heikin Ashi
+  - `_check_auto_trade_filters()` - использует `self.bot_settings`
+- `run_web.py` - передаёт `bot_settings=bot_settings` при создании TradingEngine
+
+### Как работает:
+```python
+# run_web.py
+bot_settings = get_bot_runtime_settings(bot_id)
+engine = TradingEngine(client, strategy, engine_config, bot_settings=bot_settings)
+
+# engine.py
+def __init__(self, ..., bot_settings: Optional[dict] = None):
+    self.bot_settings = bot_settings or {}
+
+def _fast_filter_by_tickers(self, ...):
+    settings = self.bot_settings  # Используем настройки конкретного бота
+    if not settings:
+        from ..api.main import runtime_settings  # Fallback
+        settings = runtime_settings
+```
+
+### Что это исправляет:
+- ✅ Asset Filters работают индивидуально для каждого бота
+- ✅ Heikin Ashi настройки (strategy_type, ha_*) работают индивидуально
+- ✅ Volatility Filter работает индивидуально
+
+---
+
+**Последнее обновление:** 2026-01-21
 **Текущая версия:** v2.2.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`

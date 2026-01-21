@@ -378,6 +378,7 @@ class TradingEngine:
         client: BybitClient,
         strategy: TripleSuperTrendStrategy,
         config: Optional[TradingEngineConfig] = None,
+        bot_settings: Optional[dict] = None,
     ):
         """
         Initialize trading engine.
@@ -386,10 +387,12 @@ class TradingEngine:
             client: Configured Bybit client
             strategy: Trading strategy instance
             config: Engine configuration
+            bot_settings: Bot-specific runtime settings for multi-bot support
         """
         self.client = client
         self.strategy = strategy
         self.config = config or TradingEngineConfig()
+        self.bot_settings = bot_settings or {}
 
         # Initialize traders based on account type
         if client.config.account_type == AccountType.FUTURES:
@@ -661,23 +664,27 @@ class TradingEngine:
         Returns:
             List of symbols that pass ticker-based filters
         """
-        try:
-            from ..api.main import runtime_settings
-        except ImportError:
-            return symbols  # Fallback: return all symbols
+        # Use bot_settings for multi-bot support, fallback to runtime_settings
+        settings = self.bot_settings
+        if not settings:
+            try:
+                from ..api.main import runtime_settings
+                settings = runtime_settings
+            except ImportError:
+                return symbols  # Fallback: return all symbols
 
         # Check if asset filters are enabled
-        if not runtime_settings.get("asset_filters_enabled", True):
+        if not settings.get("asset_filters_enabled", True):
             logger.debug("Asset filters disabled, returning all symbols")
             return symbols
 
         # Get filter settings
-        min_volume = runtime_settings.get("filter_min_volume", 0)
-        max_volume = runtime_settings.get("filter_max_volume", 0)
-        min_price = runtime_settings.get("filter_min_price", 0)
-        max_price = runtime_settings.get("filter_max_price", 0)
-        min_change = runtime_settings.get("filter_min_change", 0)
-        max_change = runtime_settings.get("filter_max_change", 0)
+        min_volume = settings.get("filter_min_volume", 0)
+        max_volume = settings.get("filter_max_volume", 0)
+        min_price = settings.get("filter_min_price", 0)
+        max_price = settings.get("filter_max_price", 0)
+        min_change = settings.get("filter_min_change", 0)
+        max_change = settings.get("filter_max_change", 0)
 
         # If all basic filters are disabled, return all symbols
         if all(v == 0 for v in [min_volume, max_volume, min_price, max_price, min_change, max_change]):
@@ -783,24 +790,31 @@ class TradingEngine:
                 logger.warning("Insufficient candle data", symbol=symbol, count=len(df))
                 return False
 
-            # Check strategy type from runtime settings
-            from ..api.main import runtime_settings
-            strategy_type = runtime_settings.get("strategy_type", "supertrend")
+            # Use bot_settings for multi-bot support, fallback to runtime_settings
+            settings = self.bot_settings
+            if not settings:
+                try:
+                    from ..api.main import runtime_settings
+                    settings = runtime_settings
+                except ImportError:
+                    settings = {}
+
+            strategy_type = settings.get("strategy_type", "supertrend")
 
             if strategy_type == "heikinashi":
-                # Use Heikin Ashi strategy
-                ha_entry_candles = runtime_settings.get("ha_entry_candles", 2)
-                ha_exit_on_color_change = runtime_settings.get("ha_exit_on_color_change", True)
-                ha_exit_candles = runtime_settings.get("ha_exit_candles", 1)
-                ha_ema_enabled = runtime_settings.get("ha_ema_enabled", True)
-                ha_ema_period = runtime_settings.get("ha_ema_period", 200)
-                ha_ema_mode = runtime_settings.get("ha_ema_mode", "strict")
-                ha_volatility_enabled = runtime_settings.get("ha_volatility_enabled", True)
-                ha_min_atr = runtime_settings.get("ha_min_atr", 0.5)
-                ha_emergency_sl = runtime_settings.get("ha_emergency_sl", 2.0)
-                ha_trailing_enabled = runtime_settings.get("ha_trailing_enabled", True)
-                ha_trailing_activation = runtime_settings.get("ha_trailing_activation", 1.0)
-                ha_trailing_distance = runtime_settings.get("ha_trailing_distance", 0.5)
+                # Use Heikin Ashi strategy - read settings from bot_settings
+                ha_entry_candles = settings.get("ha_entry_candles", 2)
+                ha_exit_on_color_change = settings.get("ha_exit_on_color_change", True)
+                ha_exit_candles = settings.get("ha_exit_candles", 1)
+                ha_ema_enabled = settings.get("ha_ema_enabled", True)
+                ha_ema_period = settings.get("ha_ema_period", 200)
+                ha_ema_mode = settings.get("ha_ema_mode", "strict")
+                ha_volatility_enabled = settings.get("ha_volatility_enabled", True)
+                ha_min_atr = settings.get("ha_min_atr", 0.5)
+                ha_emergency_sl = settings.get("ha_emergency_sl", 2.0)
+                ha_trailing_enabled = settings.get("ha_trailing_enabled", True)
+                ha_trailing_activation = settings.get("ha_trailing_activation", 1.0)
+                ha_trailing_distance = settings.get("ha_trailing_distance", 0.5)
 
                 # Get current position side if any
                 current_position_side = None
@@ -1005,19 +1019,25 @@ class TradingEngine:
             Tuple of (passed, reason) where passed is True if all filters pass
         """
         try:
-            # Import runtime_settings here to avoid circular imports
-            from ..api.main import runtime_settings
+            # Use bot_settings for multi-bot support, fallback to runtime_settings
+            settings = self.bot_settings
+            if not settings:
+                try:
+                    from ..api.main import runtime_settings
+                    settings = runtime_settings
+                except ImportError:
+                    settings = {}
 
             # Get filter settings
-            min_volume = runtime_settings.get("filter_min_volume", 0)
-            max_volume = runtime_settings.get("filter_max_volume", 0)
-            min_price = runtime_settings.get("filter_min_price", 0)
-            max_price = runtime_settings.get("filter_max_price", 0)
-            min_change = runtime_settings.get("filter_min_change", 0)
-            max_change = runtime_settings.get("filter_max_change", 0)
-            volatility_period = runtime_settings.get("filter_volatility_period", 0)
-            min_volatility = runtime_settings.get("filter_min_volatility", 0)
-            max_volatility = runtime_settings.get("filter_max_volatility", 0)
+            min_volume = settings.get("filter_min_volume", 0)
+            max_volume = settings.get("filter_max_volume", 0)
+            min_price = settings.get("filter_min_price", 0)
+            max_price = settings.get("filter_max_price", 0)
+            min_change = settings.get("filter_min_change", 0)
+            max_change = settings.get("filter_max_change", 0)
+            volatility_period = settings.get("filter_volatility_period", 0)
+            min_volatility = settings.get("filter_min_volatility", 0)
+            max_volatility = settings.get("filter_max_volatility", 0)
 
             # Log filter settings for debugging
             logger.debug(

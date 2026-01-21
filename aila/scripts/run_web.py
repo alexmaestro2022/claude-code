@@ -389,7 +389,8 @@ async def start_trading_for_bot(bot_id: str):
     # Initialize components for this bot
     client = BybitClient(bybit_config)
     strategy = TripleSuperTrendStrategy(strategy_config)
-    engine = TradingEngine(client, strategy, engine_config)
+    # Pass bot_settings for multi-bot support (asset filters, Heikin Ashi, etc.)
+    engine = TradingEngine(client, strategy, engine_config, bot_settings=bot_settings)
 
     # Store in bot-specific registries
     bot_engines[bot_id] = engine
