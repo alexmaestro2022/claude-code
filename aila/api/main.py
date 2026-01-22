@@ -3721,7 +3721,7 @@ DASHBOARD_HTML = r"""
                 </div>
                 <div class="settings-row">
                     <div class="setting-compact">
-                        <label data-i18n="forbidEma150Touch">Forbid EMA150 Touch</label>
+                        <label data-i18n="forbidEma150Breach">Forbid EMA150 Breach (incl. shadows)</label>
                         <label class="toggle-switch">
                             <input type="checkbox" id="strategyForbidEma150" checked>
                             <span class="toggle-slider"></span>
@@ -3971,7 +3971,7 @@ DASHBOARD_HTML = r"""
                 lowHighTouch: 'Low/High touches',
                 closeTouch: 'Close touches',
                 touchTolerance: 'Touch Tolerance (%)',
-                forbidEma150Touch: 'Forbid EMA150 Touch',
+                forbidEma150Breach: 'Forbid EMA150 Breach (incl. shadows)',
                 slPullback: 'Below/Above Pullback',
                 slFixed: 'Fixed %',
                 slBuffer: 'SL Buffer (%)',
@@ -4183,7 +4183,7 @@ DASHBOARD_HTML = r"""
                 lowHighTouch: 'Low/High касается',
                 closeTouch: 'Close касается',
                 touchTolerance: 'Допуск касания (%)',
-                forbidEma150Touch: 'Запрет касания EMA150',
+                forbidEma150Breach: 'Запрет пробоя EMA150 (включая тени)',
                 slPullback: 'Под/над откатом',
                 slFixed: 'Фикс. %',
                 slBuffer: 'Буфер SL (%)',
@@ -5961,12 +5961,14 @@ DASHBOARD_HTML = r"""
             document.getElementById('strategyLeverage').value = 10;
             document.getElementById('strategyOrderSize').value = 10;
             document.getElementById('strategyPositionMode').value = 'fixed_amount';
+            document.getElementById('strategyRiskPercent').value = 2;
             document.getElementById('strategyMarginMode').value = 'isolated';
             document.getElementById('strategyBalanceUsage').value = 100;
             document.getElementById('strategyBalanceValue').textContent = '100%';
             document.getElementById('strategyMaxLossEnabled').checked = false;
             document.getElementById('strategyMaxLoss').value = 50;
             document.getElementById('strategyConsecutiveLossesEnabled').checked = false;
+            document.getElementById('strategyMaxConsecutiveLosses').value = 3;
             document.getElementById('strategyDailyTradesEnabled').checked = false;
             document.getElementById('strategyEmaFast').value = 50;
             document.getElementById('strategyEmaMedium').value = 100;
@@ -5979,6 +5981,7 @@ DASHBOARD_HTML = r"""
             document.getElementById('strategyTradeLong').checked = true;
             document.getElementById('strategyTradeShort').checked = true;
             toggleStrategyMode();
+            toggleStrategyRiskPercent();
             toggleStrategyMaxLoss();
             toggleStrategyConsecutiveLosses();
             toggleStrategyDailyTrades();
@@ -5996,14 +5999,17 @@ DASHBOARD_HTML = r"""
             document.getElementById('strategyTimeframe').value = s.timeframe || '1m';
             document.getElementById('strategyLeverage').value = s.leverage || 10;
             document.getElementById('strategyOrderSize').value = s.order_size_usdt || 10;
-            document.getElementById('strategyPositionMode').value = s.position_size_mode || 'fixed_amount';
+            // Map 'fixed' to 'fixed_amount' and 'percent' to 'risk_percent' for select
+            const posMode = s.position_size_mode === 'fixed' ? 'fixed_amount' : (s.position_size_mode === 'percent' ? 'risk_percent' : s.position_size_mode || 'fixed_amount');
+            document.getElementById('strategyPositionMode').value = posMode;
+            document.getElementById('strategyRiskPercent').value = s.risk_per_trade || 2;
             document.getElementById('strategyMarginMode').value = s.margin_mode || 'isolated';
             document.getElementById('strategyBalanceUsage').value = s.balance_usage_pct || 100;
             document.getElementById('strategyBalanceValue').textContent = (s.balance_usage_pct || 100) + '%';
-            document.getElementById('strategyMaxLossEnabled').checked = s.max_loss_enabled || false;
-            document.getElementById('strategyMaxLoss').value = s.max_loss_pct || 50;
-            document.getElementById('strategyConsecutiveLossesEnabled').checked = s.consecutive_losses_enabled || false;
-            document.getElementById('strategyMaxConsecutiveLosses').value = s.max_consecutive_losses || 3;
+            document.getElementById('strategyMaxLossEnabled').checked = s.daily_loss_limit_enabled || false;
+            document.getElementById('strategyMaxLoss').value = s.daily_loss_limit_pct || 50;
+            document.getElementById('strategyConsecutiveLossesEnabled').checked = s.max_losing_streak_enabled || false;
+            document.getElementById('strategyMaxConsecutiveLosses').value = s.max_losing_streak || 3;
             document.getElementById('strategyCooldownMinutes').value = s.cooldown_minutes || 30;
             document.getElementById('strategyDailyTradesEnabled').checked = s.max_daily_trades_enabled || false;
             document.getElementById('strategyMaxDailyTrades').value = s.max_daily_trades || 10;
@@ -6030,6 +6036,7 @@ DASHBOARD_HTML = r"""
             document.getElementById('strategyTradeShort').checked = s.trade_short !== false;
 
             toggleStrategyMode();
+            toggleStrategyRiskPercent();
             toggleStrategyMaxLoss();
             toggleStrategyConsecutiveLosses();
             toggleStrategyDailyTrades();
@@ -6051,14 +6058,14 @@ DASHBOARD_HTML = r"""
                 timeframe: document.getElementById('strategyTimeframe').value,
                 leverage: parseInt(document.getElementById('strategyLeverage').value),
                 order_size_usdt: parseFloat(document.getElementById('strategyOrderSize').value),
-                position_size_mode: document.getElementById('strategyPositionMode').value,
-                risk_percent: parseFloat(document.getElementById('strategyRiskPercent')?.value || 2),
+                position_size_mode: document.getElementById('strategyPositionMode').value === 'fixed_amount' ? 'fixed' : (document.getElementById('strategyPositionMode').value === 'risk_percent' ? 'percent' : document.getElementById('strategyPositionMode').value),
+                risk_per_trade: parseFloat(document.getElementById('strategyRiskPercent')?.value || 2),
                 margin_mode: document.getElementById('strategyMarginMode').value,
                 balance_usage_pct: parseInt(document.getElementById('strategyBalanceUsage').value),
-                max_loss_enabled: document.getElementById('strategyMaxLossEnabled').checked,
-                max_loss_pct: parseInt(document.getElementById('strategyMaxLoss').value),
-                consecutive_losses_enabled: document.getElementById('strategyConsecutiveLossesEnabled').checked,
-                max_consecutive_losses: parseInt(document.getElementById('strategyMaxConsecutiveLosses').value),
+                daily_loss_limit_enabled: document.getElementById('strategyMaxLossEnabled').checked,
+                daily_loss_limit_pct: parseInt(document.getElementById('strategyMaxLoss').value),
+                max_losing_streak_enabled: document.getElementById('strategyConsecutiveLossesEnabled').checked,
+                max_losing_streak: parseInt(document.getElementById('strategyMaxConsecutiveLosses').value),
                 cooldown_minutes: parseInt(document.getElementById('strategyCooldownMinutes').value),
                 max_daily_trades_enabled: document.getElementById('strategyDailyTradesEnabled').checked,
                 max_daily_trades: parseInt(document.getElementById('strategyMaxDailyTrades').value),
@@ -8595,14 +8602,14 @@ def get_default_strategy_config():
         "timeframe": "1m",
         "leverage": 10,
         "order_size_usdt": 10,
-        "position_size_mode": "fixed_amount",
-        "risk_percent": 2.0,
+        "position_size_mode": "fixed",  # "fixed" or "percent"
+        "risk_per_trade": 2.0,
         "margin_mode": "isolated",
         "balance_usage_pct": 100,
-        "max_loss_enabled": False,
-        "max_loss_pct": 50,
-        "consecutive_losses_enabled": False,
-        "max_consecutive_losses": 3,
+        "daily_loss_limit_enabled": False,
+        "daily_loss_limit_pct": 50,
+        "max_losing_streak_enabled": False,
+        "max_losing_streak": 3,
         "cooldown_minutes": 30,
         "max_daily_trades_enabled": False,
         "max_daily_trades": 10,
@@ -8745,6 +8752,8 @@ async def start_strategy(strategy_id: str):
             if strategy["id"] == strategy_id:
                 # Check if callback is set
                 if ema_strategy_state.get("start_callback"):
+                    # Set enabled=True for the runner
+                    strategy["enabled"] = True
                     await ema_strategy_state["start_callback"](strategy_id, strategy)
                     strategy["status"] = "running"
                     return {"success": True, "message": "Strategy started"}
@@ -8761,6 +8770,7 @@ async def stop_strategy(strategy_id: str):
     try:
         for strategy in strategies_storage:
             if strategy["id"] == strategy_id:
+                strategy["enabled"] = False
                 if strategy_id in strategy_runners:
                     runner = strategy_runners[strategy_id]
                     if runner.running:

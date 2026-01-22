@@ -210,9 +210,19 @@ class EmaPullbackRunner:
     async def _get_pairs_to_scan(self) -> List[str]:
         """Get list of trading pairs to scan."""
         try:
-            # Get all available USDT perpetual pairs
+            mode = self.settings.get("mode", "auto_search")
+
+            # Manual mode - only scan the specified trading pair
+            if mode == "manual":
+                trading_pair = self.settings.get("trading_pair", "")
+                if trading_pair:
+                    return [trading_pair]
+                return []
+
+            # Auto search mode - scan all pairs with good volume
             all_tickers = self.client.get_all_tickers(use_cache=True)
             if not all_tickers:
+                self._log("No tickers available")
                 return []
 
             # Filter to USDT pairs with decent volume
@@ -223,17 +233,18 @@ class EmaPullbackRunner:
                 if not symbol.endswith("USDT"):
                     continue
 
-                # Check volume
-                volume_24h = float(ticker.get("turnover24h", 0))
+                # Check volume (ticker is Ticker object, not dict)
+                volume_24h = float(ticker.turnover_24h)
                 if volume_24h < min_volume:
                     continue
 
                 pairs.append(symbol)
 
-            # Limit to reasonable number
+            # Sort by volume descending and limit
             return pairs[:100]
 
         except Exception as e:
+            self._log(f"Error getting pairs: {e}")
             logger.error(f"Error getting pairs: {e}")
             return []
 
@@ -253,21 +264,21 @@ class EmaPullbackRunner:
             # Need enough candles for EMA calculation
             limit = self.settings.get("ema_slow", 150) + 50
 
-            # Get klines
-            klines = self.client.get_klines(symbol, timeframe, limit=limit)
-            if not klines or len(klines) < limit - 10:
+            # Get klines (returns DataFrame)
+            klines_df = self.client.get_klines(symbol, timeframe, limit=limit)
+            if klines_df is None or klines_df.empty or len(klines_df) < limit - 10:
                 return None
 
-            # Convert to candle format
+            # Convert DataFrame to candle list format
             candles = []
-            for k in klines:
+            for idx, row in klines_df.iterrows():
                 candles.append({
-                    "timestamp": k.get("timestamp"),
-                    "open": float(k.get("open", 0)),
-                    "high": float(k.get("high", 0)),
-                    "low": float(k.get("low", 0)),
-                    "close": float(k.get("close", 0)),
-                    "volume": float(k.get("volume", 0)),
+                    "timestamp": idx,  # timestamp is the index
+                    "open": float(row["open"]),
+                    "high": float(row["high"]),
+                    "low": float(row["low"]),
+                    "close": float(row["close"]),
+                    "volume": float(row["volume"]),
                 })
 
             # Process signal
