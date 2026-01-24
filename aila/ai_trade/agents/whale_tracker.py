@@ -1,5 +1,6 @@
 """WHALE TRACKER - monitors large players and exchange flows."""
 
+import asyncio
 import json
 import logging
 from datetime import datetime
@@ -177,16 +178,22 @@ Respond in JSON:
             return {"resistance_walls": [], "support_walls": [], "imbalance": "neutral"}
 
     async def get_whale_signal(self, pair: str, market_data: Optional[dict[str, Any]] = None) -> dict[str, Any]:
-        """Combined whale signal from all sources."""
+        """Combined whale signal from all sources (parallel)."""
         cache_key = f"whale_signal:{pair}"
         cached = self._cache.get(cache_key, ttl=60.0)
         if cached is not None:
             return cached
 
         self.log(f"Getting whale signal for {pair}")
-        exchange_flow = await self.analyze_exchange_flows(pair)
-        accumulation = await self.detect_accumulation(pair, market_data)
-        orderbook = await self.analyze_orderbook_whales(pair)
+        results = await asyncio.gather(
+            self.analyze_exchange_flows(pair),
+            self.detect_accumulation(pair, market_data),
+            self.analyze_orderbook_whales(pair),
+            return_exceptions=True,
+        )
+        exchange_flow = results[0] if not isinstance(results[0], Exception) else {}
+        accumulation = results[1] if not isinstance(results[1], Exception) else {}
+        orderbook = results[2] if not isinstance(results[2], Exception) else {}
 
         prompt = f"""Final whale signal for {pair}:
 FLOWS: {json.dumps(exchange_flow)}

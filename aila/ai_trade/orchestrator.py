@@ -1,5 +1,6 @@
 """Agent orchestrator - coordinates all 9 agents in the trading pipeline."""
 
+import asyncio
 import logging
 from datetime import datetime
 from typing import Any, Optional
@@ -50,17 +51,20 @@ class AgentOrchestrator:
         logger.info(f"AgentOrchestrator initialized in {mode} mode (9 agents)")
 
     async def get_market_context(self, pair: str) -> dict[str, Any]:
-        """Gather whale data, news sentiment, and market context."""
-        whale_signal = await self.whale_tracker.get_whale_signal(pair)
-        news_sentiment = await self.news_agent.get_pair_sentiment(pair)
-        market_sentiment = await self.news_agent.get_market_sentiment()
-        breaking = await self.news_agent.detect_breaking_news()
+        """Gather whale data, news sentiment, and market context in parallel."""
+        results = await asyncio.gather(
+            self.whale_tracker.get_whale_signal(pair),
+            self.news_agent.get_pair_sentiment(pair),
+            self.news_agent.get_market_sentiment(),
+            self.news_agent.detect_breaking_news(),
+            return_exceptions=True,
+        )
 
         return {
-            "whale": whale_signal,
-            "news": news_sentiment,
-            "market": market_sentiment,
-            "breaking_news": breaking,
+            "whale": results[0] if not isinstance(results[0], Exception) else {},
+            "news": results[1] if not isinstance(results[1], Exception) else {},
+            "market": results[2] if not isinstance(results[2], Exception) else {},
+            "breaking_news": results[3] if not isinstance(results[3], Exception) else {},
         }
 
     async def process_trading_cycle(self) -> dict[str, Any]:
