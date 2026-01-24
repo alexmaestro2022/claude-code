@@ -852,22 +852,25 @@ SL: SuperTrend линия ST2 (средний) = 0.004882
     ├── mentor.py            # MENTOR — наставник, обучает TRADER
     ├── researcher.py        # RESEARCHER — режимы рынка, паттерны
     ├── whale_tracker.py     # WHALE_TRACKER — крупные игроки, потоки
-    └── news_agent.py        # NEWS — новости, сентимент, breaking
+    ├── news_agent.py        # NEWS — новости, сентимент, breaking
+    ├── predictor.py         # PREDICTOR — предсказание движений, развороты
+    └── sniper.py            # SNIPER — мгновенные входы, пробои, ликвидации
 ```
 
 ### Мульти-агентный пайплайн:
 ```
 WHALE_TRACKER ──┐
+PREDICTOR ──────┤
                 ├→ TRADER (найти) → REVIEWER → RISK_GUARD → Execute
 NEWS ───────────┘                                               ↓
                                                          ANALYST ← Close
-RESEARCHER (режим рынка)                                    ↓
-                                                     MENTOR (обучение)
+SNIPER (пробои, ликвидации) ─→ Execute                      ↓
+RESEARCHER (режим рынка)                              MENTOR (обучение)
                                                          ↓
                                               LOGGER (всё) → Telegram
 ```
 
-### Агенты (9 шт.):
+### Агенты (11 шт.):
 | Агент | Роль | Право VETO |
 |-------|------|-----------|
 | **TRADER** | Сканирует рынок, находит возможности | Нет |
@@ -875,6 +878,8 @@ RESEARCHER (режим рынка)                                    ↓
 | **RISK_GUARD** | Лимиты, мониторинг 24/7, force close | Абсолютное VETO |
 | **WHALE_TRACKER** | Крупные транзакции, потоки на биржи, стакан | Нет |
 | **NEWS** | Новости, сентимент, breaking news, Fear&Greed | Нет |
+| **PREDICTOR** | Предсказание движений: TA + AI, развороты, паттерны | Нет |
+| **SNIPER** | Мгновенные входы: пробои, ликвидации, funding flip | Нет |
 | **ANALYST** | Анализ сделок, паттерны, обучение | Нет |
 | **LOGGER** | Логи для UI, алерты Telegram | Нет |
 | **MENTOR** | Наставник: daily review, коррекция ошибок, правила | Нет |

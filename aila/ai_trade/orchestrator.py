@@ -1,4 +1,4 @@
-"""Agent orchestrator - coordinates all 9 agents in the trading pipeline."""
+"""Agent orchestrator - coordinates all 11 agents in the trading pipeline."""
 
 import asyncio
 import logging
@@ -14,6 +14,8 @@ from .agents.mentor import MentorAgent
 from .agents.researcher import ResearcherAgent
 from .agents.whale_tracker import WhaleTrackerAgent
 from .agents.news_agent import NewsAgent
+from .agents.predictor import PredictorAgent
+from .agents.sniper import SniperAgent
 from .claude_client import ClaudeClient
 from .knowledge_base import KnowledgeBase
 from .market_scanner import MarketScanner
@@ -46,26 +48,41 @@ class AgentOrchestrator:
         self.researcher = ResearcherAgent(self.claude_client, self.knowledge_base, self.scanner)
         self.whale_tracker = WhaleTrackerAgent(self.claude_client, self.knowledge_base, exchange)
         self.news_agent = NewsAgent(self.claude_client, self.knowledge_base)
+        self.predictor = PredictorAgent(self.claude_client, self.knowledge_base, self.scanner)
+        self.sniper = SniperAgent(self.claude_client, self.knowledge_base, self.scanner)
         self.learning = LearningCycles(self)
 
-        logger.info(f"AgentOrchestrator initialized in {mode} mode (9 agents)")
+        logger.info(f"AgentOrchestrator initialized in {mode} mode (11 agents)")
 
     async def get_market_context(self, pair: str) -> dict[str, Any]:
-        """Gather whale data, news sentiment, and market context in parallel."""
+        """Gather whale, news, prediction, and market context in parallel."""
         results = await asyncio.gather(
             self.whale_tracker.get_whale_signal(pair),
             self.news_agent.get_pair_sentiment(pair),
             self.news_agent.get_market_sentiment(),
             self.news_agent.detect_breaking_news(),
+            self.predictor.predict_movement(pair),
+            self.predictor.detect_reversal(pair),
             return_exceptions=True,
         )
 
+        def _safe(idx: int) -> dict[str, Any]:
+            return results[idx] if not isinstance(results[idx], Exception) else {}
+
         return {
-            "whale": results[0] if not isinstance(results[0], Exception) else {},
-            "news": results[1] if not isinstance(results[1], Exception) else {},
-            "market": results[2] if not isinstance(results[2], Exception) else {},
-            "breaking_news": results[3] if not isinstance(results[3], Exception) else {},
+            "whale": _safe(0),
+            "news": _safe(1),
+            "market": _safe(2),
+            "breaking_news": _safe(3),
+            "prediction": _safe(4),
+            "reversal": _safe(5),
         }
+
+    async def scan_snipe_opportunities(self) -> list[dict[str, Any]]:
+        """Scan market for sniper opportunities."""
+        pairs = await self.scanner.get_top_pairs()
+        pair_symbols = [p["symbol"] for p in pairs[:20]]
+        return await self.sniper.scan_for_snipes(pair_symbols)
 
     async def process_trading_cycle(self) -> dict[str, Any]:
         """Full trading cycle with multi-agent pipeline."""
@@ -210,6 +227,8 @@ class AgentOrchestrator:
                 "researcher": {"status": "active", "name": "RESEARCHER", "current_regime": regime.get("regime", "unknown")},
                 "whale_tracker": {"status": "active", "name": "WHALE_TRACKER"},
                 "news": {"status": "active", "name": "NEWS"},
+                "predictor": {"status": "active", "name": "PREDICTOR"},
+                "sniper": {"status": "active", "name": "SNIPER", "pending": len(self.sniper._pending_snipes)},
                 "logger": {"status": "active", "name": "LOGGER", "events_count": len(self.logger_agent.events)},
             },
             "trader_profile": {
