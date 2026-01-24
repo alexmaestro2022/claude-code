@@ -837,6 +837,7 @@ SL: SuperTrend линия ST2 (средний) = 0.004882
 ├── brain.py                 # Главный мозг (использует AgentOrchestrator)
 ├── orchestrator.py          # Координатор мульти-агентной системы
 ├── capital_manager.py       # CAPITAL_MANAGER — Kelly Criterion, compound growth
+├── strategy_evolution.py    # STRATEGY_EVOLUTION — генетические алгоритмы стратегий
 ├── risk_manager.py          # Жёсткие лимиты рисков
 ├── position_manager.py      # Управление позициями
 ├── learning_engine.py       # Обучение на результатах (legacy)
@@ -857,7 +858,8 @@ SL: SuperTrend линия ST2 (средний) = 0.004882
     ├── predictor.py         # PREDICTOR — предсказание движений, развороты
     ├── sniper.py            # SNIPER — мгновенные входы, пробои, ликвидации
     ├── arbitrage.py         # ARBITRAGE — арбитраж: funding, cross-exchange, triangular
-    └── hedge_master.py      # HEDGE_MASTER — хеджирование, защита портфеля
+    ├── hedge_master.py      # HEDGE_MASTER — хеджирование, защита портфеля
+    └── war_room.py          # WAR_ROOM — кризисное управление, чёрные лебеди
 ├── exchanges/
     ├── __init__.py
     ├── base_exchange.py     # Абстрактный интерфейс биржи
@@ -876,10 +878,12 @@ SNIPER (пробои, ликвидации) ─→ Execute                      
 ARBITRAGE (funding, cross-ex) ─→ Execute              MENTOR (обучение)
 RESEARCHER (режим рынка)
 HEDGE_MASTER (защита портфеля, emergency hedge)          ↓
+WAR_ROOM (кризис, чёрные лебеди, экстренные протоколы)
 CAPITAL_MANAGER (Kelly, sizing, compound)     LOGGER (всё) → Telegram
+STRATEGY_EVOLUTION (генетические алгоритмы, оптимизация)
 ```
 
-### Агенты (14 шт.):
+### Агенты (16 шт.):
 | Агент | Роль | Право VETO |
 |-------|------|-----------|
 | **TRADER** | Сканирует рынок, находит возможности | Нет |
@@ -891,7 +895,9 @@ CAPITAL_MANAGER (Kelly, sizing, compound)     LOGGER (всё) → Telegram
 | **SNIPER** | Мгновенные входы: пробои, ликвидации, funding flip | Нет |
 | **ARBITRAGE** | Арбитраж: funding rate, cross-exchange, triangular | Нет |
 | **HEDGE_MASTER** | Хеджирование, защита портфеля, market-neutral | Нет |
+| **WAR_ROOM** | Кризисное управление, чёрные лебеди, экстренные протоколы | Нет |
 | **CAPITAL_MANAGER** | Kelly Criterion, compound growth, sizing, фазы | Нет |
+| **STRATEGY_EVOLUTION** | Генетические алгоритмы, оптимизация стратегий | Нет |
 | **ANALYST** | Анализ сделок, паттерны, обучение | Нет |
 | **LOGGER** | Логи для UI, алерты Telegram | Нет |
 | **MENTOR** | Наставник: daily review, коррекция ошибок, правила | Нет |
