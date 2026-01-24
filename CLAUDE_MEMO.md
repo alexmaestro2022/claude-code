@@ -821,6 +821,61 @@ SL: SuperTrend линия ST2 (средний) = 0.004882
 
 ---
 
-**Последнее обновление:** 2026-01-22
+## 21. AI Trade Module — Самообучающийся AI трейдер
+
+### Описание:
+Автономный AI-трейдер на базе Claude API. Анализирует рынок, принимает решения о входе/выходе, учится на своих ошибках.
+
+### Архитектура:
+```
+/opt/aila/aila/ai_trade/
+├── __init__.py              # Экспорт AIBrain
+├── config.py                # Настройки, лимиты, режимы
+├── claude_client.py         # Интеграция с Anthropic API
+├── knowledge_base.py        # База знаний (хранит опыт)
+├── market_scanner.py        # Сканер рынка (RSI, EMA, ATR)
+├── brain.py                 # Главный мозг — оркестратор
+├── risk_manager.py          # Жёсткие лимиты рисков
+├── position_manager.py      # Управление позициями
+├── learning_engine.py       # Обучение на результатах
+└── performance_tracker.py   # Трекер производительности
+```
+
+### Режимы работы:
+- **OBSERVER** — только анализ, без сделок
+- **ADVISOR** — предлагает сделки, пользователь подтверждает
+- **AUTOPILOT** — полностью автономная торговля
+
+### Жёсткие лимиты рисков (AI не может нарушить):
+- Max leverage: 20x
+- Max position size: 10% депозита
+- Max daily loss: 5%
+- Max drawdown: 15%
+- Min balance: 10 USDT
+- Max open positions: 3
+
+### Данные:
+- База знаний: `/opt/aila/data/ai_knowledge.json`
+- Логи: `/opt/aila/logs/ai_trade.log`
+
+### Claude API:
+- Модель: `claude-sonnet-4-20250514`
+- API ключ: через переменную окружения `ANTHROPIC_API_KEY`
+
+### Компоненты:
+| Компонент | Ответственность |
+|-----------|----------------|
+| `AIBrain` | Оркестрация торгового цикла: scan → analyze → decide → execute |
+| `ClaudeClient` | Промпты для анализа рынка и обучения |
+| `KnowledgeBase` | Хранение и обновление торгового опыта |
+| `MarketScanner` | Сканирование пар, расчёт RSI/EMA/ATR |
+| `RiskManager` | Валидация сигналов, ежедневные лимиты |
+| `PositionManager` | Открытие/закрытие позиций, SL/TP ордера |
+| `LearningEngine` | Анализ завершённых сделок, извлечение уроков |
+| `PerformanceTracker` | Дневная/общая статистика, стрики |
+
+---
+
+**Последнее обновление:** 2026-01-24
 **Текущая версия:** v2.2.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
