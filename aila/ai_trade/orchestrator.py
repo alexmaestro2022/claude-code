@@ -18,7 +18,9 @@ from .agents.predictor import PredictorAgent
 from .agents.sniper import SniperAgent
 from .agents.arbitrage import ArbitrageAgent
 from .agents.hedge_master import HedgeMasterAgent
+from .agents.war_room import WarRoomAgent
 from .capital_manager import CapitalManager
+from .strategy_evolution import StrategyEvolution
 from .exchanges.multi_exchange import MultiExchangeManager
 from .exchanges.bybit_exchange import BybitExchange
 from .claude_client import ClaudeClient
@@ -63,9 +65,11 @@ class AgentOrchestrator:
         self.arbitrage = ArbitrageAgent(self.claude_client, self.knowledge_base, self.exchanges)
         self.capital_manager = CapitalManager(self.knowledge_base)
         self.hedge_master = HedgeMasterAgent(self.claude_client, self.knowledge_base, log_path='/opt/aila/logs/ai_trade/hedge_master.log')
+        self.war_room = WarRoomAgent(self.claude_client, self.knowledge_base, log_path='/opt/aila/logs/ai_trade/war_room.log')
+        self.strategy_evolution = StrategyEvolution(self.claude_client, self.knowledge_base)
         self.learning = LearningCycles(self)
 
-        logger.info(f"AgentOrchestrator initialized in {mode} mode (14 agents)")
+        logger.info(f"AgentOrchestrator initialized in {mode} mode (16 agents)")
 
     async def get_market_context(self, pair: str) -> dict[str, Any]:
         """Gather whale, news, prediction, and market context in parallel."""
@@ -212,6 +216,33 @@ class AgentOrchestrator:
             risk_pct=adjusted_risk * 100
         )
 
+    async def check_market_safety(self) -> dict[str, Any]:
+        """Check market safety and activate emergency protocol if needed."""
+        market_data = await self.scanner.get_market_overview()
+        health = await self.war_room.monitor_market_health(market_data)
+        if health['crisis_level'] == 'critical':
+            black_swan = await self.war_room.detect_black_swan(market_data)
+            if black_swan and black_swan.get('is_black_swan'):
+                positions = await self.position_manager.check_positions()
+                await self.war_room.activate_emergency_protocol(
+                    black_swan['type'], positions or []
+                )
+        return health
+
+    async def evolve_strategies(self, generations: int = 5) -> dict[str, Any]:
+        """Run strategy evolution for specified number of generations."""
+        historical = await self.scanner.get_historical_data('BTCUSDT', '1h', 100)
+        if not self.strategy_evolution._population:
+            base_strategies = [
+                {'name': 'EMA_Cross', 'parameters': {'fast': 9, 'slow': 21, 'timeframe': '15m'}},
+                {'name': 'RSI_Reversal', 'parameters': {'period': 14, 'oversold': 30, 'overbought': 70}},
+                {'name': 'Breakout', 'parameters': {'lookback': 20, 'atr_multiplier': 1.5}}
+            ]
+            await self.strategy_evolution.initialize_population(base_strategies)
+        for _ in range(generations):
+            await self.strategy_evolution.evolve_generation(historical)
+        return self.strategy_evolution.get_evolution_stats()
+
     async def monitor_positions(self) -> None:
         """Risk guard monitors all open positions."""
         positions = await self.position_manager.check_positions()
@@ -278,7 +309,9 @@ class AgentOrchestrator:
                 "sniper": {"status": "active", "name": "SNIPER", "pending": len(self.sniper._pending_snipes)},
                 "arbitrage": {"status": "active", "name": "ARBITRAGE", "exchanges": self.exchanges.count},
                 "hedge_master": {"status": "active", "name": "HEDGE_MASTER", "active_hedges": len(self.hedge_master._active_hedges)},
+                "war_room": {"status": "active", "name": "WAR_ROOM", "crisis_mode": self.war_room.is_crisis_mode()},
                 "capital_manager": {"status": "active", "name": "CAPITAL_MANAGER", "phase": self.capital_manager.get_scaling_phase().get("phase", "unknown")},
+                "strategy_evolution": {"status": "active", "name": "STRATEGY_EVOLUTION", "generation": self.strategy_evolution._generation},
                 "logger": {"status": "active", "name": "LOGGER", "events_count": len(self.logger_agent.events)},
             },
             "trader_profile": {
