@@ -1,27 +1,23 @@
-"""
-MENTOR — trainer agent, teaches TRADER.
-Daily reviews, mistake correction, rule formation.
-"""
+"""MENTOR - trains TRADER through daily reviews and corrections."""
 
 import json
+from typing import Any
+
 from .base_agent import BaseAgent
 
 
 class MentorAgent(BaseAgent):
-    """
-    Mentor agent - trains TRADER through reviews and corrections.
-    Identifies repeated mistakes, forms new rules, tracks skill development.
-    """
+    """Trains TRADER: daily reviews, mistake correction, rule formation."""
 
-    def __init__(self, claude_client, knowledge_base):
+    def __init__(self, claude_client: Any, knowledge_base: Any) -> None:
         super().__init__(
             name="MENTOR",
             claude_client=claude_client,
             knowledge_base=knowledge_base,
-            log_path="/opt/aila/logs/ai_trade/mentor.log"
+            log_path="/opt/aila/logs/ai_trade/mentor.log",
         )
 
-    async def think(self, context: dict) -> dict:
+    async def think(self, context: dict[str, Any]) -> dict[str, Any]:
         """Process mentoring context."""
         action = context.get("action", "review")
         if action == "daily_review":

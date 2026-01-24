@@ -1,70 +1,58 @@
+"""Market scanner for AI Trade module."""
+
 import logging
-import asyncio
-from typing import Optional
 from datetime import datetime
-from .config import SCANNER_CONFIG, TIMEFRAMES
+from typing import Any, Optional
+
+from ..utils.common import TTLCache
+from .config import SCANNER_CONFIG
 
 logger = logging.getLogger("ai_trade")
 
 
 class MarketScanner:
-    """Scans market for trading opportunities."""
+    """Scans market for trading opportunities with caching."""
 
-    def __init__(self, exchange):
-        self.exchange = exchange
-        self.config = SCANNER_CONFIG
-        self.last_scan = None
-        self.cached_pairs = []
+    __slots__ = ("_exchange", "_config", "_cache", "_last_scan")
 
-    async def get_top_pairs(self) -> list:
+    def __init__(self, exchange: Any) -> None:
+        self._exchange = exchange
+        self._config = SCANNER_CONFIG
+        self._cache = TTLCache(default_ttl=30.0)
+        self._last_scan: Optional[datetime] = None
+
+    async def get_top_pairs(self) -> list[dict[str, Any]]:
         """Get top trading pairs by volume and volatility."""
+        cached = self._cache.get("top_pairs", ttl=30.0)
+        if cached is not None:
+            return cached
+
         try:
-            tickers = await self.exchange.fetch_tickers()
-
-            pairs = []
-            for symbol, ticker in tickers.items():
-                if not symbol.endswith("/USDT"):
-                    continue
-                if ":USDT" not in symbol and "/USDT" not in symbol:
-                    continue
-
-                volume_24h = ticker.get("quoteVolume", 0) or 0
-                if volume_24h < self.config["min_volume_24h"]:
-                    continue
-
-                change_pct = abs(ticker.get("percentage", 0) or 0)
-                if change_pct < self.config["min_volatility_pct"]:
-                    continue
-                if change_pct > self.config["max_volatility_pct"]:
-                    continue
-
-                pairs.append({
-                    "symbol": symbol,
-                    "price": ticker.get("last", 0),
-                    "volume_24h": volume_24h,
-                    "change_24h": ticker.get("percentage", 0),
-                    "high_24h": ticker.get("high", 0),
-                    "low_24h": ticker.get("low", 0),
-                    "volatility": change_pct,
-                })
-
-            # Sort by volume descending
+            tickers = await self._exchange.fetch_tickers()
+            pairs = self._filter_pairs(tickers)
             pairs.sort(key=lambda x: x["volume_24h"], reverse=True)
-            self.cached_pairs = pairs[:self.config["top_pairs_count"]]
-            self.last_scan = datetime.now()
+            result = pairs[:self._config["top_pairs_count"]]
 
-            logger.info(f"Market scan complete: {len(self.cached_pairs)} pairs found")
-            return self.cached_pairs
+            self._cache.set("top_pairs", result)
+            self._last_scan = datetime.now()
+            logger.info(f"Market scan: {len(result)} pairs found")
+            return result
 
         except Exception as e:
             logger.error(f"Market scan error: {e}")
-            return self.cached_pairs
+            return self._cache.get("top_pairs") or []
 
-    async def get_market_data(self, symbol: str, timeframe: str = "15m", limit: int = 100) -> dict:
-        """Get detailed market data for a symbol."""
+    async def get_market_data(
+        self, symbol: str, timeframe: str = "15m", limit: int = 100
+    ) -> dict[str, Any]:
+        """Get detailed market data with indicators for a symbol."""
+        cache_key = f"market:{symbol}:{timeframe}"
+        cached = self._cache.get(cache_key, ttl=5.0)
+        if cached is not None:
+            return cached
+
         try:
-            ohlcv = await self.exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
-
+            ohlcv = await self._exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
             if not ohlcv or len(ohlcv) < 20:
                 return {}
 
@@ -72,24 +60,16 @@ class MarketScanner:
             highs = [c[2] for c in ohlcv]
             lows = [c[3] for c in ohlcv]
             volumes = [c[5] for c in ohlcv]
-
             current_price = closes[-1]
 
-            # Calculate indicators
-            rsi = self._calculate_rsi(closes, 14)
+            rsi = self._calculate_rsi(closes)
             ema50 = self._calculate_ema(closes, 50)
             ema200 = self._calculate_ema(closes, 200)
-            atr = self._calculate_atr(highs, lows, closes, 14)
+            atr = self._calculate_atr(highs, lows, closes)
 
-            # Determine trend
-            trend = "NEUTRAL"
-            if ema50 and ema200:
-                if current_price > ema50 > ema200:
-                    trend = "BULLISH"
-                elif current_price < ema50 < ema200:
-                    trend = "BEARISH"
+            trend = self._determine_trend(current_price, ema50, ema200)
 
-            return {
+            result = {
                 "price": current_price,
                 "rsi": round(rsi, 2) if rsi else None,
                 "ema50": round(ema50, 6) if ema50 else None,
@@ -101,43 +81,85 @@ class MarketScanner:
                 "support": min(lows[-20:]),
                 "resistance": max(highs[-20:]),
             }
+            self._cache.set(cache_key, result)
+            return result
 
         except Exception as e:
             logger.error(f"Error getting market data for {symbol}: {e}")
             return {}
 
-    def _calculate_rsi(self, closes: list, period: int = 14) -> Optional[float]:
+    def _filter_pairs(self, tickers: dict[str, Any]) -> list[dict[str, Any]]:
+        """Filter pairs by volume and volatility criteria."""
+        pairs = []
+        for symbol, ticker in tickers.items():
+            if "/USDT" not in symbol:
+                continue
+
+            volume_24h = ticker.get("quoteVolume", 0) or 0
+            if volume_24h < self._config["min_volume_24h"]:
+                continue
+
+            change_pct = abs(ticker.get("percentage", 0) or 0)
+            if not (self._config["min_volatility_pct"] <= change_pct <= self._config["max_volatility_pct"]):
+                continue
+
+            pairs.append({
+                "symbol": symbol,
+                "price": ticker.get("last", 0),
+                "volume_24h": volume_24h,
+                "change_24h": ticker.get("percentage", 0),
+                "high_24h": ticker.get("high", 0),
+                "low_24h": ticker.get("low", 0),
+                "volatility": change_pct,
+            })
+        return pairs
+
+    @staticmethod
+    def _determine_trend(
+        price: float, ema50: Optional[float], ema200: Optional[float]
+    ) -> str:
+        """Determine market trend from EMAs."""
+        if ema50 and ema200:
+            if price > ema50 > ema200:
+                return "BULLISH"
+            if price < ema50 < ema200:
+                return "BEARISH"
+        return "NEUTRAL"
+
+    @staticmethod
+    def _calculate_rsi(closes: list[float], period: int = 14) -> Optional[float]:
         """Calculate RSI indicator."""
         if len(closes) < period + 1:
             return None
 
-        deltas = [closes[i] - closes[i-1] for i in range(1, len(closes))]
-        gains = [d if d > 0 else 0 for d in deltas[-period:]]
-        losses = [-d if d < 0 else 0 for d in deltas[-period:]]
+        deltas = [closes[i] - closes[i - 1] for i in range(1, len(closes))]
+        gains = [max(d, 0) for d in deltas[-period:]]
+        losses = [max(-d, 0) for d in deltas[-period:]]
 
         avg_gain = sum(gains) / period
         avg_loss = sum(losses) / period
 
         if avg_loss == 0:
             return 100.0
-
         rs = avg_gain / avg_loss
         return 100 - (100 / (1 + rs))
 
-    def _calculate_ema(self, data: list, period: int) -> Optional[float]:
+    @staticmethod
+    def _calculate_ema(data: list[float], period: int) -> Optional[float]:
         """Calculate EMA."""
         if len(data) < period:
             return None
 
         multiplier = 2 / (period + 1)
         ema = sum(data[:period]) / period
-
         for price in data[period:]:
             ema = (price - ema) * multiplier + ema
-
         return ema
 
-    def _calculate_atr(self, highs: list, lows: list, closes: list, period: int = 14) -> Optional[float]:
+    @staticmethod
+    def _calculate_atr(
+        highs: list[float], lows: list[float], closes: list[float], period: int = 14
+    ) -> Optional[float]:
         """Calculate ATR indicator."""
         if len(closes) < period + 1:
             return None
@@ -146,9 +168,8 @@ class MarketScanner:
         for i in range(1, len(closes)):
             tr = max(
                 highs[i] - lows[i],
-                abs(highs[i] - closes[i-1]),
-                abs(lows[i] - closes[i-1])
+                abs(highs[i] - closes[i - 1]),
+                abs(lows[i] - closes[i - 1]),
             )
             true_ranges.append(tr)
-
         return sum(true_ranges[-period:]) / period

@@ -1,33 +1,31 @@
+"""REVIEWER - validates trade proposals from TRADER."""
+
 import json
+from typing import Any
+
 from .base_agent import BaseAgent
 
 
 class ReviewerAgent(BaseAgent):
-    """
-    Reviewer agent - validates trade proposals from TRADER.
-    Can APPROVE, REJECT, or MODIFY proposals.
-    """
+    """Validates trade proposals. Can APPROVE, REJECT, or MODIFY."""
 
-    def __init__(self, claude_client, knowledge_base):
+    def __init__(self, claude_client: Any, knowledge_base: Any) -> None:
         super().__init__(
             name="REVIEWER",
             claude_client=claude_client,
             knowledge_base=knowledge_base,
-            log_path="/opt/aila/logs/ai_trade/reviewer.log"
+            log_path="/opt/aila/logs/ai_trade/reviewer.log",
         )
 
-    async def think(self, context: dict) -> dict:
+    async def think(self, context: dict[str, Any]) -> dict[str, Any]:
         """Review a trade proposal."""
         opportunity = context.get("opportunity")
         if not opportunity:
             return {"decision": "REJECT", "reason": "No opportunity provided"}
         return await self.review(opportunity)
 
-    async def review(self, opportunity: dict) -> dict:
-        """
-        Review trade proposal and return decision.
-        Returns: {decision: APPROVE|REJECT|MODIFY, reason, modified_opportunity?}
-        """
+    async def review(self, opportunity: dict[str, Any]) -> dict[str, Any]:
+        """Review trade proposal and return decision."""
         self.log(f"Reviewing: {opportunity['decision']} {opportunity['pair']}")
 
         # Get knowledge about past mistakes

@@ -11,7 +11,7 @@ Handles the trading cycle for 3 EMA Pullback strategy:
 import asyncio
 import logging
 from datetime import datetime, date
-from typing import Optional, Dict, List, Any
+from typing import Any, Optional
 
 from .ema_pullback import EmaPullbackStrategy, log_audit
 
@@ -37,7 +37,7 @@ class EmaPullbackRunner:
         self._stop_requested = False
         self._main_task = None
         self._trailing_task = None
-        self._positions: Dict[str, dict] = {}  # symbol -> position data
+        self._positions: dict[str, dict] = {}  # symbol -> position data
         self._add_log = None  # Log callback
 
         log_audit("EmaPullbackRunner initialized")
@@ -207,7 +207,7 @@ class EmaPullbackRunner:
                 logger.error(f"Error in trailing loop: {e}")
                 await asyncio.sleep(10)
 
-    async def _get_pairs_to_scan(self) -> List[str]:
+    async def _get_pairs_to_scan(self) -> list[str]:
         """Get list of trading pairs to scan."""
         try:
             mode = self.settings.get("mode", "auto_search")
@@ -543,7 +543,7 @@ class EmaPullbackRunner:
         except Exception as e:
             logger.error(f"Error checking position {symbol}: {e}")
 
-    def get_positions(self) -> List[dict]:
+    def get_positions(self) -> list[dict]:
         """Get list of open positions."""
         return list(self._positions.values())
 

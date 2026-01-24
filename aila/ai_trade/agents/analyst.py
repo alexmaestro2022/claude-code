@@ -1,24 +1,23 @@
+"""ANALYST - analyzes completed trades and finds patterns."""
+
 import json
+from typing import Any
+
 from .base_agent import BaseAgent
 
 
 class AnalystAgent(BaseAgent):
-    """
-    Analyst agent - analyzes completed trades.
-    Finds patterns in successes and failures.
-    Updates knowledge base with lessons learned.
-    Suggests strategy improvements.
-    """
+    """Analyzes completed trades, finds patterns, updates knowledge base."""
 
-    def __init__(self, claude_client, knowledge_base):
+    def __init__(self, claude_client: Any, knowledge_base: Any) -> None:
         super().__init__(
             name="ANALYST",
             claude_client=claude_client,
             knowledge_base=knowledge_base,
-            log_path="/opt/aila/logs/ai_trade/analyst.log"
+            log_path="/opt/aila/logs/ai_trade/analyst.log",
         )
 
-    async def think(self, context: dict) -> dict:
+    async def think(self, context: dict[str, Any]) -> dict[str, Any]:
         """Analyze a completed trade."""
         trade = context.get("trade")
         if not trade:

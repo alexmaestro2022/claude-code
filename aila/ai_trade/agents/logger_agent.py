@@ -1,36 +1,34 @@
-import json
+"""LOGGER - records all agent actions and sends alerts."""
+
 import logging
 import os
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
+
 from .base_agent import BaseAgent
 
 AGENT_LOG_DIR = "/opt/aila/logs/ai_trade"
+MAX_EVENTS = 500
 
 
 class LoggerAgent(BaseAgent):
-    """
-    Logger agent - records ALL agent actions.
-    Provides formatted logs for web interface.
-    Sends alerts via Telegram for critical events.
-    """
+    """Records all agent actions, provides formatted logs for web UI."""
 
-    def __init__(self, claude_client, knowledge_base, telegram_bot=None):
+    def __init__(self, claude_client: Any, knowledge_base: Any, telegram_bot: Any = None) -> None:
         super().__init__(
             name="LOGGER",
             claude_client=claude_client,
             knowledge_base=knowledge_base,
-            log_path=os.path.join(AGENT_LOG_DIR, "orchestrator.log")
+            log_path=os.path.join(AGENT_LOG_DIR, "orchestrator.log"),
         )
         self.telegram_bot = telegram_bot
-        self.events = []  # In-memory event buffer for web UI
-        self.max_events = 500
+        self.events: list[dict[str, Any]] = []
 
-    async def think(self, context: dict) -> dict:
+    async def think(self, context: dict[str, Any]) -> dict[str, Any]:
         """Process logging context."""
         return {"status": "ok", "events_count": len(self.events)}
 
-    def log_event(self, agent: str, action: str, data: dict = None, message: str = ""):
+    def log_event(self, agent: str, action: str, data: Optional[dict[str, Any]] = None, message: str = "") -> dict[str, Any]:
         """Record a structured event from any agent."""
         event = {
             "timestamp": datetime.now().isoformat(),
@@ -41,9 +39,8 @@ class LoggerAgent(BaseAgent):
         }
 
         self.events.append(event)
-        # Keep buffer limited
-        if len(self.events) > self.max_events:
-            self.events = self.events[-self.max_events:]
+        if len(self.events) > MAX_EVENTS:
+            self.events = self.events[-MAX_EVENTS:]
 
         # Write to file
         self._write_to_file(event)

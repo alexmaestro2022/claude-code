@@ -1,27 +1,27 @@
+"""RISK GUARD - enforces all risk limits with VETO power."""
+
 import json
 from datetime import datetime
+from typing import Any
+
 from .base_agent import BaseAgent
 from ..config import RISK_LIMITS
 
 
 class RiskGuardAgent(BaseAgent):
-    """
-    Risk guard agent - enforces ALL risk limits.
-    Has VETO power over any trade.
-    Monitors positions 24/7 independently.
-    """
+    """Enforces ALL risk limits. Has VETO power over any trade."""
 
-    def __init__(self, claude_client, knowledge_base, risk_manager):
+    def __init__(self, claude_client: Any, knowledge_base: Any, risk_manager: Any) -> None:
         super().__init__(
             name="RISK_GUARD",
             claude_client=claude_client,
             knowledge_base=knowledge_base,
-            log_path="/opt/aila/logs/ai_trade/risk_guard.log"
+            log_path="/opt/aila/logs/ai_trade/risk_guard.log",
         )
         self.risk_manager = risk_manager
-        self.vetoed_trades = []
+        self.vetoed_trades: list[dict[str, Any]] = []
 
-    async def think(self, context: dict) -> dict:
+    async def think(self, context: dict[str, Any]) -> dict[str, Any]:
         """Check trade against risk limits."""
         opportunity = context.get("opportunity")
         balance = context.get("balance", 0)

@@ -17,7 +17,7 @@ SHORT logic: Mirror of LONG.
 
 import logging
 from datetime import datetime, date
-from typing import Optional, Dict, List, Any
+from typing import Any, Optional
 import numpy as np
 
 from .ema_pullback_settings import DEFAULT_EMA_PULLBACK_SETTINGS
@@ -183,7 +183,7 @@ class EmaPullbackStrategy:
         return True, "Trend confirmed"
 
     def detect_continuous_pullback(self, candles: list, ema50: np.ndarray,
-                                    direction: str) -> Dict[str, Any]:
+                                    direction: str) -> dict[str, Any]:
         """
         Detect CONTINUOUS pullback window.
 
@@ -237,7 +237,7 @@ class EmaPullbackStrategy:
             "end": pullback_end
         }
 
-    def check_ema100_test(self, pullback_data: Dict[str, Any], ema100: np.ndarray,
+    def check_ema100_test(self, pullback_data: dict[str, Any], ema100: np.ndarray,
                           direction: str) -> tuple[bool, str]:
         """
         Check if price tested EMA100 during pullback.
@@ -284,7 +284,7 @@ class EmaPullbackStrategy:
 
         return False, "EMA100 not tested during pullback"
 
-    def check_ema100_not_breached(self, pullback_data: Dict[str, Any], ema100: np.ndarray,
+    def check_ema100_not_breached(self, pullback_data: dict[str, Any], ema100: np.ndarray,
                                    direction: str) -> tuple[bool, str]:
         """
         Check that EMA100 was NOT BREACHED during pullback.
@@ -311,7 +311,7 @@ class EmaPullbackStrategy:
         log_audit(f"[{direction}] EMA100 not breached during pullback - OK")
         return True, "EMA100 not breached"
 
-    def check_ema150_not_breached(self, pullback_data: Dict[str, Any], ema150: np.ndarray,
+    def check_ema150_not_breached(self, pullback_data: dict[str, Any], ema150: np.ndarray,
                                    direction: str) -> tuple[bool, str]:
         """
         Check that EMA150 was NOT BREACHED during pullback.
@@ -382,7 +382,7 @@ class EmaPullbackStrategy:
 
         return triggered, desc
 
-    def calculate_sl(self, pullback_data: Dict[str, Any], entry_price: float,
+    def calculate_sl(self, pullback_data: dict[str, Any], entry_price: float,
                      direction: str) -> float:
         """Calculate stop loss price."""
         buffer_pct = self.settings["sl_buffer"]

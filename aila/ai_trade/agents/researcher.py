@@ -1,28 +1,25 @@
-"""
-RESEARCHER — explores market, discovers new patterns and strategies.
-"""
+"""RESEARCHER - explores market, discovers patterns and regimes."""
 
 import json
+from typing import Any, Optional
+
 from .base_agent import BaseAgent
 
 
 class ResearcherAgent(BaseAgent):
-    """
-    Researcher agent - analyzes market regimes, finds patterns,
-    tests hypotheses on historical data.
-    """
+    """Analyzes market regimes, finds patterns, tests hypotheses."""
 
-    def __init__(self, claude_client, knowledge_base, market_scanner=None):
+    def __init__(self, claude_client: Any, knowledge_base: Any, market_scanner: Any = None) -> None:
         super().__init__(
             name="RESEARCHER",
             claude_client=claude_client,
             knowledge_base=knowledge_base,
-            log_path="/opt/aila/logs/ai_trade/researcher.log"
+            log_path="/opt/aila/logs/ai_trade/researcher.log",
         )
         self.scanner = market_scanner
-        self.current_regime = None
+        self.current_regime: Optional[dict[str, Any]] = None
 
-    async def think(self, context: dict) -> dict:
+    async def think(self, context: dict[str, Any]) -> dict[str, Any]:
         """Process research context."""
         action = context.get("action", "regime")
         if action == "regime":

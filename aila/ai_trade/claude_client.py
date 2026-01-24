@@ -1,53 +1,79 @@
-import anthropic
+"""Claude API client for AI Trade module."""
+
 import json
 import logging
+from typing import Any, Optional
+
+import anthropic
+
+from ..utils.common import retry_async
 from .config import ANTHROPIC_API_KEY, CLAUDE_MODEL
 
 logger = logging.getLogger("ai_trade")
 
 
 class ClaudeClient:
-    """Client for Claude API interactions."""
+    """Async client for Claude API interactions with retry logic."""
 
-    def __init__(self):
-        self.client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-        self.model = CLAUDE_MODEL
+    __slots__ = ("_client", "_model")
 
-    async def analyze(self, prompt: str, max_tokens: int = 4096) -> dict:
-        """Send prompt to Claude and return JSON response."""
+    def __init__(self) -> None:
+        self._client = anthropic.AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
+        self._model = CLAUDE_MODEL
+
+    @retry_async(max_attempts=3, base_delay=2.0, exceptions=(anthropic.APIError,))
+    async def analyze(self, prompt: str, max_tokens: int = 4096) -> dict[str, Any]:
+        """Send prompt to Claude and return parsed JSON response."""
         try:
-            message = self.client.messages.create(
-                model=self.model,
+            message = await self._client.messages.create(
+                model=self._model,
                 max_tokens=max_tokens,
-                messages=[
-                    {"role": "user", "content": prompt}
-                ]
+                messages=[{"role": "user", "content": prompt}],
             )
-
             response_text = message.content[0].text
-
-            # Try to parse JSON from response
-            try:
-                start = response_text.find("{")
-                end = response_text.rfind("}") + 1
-                if start != -1 and end > start:
-                    json_str = response_text[start:end]
-                    return json.loads(json_str)
-            except json.JSONDecodeError:
-                pass
-
-            return {"raw_response": response_text}
-
+            return self._extract_json(response_text)
+        except anthropic.APIError:
+            raise
         except Exception as e:
             logger.error(f"Claude API error: {e}")
             return {"error": str(e)}
 
-    async def get_market_analysis(self, pair: str, market_data: dict, knowledge: dict) -> dict:
+    async def get_market_analysis(
+        self, pair: str, market_data: dict[str, Any], knowledge: dict[str, Any]
+    ) -> dict[str, Any]:
         """Analyze market and make entry decision."""
-        prompt = f"""You are an expert cryptocurrency trader with 20 years of experience. Analyze the market and make decisions.
+        prompt = self._build_market_prompt(pair, market_data, knowledge)
+        return await self.analyze(prompt)
+
+    async def analyze_trade_result(self, trade: dict[str, Any]) -> dict[str, Any]:
+        """Analyze completed trade for learning."""
+        prompt = self._build_trade_analysis_prompt(trade)
+        return await self.analyze(prompt)
+
+    @staticmethod
+    def _extract_json(text: str) -> dict[str, Any]:
+        """Extract JSON from response text."""
+        start = text.find("{")
+        end = text.rfind("}") + 1
+        if start != -1 and end > start:
+            try:
+                return json.loads(text[start:end])
+            except json.JSONDecodeError:
+                pass
+        return {"raw_response": text}
+
+    @staticmethod
+    def _build_market_prompt(
+        pair: str, market_data: dict[str, Any], knowledge: dict[str, Any]
+    ) -> str:
+        """Build market analysis prompt."""
+        pair_perf = knowledge.get("pair_performance", {}).get(pair, {})
+        setups = knowledge.get("successful_setups", [])[-5:]
+        mistakes = knowledge.get("mistakes_to_avoid", [])[-5:]
+
+        return f"""You are an expert cryptocurrency trader. Analyze the market.
 
 ## CURRENT SITUATION
-
 Pair: {pair}
 Price: {market_data.get('price')}
 24h Change: {market_data.get('change_24h')}%
@@ -60,19 +86,17 @@ Indicators:
 - EMA200: {market_data.get('ema200')}
 - ATR: {market_data.get('atr')}
 
-## MY EXPERIENCE WITH THIS PAIR
-{json.dumps(knowledge.get('pair_performance', {}).get(pair, {}), indent=2)}
+## PAIR HISTORY
+{json.dumps(pair_perf, indent=2)}
 
 ## RECENT SUCCESSFUL TRADES
-{json.dumps(knowledge.get('successful_setups', [])[-5:], indent=2)}
+{json.dumps(setups, indent=2)}
 
 ## MISTAKES TO AVOID
-{json.dumps(knowledge.get('mistakes_to_avoid', [])[-5:], indent=2)}
+{json.dumps(mistakes, indent=2)}
 
 ## TASK
-
-Analyze the situation and respond STRICTLY in JSON format:
-
+Respond STRICTLY in JSON:
 {{
     "decision": "LONG" | "SHORT" | "WAIT",
     "confidence": 0-100,
@@ -87,28 +111,23 @@ Analyze the situation and respond STRICTLY in JSON format:
     "expected_duration": "5m" | "1h" | "4h" | "1d"
 }}
 
-If unsure - choose WAIT. Better to miss a trade than lose money.
-"""
-        return await self.analyze(prompt)
+If unsure - choose WAIT. Better to miss a trade than lose money."""
 
-    async def analyze_trade_result(self, trade: dict) -> dict:
-        """Analyze completed trade for learning."""
-        prompt = f"""Analyze the completed trade and extract lessons.
+    @staticmethod
+    def _build_trade_analysis_prompt(trade: dict[str, Any]) -> str:
+        """Build trade analysis prompt."""
+        return f"""Analyze the completed trade and extract lessons.
 
 ## TRADE
 {json.dumps(trade, indent=2)}
 
 ## TASK
-
 Respond STRICTLY in JSON:
-
 {{
     "grade": "A" | "B" | "C" | "D" | "F",
     "what_went_right": ["point1", "point2"],
     "what_went_wrong": ["point1", "point2"],
     "lesson_learned": "main lesson",
     "improvement_suggestion": "how to improve",
-    "add_to_mistakes_to_avoid": "if there was an error, what to add to the list"
-}}
-"""
-        return await self.analyze(prompt)
+    "add_to_mistakes_to_avoid": "if there was an error, what to add"
+}}"""

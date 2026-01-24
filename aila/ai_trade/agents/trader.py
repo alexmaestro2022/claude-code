@@ -1,26 +1,30 @@
+"""TRADER - scans market and finds opportunities."""
+
 import json
-from typing import Optional
+from typing import Any, Optional
+
+from ...utils.common import clamp
 from .base_agent import BaseAgent
 
 
 class TraderAgent(BaseAgent):
-    """
-    Main trader agent - scans market and finds opportunities.
-    Does NOT execute trades — sends proposals for review.
-    """
+    """Main trader agent. Scans market and proposes trades for review."""
 
-    def __init__(self, claude_client, knowledge_base, market_scanner, orchestrator=None):
+    def __init__(
+        self, claude_client: Any, knowledge_base: Any,
+        market_scanner: Any, orchestrator: Any = None,
+    ) -> None:
         super().__init__(
             name="TRADER",
             claude_client=claude_client,
             knowledge_base=knowledge_base,
-            log_path="/opt/aila/logs/ai_trade/trader.log"
+            log_path="/opt/aila/logs/ai_trade/trader.log",
         )
         self.scanner = market_scanner
         self.orchestrator = orchestrator
-        self.min_confidence = 70
+        self.min_confidence: int = 70
 
-    async def think(self, context: dict) -> dict:
+    async def think(self, context: dict[str, Any]) -> dict[str, Any]:
         """Scan market and find trading opportunities."""
         return await self.find_opportunity()
 
@@ -134,8 +138,8 @@ class TraderAgent(BaseAgent):
                         if news_sent in ("bullish", "very_bullish"):
                             alignment_bonus -= 10
 
-                    best_opportunity["confidence"] = max(0, min(100,
-                        best_opportunity["confidence"] + alignment_bonus
+                    best_opportunity["confidence"] = int(clamp(
+                        best_opportunity["confidence"] + alignment_bonus, 0, 100
                     ))
 
                     if alignment_bonus != 0:
