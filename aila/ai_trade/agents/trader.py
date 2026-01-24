@@ -9,7 +9,7 @@ class TraderAgent(BaseAgent):
     Does NOT execute trades — sends proposals for review.
     """
 
-    def __init__(self, claude_client, knowledge_base, market_scanner):
+    def __init__(self, claude_client, knowledge_base, market_scanner, orchestrator=None):
         super().__init__(
             name="TRADER",
             claude_client=claude_client,
@@ -17,6 +17,7 @@ class TraderAgent(BaseAgent):
             log_path="/opt/aila/logs/ai_trade/trader.log"
         )
         self.scanner = market_scanner
+        self.orchestrator = orchestrator
         self.min_confidence = 70
 
     async def think(self, context: dict) -> dict:
@@ -86,10 +87,74 @@ class TraderAgent(BaseAgent):
                     }
 
         if best_opportunity:
+            # Enrich with whale and news context if orchestrator available
+            if self.orchestrator:
+                try:
+                    pair = best_opportunity["pair"]
+                    context = await self.orchestrator.get_market_context(pair)
+
+                    # Check for breaking news — may override decision
+                    if context.get("breaking_news", {}).get("is_breaking"):
+                        impact = context["breaking_news"]["impact"]
+                        if impact.get("impact_score", 0) >= 8:
+                            recommended = impact.get("recommended_action", "wait")
+                            if recommended == "close_positions":
+                                self.log("Breaking news: closing positions recommended", "warning")
+                                best_opportunity["breaking_news_override"] = True
+                                best_opportunity["decision"] = "WAIT"
+                                return best_opportunity
+
+                    # Add context to opportunity
+                    best_opportunity["whale_signal"] = context.get("whale", {})
+                    best_opportunity["news_sentiment"] = context.get("news", {})
+                    best_opportunity["market_sentiment"] = context.get("market", {})
+
+                    # Adjust confidence based on whale/news alignment
+                    whale_sig = context.get("whale", {}).get("whale_signal", "neutral")
+                    news_sent = context.get("news", {}).get("sentiment", "neutral")
+                    decision = best_opportunity["decision"]
+
+                    alignment_bonus = 0
+                    if decision == "LONG":
+                        if whale_sig in ("strong_buy", "buy"):
+                            alignment_bonus += 5
+                        if news_sent in ("bullish", "very_bullish"):
+                            alignment_bonus += 5
+                        if whale_sig in ("sell", "strong_sell"):
+                            alignment_bonus -= 10
+                        if news_sent in ("bearish", "very_bearish"):
+                            alignment_bonus -= 10
+                    elif decision == "SHORT":
+                        if whale_sig in ("sell", "strong_sell"):
+                            alignment_bonus += 5
+                        if news_sent in ("bearish", "very_bearish"):
+                            alignment_bonus += 5
+                        if whale_sig in ("strong_buy", "buy"):
+                            alignment_bonus -= 10
+                        if news_sent in ("bullish", "very_bullish"):
+                            alignment_bonus -= 10
+
+                    best_opportunity["confidence"] = max(0, min(100,
+                        best_opportunity["confidence"] + alignment_bonus
+                    ))
+
+                    if alignment_bonus != 0:
+                        self.log(f"Confidence adjusted by {alignment_bonus:+d} "
+                                 f"(whale={whale_sig}, news={news_sent})")
+
+                except Exception as e:
+                    self.log(f"Error getting market context: {e}", "error")
+
             self.log(
                 f"Best opportunity: {best_opportunity['decision']} "
-                f"{best_opportunity['pair']} @ confidence={best_confidence}%"
+                f"{best_opportunity['pair']} @ confidence={best_opportunity['confidence']}%"
             )
+
+            # Re-check confidence after adjustments
+            if best_opportunity["confidence"] < self.min_confidence:
+                self.log("Confidence dropped below threshold after context adjustment")
+                return None
+
             return best_opportunity
 
         self.log("No opportunities found above confidence threshold")

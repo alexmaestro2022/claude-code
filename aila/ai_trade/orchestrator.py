@@ -8,6 +8,8 @@ from .agents.analyst import AnalystAgent
 from .agents.logger_agent import LoggerAgent
 from .agents.mentor import MentorAgent
 from .agents.researcher import ResearcherAgent
+from .agents.whale_tracker import WhaleTrackerAgent
+from .agents.news_agent import NewsAgent
 from .claude_client import ClaudeClient
 from .knowledge_base import KnowledgeBase
 from .market_scanner import MarketScanner
@@ -37,7 +39,7 @@ class AgentOrchestrator:
 
         # Agents
         self.trader = TraderAgent(
-            self.claude_client, self.knowledge_base, self.scanner
+            self.claude_client, self.knowledge_base, self.scanner, orchestrator=self
         )
         self.reviewer = ReviewerAgent(
             self.claude_client, self.knowledge_base
@@ -57,11 +59,34 @@ class AgentOrchestrator:
         self.researcher = ResearcherAgent(
             self.claude_client, self.knowledge_base, self.scanner
         )
+        self.whale_tracker = WhaleTrackerAgent(
+            self.claude_client, self.knowledge_base, exchange
+        )
+        self.news_agent = NewsAgent(
+            self.claude_client, self.knowledge_base
+        )
 
         # Learning cycles
         self.learning = LearningCycles(self)
 
-        logger.info(f"AgentOrchestrator initialized in {mode} mode (7 agents)")
+        logger.info(f"AgentOrchestrator initialized in {mode} mode (9 agents)")
+
+    async def get_market_context(self, pair: str) -> dict:
+        """
+        Gather full market context before making a decision.
+        Combines whale data, news sentiment, and market sentiment.
+        """
+        whale_signal = await self.whale_tracker.get_whale_signal(pair)
+        news_sentiment = await self.news_agent.get_pair_sentiment(pair)
+        market_sentiment = await self.news_agent.get_market_sentiment()
+        breaking = await self.news_agent.detect_breaking_news()
+
+        return {
+            "whale": whale_signal,
+            "news": news_sentiment,
+            "market": market_sentiment,
+            "breaking_news": breaking,
+        }
 
     async def process_trading_cycle(self) -> dict:
         """
@@ -249,6 +274,8 @@ class AgentOrchestrator:
                     "name": "RESEARCHER",
                     "current_regime": regime.get("regime", "unknown"),
                 },
+                "whale_tracker": {"status": "active", "name": "WHALE_TRACKER"},
+                "news": {"status": "active", "name": "NEWS"},
                 "logger": {
                     "status": "active",
                     "name": "LOGGER",

@@ -850,30 +850,44 @@ SL: SuperTrend линия ST2 (средний) = 0.004882
     ├── analyst.py           # ANALYST — анализ сделок, паттерны
     ├── logger_agent.py      # LOGGER — логи, алерты Telegram
     ├── mentor.py            # MENTOR — наставник, обучает TRADER
-    └── researcher.py        # RESEARCHER — режимы рынка, паттерны
+    ├── researcher.py        # RESEARCHER — режимы рынка, паттерны
+    ├── whale_tracker.py     # WHALE_TRACKER — крупные игроки, потоки
+    └── news_agent.py        # NEWS — новости, сентимент, breaking
 ```
 
 ### Мульти-агентный пайплайн:
 ```
-TRADER (найти) → REVIEWER (проверить) → RISK_GUARD (лимиты) → Execute
-                                                                  ↓
-RESEARCHER (режим рынка)                   ANALYST (анализ) ←── Close
-                                                  ↓
-                                           MENTOR (обучение)
-                                                  ↓
-                                    LOGGER (записать всё) → Telegram
+WHALE_TRACKER ──┐
+                ├→ TRADER (найти) → REVIEWER → RISK_GUARD → Execute
+NEWS ───────────┘                                               ↓
+                                                         ANALYST ← Close
+RESEARCHER (режим рынка)                                    ↓
+                                                     MENTOR (обучение)
+                                                         ↓
+                                              LOGGER (всё) → Telegram
 ```
 
-### Агенты (7 шт.):
+### Агенты (9 шт.):
 | Агент | Роль | Право VETO |
 |-------|------|-----------|
 | **TRADER** | Сканирует рынок, находит возможности | Нет |
 | **REVIEWER** | Проверяет логику, R:R, ищет ошибки | REJECT/MODIFY |
 | **RISK_GUARD** | Лимиты, мониторинг 24/7, force close | Абсолютное VETO |
+| **WHALE_TRACKER** | Крупные транзакции, потоки на биржи, стакан | Нет |
+| **NEWS** | Новости, сентимент, breaking news, Fear&Greed | Нет |
 | **ANALYST** | Анализ сделок, паттерны, обучение | Нет |
 | **LOGGER** | Логи для UI, алерты Telegram | Нет |
 | **MENTOR** | Наставник: daily review, коррекция ошибок, правила | Нет |
 | **RESEARCHER** | Режимы рынка, поиск паттернов, гипотезы | Нет |
+
+### Внешние API (api_keys.py):
+| Сервис | Назначение | Тип |
+|--------|-----------|-----|
+| Whale Alert | Крупные транзакции | Бесплатный tier |
+| CryptoPanic | Новости крипторынка | Бесплатный tier |
+| NewsAPI | Общие новости | Бесплатный tier |
+| Fear & Greed | Индекс страха/жадности | Бесплатный |
+| Glassnode | On-chain аналитика | Платный |
 
 ### Система самообучения (XP и уровни):
 ```
