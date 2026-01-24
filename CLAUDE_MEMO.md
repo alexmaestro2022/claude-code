@@ -838,7 +838,8 @@ SL: SuperTrend линия ST2 (средний) = 0.004882
 ├── orchestrator.py          # Координатор мульти-агентной системы
 ├── risk_manager.py          # Жёсткие лимиты рисков
 ├── position_manager.py      # Управление позициями
-├── learning_engine.py       # Обучение на результатах
+├── learning_engine.py       # Обучение на результатах (legacy)
+├── learning_cycles.py       # Циклы обучения (hourly/daily/weekly)
 ├── performance_tracker.py   # Трекер производительности
 └── agents/
     ├── __init__.py
@@ -847,19 +848,23 @@ SL: SuperTrend линия ST2 (средний) = 0.004882
     ├── reviewer.py          # REVIEWER — проверяет логику, R:R
     ├── risk_guard.py        # RISK_GUARD — VETO, лимиты, мониторинг
     ├── analyst.py           # ANALYST — анализ сделок, паттерны
-    └── logger_agent.py      # LOGGER — логи, алерты Telegram
+    ├── logger_agent.py      # LOGGER — логи, алерты Telegram
+    ├── mentor.py            # MENTOR — наставник, обучает TRADER
+    └── researcher.py        # RESEARCHER — режимы рынка, паттерны
 ```
 
 ### Мульти-агентный пайплайн:
 ```
 TRADER (найти) → REVIEWER (проверить) → RISK_GUARD (лимиты) → Execute
                                                                   ↓
-                                            ANALYST (обучение) ← Close
-                                                                  ↓
-                                            LOGGER (записать всё)
+RESEARCHER (режим рынка)                   ANALYST (анализ) ←── Close
+                                                  ↓
+                                           MENTOR (обучение)
+                                                  ↓
+                                    LOGGER (записать всё) → Telegram
 ```
 
-### Агенты:
+### Агенты (7 шт.):
 | Агент | Роль | Право VETO |
 |-------|------|-----------|
 | **TRADER** | Сканирует рынок, находит возможности | Нет |
@@ -867,6 +872,35 @@ TRADER (найти) → REVIEWER (проверить) → RISK_GUARD (лимит
 | **RISK_GUARD** | Лимиты, мониторинг 24/7, force close | Абсолютное VETO |
 | **ANALYST** | Анализ сделок, паттерны, обучение | Нет |
 | **LOGGER** | Логи для UI, алерты Telegram | Нет |
+| **MENTOR** | Наставник: daily review, коррекция ошибок, правила | Нет |
+| **RESEARCHER** | Режимы рынка, поиск паттернов, гипотезы | Нет |
+
+### Система самообучения (XP и уровни):
+```
+Уровень 1:  max_leverage=5x,  max_positions=1, risk=1%
+Уровень 5:  max_leverage=10x, max_positions=2, risk=1.5%
+Уровень 10: max_leverage=15x, max_positions=3, risk=2%
+Уровень 20: max_leverage=20x, max_positions=4, risk=2.5%
+Уровень 50: max_leverage=25x, max_positions=5, risk=3%
+```
+
+### Навыки трейдера:
+- trend_detection, entry_timing, exit_timing
+- risk_management, position_sizing, patience, adaptability
+
+### XP награды/штрафы:
+- Прибыльная сделка: +10 XP
+- Серия 3/5 побед: +30/+50 XP
+- Идеальный вход/выход: +15 XP
+- Убыточная: -5 XP
+- Нарушение правила: -20 XP
+- Повтор ошибки: -30 XP
+
+### Циклы обучения (LearningCycles):
+- **После сделки**: анализ → XP → коррекция → level up
+- **Каждый час**: определение режима рынка (RESEARCHER)
+- **Каждый день (00:00 UTC)**: разбор дня (MENTOR)
+- **Каждую неделю (воскресенье)**: глубокое обучение (MENTOR + RESEARCHER)
 
 ### Режимы работы:
 - **OBSERVER** — только анализ, без сделок

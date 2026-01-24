@@ -6,11 +6,14 @@ from .agents.reviewer import ReviewerAgent
 from .agents.risk_guard import RiskGuardAgent
 from .agents.analyst import AnalystAgent
 from .agents.logger_agent import LoggerAgent
+from .agents.mentor import MentorAgent
+from .agents.researcher import ResearcherAgent
 from .claude_client import ClaudeClient
 from .knowledge_base import KnowledgeBase
 from .market_scanner import MarketScanner
 from .risk_manager import RiskManager
 from .position_manager import PositionManager
+from .learning_cycles import LearningCycles
 
 logger = logging.getLogger("ai_trade")
 
@@ -48,8 +51,17 @@ class AgentOrchestrator:
         self.logger_agent = LoggerAgent(
             self.claude_client, self.knowledge_base
         )
+        self.mentor = MentorAgent(
+            self.claude_client, self.knowledge_base
+        )
+        self.researcher = ResearcherAgent(
+            self.claude_client, self.knowledge_base, self.scanner
+        )
 
-        logger.info(f"AgentOrchestrator initialized in {mode} mode")
+        # Learning cycles
+        self.learning = LearningCycles(self)
+
+        logger.info(f"AgentOrchestrator initialized in {mode} mode (7 agents)")
 
     async def process_trading_cycle(self) -> dict:
         """
@@ -138,18 +150,23 @@ class AgentOrchestrator:
         return cycle_result
 
     async def process_completed_trade(self, trade_result: dict):
-        """Process a completed trade through ANALYST."""
+        """Process a completed trade through learning system."""
         # 1. Log trade closure
         await self.logger_agent.log_trade_closed(trade_result)
 
-        # 2. ANALYST analyzes the trade
-        analysis = await self.analyst.analyze(trade_result)
-        self.logger_agent.log_analysis(trade_result, analysis)
+        # 2. Learning cycles handle analysis, XP, mentor correction
+        await self.learning.on_trade_closed(trade_result)
 
         # 3. Update risk manager
         self.risk_manager.record_trade_result(trade_result.get("pnl", 0))
 
-        return analysis
+    def start_learning_cycles(self):
+        """Start background learning cycles."""
+        self.learning.start_all_cycles()
+
+    def stop_learning_cycles(self):
+        """Stop background learning cycles."""
+        self.learning.stop_all_cycles()
 
     async def monitor_positions(self):
         """Risk guard monitors all open positions."""
@@ -212,6 +229,9 @@ class AgentOrchestrator:
 
     def get_status(self) -> dict:
         """Get orchestrator status for web interface."""
+        profile = self.knowledge_base.data.get("trader_profile", {})
+        regime = self.knowledge_base.data.get("market_regime", {})
+
         return {
             "mode": self.mode,
             "agents": {
@@ -223,18 +243,36 @@ class AgentOrchestrator:
                     "vetoed_count": len(self.risk_guard.vetoed_trades),
                 },
                 "analyst": {"status": "active", "name": "ANALYST"},
+                "mentor": {"status": "active", "name": "MENTOR"},
+                "researcher": {
+                    "status": "active",
+                    "name": "RESEARCHER",
+                    "current_regime": regime.get("regime", "unknown"),
+                },
                 "logger": {
                     "status": "active",
                     "name": "LOGGER",
                     "events_count": len(self.logger_agent.events),
                 },
             },
+            "trader_profile": {
+                "level": profile.get("level", 1),
+                "xp": profile.get("experience_points", 0),
+                "next_level_xp": profile.get("next_level_xp", 100),
+                "skills": profile.get("skills", {}),
+                "rules_count": len(profile.get("learned_rules", [])),
+            },
+            "market_regime": regime,
+            "level_benefits": self.knowledge_base.get_level_benefits(),
             "risk_status": self.risk_manager.get_status(),
             "open_positions": self.position_manager.get_open_count(),
             "knowledge": {
                 "total_trades": self.knowledge_base.data["total_trades"],
                 "win_rate": self.knowledge_base.data["win_rate"],
                 "total_pnl": self.knowledge_base.data["total_pnl"],
+            },
+            "learning_cycles": {
+                "running": self.learning.running,
             },
         }
 

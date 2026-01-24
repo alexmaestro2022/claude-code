@@ -11,5 +11,51 @@
   "market_patterns": [],
   "risk_adjustments": [],
   "daily_stats": {},
-  "learning_notes": []
+  "learning_notes": [],
+  "market_regime": {},
+  "daily_reviews": [],
+  "weekly_trainings": [],
+  "trader_profile": {
+    "level": 1,
+    "experience_points": 0,
+    "next_level_xp": 100,
+    "skills": {
+      "trend_detection": {"level": 1, "xp": 0, "max_xp": 100},
+      "entry_timing": {"level": 1, "xp": 0, "max_xp": 100},
+      "exit_timing": {"level": 1, "xp": 0, "max_xp": 100},
+      "risk_management": {"level": 1, "xp": 0, "max_xp": 100},
+      "position_sizing": {"level": 1, "xp": 0, "max_xp": 100},
+      "patience": {"level": 1, "xp": 0, "max_xp": 100},
+      "adaptability": {"level": 1, "xp": 0, "max_xp": 100}
+    },
+    "learned_rules": [],
+    "mistakes_history": [],
+    "strengths": [],
+    "weaknesses": []
+  },
+  "xp_config": {
+    "rewards": {
+      "profitable_trade": 10,
+      "profitable_streak_3": 30,
+      "profitable_streak_5": 50,
+      "perfect_entry": 15,
+      "perfect_exit": 15,
+      "followed_rules": 5,
+      "avoided_bad_trade": 20,
+      "learned_from_mistake": 25
+    },
+    "penalties": {
+      "losing_trade": -5,
+      "broke_rule": -20,
+      "repeated_mistake": -30,
+      "emotional_trade": -15
+    }
+  },
+  "level_benefits": {
+    "1": {"max_leverage": 5, "max_positions": 1, "max_risk_pct": 1},
+    "5": {"max_leverage": 10, "max_positions": 2, "max_risk_pct": 1.5},
+    "10": {"max_leverage": 15, "max_positions": 3, "max_risk_pct": 2},
+    "20": {"max_leverage": 20, "max_positions": 4, "max_risk_pct": 2.5},
+    "50": {"max_leverage": 25, "max_positions": 5, "max_risk_pct": 3}
+  }
 }

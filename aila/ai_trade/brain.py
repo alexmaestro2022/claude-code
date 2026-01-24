@@ -62,6 +62,9 @@ class AIBrain:
         self.running = True
         logger.info(f"AI Brain started in {self.mode} mode")
 
+        # Start learning cycles (hourly, daily, weekly)
+        self.orchestrator.start_learning_cycles()
+
         # Run trading cycle and position monitoring concurrently
         while self.running:
             try:
@@ -78,6 +81,7 @@ class AIBrain:
     async def stop(self):
         """Stop the AI trading loop."""
         self.running = False
+        self.orchestrator.stop_learning_cycles()
         logger.info("AI Brain stopped")
 
     async def _trading_cycle(self):
