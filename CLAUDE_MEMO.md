@@ -854,7 +854,13 @@ SL: SuperTrend линия ST2 (средний) = 0.004882
     ├── whale_tracker.py     # WHALE_TRACKER — крупные игроки, потоки
     ├── news_agent.py        # NEWS — новости, сентимент, breaking
     ├── predictor.py         # PREDICTOR — предсказание движений, развороты
-    └── sniper.py            # SNIPER — мгновенные входы, пробои, ликвидации
+    ├── sniper.py            # SNIPER — мгновенные входы, пробои, ликвидации
+    └── arbitrage.py         # ARBITRAGE — арбитраж: funding, cross-exchange, triangular
+├── exchanges/
+    ├── __init__.py
+    ├── base_exchange.py     # Абстрактный интерфейс биржи
+    ├── bybit_exchange.py    # Реализация Bybit
+    └── multi_exchange.py    # Мульти-биржевой менеджер
 ```
 
 ### Мульти-агентный пайплайн:
@@ -865,12 +871,13 @@ PREDICTOR ──────┤
 NEWS ───────────┘                                               ↓
                                                          ANALYST ← Close
 SNIPER (пробои, ликвидации) ─→ Execute                      ↓
-RESEARCHER (режим рынка)                              MENTOR (обучение)
+ARBITRAGE (funding, cross-ex) ─→ Execute              MENTOR (обучение)
+RESEARCHER (режим рынка)
                                                          ↓
                                               LOGGER (всё) → Telegram
 ```
 
-### Агенты (11 шт.):
+### Агенты (12 шт.):
 | Агент | Роль | Право VETO |
 |-------|------|-----------|
 | **TRADER** | Сканирует рынок, находит возможности | Нет |
@@ -880,6 +887,7 @@ RESEARCHER (режим рынка)                              MENTOR (обуч
 | **NEWS** | Новости, сентимент, breaking news, Fear&Greed | Нет |
 | **PREDICTOR** | Предсказание движений: TA + AI, развороты, паттерны | Нет |
 | **SNIPER** | Мгновенные входы: пробои, ликвидации, funding flip | Нет |
+| **ARBITRAGE** | Арбитраж: funding rate, cross-exchange, triangular | Нет |
 | **ANALYST** | Анализ сделок, паттерны, обучение | Нет |
 | **LOGGER** | Логи для UI, алерты Telegram | Нет |
 | **MENTOR** | Наставник: daily review, коррекция ошибок, правила | Нет |

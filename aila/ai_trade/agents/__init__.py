@@ -1,5 +1,5 @@
 """
-AI Trade Agents — Multi-agent trading system (11 agents).
+AI Trade Agents — Multi-agent trading system (12 agents).
 
 Trading Pipeline:
 - TraderAgent: Scans market, finds opportunities
@@ -11,6 +11,7 @@ Intelligence:
 - NewsAgent: Monitors news, sentiment, breaking events
 - PredictorAgent: Predicts price movements using TA + AI
 - SniperAgent: Instant entries on breakouts, liquidations, funding flips
+- ArbitrageAgent: Finds arbitrage opportunities (funding, cross-exchange, triangular)
 
 Learning:
 - AnalystAgent: Analyzes completed trades, finds patterns
@@ -33,6 +34,7 @@ from .whale_tracker import WhaleTrackerAgent
 from .news_agent import NewsAgent
 from .predictor import PredictorAgent
 from .sniper import SniperAgent
+from .arbitrage import ArbitrageAgent
 
 __all__ = [
     "BaseAgent",
@@ -47,4 +49,5 @@ __all__ = [
     "NewsAgent",
     "PredictorAgent",
     "SniperAgent",
+    "ArbitrageAgent",
 ]

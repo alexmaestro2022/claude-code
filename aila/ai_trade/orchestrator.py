@@ -1,4 +1,4 @@
-"""Agent orchestrator - coordinates all 11 agents in the trading pipeline."""
+"""Agent orchestrator - coordinates all 12 agents in the trading pipeline."""
 
 import asyncio
 import logging
@@ -16,6 +16,9 @@ from .agents.whale_tracker import WhaleTrackerAgent
 from .agents.news_agent import NewsAgent
 from .agents.predictor import PredictorAgent
 from .agents.sniper import SniperAgent
+from .agents.arbitrage import ArbitrageAgent
+from .exchanges.multi_exchange import MultiExchangeManager
+from .exchanges.bybit_exchange import BybitExchange
 from .claude_client import ClaudeClient
 from .knowledge_base import KnowledgeBase
 from .market_scanner import MarketScanner
@@ -50,9 +53,15 @@ class AgentOrchestrator:
         self.news_agent = NewsAgent(self.claude_client, self.knowledge_base)
         self.predictor = PredictorAgent(self.claude_client, self.knowledge_base, self.scanner)
         self.sniper = SniperAgent(self.claude_client, self.knowledge_base, self.scanner)
+
+        # Multi-exchange support
+        self.exchanges = MultiExchangeManager()
+        self.exchanges.add_exchange(BybitExchange())
+
+        self.arbitrage = ArbitrageAgent(self.claude_client, self.knowledge_base, self.exchanges)
         self.learning = LearningCycles(self)
 
-        logger.info(f"AgentOrchestrator initialized in {mode} mode (11 agents)")
+        logger.info(f"AgentOrchestrator initialized in {mode} mode (12 agents)")
 
     async def get_market_context(self, pair: str) -> dict[str, Any]:
         """Gather whale, news, prediction, and market context in parallel."""
@@ -83,6 +92,12 @@ class AgentOrchestrator:
         pairs = await self.scanner.get_top_pairs()
         pair_symbols = [p["symbol"] for p in pairs[:20]]
         return await self.sniper.scan_for_snipes(pair_symbols)
+
+    async def scan_arbitrage_opportunities(self) -> dict[str, Any]:
+        """Scan for arbitrage opportunities across all types."""
+        pairs = await self.scanner.get_top_pairs(limit=30)
+        pair_symbols = [p["symbol"] for p in pairs]
+        return await self.arbitrage.find_all_opportunities(pair_symbols)
 
     async def process_trading_cycle(self) -> dict[str, Any]:
         """Full trading cycle with multi-agent pipeline."""
@@ -229,6 +244,7 @@ class AgentOrchestrator:
                 "news": {"status": "active", "name": "NEWS"},
                 "predictor": {"status": "active", "name": "PREDICTOR"},
                 "sniper": {"status": "active", "name": "SNIPER", "pending": len(self.sniper._pending_snipes)},
+                "arbitrage": {"status": "active", "name": "ARBITRAGE", "exchanges": self.exchanges.count},
                 "logger": {"status": "active", "name": "LOGGER", "events_count": len(self.logger_agent.events)},
             },
             "trader_profile": {
