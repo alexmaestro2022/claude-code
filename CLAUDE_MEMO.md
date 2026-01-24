@@ -961,6 +961,12 @@ STRATEGY_EVOLUTION (генетические алгоритмы, оптимиз�
 - Модель: `claude-sonnet-4-20250514`
 - API ключ: через переменную окружения `ANTHROPIC_API_KEY`
 
+### Веб-интерфейс AI Trade:
+- **Страница**: `/ai-trade` (требует авторизации)
+- **API**: `/api/ai-trade/*` (роутер в `aila/api/routes/ai_trade.py`)
+- **Шаблон**: `aila/api/templates/ai_trade.html` (Tailwind CSS)
+- **Endpoints**: status, agents, profile, portfolio, opportunities, market-context, prediction, sentiment, whale, capital, health, evolution, logs, settings, mode
+
 ### Формат событий для веб-интерфейса:
 ```json
 {
