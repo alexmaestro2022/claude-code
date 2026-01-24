@@ -834,12 +834,39 @@ SL: SuperTrend линия ST2 (средний) = 0.004882
 ├── claude_client.py         # Интеграция с Anthropic API
 ├── knowledge_base.py        # База знаний (хранит опыт)
 ├── market_scanner.py        # Сканер рынка (RSI, EMA, ATR)
-├── brain.py                 # Главный мозг — оркестратор
+├── brain.py                 # Главный мозг (использует AgentOrchestrator)
+├── orchestrator.py          # Координатор мульти-агентной системы
 ├── risk_manager.py          # Жёсткие лимиты рисков
 ├── position_manager.py      # Управление позициями
 ├── learning_engine.py       # Обучение на результатах
-└── performance_tracker.py   # Трекер производительности
+├── performance_tracker.py   # Трекер производительности
+└── agents/
+    ├── __init__.py
+    ├── base_agent.py        # Базовый класс агента
+    ├── trader.py            # TRADER — сканирует, находит возможности
+    ├── reviewer.py          # REVIEWER — проверяет логику, R:R
+    ├── risk_guard.py        # RISK_GUARD — VETO, лимиты, мониторинг
+    ├── analyst.py           # ANALYST — анализ сделок, паттерны
+    └── logger_agent.py      # LOGGER — логи, алерты Telegram
 ```
+
+### Мульти-агентный пайплайн:
+```
+TRADER (найти) → REVIEWER (проверить) → RISK_GUARD (лимиты) → Execute
+                                                                  ↓
+                                            ANALYST (обучение) ← Close
+                                                                  ↓
+                                            LOGGER (записать всё)
+```
+
+### Агенты:
+| Агент | Роль | Право VETO |
+|-------|------|-----------|
+| **TRADER** | Сканирует рынок, находит возможности | Нет |
+| **REVIEWER** | Проверяет логику, R:R, ищет ошибки | REJECT/MODIFY |
+| **RISK_GUARD** | Лимиты, мониторинг 24/7, force close | Абсолютное VETO |
+| **ANALYST** | Анализ сделок, паттерны, обучение | Нет |
+| **LOGGER** | Логи для UI, алерты Telegram | Нет |
 
 ### Режимы работы:
 - **OBSERVER** — только анализ, без сделок
@@ -857,22 +884,22 @@ SL: SuperTrend линия ST2 (средний) = 0.004882
 ### Данные:
 - База знаний: `/opt/aila/data/ai_knowledge.json`
 - Логи: `/opt/aila/logs/ai_trade.log`
+- Логи агентов: `/opt/aila/logs/ai_trade/{agent}.log`
 
 ### Claude API:
 - Модель: `claude-sonnet-4-20250514`
 - API ключ: через переменную окружения `ANTHROPIC_API_KEY`
 
-### Компоненты:
-| Компонент | Ответственность |
-|-----------|----------------|
-| `AIBrain` | Оркестрация торгового цикла: scan → analyze → decide → execute |
-| `ClaudeClient` | Промпты для анализа рынка и обучения |
-| `KnowledgeBase` | Хранение и обновление торгового опыта |
-| `MarketScanner` | Сканирование пар, расчёт RSI/EMA/ATR |
-| `RiskManager` | Валидация сигналов, ежедневные лимиты |
-| `PositionManager` | Открытие/закрытие позиций, SL/TP ордера |
-| `LearningEngine` | Анализ завершённых сделок, извлечение уроков |
-| `PerformanceTracker` | Дневная/общая статистика, стрики |
+### Формат событий для веб-интерфейса:
+```json
+{
+    "timestamp": "2026-01-24T15:30:00",
+    "agent": "TRADER",
+    "action": "OPPORTUNITY_FOUND",
+    "data": {"pair": "BTCUSDT", "direction": "LONG", "confidence": 85},
+    "message": "Opportunity found: LONG BTCUSDT, confidence 85%"
+}
+```
 
 ---
 

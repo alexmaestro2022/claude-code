@@ -1,20 +1,18 @@
 import logging
 import asyncio
 from datetime import datetime
-from .config import MODES, RISK_LIMITS, LOG_PATH
-from .claude_client import ClaudeClient
-from .knowledge_base import KnowledgeBase
-from .market_scanner import MarketScanner
-from .risk_manager import RiskManager
-from .position_manager import PositionManager
-from .learning_engine import LearningEngine
+from .config import MODES, LOG_PATH, SCANNER_CONFIG
+from .orchestrator import AgentOrchestrator
 from .performance_tracker import PerformanceTracker
 
 logger = logging.getLogger("ai_trade")
 
 
 class AIBrain:
-    """Main AI trader brain - orchestrates all components."""
+    """
+    Main AI trader brain — uses multi-agent orchestrator.
+    Modes: OBSERVER, ADVISOR, AUTOPILOT
+    """
 
     def __init__(self, exchange, mode: str = "OBSERVER"):
         self.exchange = exchange
@@ -22,19 +20,16 @@ class AIBrain:
         self.mode_config = MODES.get(mode, MODES["OBSERVER"])
         self.running = False
 
-        # Initialize components
-        self.claude = ClaudeClient()
-        self.kb = KnowledgeBase()
-        self.scanner = MarketScanner(exchange)
-        self.risk_manager = RiskManager()
-        self.position_manager = PositionManager(exchange)
-        self.learning_engine = LearningEngine(self.claude, self.kb)
-        self.performance_tracker = PerformanceTracker(self.kb)
-
-        # Setup logging
+        # Setup logging first
         self._setup_logging()
 
-        logger.info(f"AI Brain initialized in {mode} mode")
+        # Multi-agent orchestrator
+        self.orchestrator = AgentOrchestrator(exchange, mode)
+
+        # Performance tracker (uses orchestrator's knowledge base)
+        self.performance_tracker = PerformanceTracker(self.orchestrator.knowledge_base)
+
+        logger.info(f"AI Brain initialized in {mode} mode (multi-agent)")
 
     def _setup_logging(self):
         """Configure file logging for AI trade module."""
@@ -45,10 +40,12 @@ class AIBrain:
             datefmt="%Y-%m-%d %H:%M:%S"
         )
         handler.setFormatter(formatter)
-        logger.addHandler(handler)
+
+        if not logger.handlers:
+            logger.addHandler(handler)
         logger.setLevel(logging.INFO)
 
-    def set_mode(self, mode: str):
+    def set_mode(self, mode: str) -> bool:
         """Change operating mode."""
         if mode not in MODES:
             logger.error(f"Unknown mode: {mode}")
@@ -56,6 +53,7 @@ class AIBrain:
 
         self.mode = mode
         self.mode_config = MODES[mode]
+        self.orchestrator.mode = mode
         logger.info(f"Mode changed to: {mode} - {self.mode_config['description']}")
         return True
 
@@ -64,10 +62,15 @@ class AIBrain:
         self.running = True
         logger.info(f"AI Brain started in {self.mode} mode")
 
+        # Run trading cycle and position monitoring concurrently
         while self.running:
             try:
-                await self._trading_cycle()
-                await asyncio.sleep(60)  # Wait between cycles
+                tasks = [
+                    self._trading_cycle(),
+                    self._position_monitoring(),
+                ]
+                await asyncio.gather(*tasks)
+                await asyncio.sleep(SCANNER_CONFIG["scan_interval_seconds"])
             except Exception as e:
                 logger.error(f"Trading cycle error: {e}")
                 await asyncio.sleep(30)
@@ -78,92 +81,60 @@ class AIBrain:
         logger.info("AI Brain stopped")
 
     async def _trading_cycle(self):
-        """One full trading cycle: scan -> analyze -> decide -> execute."""
-        # 1. Check open positions
-        if self.position_manager.get_open_count() > 0:
-            await self._manage_open_positions()
-
-        # 2. Scan market for opportunities
-        pairs = await self.scanner.get_top_pairs()
-        if not pairs:
+        """
+        One full trading cycle using multi-agent pipeline:
+        TRADER → REVIEWER → RISK_GUARD → execute → ANALYST
+        """
+        # Skip if already at max positions
+        if self.orchestrator.position_manager.get_open_count() >= 3:
             return
 
-        # 3. Analyze top pairs
-        for pair_info in pairs[:5]:  # Analyze top 5
-            symbol = pair_info["symbol"]
+        cycle_result = await self.orchestrator.process_trading_cycle()
 
-            # Skip if already have position
-            if symbol in self.position_manager.open_positions:
-                continue
+        status = cycle_result.get("status", "no_opportunity")
+        if status == "trade_executed":
+            trade = cycle_result.get("trade_result")
+            if trade:
+                self.performance_tracker.record_trade(trade)
 
-            # Get detailed market data
-            market_data = await self.scanner.get_market_data(symbol)
-            if not market_data:
-                continue
+        logger.info(f"Cycle complete: {status}")
 
-            # Get AI analysis
-            knowledge = self.kb.get_context_for_analysis(symbol)
-            analysis = await self.claude.get_market_analysis(symbol, market_data, knowledge)
+    async def _position_monitoring(self):
+        """Monitor open positions via RISK_GUARD."""
+        if self.orchestrator.position_manager.get_open_count() == 0:
+            return
 
-            if "error" in analysis:
-                continue
+        await self.orchestrator.monitor_positions()
 
-            decision = analysis.get("decision", "WAIT")
-            confidence = analysis.get("confidence", 0)
-
-            logger.info(f"Analysis {symbol}: {decision} (confidence={confidence}%)")
-
-            # Only act on high-confidence signals
-            if decision == "WAIT" or confidence < 70:
-                continue
-
-            # 4. Risk check
-            analysis["pair"] = symbol
-            risk_check = self.risk_manager.validate_trade(analysis, await self._get_balance())
-
-            if not risk_check["approved"]:
-                logger.info(f"Trade rejected by risk manager: {risk_check['reason']}")
-                continue
-
-            # 5. Execute based on mode
-            if self.mode_config.get("can_trade"):
-                await self._execute_trade(risk_check["signal"])
-            else:
-                logger.info(f"Signal generated (mode={self.mode}): {decision} {symbol} @ confidence={confidence}%")
-
-    async def _manage_open_positions(self):
-        """Check and manage open positions."""
-        positions = await self.position_manager.check_positions()
-
+        # Check for closed positions
+        positions = await self.orchestrator.position_manager.check_positions()
         for pos in positions:
-            # Check if should close based on PnL
-            unrealized_pnl = pos.get("unrealized_pnl_pct", 0)
+            # If position was closed by SL/TP on exchange
+            # (detected by absence in next check)
+            pass
 
-            # Emergency stop: close if loss exceeds 50% of position
-            if unrealized_pnl <= -50:
-                logger.warning(f"Emergency close {pos['symbol']}: PnL={unrealized_pnl:.1f}%")
-                result = await self.position_manager.close_position(pos["symbol"], reason="emergency_stop")
-                if result:
-                    self.risk_manager.on_position_closed()
-                    self.risk_manager.record_trade_result(result["pnl"])
-                    self.performance_tracker.record_trade(result)
-                    await self.learning_engine.learn_from_trade(result)
+    async def approve_trade(self, opportunity: dict) -> dict:
+        """Approve a trade suggestion in ADVISOR mode."""
+        result = await self.orchestrator.approve_suggestion(opportunity)
+        if result.get("status") == "executed":
+            self.performance_tracker.record_trade(result["result"])
+        return result
 
-    async def _execute_trade(self, signal: dict):
-        """Execute a trade signal."""
-        result = await self.position_manager.open_position(signal)
+    async def force_close(self, symbol: str) -> dict:
+        """Manually force close a position."""
+        result = await self.orchestrator.position_manager.close_position(
+            symbol, reason="manual_close"
+        )
         if result:
-            self.risk_manager.on_position_opened()
-            logger.info(f"Trade executed: {signal['decision']} {signal['pair']}")
+            self.orchestrator.risk_manager.on_position_closed()
+            await self.orchestrator.process_completed_trade(result)
+            self.performance_tracker.record_trade(result)
+            return {"status": "closed", "result": result}
+        return {"status": "error", "message": f"No open position for {symbol}"}
 
-    async def _get_balance(self) -> float:
-        """Get current USDT balance."""
-        try:
-            balance = await self.exchange.fetch_balance()
-            return balance.get("USDT", {}).get("free", 0)
-        except Exception as e:
-            logger.error(f"Error fetching balance: {e}")
-            return 0
+    async def run_analysis(self):
+        """Manually trigger pattern analysis."""
+        return await self.orchestrator.analyst.find_patterns()
 
     def get_status(self) -> dict:
         """Get current AI brain status."""
@@ -171,15 +142,11 @@ class AIBrain:
             "mode": self.mode,
             "mode_description": self.mode_config["description"],
             "running": self.running,
-            "open_positions": self.position_manager.get_open_count(),
-            "risk_status": self.risk_manager.get_status(),
+            "agents": self.orchestrator.get_status(),
             "daily_report": self.performance_tracker.get_daily_report(),
             "overall_report": self.performance_tracker.get_overall_report(),
-            "knowledge_stats": {
-                "total_trades": self.kb.data["total_trades"],
-                "win_rate": self.kb.data["win_rate"],
-                "total_pnl": self.kb.data["total_pnl"],
-                "mistakes_logged": len(self.kb.data["mistakes_to_avoid"]),
-                "strategies_tracked": len(self.kb.data["best_strategies"]),
-            }
         }
+
+    def get_events(self, limit: int = 50, agent: str = None) -> list:
+        """Get recent agent events for web interface."""
+        return self.orchestrator.get_events(limit, agent)
