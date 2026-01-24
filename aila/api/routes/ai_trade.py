@@ -1,0 +1,273 @@
+"""
+API endpoints for AI Trade module.
+"""
+
+import os
+from datetime import datetime
+from typing import Optional
+
+from fastapi import APIRouter, HTTPException
+
+router = APIRouter(prefix="/api/ai-trade", tags=["AI Trade"])
+
+# Lazy orchestrator initialization
+_orchestrator = None
+
+
+async def get_orchestrator():
+    """Get or create orchestrator instance."""
+    global _orchestrator
+    if _orchestrator is None:
+        from ...ai_trade.orchestrator import AgentOrchestrator
+        _orchestrator = AgentOrchestrator(exchange=None)
+    return _orchestrator
+
+
+@router.get("/status")
+async def get_status():
+    """Get AI Trade system status."""
+    try:
+        orch = await get_orchestrator()
+        return orch.get_status()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/agents")
+async def get_agents():
+    """List all agents and their status."""
+    try:
+        agents = [
+            {"name": "TRADER", "status": "active", "description": "Scans market, finds opportunities"},
+            {"name": "REVIEWER", "status": "active", "description": "Reviews TRADER decisions"},
+            {"name": "RISK_GUARD", "status": "active", "description": "Risk control, VETO"},
+            {"name": "ANALYST", "status": "active", "description": "Trade analysis"},
+            {"name": "MENTOR", "status": "active", "description": "Training and correction"},
+            {"name": "RESEARCHER", "status": "active", "description": "Market research"},
+            {"name": "WHALE_TRACKER", "status": "active", "description": "Whale monitoring"},
+            {"name": "NEWS", "status": "active", "description": "News monitoring"},
+            {"name": "PREDICTOR", "status": "active", "description": "Price prediction"},
+            {"name": "SNIPER", "status": "active", "description": "Sniper entries"},
+            {"name": "ARBITRAGE", "status": "active", "description": "Arbitrage opportunities"},
+            {"name": "HEDGE_MASTER", "status": "active", "description": "Hedging"},
+            {"name": "WAR_ROOM", "status": "active", "description": "Crisis management"},
+            {"name": "CAPITAL_MANAGER", "status": "active", "description": "Capital management"},
+            {"name": "STRATEGY_EVOLUTION", "status": "active", "description": "Strategy optimization"},
+            {"name": "LOGGER", "status": "active", "description": "Logging"},
+        ]
+        return {"agents": agents, "total": len(agents)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/profile")
+async def get_trader_profile():
+    """AI trader profile (level, XP, skills)."""
+    try:
+        orch = await get_orchestrator()
+        profile = orch.knowledge_base.data.get("trader_profile", {})
+        return profile
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/portfolio")
+async def get_portfolio():
+    """Portfolio analysis."""
+    try:
+        orch = await get_orchestrator()
+        return await orch.analyze_portfolio()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/opportunities")
+async def get_opportunities():
+    """Current trading opportunities."""
+    try:
+        orch = await get_orchestrator()
+        opportunities = await orch.trader.find_opportunity()
+        arbitrage = await orch.scan_arbitrage_opportunities()
+        snipes = await orch.sniper.scan_for_snipes(["BTCUSDT", "ETHUSDT", "SOLUSDT"])
+        return {
+            "trading": opportunities,
+            "arbitrage": arbitrage,
+            "snipes": snipes,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/market-context/{pair}")
+async def get_market_context(pair: str):
+    """Full market context for a pair."""
+    try:
+        orch = await get_orchestrator()
+        return await orch.get_market_context(pair)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/prediction/{pair}")
+async def get_prediction(pair: str):
+    """Price movement prediction."""
+    try:
+        orch = await get_orchestrator()
+        prediction = await orch.predictor.predict_movement(pair)
+        reversal = await orch.predictor.detect_reversal(pair)
+        return {
+            "pair": pair,
+            "prediction": prediction,
+            "reversal": reversal,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/sentiment")
+async def get_sentiment():
+    """Market sentiment."""
+    try:
+        orch = await get_orchestrator()
+        market = await orch.news_agent.get_market_sentiment()
+        breaking = await orch.news_agent.detect_breaking_news()
+        return {
+            "market_sentiment": market,
+            "breaking_news": breaking,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/whale/{pair}")
+async def get_whale_signal(pair: str):
+    """Whale signals."""
+    try:
+        orch = await get_orchestrator()
+        return await orch.whale_tracker.get_whale_signal(pair)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/capital")
+async def get_capital():
+    """Capital management."""
+    try:
+        orch = await get_orchestrator()
+        allocation = orch.capital_manager.get_allocation()
+        phase = orch.capital_manager.get_scaling_phase()
+        return {
+            "allocation": allocation,
+            "phase": phase,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/capital/plan")
+async def calculate_growth_plan(initial: float, target: float, monthly_return: float = 30):
+    """Calculate capital growth plan."""
+    try:
+        orch = await get_orchestrator()
+        plan = orch.capital_manager.calculate_compound_plan(initial, target, monthly_return)
+        return plan
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/health")
+async def get_health():
+    """System health check."""
+    try:
+        orch = await get_orchestrator()
+        market_safety = await orch.check_market_safety()
+        system_health = await orch.war_room.run_health_check()
+        return {
+            "market": market_safety,
+            "system": system_health,
+            "crisis_mode": orch.war_room.is_crisis_mode(),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/evolution")
+async def get_evolution_stats():
+    """Strategy evolution statistics."""
+    try:
+        orch = await get_orchestrator()
+        return orch.strategy_evolution.get_evolution_stats()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/evolution/run")
+async def run_evolution(generations: int = 5):
+    """Run strategy evolution."""
+    try:
+        orch = await get_orchestrator()
+        return await orch.evolve_strategies(generations)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/logs")
+async def get_recent_logs(agent: Optional[str] = None, limit: int = 50):
+    """Get recent logs."""
+    try:
+        logs_dir = "/opt/aila/logs/ai_trade"
+        result: list = []
+        if agent:
+            log_file = os.path.join(logs_dir, f"{agent.lower()}.log")
+            if os.path.exists(log_file):
+                with open(log_file, 'r') as f:
+                    lines = f.readlines()[-limit:]
+                    result = [line.strip() for line in lines if line.strip()]
+        else:
+            if os.path.exists(logs_dir):
+                for filename in sorted(os.listdir(logs_dir)):
+                    if filename.endswith('.log'):
+                        log_file = os.path.join(logs_dir, filename)
+                        with open(log_file, 'r') as f:
+                            lines = f.readlines()[-10:]
+                            for line in lines:
+                                if line.strip():
+                                    result.append({
+                                        "agent": filename.replace('.log', ''),
+                                        "log": line.strip()
+                                    })
+        return {"logs": result[-limit:], "count": len(result)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/settings")
+async def get_settings():
+    """Get AI Trade settings."""
+    try:
+        from ...ai_trade.config import TRADING_CONFIG, RISK_LIMITS, MODES
+        return {
+            "trading": TRADING_CONFIG,
+            "risk_limits": RISK_LIMITS,
+            "modes": MODES
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/mode/{mode}")
+async def set_mode(mode: str):
+    """Set working mode (OBSERVER/ADVISOR/AUTOPILOT)."""
+    if mode.upper() not in ["OBSERVER", "ADVISOR", "AUTOPILOT"]:
+        raise HTTPException(status_code=400, detail="Invalid mode")
+    try:
+        orch = await get_orchestrator()
+        orch.mode = mode.upper()
+        return {"mode": mode.upper(), "status": "set"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

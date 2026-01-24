@@ -19,6 +19,9 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Response, Request, 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+
+from .routes.ai_trade import router as ai_trade_router
 from dotenv import load_dotenv
 
 import structlog
@@ -92,6 +95,12 @@ app.add_middleware(
 
 # Static files
 app.mount("/static", StaticFiles(directory="/opt/aila/static"), name="static")
+
+# Templates
+templates = Jinja2Templates(directory="/opt/aila/aila/api/templates")
+
+# AI Trade router
+app.include_router(ai_trade_router)
 
 # Clear logs on startup
 @app.on_event("startup")
@@ -8317,6 +8326,14 @@ DASHBOARD_HTML = r"""
 </body>
 </html>
 """
+
+
+@app.get("/ai-trade", response_class=HTMLResponse)
+async def ai_trade_page(request: Request, aila_session: Optional[str] = Cookie(None)):
+    """Serve the AI Trade dashboard page."""
+    if not verify_session(aila_session):
+        return RedirectResponse(url="/login", status_code=302)
+    return templates.TemplateResponse("ai_trade.html", {"request": request})
 
 
 @app.get("/login", response_class=HTMLResponse)

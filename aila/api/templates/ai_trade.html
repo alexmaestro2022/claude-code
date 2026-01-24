@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AILA AI Trade</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .card { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); }
+        .glow { box-shadow: 0 0 20px rgba(0, 255, 136, 0.3); }
+        .pulse { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="mb-8">
+            <h1 class="text-4xl font-bold text-green-400">AILA AI Trade</h1>
+            <p class="text-gray-400">Autonomous Intelligent Learning Algorithm</p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div class="card rounded-lg p-4 glow">
+                <h3 class="text-gray-400 text-sm">AI Level</h3>
+                <p class="text-3xl font-bold text-green-400" id="level">1</p>
+                <div class="w-full bg-gray-700 rounded-full h-2 mt-2">
+                    <div class="bg-green-400 h-2 rounded-full" id="xp-bar" style="width: 0%"></div>
+                </div>
+                <p class="text-xs text-gray-500 mt-1"><span id="xp">0</span> XP</p>
+            </div>
+            <div class="card rounded-lg p-4">
+                <h3 class="text-gray-400 text-sm">Balance</h3>
+                <p class="text-3xl font-bold" id="balance">$0.00</p>
+                <p class="text-sm text-green-400" id="pnl">+0%</p>
+            </div>
+            <div class="card rounded-lg p-4">
+                <h3 class="text-gray-400 text-sm">Win Rate</h3>
+                <p class="text-3xl font-bold text-blue-400" id="winrate">0%</p>
+            </div>
+            <div class="card rounded-lg p-4">
+                <h3 class="text-gray-400 text-sm">Mode</h3>
+                <p class="text-3xl font-bold text-yellow-400" id="mode">OBSERVER</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
+            <div class="card rounded-lg p-4 lg:col-span-2">
+                <h2 class="text-xl font-bold mb-4">Agents</h2>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2" id="agents-grid"></div>
+            </div>
+            <div class="card rounded-lg p-4">
+                <h2 class="text-xl font-bold mb-4">Skills</h2>
+                <div id="skills-list"></div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+            <div class="card rounded-lg p-4">
+                <h2 class="text-xl font-bold mb-4">Opportunities</h2>
+                <div id="opportunities" class="space-y-2"></div>
+            </div>
+            <div class="card rounded-lg p-4">
+                <h2 class="text-xl font-bold mb-4">Whale Signal</h2>
+                <div id="whale-signal"></div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+            <div class="card rounded-lg p-4">
+                <h2 class="text-xl font-bold mb-4">Sentiment</h2>
+                <div id="sentiment"></div>
+            </div>
+            <div class="card rounded-lg p-4">
+                <h2 class="text-xl font-bold mb-4">Prediction BTC</h2>
+                <div id="prediction"></div>
+            </div>
+        </div>
+
+        <div class="card rounded-lg p-4">
+            <h2 class="text-xl font-bold mb-4">Agent Logs</h2>
+            <div id="logs" class="font-mono text-sm text-gray-400 max-h-64 overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/ai-trade';
+
+        async function fetchData(endpoint) {
+            try {
+                const response = await fetch(API_BASE + endpoint);
+                if (!response.ok) return null;
+                return await response.json();
+            } catch (e) {
+                console.error('Fetch error:', e);
+                return null;
+            }
+        }
+
+        async function updateDashboard() {
+            const status = await fetchData('/status');
+            if (status) {
+                document.getElementById('mode').textContent = status.mode || 'OBSERVER';
+                if (status.knowledge) {
+                    document.getElementById('winrate').textContent =
+                        (status.knowledge.win_rate * 100).toFixed(1) + '%';
+                }
+                if (status.trader_profile) {
+                    document.getElementById('level').textContent = status.trader_profile.level || 1;
+                    document.getElementById('xp').textContent = status.trader_profile.xp || 0;
+                    const xpPct = ((status.trader_profile.xp || 0) / (status.trader_profile.next_level_xp || 100)) * 100;
+                    document.getElementById('xp-bar').style.width = Math.min(xpPct, 100) + '%';
+                }
+            }
+
+            const profile = await fetchData('/profile');
+            if (profile && profile.skills) {
+                const skillsHtml = Object.entries(profile.skills).map(([name, data]) => {
+                    const level = typeof data === 'object' ? (data.level || 1) : data;
+                    return `<div class="flex justify-between mb-2">
+                        <span class="text-gray-400">${name}</span>
+                        <span class="text-green-400">Lv.${level}</span>
+                    </div>`;
+                }).join('');
+                document.getElementById('skills-list').innerHTML = skillsHtml || '<p class="text-gray-500">No skills yet</p>';
+            }
+
+            const agents = await fetchData('/agents');
+            if (agents && agents.agents) {
+                const agentsHtml = agents.agents.map(a =>
+                    `<div class="bg-gray-800 rounded p-2 text-center">
+                        <div class="text-green-400 text-xs pulse">&#9679;</div>
+                        <div class="text-xs font-bold">${a.name}</div>
+                    </div>`
+                ).join('');
+                document.getElementById('agents-grid').innerHTML = agentsHtml;
+            }
+
+            const sentiment = await fetchData('/sentiment');
+            if (sentiment && sentiment.market_sentiment) {
+                const s = sentiment.market_sentiment;
+                const sentimentText = s.sentiment || s.label || 'unknown';
+                const isNegative = sentimentText.includes('fear') || sentimentText.includes('bearish');
+                document.getElementById('sentiment').innerHTML =
+                    `<div class="text-2xl font-bold ${isNegative ? 'text-red-400' : 'text-green-400'}">${sentimentText}</div>
+                    <div class="text-gray-400">Score: ${s.score || 0}/100</div>`;
+            } else {
+                document.getElementById('sentiment').innerHTML = '<p class="text-gray-500">Loading...</p>';
+            }
+
+            const prediction = await fetchData('/prediction/BTCUSDT');
+            if (prediction && prediction.prediction) {
+                const p = prediction.prediction;
+                const dir = p.direction || 'unknown';
+                document.getElementById('prediction').innerHTML =
+                    `<div class="text-2xl font-bold ${dir === 'up' ? 'text-green-400' : 'text-red-400'}">${dir.toUpperCase()}</div>
+                    <div class="text-gray-400">Probability: ${p.probability || 0}%</div>
+                    <div class="text-gray-400">Confidence: ${p.confidence || 0}%</div>`;
+            } else {
+                document.getElementById('prediction').innerHTML = '<p class="text-gray-500">Loading...</p>';
+            }
+
+            const whale = await fetchData('/whale/BTCUSDT');
+            if (whale) {
+                document.getElementById('whale-signal').innerHTML =
+                    `<div class="text-2xl font-bold">${whale.signal || 'neutral'}</div>
+                    <div class="text-gray-400">Confidence: ${whale.confidence || 0}%</div>
+                    <div class="text-gray-400 text-sm mt-2">${whale.reasoning || ''}</div>`;
+            } else {
+                document.getElementById('whale-signal').innerHTML = '<p class="text-gray-500">Loading...</p>';
+            }
+
+            const logs = await fetchData('/logs?limit=20');
+            if (logs && logs.logs && logs.logs.length > 0) {
+                const logsHtml = logs.logs.map(l =>
+                    `<div class="border-b border-gray-700 py-1">${typeof l === 'string' ? l : `[${l.agent}] ${l.log}`}</div>`
+                ).join('');
+                document.getElementById('logs').innerHTML = logsHtml;
+            } else {
+                document.getElementById('logs').innerHTML = '<p class="text-gray-500">No logs yet</p>';
+            }
+        }
+
+        updateDashboard();
+        setInterval(updateDashboard, 30000);
+    </script>
+</body>
+</html>
