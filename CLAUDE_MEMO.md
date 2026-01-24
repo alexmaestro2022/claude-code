@@ -951,6 +951,35 @@ RESEARCHER (режим рынка)                                    ↓
 
 ---
 
+## 22. Shared Utils — /opt/aila/aila/utils/common.py
+
+### Добавлено при оптимизации (2026-01-24):
+```python
+retry_async(max_attempts=3, base_delay=1.0, max_delay=30.0, exceptions=(Exception,))
+# Декоратор для retry с экспоненциальным backoff
+
+TTLCache(default_ttl=60.0)
+# In-memory кэш с TTL: get(key, ttl), set(key, value), invalidate(key), cleanup()
+
+RateLimiter(max_requests=10, window_seconds=1.0)
+# Скользящее окно rate limiting: await acquire()
+
+clamp(value, min_val, max_val)
+# Ограничение значения в диапазон [min, max]
+```
+
+### Оптимизации в AI Trade модуле:
+- `claude_client.py`: AsyncAnthropic + @retry_async(3 попытки)
+- `market_scanner.py`: TTLCache (30s для пар, 5s для цен)
+- `whale_tracker.py`: aiohttp.ClientSession + TTLCache (60s whale, 120s transactions)
+- `news_agent.py`: aiohttp.ClientSession + TTLCache (120s news, 300s sentiment)
+- `position_manager.py`: @retry_async(2 попытки) на open/close
+- Все классы: `__slots__` для оптимизации памяти
+- Все файлы: современные type hints (dict, list вместо Dict, List)
+- `learning_cycles.py`: static helpers (_detect_skill, _seconds_until_*)
+
+---
+
 **Последнее обновление:** 2026-01-24
 **Текущая версия:** v2.2.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
