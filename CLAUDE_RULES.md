@@ -54,6 +54,85 @@
 - Добавить в signal_data asset_filters: результат проверки фильтра
 - В логе аудита: `✅ Объём торгов: 15M > 5M (мин) — условие выполнено`
 
+## ПРАВИЛО: Оптимизация кода
+
+ВЕСЬ код должен быть:
+
+### 1. ПРОИЗВОДИТЕЛЬНОСТЬ
+- Асинхронный (async/await) где возможно
+- Без блокирующих операций
+- Кэширование частых запросов (Redis/memory)
+- Batch операции вместо одиночных
+- Connection pooling для API/DB
+
+### 2. ПАМЯТЬ
+- Generators вместо списков для больших данных
+- Своевременное освобождение ресурсов
+- Не хранить лишнее в памяти
+- Использовать __slots__ в классах
+
+### 3. СТРУКТУРА
+- DRY — не повторять код
+- SOLID принципы
+- Type hints везде
+- Docstrings для всех функций
+- Максимум 50 строк на функцию
+- Максимум 300 строк на файл
+
+### 4. ОБРАБОТКА ОШИБОК
+- Try/except с конкретными исключениями
+- Graceful degradation
+- Retry с exponential backoff для API
+- Логирование всех ошибок
+
+### 5. API ЗАПРОСЫ
+- Rate limiting
+- Таймауты на все запросы
+- Retry logic
+- Кэширование ответов
+
+### 6. ПРИМЕРЫ
+
+❌ ПЛОХО:
+```python
+def get_prices(pairs):
+    results = []
+    for pair in pairs:
+        response = requests.get(f'/price/{pair}')  # Блокирующий
+        results.append(response.json())
+    return results
+```
+
+✅ ХОРОШО:
+```python
+async def get_prices(pairs: list[str]) -> list[dict]:
+    """Получает цены для списка пар параллельно."""
+    async with aiohttp.ClientSession() as session:
+        tasks = [self._fetch_price(session, pair) for pair in pairs]
+        return await asyncio.gather(*tasks)
+
+async def _fetch_price(self, session: aiohttp.ClientSession, pair: str) -> dict:
+    """Получает цену одной пары с retry."""
+    for attempt in range(3):
+        try:
+            async with session.get(
+                f'/price/{pair}',
+                timeout=aiohttp.ClientTimeout(total=5)
+            ) as response:
+                return await response.json()
+        except Exception as e:
+            if attempt == 2:
+                raise
+            await asyncio.sleep(2 ** attempt)
+```
+
+### 7. ПЕРЕД КОММИТОМ
+- Проверить что нет дублирования
+- Проверить что все async
+- Проверить type hints
+- Проверить обработку ошибок
+- Проверить логирование
+
 ## Управление правилами
 - "запомни правило:" + текст — добавить новое правило в CLAUDE_RULES.md
 - "удали правило:" + текст — удалить указанное правило из CLAUDE_RULES.md
