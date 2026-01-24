@@ -836,6 +836,7 @@ SL: SuperTrend линия ST2 (средний) = 0.004882
 ├── market_scanner.py        # Сканер рынка (RSI, EMA, ATR)
 ├── brain.py                 # Главный мозг (использует AgentOrchestrator)
 ├── orchestrator.py          # Координатор мульти-агентной системы
+├── capital_manager.py       # CAPITAL_MANAGER — Kelly Criterion, compound growth
 ├── risk_manager.py          # Жёсткие лимиты рисков
 ├── position_manager.py      # Управление позициями
 ├── learning_engine.py       # Обучение на результатах (legacy)
@@ -855,7 +856,8 @@ SL: SuperTrend линия ST2 (средний) = 0.004882
     ├── news_agent.py        # NEWS — новости, сентимент, breaking
     ├── predictor.py         # PREDICTOR — предсказание движений, развороты
     ├── sniper.py            # SNIPER — мгновенные входы, пробои, ликвидации
-    └── arbitrage.py         # ARBITRAGE — арбитраж: funding, cross-exchange, triangular
+    ├── arbitrage.py         # ARBITRAGE — арбитраж: funding, cross-exchange, triangular
+    └── hedge_master.py      # HEDGE_MASTER — хеджирование, защита портфеля
 ├── exchanges/
     ├── __init__.py
     ├── base_exchange.py     # Абстрактный интерфейс биржи
@@ -873,11 +875,11 @@ NEWS ───────────┘                                       
 SNIPER (пробои, ликвидации) ─→ Execute                      ↓
 ARBITRAGE (funding, cross-ex) ─→ Execute              MENTOR (обучение)
 RESEARCHER (режим рынка)
-                                                         ↓
-                                              LOGGER (всё) → Telegram
+HEDGE_MASTER (защита портфеля, emergency hedge)          ↓
+CAPITAL_MANAGER (Kelly, sizing, compound)     LOGGER (всё) → Telegram
 ```
 
-### Агенты (12 шт.):
+### Агенты (14 шт.):
 | Агент | Роль | Право VETO |
 |-------|------|-----------|
 | **TRADER** | Сканирует рынок, находит возможности | Нет |
@@ -888,6 +890,8 @@ RESEARCHER (режим рынка)
 | **PREDICTOR** | Предсказание движений: TA + AI, развороты, паттерны | Нет |
 | **SNIPER** | Мгновенные входы: пробои, ликвидации, funding flip | Нет |
 | **ARBITRAGE** | Арбитраж: funding rate, cross-exchange, triangular | Нет |
+| **HEDGE_MASTER** | Хеджирование, защита портфеля, market-neutral | Нет |
+| **CAPITAL_MANAGER** | Kelly Criterion, compound growth, sizing, фазы | Нет |
 | **ANALYST** | Анализ сделок, паттерны, обучение | Нет |
 | **LOGGER** | Логи для UI, алерты Telegram | Нет |
 | **MENTOR** | Наставник: daily review, коррекция ошибок, правила | Нет |
@@ -945,7 +949,7 @@ RESEARCHER (режим рынка)
 ### Данные:
 - База знаний: `/opt/aila/data/ai_knowledge.json`
 - Логи: `/opt/aila/logs/ai_trade.log`
-- Логи агентов: `/opt/aila/logs/ai_trade/{agent}.log`
+- Логи агентов: `/opt/aila/logs/ai_trade/{agent}.log` (включая hedge_master.log)
 
 ### Claude API:
 - Модель: `claude-sonnet-4-20250514`
