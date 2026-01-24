@@ -12,6 +12,7 @@ Intelligence:
 - PredictorAgent: Predicts price movements using TA + AI
 - SniperAgent: Instant entries on breakouts, liquidations, funding flips
 - ArbitrageAgent: Finds arbitrage opportunities (funding, cross-exchange, triangular)
+- HedgeMasterAgent: Portfolio protection and risk hedging
 
 Learning:
 - AnalystAgent: Analyzes completed trades, finds patterns
@@ -35,6 +36,7 @@ from .news_agent import NewsAgent
 from .predictor import PredictorAgent
 from .sniper import SniperAgent
 from .arbitrage import ArbitrageAgent
+from .hedge_master import HedgeMasterAgent
 
 __all__ = [
     "BaseAgent",
@@ -50,4 +52,5 @@ __all__ = [
     "PredictorAgent",
     "SniperAgent",
     "ArbitrageAgent",
+    "HedgeMasterAgent",
 ]

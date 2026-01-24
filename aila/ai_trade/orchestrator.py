@@ -17,6 +17,8 @@ from .agents.news_agent import NewsAgent
 from .agents.predictor import PredictorAgent
 from .agents.sniper import SniperAgent
 from .agents.arbitrage import ArbitrageAgent
+from .agents.hedge_master import HedgeMasterAgent
+from .capital_manager import CapitalManager
 from .exchanges.multi_exchange import MultiExchangeManager
 from .exchanges.bybit_exchange import BybitExchange
 from .claude_client import ClaudeClient
@@ -59,9 +61,11 @@ class AgentOrchestrator:
         self.exchanges.add_exchange(BybitExchange())
 
         self.arbitrage = ArbitrageAgent(self.claude_client, self.knowledge_base, self.exchanges)
+        self.capital_manager = CapitalManager(self.knowledge_base)
+        self.hedge_master = HedgeMasterAgent(self.claude_client, self.knowledge_base, log_path='/opt/aila/logs/ai_trade/hedge_master.log')
         self.learning = LearningCycles(self)
 
-        logger.info(f"AgentOrchestrator initialized in {mode} mode (12 agents)")
+        logger.info(f"AgentOrchestrator initialized in {mode} mode (14 agents)")
 
     async def get_market_context(self, pair: str) -> dict[str, Any]:
         """Gather whale, news, prediction, and market context in parallel."""
@@ -180,6 +184,34 @@ class AgentOrchestrator:
         """Stop background learning cycles."""
         self.learning.stop_all_cycles()
 
+    async def analyze_portfolio(self) -> dict[str, Any]:
+        """Analyze portfolio risk, capital allocation, and scaling phase."""
+        positions = await self.position_manager.check_positions()
+        risk_analysis = await self.hedge_master.analyze_portfolio_risk(positions or [])
+        allocation = self.capital_manager.get_allocation()
+        phase = self.capital_manager.get_scaling_phase()
+        return {
+            'positions': positions or [],
+            'risk': risk_analysis,
+            'capital': allocation,
+            'phase': phase
+        }
+
+    async def calculate_trade_size(self, entry_price: float, stop_loss: float, confidence: int = 50) -> dict:
+        """Calculate optimal trade size using Kelly Criterion adjusted by confidence."""
+        stats = self.knowledge_base.data
+        kelly = self.capital_manager.kelly_criterion(
+            win_rate=stats.get('win_rate', 0.5),
+            avg_win=stats.get('avg_win', 1),
+            avg_loss=stats.get('avg_loss', 1)
+        )
+        adjusted_risk = kelly * (confidence / 100)
+        return self.capital_manager.calculate_position_size(
+            entry_price=entry_price,
+            stop_loss=stop_loss,
+            risk_pct=adjusted_risk * 100
+        )
+
     async def monitor_positions(self) -> None:
         """Risk guard monitors all open positions."""
         positions = await self.position_manager.check_positions()
@@ -245,6 +277,8 @@ class AgentOrchestrator:
                 "predictor": {"status": "active", "name": "PREDICTOR"},
                 "sniper": {"status": "active", "name": "SNIPER", "pending": len(self.sniper._pending_snipes)},
                 "arbitrage": {"status": "active", "name": "ARBITRAGE", "exchanges": self.exchanges.count},
+                "hedge_master": {"status": "active", "name": "HEDGE_MASTER", "active_hedges": len(self.hedge_master._active_hedges)},
+                "capital_manager": {"status": "active", "name": "CAPITAL_MANAGER", "phase": self.capital_manager.get_scaling_phase().get("phase", "unknown")},
                 "logger": {"status": "active", "name": "LOGGER", "events_count": len(self.logger_agent.events)},
             },
             "trader_profile": {
