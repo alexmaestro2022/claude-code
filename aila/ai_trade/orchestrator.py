@@ -33,6 +33,7 @@ from .market_scanner import MarketScanner
 from .risk_manager import RiskManager
 from .position_manager import PositionManager
 from .learning_cycles import LearningCycles
+from .persistence import PersistenceManager
 
 logger = logging.getLogger("ai_trade")
 
@@ -77,8 +78,12 @@ class AgentOrchestrator:
         self.autopilot = AutopilotMode(self)
         self.scaling_manager = ScalingManager(self.knowledge_base, self.capital_manager)
         self.learning = LearningCycles(self)
+        self._persistence = PersistenceManager()
 
         logger.info(f"AgentOrchestrator initialized in {mode} mode (16 agents)")
+
+        # Start persistence in background
+        asyncio.create_task(self.start_persistence())
 
     async def get_market_context(self, pair: str) -> dict[str, Any]:
         """Gather whale, news, prediction, and market context in parallel."""
@@ -405,3 +410,184 @@ class AgentOrchestrator:
     def get_events(self, limit: int = 50, agent: Optional[str] = None) -> list[dict[str, Any]]:
         """Get recent events for web interface."""
         return self.logger_agent.get_recent_events(limit, agent)
+
+    # ==================== PERSISTENCE ====================
+
+    async def _collect_all_data(self) -> dict[str, Any]:
+        """Collect ALL AI Trade data for persistence."""
+        data: dict[str, Any] = {}
+
+        # Knowledge Base
+        if hasattr(self.knowledge_base, "data"):
+            data["knowledge_base"] = self.knowledge_base.data
+
+        # Trading state
+        data["trading_state"] = {
+            "mode": self.mode,
+            "last_update": datetime.utcnow().isoformat(),
+        }
+
+        # Paper Trading
+        if hasattr(self, "paper_trader"):
+            data["paper_trading"] = {
+                "balance": getattr(self.paper_trader, "_balance", 1000),
+                "initial_balance": getattr(self.paper_trader, "_initial_balance", 1000),
+                "trades": [
+                    t.__dict__ if hasattr(t, "__dict__") else t
+                    for t in getattr(self.paper_trader, "_trades", [])
+                ],
+                "positions": [
+                    p.__dict__ if hasattr(p, "__dict__") else p
+                    for p in getattr(self.paper_trader, "_positions", [])
+                ],
+            }
+
+        # Observer
+        if hasattr(self, "observer"):
+            data["observer"] = {
+                "signals": getattr(self.observer, "_signals", []),
+                "running": getattr(self.observer, "_running", False),
+            }
+
+        # Evolution
+        if hasattr(self, "strategy_evolution"):
+            population = getattr(self.strategy_evolution, "_population", [])
+            data["evolution"] = {
+                "generation": getattr(self.strategy_evolution, "_generation", 0),
+                "population": [
+                    {
+                        "name": getattr(g, "name", ""),
+                        "parameters": getattr(g, "parameters", {}),
+                        "fitness": getattr(g, "fitness", 0),
+                        "generation": getattr(g, "generation", 0),
+                    }
+                    for g in population
+                ],
+            }
+
+        # Risk Guard
+        if hasattr(self, "risk_guard"):
+            data["risk_stats"] = {
+                "daily_pnl": getattr(self.risk_guard, "_daily_pnl", 0),
+                "daily_trades": getattr(self.risk_guard, "_daily_trades", 0),
+                "peak_balance": getattr(self.risk_guard, "_peak_balance", 0),
+                "vetoed_count": len(getattr(self.risk_guard, "vetoed_trades", [])),
+            }
+
+        # Autopilot
+        if hasattr(self, "autopilot"):
+            data["autopilot"] = {
+                "stats": getattr(self.autopilot, "_stats", {}),
+                "config": getattr(self.autopilot, "_config", {}),
+                "running": getattr(self.autopilot, "_running", False),
+            }
+
+        # War Room
+        if hasattr(self, "war_room"):
+            data["war_room"] = {
+                "alert_history": getattr(self.war_room, "_alert_history", []),
+                "crisis_mode": getattr(self.war_room, "_crisis_mode", False),
+            }
+
+        # Capital Manager
+        if hasattr(self, "capital_manager"):
+            data["capital"] = {
+                "total": getattr(self.capital_manager, "_total_capital", 0),
+                "config": getattr(self.capital_manager, "_config", {}),
+            }
+
+        return data
+
+    async def _restore_all_data(self) -> bool:
+        """Restore ALL data from disk."""
+        try:
+            logger.info("Restoring persisted data...")
+            restored = 0
+
+            # Knowledge Base
+            kb = await self._persistence.load("knowledge_base")
+            if kb and hasattr(self.knowledge_base, "data"):
+                self.knowledge_base.data.update(kb)
+                restored += 1
+
+            # Trading state
+            state = await self._persistence.load("trading_state")
+            if state:
+                self.mode = state.get("mode", "OBSERVER")
+                restored += 1
+
+            # Paper Trading
+            paper = await self._persistence.load("paper_trading")
+            if paper and hasattr(self, "paper_trader"):
+                if hasattr(self.paper_trader, "_balance"):
+                    self.paper_trader._balance = paper.get("balance", 1000)
+                if hasattr(self.paper_trader, "_initial_balance"):
+                    self.paper_trader._initial_balance = paper.get("initial_balance", 1000)
+                restored += 1
+
+            # Observer
+            obs = await self._persistence.load("observer")
+            if obs and hasattr(self, "observer"):
+                if hasattr(self.observer, "_signals"):
+                    self.observer._signals = obs.get("signals", [])
+                restored += 1
+
+            # Evolution
+            evo = await self._persistence.load("evolution")
+            if evo and hasattr(self, "strategy_evolution"):
+                if hasattr(self.strategy_evolution, "_generation"):
+                    self.strategy_evolution._generation = evo.get("generation", 0)
+                restored += 1
+
+            # Risk stats
+            risk = await self._persistence.load("risk_stats")
+            if risk and hasattr(self, "risk_guard"):
+                if hasattr(self.risk_guard, "_daily_pnl"):
+                    self.risk_guard._daily_pnl = risk.get("daily_pnl", 0)
+                if hasattr(self.risk_guard, "_daily_trades"):
+                    self.risk_guard._daily_trades = risk.get("daily_trades", 0)
+                if hasattr(self.risk_guard, "_peak_balance"):
+                    self.risk_guard._peak_balance = risk.get("peak_balance", 0)
+                restored += 1
+
+            # Autopilot
+            auto = await self._persistence.load("autopilot")
+            if auto and hasattr(self, "autopilot"):
+                if hasattr(self.autopilot, "_stats"):
+                    self.autopilot._stats.update(auto.get("stats", {}))
+                if hasattr(self.autopilot, "_config"):
+                    self.autopilot._config.update(auto.get("config", {}))
+                restored += 1
+
+            # War Room
+            war = await self._persistence.load("war_room")
+            if war and hasattr(self, "war_room"):
+                if hasattr(self.war_room, "_alert_history"):
+                    self.war_room._alert_history = war.get("alert_history", [])
+                restored += 1
+
+            logger.info(f"Restored {restored} data components")
+            return True
+        except Exception as e:
+            logger.error(f"Restore error: {e}")
+            return False
+
+    async def start_persistence(self) -> None:
+        """Start persistence system."""
+        await self._restore_all_data()
+        asyncio.create_task(self._persistence.start_auto_save(self._collect_all_data))
+
+    async def save_now(self) -> dict[str, Any]:
+        """Force immediate save."""
+        data = await self._collect_all_data()
+        saved = await self._persistence.save_all(data)
+        return {"saved_files": saved, "timestamp": datetime.utcnow().isoformat()}
+
+    async def backup_to_cloud_now(self) -> dict[str, Any]:
+        """Force immediate cloud backup."""
+        success = await self._persistence.backup_to_cloud()
+        return {"success": success, "timestamp": datetime.utcnow().isoformat()}
+
+    def get_persistence_status(self) -> dict[str, Any]:
+        """Get persistence system status."""
+        return self._persistence.get_status()

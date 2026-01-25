@@ -25,6 +25,10 @@ env/
 .env
 .env.local
 
+# Credentials (secrets)
+config/google_credentials.json
+*.credentials.json
+
 # Logs
 *.log
 

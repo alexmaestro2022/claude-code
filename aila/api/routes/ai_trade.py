@@ -434,3 +434,36 @@ async def get_all_phases():
         return {"phases": orch.scaling_manager.get_all_phases()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== PERSISTENCE ====================
+
+
+@router.get("/persistence/status")
+async def get_persistence_status():
+    """Get persistence system status."""
+    try:
+        orch = await get_orchestrator()
+        return orch.get_persistence_status()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/persistence/save")
+async def force_save():
+    """Force immediate local save."""
+    try:
+        orch = await get_orchestrator()
+        return await orch.save_now()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/persistence/backup")
+async def force_cloud_backup():
+    """Force immediate Google Drive backup."""
+    try:
+        orch = await get_orchestrator()
+        return await orch.backup_to_cloud_now()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

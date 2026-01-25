@@ -1082,6 +1082,51 @@ clamp(value, min_val, max_val)
 
 ---
 
+## 25. PERSISTENCE — Сохранение данных
+
+### Описание:
+Полное сохранение ВСЕХ данных AI Trade. Локально каждые 60 сек + Google Drive каждый час.
+При перезагрузке сервера ВСЕ данные восстанавливаются автоматически.
+
+### Файлы:
+- `aila/ai_trade/persistence.py` — логика сохранения
+
+### Локальное сохранение:
+- Папка: `/opt/aila/data/ai_trade/`
+- Интервал: каждые 60 секунд
+- Файлы: knowledge_base.json, trading_state.json, paper_trading.json, observer.json, evolution.json, risk_stats.json, autopilot.json, war_room.json, capital.json
+
+### Google Drive бэкап:
+- Папка: `AILA Trade / AI Trade (история)`
+- Folder ID: `1w9vCx3hscA_DxT5aMmilOmIVKIxNA3Zf`
+- Интервал: каждый час
+- Хранится: последние 24 бэкапа
+- Credentials: `/opt/aila/config/google_credentials.json`
+
+### Что сохраняется:
+- **Knowledge Base**: уровень, XP, навыки, правила, история обучения
+- **Trading state**: режим работы (OBSERVER/ADVISOR/AUTOPILOT)
+- **Paper trading**: баланс, сделки, позиции
+- **Observer**: сигналы
+- **Strategy evolution**: поколение, популяция
+- **Risk stats**: PnL, trades, peak balance
+- **Autopilot**: stats, config
+- **War room**: алерты, crisis mode
+- **Capital manager**: total, config
+
+### Восстановление:
+При старте бота автоматически:
+1. Загружаются данные из `/opt/aila/data/ai_trade/`
+2. AI продолжает с того же места
+3. Никаких команд не требуется
+
+### API Endpoints:
+- `GET /api/ai-trade/persistence/status` — статус системы
+- `POST /api/ai-trade/persistence/save` — принудительное сохранение
+- `POST /api/ai-trade/persistence/backup` — принудительный бэкап в облако
+
+---
+
 **Последнее обновление:** 2026-01-25
 **Текущая версия:** v2.2.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
