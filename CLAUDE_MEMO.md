@@ -1009,6 +1009,79 @@ clamp(value, min_val, max_val)
 
 ---
 
-**Последнее обновление:** 2026-01-24
+## 23. AUTOPILOT Mode — Полностью автономная торговля
+
+### Описание:
+Режим полной автоматизации торговли. AI принимает решения и торгует самостоятельно в рамках риск-лимитов.
+
+### Файлы:
+- `aila/ai_trade/autopilot_mode.py` — логика автопилота
+
+### Pre-flight checks (проверки перед запуском):
+1. System health check (war_room)
+2. Market safety check (не в кризисе)
+3. Balance check (минимум $50)
+4. AI level check (минимум уровень 3)
+
+### Конфигурация:
+```python
+{
+    'scan_interval_seconds': 60,      # Интервал сканирования
+    'min_confidence': 70,             # Минимальный confidence для входа
+    'max_trades_per_hour': 5,         # Макс. сделок в час
+    'max_trades_per_day': 20,         # Макс. сделок в день
+    'cooldown_after_loss_minutes': 30, # Пауза после убытка
+    'require_multiple_confirmations': True  # Требовать подтверждения от нескольких агентов
+}
+```
+
+### Логика входа:
+1. Проверка лимитов (trades_this_hour, trades_today)
+2. Проверка market safety
+3. Поиск opportunity через TRADER
+4. Валидация через REVIEWER
+5. Риск-проверка через RISK_GUARD
+6. Множественные подтверждения (whale, prediction, sentiment)
+7. Исполнение через position_manager
+
+### API Endpoints:
+- `POST /api/ai-trade/autopilot/start` — запустить автопилот
+- `POST /api/ai-trade/autopilot/stop` — остановить автопилот
+- `GET /api/ai-trade/autopilot/status` — статус автопилота
+- `PUT /api/ai-trade/autopilot/config` — обновить конфиг
+
+---
+
+## 24. Scaling Manager — Автоматическое масштабирование
+
+### Описание:
+Автоматическое увеличение размеров позиций по мере роста капитала и уровня AI.
+
+### Файлы:
+- `aila/ai_trade/scaling_manager.py` — логика масштабирования
+
+### Фазы масштабирования:
+| Фаза | Капитал | Уровень | Плечо | Риск | Позиций | Цель/мес |
+|------|---------|---------|-------|------|---------|----------|
+| Starter | $0-1K | 1+ | 10x | 2% | 2 | 50% |
+| Growth | $1K-5K | 5+ | 10x | 1.5% | 3 | 40% |
+| Established | $5K-20K | 10+ | 7x | 1% | 4 | 30% |
+| Professional | $20K-100K | 20+ | 5x | 0.5% | 5 | 20% |
+| Institutional | $100K+ | 50+ | 3x | 0.25% | 6 | 10% |
+
+### Методы:
+- `get_current_phase()` — определяет текущую фазу
+- `get_recommended_settings()` — рекомендуемые настройки
+- `check_upgrade_eligibility()` — готовность к переходу на следующую фазу
+- `calculate_growth_projection(months)` — проекция роста капитала
+
+### API Endpoints:
+- `GET /api/ai-trade/scaling` — полная информация о масштабировании
+- `GET /api/ai-trade/scaling/projection?months=12` — проекция роста
+- `GET /api/ai-trade/scaling/phases` — все фазы
+
+---
+
+**Последнее обновление:** 2026-01-25
 **Текущая версия:** v2.2.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
