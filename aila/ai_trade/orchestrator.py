@@ -21,6 +21,10 @@ from .agents.hedge_master import HedgeMasterAgent
 from .agents.war_room import WarRoomAgent
 from .capital_manager import CapitalManager
 from .strategy_evolution import StrategyEvolution
+from .testing import Backtester, PaperTrader
+from .observer_mode import ObserverMode
+from .autopilot_mode import AutopilotMode
+from .scaling_manager import ScalingManager
 from .exchanges.multi_exchange import MultiExchangeManager
 from .exchanges.bybit_exchange import BybitExchange
 from .claude_client import ClaudeClient
@@ -67,6 +71,11 @@ class AgentOrchestrator:
         self.hedge_master = HedgeMasterAgent(self.claude_client, self.knowledge_base, log_path='/opt/aila/logs/ai_trade/hedge_master.log')
         self.war_room = WarRoomAgent(self.claude_client, self.knowledge_base, log_path='/opt/aila/logs/ai_trade/war_room.log')
         self.strategy_evolution = StrategyEvolution(self.claude_client, self.knowledge_base)
+        self.backtester = Backtester(self.claude_client, self.knowledge_base)
+        self.paper_trader = PaperTrader(initial_balance=1000)
+        self.observer = ObserverMode(self, self.paper_trader)
+        self.autopilot = AutopilotMode(self)
+        self.scaling_manager = ScalingManager(self.knowledge_base, self.capital_manager)
         self.learning = LearningCycles(self)
 
         logger.info(f"AgentOrchestrator initialized in {mode} mode (16 agents)")
@@ -242,6 +251,66 @@ class AgentOrchestrator:
         for _ in range(generations):
             await self.strategy_evolution.evolve_generation(historical)
         return self.strategy_evolution.get_evolution_stats()
+
+    async def start_observer_mode(self) -> dict[str, Any]:
+        """Start observer mode with paper trading."""
+        self.mode = "OBSERVER"
+        asyncio.create_task(self.observer.start())
+        return {"status": "started", "mode": "OBSERVER"}
+
+    async def stop_observer_mode(self) -> dict[str, Any]:
+        """Stop observer mode."""
+        await self.observer.stop()
+        return {"status": "stopped"}
+
+    async def start_autopilot(self) -> dict[str, Any]:
+        """Start autopilot mode."""
+        return await self.autopilot.start()
+
+    async def stop_autopilot(self) -> dict[str, Any]:
+        """Stop autopilot mode."""
+        return await self.autopilot.stop()
+
+    async def get_scaling_info(self) -> dict[str, Any]:
+        """Get comprehensive scaling information."""
+        settings = await self.scaling_manager.get_recommended_settings()
+        upgrade = await self.scaling_manager.check_upgrade_eligibility()
+        projection = await self.scaling_manager.calculate_growth_projection(12)
+        return {
+            'current_settings': settings,
+            'upgrade_eligibility': upgrade,
+            'projection_12m': projection,
+            'all_phases': self.scaling_manager.get_all_phases()
+        }
+
+    async def run_backtest(self, strategy_name: str, params: dict, pair: str = "BTCUSDT") -> dict[str, Any]:
+        """Run a backtest for a strategy."""
+        result = await self.backtester.run_backtest(
+            strategy_name=strategy_name,
+            strategy_params=params,
+            pair=pair,
+            timeframe="1h",
+            start_date="2024-01-01",
+            end_date="2024-12-31"
+        )
+        return {
+            'strategy_name': result.strategy_name,
+            'pair': result.pair,
+            'timeframe': result.timeframe,
+            'start_date': result.start_date,
+            'end_date': result.end_date,
+            'initial_balance': result.initial_balance,
+            'final_balance': result.final_balance,
+            'total_trades': result.total_trades,
+            'winning_trades': result.winning_trades,
+            'losing_trades': result.losing_trades,
+            'win_rate': result.win_rate,
+            'profit_factor': result.profit_factor,
+            'max_drawdown': result.max_drawdown,
+            'sharpe_ratio': result.sharpe_ratio,
+            'total_return_pct': result.total_return_pct,
+            'trades': result.trades
+        }
 
     async def monitor_positions(self) -> None:
         """Risk guard monitors all open positions."""

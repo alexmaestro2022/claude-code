@@ -271,3 +271,166 @@ async def set_mode(mode: str):
         return {"mode": mode.upper(), "status": "set"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- Observer Mode ---
+
+@router.post("/observer/start")
+async def start_observer():
+    """Start observer mode."""
+    try:
+        orch = await get_orchestrator()
+        return await orch.start_observer_mode()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/observer/stop")
+async def stop_observer():
+    """Stop observer mode."""
+    try:
+        orch = await get_orchestrator()
+        return await orch.stop_observer_mode()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/observer/status")
+async def get_observer_status():
+    """Get observer mode status."""
+    try:
+        orch = await get_orchestrator()
+        return orch.observer.get_status()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/observer/signals")
+async def get_observer_signals(limit: int = 50):
+    """Get observer signals."""
+    try:
+        orch = await get_orchestrator()
+        return {"signals": orch.observer.get_signals(limit)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- Paper Trading ---
+
+@router.get("/paper/stats")
+async def get_paper_stats():
+    """Get paper trading statistics."""
+    try:
+        orch = await get_orchestrator()
+        return orch.paper_trader.get_stats()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/paper/positions")
+async def get_paper_positions():
+    """Get paper trading open positions."""
+    try:
+        orch = await get_orchestrator()
+        positions = orch.paper_trader.get_positions()
+        return {"positions": [vars(p) for p in positions]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/paper/trades")
+async def get_paper_trades():
+    """Get paper trading history."""
+    try:
+        orch = await get_orchestrator()
+        trades = orch.paper_trader.get_trades()
+        return {"trades": [vars(t) for t in trades]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- Backtesting ---
+
+@router.post("/backtest")
+async def run_backtest(strategy_name: str, pair: str = "BTCUSDT"):
+    """Run strategy backtest."""
+    try:
+        orch = await get_orchestrator()
+        params = {"fast_ema": 9, "slow_ema": 21}
+        return await orch.run_backtest(strategy_name, params, pair)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- Autopilot Mode ---
+
+@router.post("/autopilot/start")
+async def start_autopilot():
+    """Start autopilot mode."""
+    try:
+        orch = await get_orchestrator()
+        return await orch.start_autopilot()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/autopilot/stop")
+async def stop_autopilot():
+    """Stop autopilot mode."""
+    try:
+        orch = await get_orchestrator()
+        return await orch.stop_autopilot()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/autopilot/status")
+async def get_autopilot_status():
+    """Get autopilot mode status."""
+    try:
+        orch = await get_orchestrator()
+        return orch.autopilot.get_status()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/autopilot/config")
+async def update_autopilot_config(config: dict):
+    """Update autopilot configuration."""
+    try:
+        orch = await get_orchestrator()
+        return orch.autopilot.update_config(config)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# --- Scaling Manager ---
+
+@router.get("/scaling")
+async def get_scaling_info():
+    """Get comprehensive scaling information."""
+    try:
+        orch = await get_orchestrator()
+        return await orch.get_scaling_info()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/scaling/projection")
+async def get_growth_projection(months: int = 12):
+    """Get capital growth projection."""
+    try:
+        orch = await get_orchestrator()
+        return await orch.scaling_manager.calculate_growth_projection(months)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/scaling/phases")
+async def get_all_phases():
+    """Get all scaling phases."""
+    try:
+        orch = await get_orchestrator()
+        return {"phases": orch.scaling_manager.get_all_phases()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
