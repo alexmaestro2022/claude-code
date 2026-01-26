@@ -1085,7 +1085,7 @@ clamp(value, min_val, max_val)
 ## 25. PERSISTENCE — Сохранение данных
 
 ### Описание:
-Полное сохранение ВСЕХ данных AI Trade. Локально каждые 60 сек + Google Drive каждый час.
+Полное сохранение ВСЕХ данных AI Trade. Локально каждые 60 сек + Yandex Object Storage каждый час.
 При перезагрузке сервера ВСЕ данные восстанавливаются автоматически.
 
 ### Файлы:
@@ -1096,12 +1096,14 @@ clamp(value, min_val, max_val)
 - Интервал: каждые 60 секунд
 - Файлы: knowledge_base.json, trading_state.json, paper_trading.json, observer.json, evolution.json, risk_stats.json, autopilot.json, war_room.json, capital.json
 
-### Google Drive бэкап:
-- Папка: `AILA Trade / AI Trade (история)`
-- Folder ID: `1w9vCx3hscA_DxT5aMmilOmIVKIxNA3Zf`
+### Yandex Object Storage бэкап:
+- Bucket: `aila-backups`
+- Endpoint: `https://storage.yandexcloud.net`
+- Region: `ru-central1`
 - Интервал: каждый час
 - Хранится: последние 24 бэкапа
-- Credentials: `/opt/aila/config/google_credentials.json`
+- Формат: `ai_trade_backup_YYYY-MM-DD_HH-MM.json`
+- Библиотека: boto3 (S3-совместимый API)
 
 ### Что сохраняется:
 - **Knowledge Base**: уровень, XP, навыки, правила, история обучения
@@ -1127,6 +1129,6 @@ clamp(value, min_val, max_val)
 
 ---
 
-**Последнее обновление:** 2026-01-25
+**Последнее обновление:** 2026-01-26
 **Текущая версия:** v2.2.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`

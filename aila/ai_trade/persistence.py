@@ -1,6 +1,6 @@
 """
 PERSISTENCE — full data persistence for AI Trade.
-Local save every 60 seconds + Google Drive backup every hour.
+Local save every 60 seconds + Yandex Object Storage backup every hour.
 On server restart, ALL data is restored automatically.
 """
 
@@ -14,9 +14,16 @@ from typing import Any, Callable, Optional
 
 logger = logging.getLogger("ai_trade.persistence")
 
+# Yandex Object Storage configuration (from environment variables)
+YANDEX_ACCESS_KEY = os.getenv("YANDEX_ACCESS_KEY", "")
+YANDEX_SECRET_KEY = os.getenv("YANDEX_SECRET_KEY", "")
+YANDEX_BUCKET = os.getenv("YANDEX_BUCKET", "aila-backups")
+YANDEX_ENDPOINT = os.getenv("YANDEX_ENDPOINT", "https://storage.yandexcloud.net")
+YANDEX_REGION = os.getenv("YANDEX_REGION", "ru-central1")
+
 
 class PersistenceManager:
-    """Saves data locally and to Google Drive."""
+    """Saves data locally and to Yandex Object Storage."""
 
     __slots__ = (
         "_data_dir",
@@ -25,20 +32,18 @@ class PersistenceManager:
         "_running",
         "_last_save",
         "_last_cloud_backup",
-        "_drive_service",
-        "_drive_folder_id",
+        "_s3_client",
     )
 
     def __init__(self, data_dir: str = "/opt/aila/data/ai_trade") -> None:
         self._data_dir = Path(data_dir)
         self._data_dir.mkdir(parents=True, exist_ok=True)
         self._auto_save_interval = 60  # Local save every 60 seconds
-        self._cloud_backup_interval = 3600  # Google Drive every hour
+        self._cloud_backup_interval = 3600  # Cloud backup every hour
         self._running = False
         self._last_save: Optional[datetime] = None
         self._last_cloud_backup: Optional[datetime] = None
-        self._drive_service: Any = None
-        self._drive_folder_id = "1w9vCx3hscA_DxT5aMmilOmIVKIxNA3Zf"
+        self._s3_client: Any = None
 
     def _get_path(self, name: str) -> Path:
         return self._data_dir / f"{name}.json"
@@ -87,78 +92,73 @@ class PersistenceManager:
         self._last_save = datetime.utcnow()
         return saved
 
-    def _init_drive_service(self) -> Any:
-        """Initialize Google Drive API."""
+    def _init_s3_client(self) -> Any:
+        """Initialize Yandex Object Storage S3 client."""
         try:
-            from google.oauth2 import service_account
-            from googleapiclient.discovery import build
+            import boto3
+            from botocore.config import Config
 
-            creds_path = "/opt/aila/config/google_credentials.json"
-            if not os.path.exists(creds_path):
-                logger.warning("Google credentials not found")
-                return None
-
-            creds = service_account.Credentials.from_service_account_file(
-                creds_path,
-                scopes=["https://www.googleapis.com/auth/drive.file"],
+            config = Config(
+                region_name=YANDEX_REGION,
+                retries={"max_attempts": 3, "mode": "adaptive"},
             )
 
-            self._drive_service = build("drive", "v3", credentials=creds)
-            logger.info("Google Drive service initialized")
-            return self._drive_service
+            self._s3_client = boto3.client(
+                "s3",
+                endpoint_url=YANDEX_ENDPOINT,
+                aws_access_key_id=YANDEX_ACCESS_KEY,
+                aws_secret_access_key=YANDEX_SECRET_KEY,
+                config=config,
+            )
+
+            logger.info("Yandex Object Storage client initialized")
+            return self._s3_client
         except ImportError:
-            logger.warning("Google Drive libraries not installed")
+            logger.warning("boto3 not installed: pip install boto3")
             return None
         except Exception as e:
-            logger.error(f"Google Drive init error: {e}")
+            logger.error(f"S3 client init error: {e}")
             return None
 
     async def backup_to_cloud(self) -> bool:
-        """Upload backup to Google Drive."""
+        """Upload backup to Yandex Object Storage."""
         try:
-            if not self._drive_service:
-                self._init_drive_service()
+            if not self._s3_client:
+                self._init_s3_client()
 
-            if not self._drive_service:
+            if not self._s3_client:
                 return False
 
-            from googleapiclient.http import MediaFileUpload
-
-            # Create backup archive
+            # Create backup data from all local files
             backup_data: dict[str, Any] = {}
             for json_file in self._data_dir.glob("*.json"):
+                if json_file.name.startswith("ai_trade_backup_"):
+                    continue  # Skip old backup files
                 with open(json_file, "r", encoding="utf-8") as f:
                     backup_data[json_file.stem] = json.load(f)
 
-            # Save to temp file
-            timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-            backup_filename = f"aila_backup_{timestamp}.json"
-            backup_path = self._data_dir / backup_filename
+            # Backup filename format: ai_trade_backup_YYYY-MM-DD_HH-MM.json
+            timestamp = datetime.utcnow().strftime("%Y-%m-%d_%H-%M")
+            backup_filename = f"ai_trade_backup_{timestamp}.json"
 
-            with open(backup_path, "w", encoding="utf-8") as f:
-                json.dump(
-                    {"backup_time": datetime.utcnow().isoformat(), "data": backup_data},
-                    f,
-                    indent=2,
-                    ensure_ascii=False,
-                    default=str,
-                )
-
-            # Upload to Google Drive
-            file_metadata = {"name": backup_filename, "parents": [self._drive_folder_id]}
-            media = MediaFileUpload(str(backup_path), mimetype="application/json")
-
-            file = (
-                self._drive_service.files()
-                .create(body=file_metadata, media_body=media, fields="id")
-                .execute()
+            # Create backup content
+            backup_content = json.dumps(
+                {"backup_time": datetime.utcnow().isoformat(), "data": backup_data},
+                indent=2,
+                ensure_ascii=False,
+                default=str,
             )
 
-            # Remove temp file
-            backup_path.unlink()
+            # Upload to Yandex Object Storage
+            self._s3_client.put_object(
+                Bucket=YANDEX_BUCKET,
+                Key=backup_filename,
+                Body=backup_content.encode("utf-8"),
+                ContentType="application/json",
+            )
 
             self._last_cloud_backup = datetime.utcnow()
-            logger.info(f"Cloud backup uploaded: {backup_filename} (ID: {file.get('id')})")
+            logger.info(f"Cloud backup uploaded: {backup_filename}")
 
             # Cleanup old backups (keep last 24)
             await self._cleanup_old_backups()
@@ -169,73 +169,67 @@ class PersistenceManager:
             return False
 
     async def _cleanup_old_backups(self, keep_count: int = 24) -> None:
-        """Delete old backups from Google Drive."""
+        """Delete old backups from Yandex Object Storage, keep last 24."""
         try:
-            results = (
-                self._drive_service.files()
-                .list(
-                    q=f"'{self._drive_folder_id}' in parents and name contains 'aila_backup_'",
-                    orderBy="createdTime desc",
-                    fields="files(id, name, createdTime)",
-                )
-                .execute()
+            # List all backup files
+            response = self._s3_client.list_objects_v2(
+                Bucket=YANDEX_BUCKET,
+                Prefix="ai_trade_backup_",
             )
 
-            files = results.get("files", [])
+            objects = response.get("Contents", [])
+            if len(objects) <= keep_count:
+                return
 
-            if len(files) > keep_count:
-                for file in files[keep_count:]:
-                    self._drive_service.files().delete(fileId=file["id"]).execute()
-                    logger.info(f"Deleted old backup: {file['name']}")
+            # Sort by LastModified (newest first)
+            objects.sort(key=lambda x: x["LastModified"], reverse=True)
+
+            # Delete old backups
+            for obj in objects[keep_count:]:
+                self._s3_client.delete_object(
+                    Bucket=YANDEX_BUCKET,
+                    Key=obj["Key"],
+                )
+                logger.info(f"Deleted old backup: {obj['Key']}")
+
         except Exception as e:
             logger.error(f"Cleanup error: {e}")
 
     async def restore_from_cloud(self) -> bool:
         """Restore data from latest cloud backup."""
         try:
-            if not self._drive_service:
-                self._init_drive_service()
+            if not self._s3_client:
+                self._init_s3_client()
 
-            if not self._drive_service:
+            if not self._s3_client:
                 return False
 
-            # Find latest backup
-            results = (
-                self._drive_service.files()
-                .list(
-                    q=f"'{self._drive_folder_id}' in parents and name contains 'aila_backup_'",
-                    orderBy="createdTime desc",
-                    pageSize=1,
-                    fields="files(id, name)",
-                )
-                .execute()
+            # List all backup files
+            response = self._s3_client.list_objects_v2(
+                Bucket=YANDEX_BUCKET,
+                Prefix="ai_trade_backup_",
             )
 
-            files = results.get("files", [])
-            if not files:
+            objects = response.get("Contents", [])
+            if not objects:
                 logger.info("No cloud backups found")
                 return False
 
-            latest = files[0]
-            logger.info(f"Restoring from cloud: {latest['name']}")
+            # Get latest backup (sort by LastModified)
+            objects.sort(key=lambda x: x["LastModified"], reverse=True)
+            latest = objects[0]
 
-            # Download file
-            from io import BytesIO
+            logger.info(f"Restoring from cloud: {latest['Key']}")
 
-            from googleapiclient.http import MediaIoBaseDownload
+            # Download backup
+            response = self._s3_client.get_object(
+                Bucket=YANDEX_BUCKET,
+                Key=latest["Key"],
+            )
 
-            request = self._drive_service.files().get_media(fileId=latest["id"])
-            content = BytesIO()
-            downloader = MediaIoBaseDownload(content, request)
+            backup_data = json.loads(response["Body"].read().decode("utf-8"))
 
-            done = False
-            while not done:
-                _, done = downloader.next_chunk()
-
-            content.seek(0)
-            backup_data = json.load(content)
-
-            # Restore data
+            # Restore all data files
             for name, container in backup_data.get("data", {}).items():
                 path = self._get_path(name)
                 with open(path, "w", encoding="utf-8") as f:
@@ -250,7 +244,7 @@ class PersistenceManager:
     async def start_auto_save(self, get_data_func: Callable[[], Any]) -> None:
         """Start auto-save locally and to cloud."""
         self._running = True
-        self._init_drive_service()
+        self._init_s3_client()
 
         logger.info(
             f"Persistence started - Local: {self._auto_save_interval}s, "
@@ -293,5 +287,6 @@ class PersistenceManager:
             "last_cloud_backup": (
                 self._last_cloud_backup.isoformat() if self._last_cloud_backup else None
             ),
-            "drive_connected": self._drive_service is not None,
+            "s3_connected": self._s3_client is not None,
+            "cloud_provider": "Yandex Object Storage",
         }
