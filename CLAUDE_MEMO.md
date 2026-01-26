@@ -960,7 +960,9 @@ STRATEGY_EVOLUTION (генетические алгоритмы, оптимиз�
 
 ### Claude API:
 - Модель: `claude-sonnet-4-20250514`
-- API ключ: через переменную окружения `ANTHROPIC_API_KEY`
+- API ключ: переменная `ANTHROPIC_API_KEY` в `/opt/aila/.env`
+- **Используется агентами:** TRADER (анализ), MENTOR, RESEARCHER, PREDICTOR, NEWS, WHALE_TRACKER
+- **ВАЖНО:** Ключ НЕ хранится в репозитории, только в .env на сервере
 
 ### Веб-интерфейс AI Trade:
 - **Страница**: `/ai-trade` (требует авторизации)
