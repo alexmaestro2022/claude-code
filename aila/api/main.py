@@ -913,6 +913,31 @@ DASHBOARD_HTML = r"""
             border-color: #ff4444;
         }
 
+        .ai-trade-btn {
+            background: transparent;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            color: #00d4ff;
+            font-size: 12px;
+            cursor: pointer;
+            padding: 6px 10px;
+            border-radius: 6px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .ai-trade-btn:hover {
+            background: rgba(0, 212, 255, 0.2);
+            border-color: #00d4ff;
+            box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+        }
+
+        .ai-trade-btn svg {
+            width: 16px;
+            height: 16px;
+        }
+
         /* Charts Section */
         .charts-section {
             margin-bottom: 20px;
@@ -1872,6 +1897,18 @@ DASHBOARD_HTML = r"""
                 <img src="/static/logo.png" alt="AILA" style="height: 30px; cursor: pointer;" onclick="location.reload()" title="Refresh">
             </div>
             <div class="header-right">
+                <a href="/ai-trade" class="ai-trade-btn" title="AI Trade">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2a4 4 0 0 1 4 4v1a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z"/>
+                        <path d="M6 10a2 2 0 0 0-2 2c0 1.1.9 2 2 2h2"/>
+                        <path d="M18 10a2 2 0 0 1 2 2c0 1.1-.9 2-2 2h-2"/>
+                        <path d="M12 14v4"/>
+                        <path d="M8 22h8"/>
+                        <path d="M9 18h6"/>
+                        <circle cx="12" cy="6" r="1"/>
+                    </svg>
+                    AI
+                </a>
                 <select class="lang-selector" id="langSelector" onchange="changeLanguage(this.value)">
                     <option value="en">EN</option>
                     <option value="ru">RU</option>
