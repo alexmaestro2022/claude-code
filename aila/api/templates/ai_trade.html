@@ -329,6 +329,13 @@
                 }
             }
 
+            // Fetch balance from portfolio
+            const portfolio = await fetchData('/portfolio');
+            if (portfolio && portfolio.capital) {
+                const total = portfolio.capital.total || 0;
+                document.getElementById('balance').textContent = '$' + total.toFixed(2);
+            }
+
             const profile = await fetchData('/profile');
             if (profile && profile.skills) {
                 const skillsHtml = Object.entries(profile.skills).map(([name, data]) => {
