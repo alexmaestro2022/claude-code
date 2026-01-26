@@ -42,30 +42,10 @@ logger = logging.getLogger("ai_trade")
 class AgentOrchestrator:
     """Coordinates all agents. Flow: TRADER -> REVIEWER -> RISK_GUARD -> execute -> ANALYST."""
 
-    def __init__(self, exchange: Any, mode: str = "OBSERVER") -> None:
-        self.exchange = exchange
+    def __init__(self, exchange: Any = None, mode: str = "OBSERVER") -> None:
         self.mode = mode
 
-        self.claude_client = ClaudeClient()
-        self.knowledge_base = KnowledgeBase()
-        self.scanner = MarketScanner(exchange)
-        self.risk_manager = RiskManager()
-        self.position_manager = PositionManager(exchange)
-
-        self.trader = TraderAgent(self.claude_client, self.knowledge_base, self.scanner, orchestrator=self)
-        self.reviewer = ReviewerAgent(self.claude_client, self.knowledge_base)
-        self.risk_guard = RiskGuardAgent(self.claude_client, self.knowledge_base, self.risk_manager)
-        self.analyst = AnalystAgent(self.claude_client, self.knowledge_base)
-        self.logger_agent = LoggerAgent(self.claude_client, self.knowledge_base)
-        self.mentor = MentorAgent(self.claude_client, self.knowledge_base)
-        self.researcher = ResearcherAgent(self.claude_client, self.knowledge_base, self.scanner)
-        self.whale_tracker = WhaleTrackerAgent(self.claude_client, self.knowledge_base, exchange)
-        self.news_agent = NewsAgent(self.claude_client, self.knowledge_base)
-        self.predictor = PredictorAgent(self.claude_client, self.knowledge_base, self.scanner)
-        self.sniper = SniperAgent(self.claude_client, self.knowledge_base, self.scanner)
-
-        # Multi-exchange support with API keys from .env
-        self.exchanges = MultiExchangeManager()
+        # Create BybitExchange with API keys from .env (ignore passed exchange)
         api_key = os.getenv("BYBIT_API_KEY", "")
         api_secret = os.getenv("BYBIT_API_SECRET", "")
         testnet = os.getenv("BYBIT_TESTNET", "false").lower() == "true"
@@ -74,7 +54,29 @@ class AgentOrchestrator:
             api_secret=api_secret,
             testnet=testnet,
         )
+        self.exchange = self._bybit_exchange
+
+        # Multi-exchange support
+        self.exchanges = MultiExchangeManager()
         self.exchanges.add_exchange(self._bybit_exchange)
+
+        self.claude_client = ClaudeClient()
+        self.knowledge_base = KnowledgeBase()
+        self.scanner = MarketScanner(self._bybit_exchange)
+        self.risk_manager = RiskManager()
+        self.position_manager = PositionManager(self._bybit_exchange)
+
+        self.trader = TraderAgent(self.claude_client, self.knowledge_base, self.scanner, orchestrator=self)
+        self.reviewer = ReviewerAgent(self.claude_client, self.knowledge_base)
+        self.risk_guard = RiskGuardAgent(self.claude_client, self.knowledge_base, self.risk_manager)
+        self.analyst = AnalystAgent(self.claude_client, self.knowledge_base)
+        self.logger_agent = LoggerAgent(self.claude_client, self.knowledge_base)
+        self.mentor = MentorAgent(self.claude_client, self.knowledge_base)
+        self.researcher = ResearcherAgent(self.claude_client, self.knowledge_base, self.scanner)
+        self.whale_tracker = WhaleTrackerAgent(self.claude_client, self.knowledge_base, self._bybit_exchange)
+        self.news_agent = NewsAgent(self.claude_client, self.knowledge_base)
+        self.predictor = PredictorAgent(self.claude_client, self.knowledge_base, self.scanner)
+        self.sniper = SniperAgent(self.claude_client, self.knowledge_base, self.scanner)
 
         self.arbitrage = ArbitrageAgent(self.claude_client, self.knowledge_base, self.exchanges)
         self.capital_manager = CapitalManager(self.knowledge_base)

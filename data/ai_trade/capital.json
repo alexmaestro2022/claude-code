@@ -1,0 +1,15 @@
+{
+  "data": {
+    "total": 8.72450997,
+    "config": {
+      "reserve_pct": 20,
+      "max_risk_per_trade_pct": 2,
+      "withdrawal_pct": 30,
+      "compound_pct": 50,
+      "min_trade_size_usdt": 10,
+      "kelly_fraction": 0.5
+    }
+  },
+  "saved_at": "2026-01-26T21:06:53.911500",
+  "version": "2.0"
+}

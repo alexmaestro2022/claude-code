@@ -130,3 +130,58 @@ class BybitExchange(BaseExchange):
         if result["retCode"] == 0 and result["result"]["list"]:
             return float(result["result"]["list"][0].get("fundingRate", 0))
         return 0.0
+
+    @retry_async(max_attempts=2)
+    async def fetch_ohlcv(
+        self, symbol: str, timeframe: str = "15", limit: int = 100
+    ) -> list[list]:
+        """Fetch OHLCV candle data (ccxt-compatible format)."""
+        # Convert timeframe to Bybit interval format
+        interval_map = {
+            "1m": "1", "3m": "3", "5m": "5", "15m": "15", "30m": "30",
+            "1h": "60", "2h": "120", "4h": "240", "6h": "360", "12h": "720",
+            "1d": "D", "1w": "W", "1M": "M",
+        }
+        interval = interval_map.get(timeframe, timeframe)
+
+        result = self._client.get_kline(
+            category="linear",
+            symbol=symbol,
+            interval=interval,
+            limit=limit,
+        )
+        if result["retCode"] == 0:
+            # Convert to ccxt format: [timestamp, open, high, low, close, volume]
+            candles = []
+            for item in reversed(result["result"]["list"]):  # Bybit returns newest first
+                candles.append([
+                    int(item[0]),      # timestamp
+                    float(item[1]),    # open
+                    float(item[2]),    # high
+                    float(item[3]),    # low
+                    float(item[4]),    # close
+                    float(item[5]),    # volume
+                ])
+            return candles
+        return []
+
+    @retry_async(max_attempts=2)
+    async def fetch_tickers(self) -> dict[str, dict]:
+        """Fetch all tickers (ccxt-compatible format)."""
+        result = self._client.get_tickers(category="linear")
+        tickers = {}
+        if result["retCode"] == 0:
+            for item in result["result"]["list"]:
+                symbol = item["symbol"]
+                # Convert to ccxt-like format with /USDT suffix for filtering
+                if symbol.endswith("USDT"):
+                    ccxt_symbol = symbol[:-4] + "/USDT"
+                    tickers[ccxt_symbol] = {
+                        "symbol": ccxt_symbol,
+                        "last": float(item.get("lastPrice", 0)),
+                        "high": float(item.get("highPrice24h", 0)),
+                        "low": float(item.get("lowPrice24h", 0)),
+                        "quoteVolume": float(item.get("turnover24h", 0)),
+                        "percentage": float(item.get("price24hPcnt", 0)) * 100,
+                    }
+        return tickers

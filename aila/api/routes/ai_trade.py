@@ -6,11 +6,7 @@ import os
 from datetime import datetime
 from typing import Optional
 
-from dotenv import load_dotenv
 from fastapi import APIRouter, HTTPException
-
-# Load environment variables
-load_dotenv()
 
 router = APIRouter(prefix="/api/ai-trade", tags=["AI Trade"])
 
@@ -18,33 +14,12 @@ router = APIRouter(prefix="/api/ai-trade", tags=["AI Trade"])
 _orchestrator = None
 
 
-def _create_bybit_exchange():
-    """Create Bybit exchange with API credentials."""
-    from pybit.unified_trading import HTTP
-
-    api_key = os.getenv("BYBIT_API_KEY", "")
-    api_secret = os.getenv("BYBIT_API_SECRET", "")
-    testnet = os.getenv("BYBIT_TESTNET", "false").lower() == "true"
-
-    if not api_key or not api_secret:
-        return None
-
-    return HTTP(
-        api_key=api_key,
-        api_secret=api_secret,
-        testnet=testnet,
-    )
-
-
 async def get_orchestrator():
-    """Get or create orchestrator instance with real Bybit exchange."""
+    """Get or create orchestrator instance (creates its own BybitExchange)."""
     global _orchestrator
     if _orchestrator is None:
         from ...ai_trade.orchestrator import AgentOrchestrator
-
-        # Create real Bybit exchange
-        exchange = _create_bybit_exchange()
-        _orchestrator = AgentOrchestrator(exchange=exchange)
+        _orchestrator = AgentOrchestrator()
 
     return _orchestrator
 

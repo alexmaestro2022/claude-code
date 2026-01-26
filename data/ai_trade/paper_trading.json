@@ -1,0 +1,10 @@
+{
+  "data": {
+    "balance": 1000,
+    "initial_balance": 1000,
+    "trades": [],
+    "positions": []
+  },
+  "saved_at": "2026-01-26T21:06:53.910488",
+  "version": "2.0"
+}

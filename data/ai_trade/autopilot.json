@@ -1,0 +1,21 @@
+{
+  "data": {
+    "stats": {
+      "trades_this_hour": 0,
+      "trades_today": 0,
+      "last_hour_reset": "2026-01-25 20:22:36.797279",
+      "last_day_reset": "2026-01-25"
+    },
+    "config": {
+      "scan_interval_seconds": 60,
+      "min_confidence": 70,
+      "max_trades_per_hour": 5,
+      "max_trades_per_day": 20,
+      "cooldown_after_loss_minutes": 30,
+      "require_multiple_confirmations": true
+    },
+    "running": false
+  },
+  "saved_at": "2026-01-26T21:06:53.911168",
+  "version": "2.0"
+}
