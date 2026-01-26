@@ -964,8 +964,10 @@ STRATEGY_EVOLUTION (генетические алгоритмы, оптимиз�
 ### Веб-интерфейс AI Trade:
 - **Страница**: `/ai-trade` (требует авторизации)
 - **API**: `/api/ai-trade/*` (роутер в `aila/api/routes/ai_trade.py`)
-- **Шаблон**: `aila/api/templates/ai_trade.html` (Tailwind CSS)
+- **Шаблон**: `aila/api/templates/ai_trade.html` (Tailwind CSS + Font Awesome)
 - **Endpoints**: status, agents, profile, portfolio, opportunities, market-context, prediction, sentiment, whale, capital, health, evolution, logs, settings, mode
+- **Кнопки режимов**: OBSERVER/AUTOPILOT с иконками (fa-eye/fa-robot), активный режим выделен цветом
+- **Подтверждение AUTOPILOT**: модальное окно с предупреждением перед включением автоторговли
 
 ### Формат событий для веб-интерфейса:
 ```json
