@@ -105,9 +105,17 @@ app.include_router(ai_trade_router)
 # Clear logs on startup
 @app.on_event("startup")
 async def startup_event():
-    """Clear logs when server restarts."""
+    """Clear logs and initialize AI Trade orchestrator when server starts."""
     log_buffer.clear()
     log_buffer.append(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | --- Сервер перезапущен / Server restarted ---")
+
+    # Initialize AI Trade orchestrator to start persistence
+    from .routes.ai_trade import get_orchestrator
+    try:
+        await get_orchestrator()
+        log_buffer.append(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | AI Trade orchestrator initialized with persistence")
+    except Exception as e:
+        log_buffer.append(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | AI Trade init error: {e}")
 
 
 # =============================================
