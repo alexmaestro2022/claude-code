@@ -14,6 +14,16 @@ from typing import Any, Callable, Optional
 
 logger = logging.getLogger("ai_trade.persistence")
 
+# Load .env file if not already loaded
+_env_path = Path("/opt/aila/.env")
+if _env_path.exists() and not os.getenv("YANDEX_ACCESS_KEY"):
+    with open(_env_path) as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if _line and not _line.startswith("#") and "=" in _line:
+                _key, _, _value = _line.partition("=")
+                os.environ[_key.strip()] = _value.strip()
+
 # Yandex Object Storage configuration (from environment variables)
 YANDEX_ACCESS_KEY = os.getenv("YANDEX_ACCESS_KEY", "")
 YANDEX_SECRET_KEY = os.getenv("YANDEX_SECRET_KEY", "")
