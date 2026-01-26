@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import os
 from datetime import datetime
 from typing import Any, Optional
 
@@ -63,9 +64,17 @@ class AgentOrchestrator:
         self.predictor = PredictorAgent(self.claude_client, self.knowledge_base, self.scanner)
         self.sniper = SniperAgent(self.claude_client, self.knowledge_base, self.scanner)
 
-        # Multi-exchange support
+        # Multi-exchange support with API keys from .env
         self.exchanges = MultiExchangeManager()
-        self.exchanges.add_exchange(BybitExchange())
+        api_key = os.getenv("BYBIT_API_KEY", "")
+        api_secret = os.getenv("BYBIT_API_SECRET", "")
+        testnet = os.getenv("BYBIT_TESTNET", "false").lower() == "true"
+        self._bybit_exchange = BybitExchange(
+            api_key=api_key,
+            api_secret=api_secret,
+            testnet=testnet,
+        )
+        self.exchanges.add_exchange(self._bybit_exchange)
 
         self.arbitrage = ArbitrageAgent(self.claude_client, self.knowledge_base, self.exchanges)
         self.capital_manager = CapitalManager(self.knowledge_base)
@@ -81,9 +90,13 @@ class AgentOrchestrator:
         self._persistence = PersistenceManager()
 
         logger.info(f"AgentOrchestrator initialized in {mode} mode (16 agents)")
+        if api_key:
+            logger.info("Bybit API connected with real credentials")
+        else:
+            logger.warning("Bybit API: NO CREDENTIALS - paper trading only")
 
-        # Start persistence in background
-        asyncio.create_task(self.start_persistence())
+        # Start persistence and initialize capital in background
+        asyncio.create_task(self._initialize_async())
 
     async def get_market_context(self, pair: str) -> dict[str, Any]:
         """Gather whale, news, prediction, and market context in parallel."""
@@ -572,10 +585,28 @@ class AgentOrchestrator:
             logger.error(f"Restore error: {e}")
             return False
 
-    async def start_persistence(self) -> None:
-        """Start persistence system."""
+    async def _initialize_async(self) -> None:
+        """Initialize async components: persistence and capital."""
         await self._restore_all_data()
         asyncio.create_task(self._persistence.start_auto_save(self._collect_all_data))
+
+        # Initialize capital_manager with real balance
+        try:
+            balance = await self._bybit_exchange.get_balance("USDT")
+            if balance > 0:
+                await self.capital_manager.update_capital(balance)
+                logger.info(f"Capital manager initialized with ${balance:.2f}")
+
+                # Update risk_manager level benefits
+                level = self.knowledge_base.data.get("trader_profile", {}).get("level", 1)
+                self.risk_manager.update_level_limits(level, self.knowledge_base)
+                logger.info(f"Risk limits updated for AI level {level}")
+        except Exception as e:
+            logger.error(f"Failed to initialize capital: {e}")
+
+    async def start_persistence(self) -> None:
+        """Start persistence system (legacy method for compatibility)."""
+        await self._initialize_async()
 
     async def save_now(self) -> dict[str, Any]:
         """Force immediate save."""

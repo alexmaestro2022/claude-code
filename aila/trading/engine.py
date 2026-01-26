@@ -19,6 +19,7 @@ from ..core.strategy import Signal, SignalType, TripleSuperTrendStrategy
 from ..exchange import BybitClient, FuturesTrader, SpotTrader
 from ..exchange.models import AccountType, MarginMode, Position, PositionSide
 from ..core.strategy.signals import SignalStrength
+from ..utils.position_conflict import check_position_conflict
 
 logger = structlog.get_logger(__name__)
 
@@ -946,6 +947,11 @@ class TradingEngine:
             existing = self._active_positions[symbol]
             if existing["side"] == ("long" if signal.is_long else "short"):
                 return  # Already in same direction
+
+        # Check for position conflict (AI Trade or external position on this symbol)
+        if check_position_conflict(symbol):
+            logger.warning("Position conflict detected, skipping signal", symbol=symbol)
+            return
 
         # Notify callbacks
         await self._notify_signal(signal)

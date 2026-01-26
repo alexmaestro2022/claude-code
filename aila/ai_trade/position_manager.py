@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Any, Optional
 
 from ..utils.common import retry_async
+from ..utils.position_conflict import check_position_conflict
 
 logger = logging.getLogger("ai_trade")
 
@@ -24,6 +25,11 @@ class PositionManager:
         symbol = signal.get("pair")
         direction = signal.get("decision")
         if not symbol or not direction or direction == "WAIT":
+            return None
+
+        # Check for position conflict (any existing position on this symbol)
+        if check_position_conflict(symbol):
+            logger.warning(f"Position conflict: {symbol} already has open position, skipping signal")
             return None
 
         try:

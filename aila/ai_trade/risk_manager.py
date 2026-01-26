@@ -87,6 +87,37 @@ class RiskManager:
         """Track position closed."""
         self.open_positions_count = max(0, self.open_positions_count - 1)
 
+    def update_level_limits(self, level: int, knowledge_base: Any) -> None:
+        """Update risk limits based on AI level from knowledge_base."""
+        level_benefits = knowledge_base.data.get("level_benefits", {})
+
+        # Find applicable level (highest level <= current level)
+        applicable_level = 1
+        for lvl_str in sorted(level_benefits.keys(), key=lambda x: int(x)):
+            if int(lvl_str) <= level:
+                applicable_level = int(lvl_str)
+
+        benefits = level_benefits.get(str(applicable_level), {})
+        if benefits:
+            # Update limits based on level
+            self._limits["max_leverage"] = min(
+                benefits.get("max_leverage", 5),
+                RISK_LIMITS["max_leverage"]  # Never exceed hard limit
+            )
+            self._limits["max_open_positions"] = min(
+                benefits.get("max_positions", 1),
+                RISK_LIMITS["max_open_positions"]
+            )
+            self._limits["default_risk_per_trade_pct"] = min(
+                benefits.get("max_risk_pct", 1),
+                RISK_LIMITS["max_position_size_pct"]
+            )
+            logger.info(
+                f"Level {level} limits: leverage={self._limits['max_leverage']}x, "
+                f"positions={self._limits['max_open_positions']}, "
+                f"risk={self._limits['default_risk_per_trade_pct']}%"
+            )
+
     def get_status(self) -> dict[str, Any]:
         """Get current risk status."""
         daily_loss_used = abs(self.daily_pnl / max(self.peak_balance, 1) * 100) if self.daily_pnl < 0 else 0
@@ -97,4 +128,9 @@ class RiskManager:
             "peak_balance": self.peak_balance,
             "daily_loss_limit_remaining": self._limits["max_daily_loss_pct"] - daily_loss_used,
             "can_trade": self.open_positions_count < self._limits["max_open_positions"],
+            "current_limits": {
+                "max_leverage": self._limits["max_leverage"],
+                "max_positions": self._limits["max_open_positions"],
+                "risk_per_trade": self._limits["default_risk_per_trade_pct"],
+            },
         }
