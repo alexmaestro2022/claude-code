@@ -1167,6 +1167,66 @@ sudo journalctl -u aila -n 100  # последние 100 строк логов
 
 ---
 
-**Последнее обновление:** 2026-01-26 (исправлена инициализация persistence при старте)
+---
+
+## 27. Position Conflict Protection — Защита от конфликта позиций
+
+### Описание:
+Предотвращает одновременное открытие позиций по одной паре основным ботом и AI Trade.
+
+### Файлы:
+- `aila/utils/position_conflict.py` — общий модуль проверки конфликтов
+- `aila/ai_trade/position_manager.py` — использует проверку
+- `aila/trading/engine.py` — использует проверку
+
+### Как работает:
+```python
+# Перед открытием позиции (AI Trade или основной бот):
+if check_position_conflict(symbol):
+    logger.warning(f"Position conflict: {symbol} already has open position")
+    return None  # Не открываем позицию
+```
+
+### Функции (position_conflict.py):
+- `check_position_conflict(symbol)` — возвращает True если позиция существует
+- `get_all_open_positions()` — возвращает список всех открытых позиций
+
+### Логика:
+1. Создаётся singleton Bybit клиент с API ключами из .env
+2. При вызове `check_position_conflict(symbol)`:
+   - Запрашивает позиции с Bybit API
+   - Проверяет есть ли позиция с size > 0
+   - Возвращает True (конфликт) или False (безопасно)
+3. Обе системы проверяют перед открытием позиции
+
+---
+
+## 28. AI Trade — Real Bybit Integration
+
+### ИСПРАВЛЕНО 2026-01-26:
+AI Trade теперь подключён к реальному Bybit с API ключами.
+
+### Изменения:
+1. **orchestrator.py** — загружает API ключи из .env, создаёт BybitExchange с credentials
+2. **ai_trade.py routes** — создаёт pybit.HTTP клиент с API ключами
+3. **position_manager.py** — проверяет конфликт позиций перед открытием
+4. **risk_manager.py** — добавлен `update_level_limits()` для level-based рисков
+5. **capital_manager** — инициализируется с реальным балансом при старте
+
+### Проверка:
+```bash
+curl -s http://localhost:8080/api/ai-trade/capital | python3 -m json.tool
+# Должен показать реальный баланс USDT
+```
+
+### ВАЖНО:
+После изменений требуется перезапуск бота:
+```bash
+sudo systemctl restart aila
+```
+
+---
+
+**Последнее обновление:** 2026-01-26 (AI Trade подключён к реальному Bybit + защита от конфликта позиций)
 **Текущая версия:** v2.2.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
