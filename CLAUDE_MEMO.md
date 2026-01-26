@@ -951,6 +951,7 @@ STRATEGY_EVOLUTION (генетические алгоритмы, оптимиз�
 - Max drawdown: 15%
 - Min balance: 10 USDT
 - Max open positions: 3
+- **Min order size: $10 USDT** (лимит Bybit Futures)
 
 ### Данные:
 - База знаний: `/opt/aila/data/ai_knowledge.json`
