@@ -6,6 +6,7 @@ from typing import Any, Optional
 
 from ..utils.common import retry_async
 from ..utils.position_conflict import check_position_conflict
+from .config import MIN_ORDER_SIZE_USDT
 
 logger = logging.getLogger("ai_trade")
 
@@ -35,6 +36,15 @@ class PositionManager:
         try:
             leverage = signal.get("leverage", 1)
             position_size_usdt = signal.get("position_size_usdt", 0)
+
+            # Enforce minimum order size for Bybit
+            if position_size_usdt < MIN_ORDER_SIZE_USDT:
+                logger.info(
+                    f"Calculated size: ${position_size_usdt:.2f}, "
+                    f"using minimum: ${MIN_ORDER_SIZE_USDT}"
+                )
+                position_size_usdt = MIN_ORDER_SIZE_USDT
+                signal["position_size_usdt"] = position_size_usdt
 
             await self._exchange.set_leverage(leverage, symbol)
 

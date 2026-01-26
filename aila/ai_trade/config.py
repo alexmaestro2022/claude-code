@@ -15,6 +15,9 @@ RISK_LIMITS = {
     "default_risk_per_trade_pct": 2,  # Default risk per trade
 }
 
+# Bybit exchange limits
+MIN_ORDER_SIZE_USDT = 10  # Minimum order size for Bybit Futures
+
 # Operating modes
 MODES = {
     "OBSERVER": {"can_trade": False, "description": "Analysis only, no trades"},
