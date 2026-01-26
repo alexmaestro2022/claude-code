@@ -1244,6 +1244,23 @@ sudo systemctl restart aila
 
 ---
 
-**Последнее обновление:** 2026-01-26 (AI Trade подключён к реальному Bybit + защита от конфликта позиций)
+### ИСПРАВЛЕНО 2026-01-26 (session):
+
+1. **autopilot/status API error** — `'str' object has no attribute 'isoformat'`
+   - Проблема: при загрузке данных из JSON, `last_hour_reset` уже строка, не datetime
+   - Решение: проверка `hasattr(obj, 'isoformat')` перед вызовом
+   - Файл: `aila/ai_trade/autopilot_mode.py:get_status()`
+
+2. **Arbitrage symbol format** — `symbol invalid (ErrCode: 10001)` для LINK/USDT
+   - Проблема: Bybit API ожидает LINKUSDT, а не LINK/USDT
+   - Решение: `normalized_pair = pair.replace("/", "")`
+   - Файл: `aila/ai_trade/agents/arbitrage.py:_analyze_funding()`
+
+3. **fetch_order_book** — уже добавлен в BybitExchange (строки 59-61)
+   - Ошибки в логах whale_tracker были от старого кода до рестарта
+
+---
+
+**Последнее обновление:** 2026-01-26 (fix autopilot/status + arbitrage symbol format)
 **Текущая версия:** v2.2.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`

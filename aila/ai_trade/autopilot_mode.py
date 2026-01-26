@@ -229,6 +229,13 @@ class AutopilotMode:
 
     def get_status(self) -> dict[str, Any]:
         """Get autopilot status."""
+        # Handle both datetime objects and strings from JSON persistence
+        last_hour = self._stats['last_hour_reset']
+        last_hour_str = last_hour.isoformat() if hasattr(last_hour, 'isoformat') else str(last_hour)
+
+        last_trade = self._last_trade_time
+        last_trade_str = last_trade.isoformat() if hasattr(last_trade, 'isoformat') else last_trade
+
         return {
             'running': self._running,
             'mode': 'AUTOPILOT' if self._running else 'INACTIVE',
@@ -236,10 +243,10 @@ class AutopilotMode:
             'stats': {
                 'trades_this_hour': self._stats['trades_this_hour'],
                 'trades_today': self._stats['trades_today'],
-                'last_hour_reset': self._stats['last_hour_reset'].isoformat(),
+                'last_hour_reset': last_hour_str,
                 'last_day_reset': str(self._stats['last_day_reset'])
             },
-            'last_trade': self._last_trade_time.isoformat() if self._last_trade_time else None
+            'last_trade': last_trade_str
         }
 
     def update_config(self, new_config: dict[str, Any]) -> dict[str, Any]:

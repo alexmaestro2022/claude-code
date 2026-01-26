@@ -164,7 +164,9 @@ class ArbitrageAgent(BaseAgent):
     @retry_async(max_attempts=2)
     async def _analyze_funding(self, pair: str) -> dict[str, Any]:
         """Analyze funding rate for a pair."""
-        cache_key = f"funding:{pair}"
+        # Normalize symbol: LINK/USDT -> LINKUSDT for Bybit API
+        normalized_pair = pair.replace("/", "")
+        cache_key = f"funding:{normalized_pair}"
         cached = self._cache.get(cache_key)
         if cached is not None:
             return cached
@@ -173,12 +175,12 @@ class ArbitrageAgent(BaseAgent):
             from pybit.unified_trading import HTTP
 
             client = HTTP()
-            result = client.get_tickers(category="linear", symbol=pair)
+            result = client.get_tickers(category="linear", symbol=normalized_pair)
 
             if result["retCode"] == 0 and result["result"]["list"]:
                 ticker = result["result"]["list"][0]
                 data: dict[str, Any] = {
-                    "pair": pair,
+                    "pair": normalized_pair,
                     "funding_rate": float(ticker.get("fundingRate", 0)) * 100,
                     "next_funding_time": ticker.get("nextFundingTime"),
                     "mark_price": float(ticker.get("markPrice", 0)),
@@ -186,7 +188,7 @@ class ArbitrageAgent(BaseAgent):
                 self._cache.set(cache_key, data)
                 return data
         except Exception as e:
-            self.log(f"Funding check failed for {pair}: {e}", "error")
+            self.log(f"Funding check failed for {normalized_pair}: {e}", "error")
 
         return {}
 
