@@ -251,11 +251,158 @@ async def get_recent_logs(agent: Optional[str] = None, limit: int = 50):
 async def get_settings():
     """Get AI Trade settings."""
     try:
-        from ...ai_trade.config import TRADING_CONFIG, RISK_LIMITS, MODES
+        from ...ai_trade.config import SCANNER_CONFIG, RISK_LIMITS, MODES
         return {
-            "trading": TRADING_CONFIG,
+            "trading": SCANNER_CONFIG,
             "risk_limits": RISK_LIMITS,
             "modes": MODES
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/settings/full")
+async def get_full_settings():
+    """Get ALL AI Trade settings and parameters in one call."""
+    try:
+        from ...ai_trade.config import RISK_LIMITS, SCANNER_CONFIG, MODES, MIN_ORDER_SIZE_USDT, CLAUDE_MODEL
+
+        orch = await get_orchestrator()
+
+        # Get current status
+        status = orch.get_status()
+        profile = status.get("trader_profile", {})
+        risk_status = status.get("risk_status", {})
+        current_limits = risk_status.get("current_limits", {})
+
+        # Autopilot config
+        autopilot_status = orch.autopilot.get_status()
+        autopilot_config = autopilot_status.get("config", {})
+
+        # Capital
+        capital = orch.capital_manager.get_allocation()
+        capital_config = orch.capital_manager._config
+        phase = orch.capital_manager.get_scaling_phase()
+
+        # Persistence
+        persistence = orch.get_persistence_status()
+
+        # Balance
+        try:
+            balance = await orch.exchange.get_balance("USDT")
+        except Exception:
+            balance = 0
+
+        return {
+            "trading": {
+                "min_confidence": autopilot_config.get("min_confidence", 70),
+                "scan_interval_seconds": SCANNER_CONFIG.get("scan_interval_seconds", 60),
+                "scan_all_pairs": SCANNER_CONFIG.get("scan_all_pairs", True),
+                "pairs_cache_ttl": SCANNER_CONFIG.get("pairs_cache_ttl", 3600),
+                "top_pairs_count": SCANNER_CONFIG.get("top_pairs_count", 20),
+                "timeframes": ["1m", "5m", "15m", "1h", "4h"],
+                "claude_model": CLAUDE_MODEL,
+            },
+            "risk_limits": {
+                "max_leverage": RISK_LIMITS.get("max_leverage", 20),
+                "max_position_size_pct": RISK_LIMITS.get("max_position_size_pct", 10),
+                "max_daily_loss_pct": RISK_LIMITS.get("max_daily_loss_pct", 5),
+                "max_drawdown_pct": RISK_LIMITS.get("max_drawdown_pct", 15),
+                "min_balance_usdt": RISK_LIMITS.get("min_balance_usdt", 10),
+                "max_open_positions": RISK_LIMITS.get("max_open_positions", 3),
+                "default_risk_per_trade_pct": RISK_LIMITS.get("default_risk_per_trade_pct", 2),
+                "min_order_size_usdt": MIN_ORDER_SIZE_USDT,
+            },
+            "level_limits": {
+                "current_level": profile.get("level", 1),
+                "xp": profile.get("xp", 0),
+                "next_level_xp": profile.get("next_level_xp", 100),
+                "current_max_leverage": current_limits.get("max_leverage", 5),
+                "current_max_positions": current_limits.get("max_positions", 1),
+                "current_risk_per_trade": current_limits.get("risk_per_trade", 1),
+            },
+            "autopilot": {
+                "running": autopilot_status.get("running", False),
+                "scan_interval_seconds": autopilot_config.get("scan_interval_seconds", 60),
+                "min_confidence": autopilot_config.get("min_confidence", 70),
+                "max_trades_per_hour": autopilot_config.get("max_trades_per_hour", 5),
+                "max_trades_per_day": autopilot_config.get("max_trades_per_day", 20),
+                "cooldown_after_loss_minutes": autopilot_config.get("cooldown_after_loss_minutes", 30),
+                "require_multiple_confirmations": autopilot_config.get("require_multiple_confirmations", True),
+                "trades_this_hour": autopilot_status.get("stats", {}).get("trades_this_hour", 0),
+                "trades_today": autopilot_status.get("stats", {}).get("trades_today", 0),
+            },
+            "filters": {
+                "volume_filter": {
+                    "enabled": True,
+                    "min_volume_24h": SCANNER_CONFIG.get("min_volume_24h", 5_000_000),
+                },
+                "volatility_filter": {
+                    "enabled": True,
+                    "min_volatility_pct": SCANNER_CONFIG.get("min_volatility_pct", 1),
+                    "max_volatility_pct": SCANNER_CONFIG.get("max_volatility_pct", 15),
+                },
+                "trend_filter": {
+                    "enabled": True,
+                    "description": "EMA50/EMA200 crossover",
+                },
+            },
+            "indicators": {
+                "rsi": {"enabled": True, "period": 14},
+                "ema50": {"enabled": True, "period": 50},
+                "ema200": {"enabled": True, "period": 200, "issue": "requires 200+ candles"},
+                "atr": {"enabled": True, "period": 14},
+                "supertrend": {"enabled": False, "note": "Not used in AI Trade"},
+            },
+            "integrations": {
+                "news_sentiment": {
+                    "enabled": True,
+                    "source": "Fear & Greed Index",
+                    "weight": 5,
+                },
+                "whale_tracker": {
+                    "enabled": True,
+                    "source": "Orderbook analysis",
+                    "weight": 5,
+                    "whale_alert_api": False,
+                },
+                "predictor": {
+                    "enabled": True,
+                    "method": "TA + Claude analysis",
+                    "weight": 10,
+                },
+            },
+            "capital": {
+                "total": capital.get("total", 0),
+                "trading": capital.get("trading", 0),
+                "reserve": capital.get("reserve", 0),
+                "reserve_pct": capital_config.get("reserve_pct", 20),
+                "kelly_fraction": capital_config.get("kelly_fraction", 0.5),
+                "compound_pct": capital_config.get("compound_pct", 50),
+                "phase": phase.get("phase", "Starter"),
+                "recommended_leverage": phase.get("recommended_leverage", 10),
+                "recommended_risk_pct": phase.get("recommended_risk_pct", 2),
+            },
+            "persistence": {
+                "local_save_interval": 60,
+                "cloud_backup_interval": 3600,
+                "auto_save_running": persistence.get("auto_save_running", False),
+                "s3_connected": persistence.get("s3_connected", False),
+                "last_local_save": persistence.get("last_local_save"),
+                "last_cloud_backup": persistence.get("last_cloud_backup"),
+                "files_count": persistence.get("files_count", 0),
+            },
+            "current_status": {
+                "mode": status.get("mode", "OBSERVER"),
+                "balance": balance,
+                "open_positions": status.get("open_positions", 0),
+                "daily_pnl": risk_status.get("daily_pnl", 0),
+                "daily_trades": risk_status.get("daily_trades", 0),
+                "can_trade": risk_status.get("can_trade", True),
+                "crisis_mode": status.get("agents", {}).get("war_room", {}).get("crisis_mode", False),
+                "learning_cycles_running": status.get("learning_cycles", {}).get("running", False),
+            },
+            "timestamp": datetime.utcnow().isoformat(),
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

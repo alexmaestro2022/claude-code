@@ -124,6 +124,63 @@
         .modal-btn-cancel:hover {
             background: rgba(100, 100, 100, 0.5);
         }
+        /* Settings Modal */
+        .settings-modal-content {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 900px;
+            max-height: 85vh;
+            overflow-y: auto;
+            width: 95%;
+        }
+        .settings-section {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+        .settings-section h4 {
+            color: #00ff88;
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            font-size: 0.8rem;
+        }
+        .setting-row:last-child { border-bottom: none; }
+        .setting-name { color: #9ca3af; }
+        .setting-value { color: #fff; font-weight: 500; }
+        .setting-value.ok { color: #00ff88; }
+        .setting-value.warning { color: #facc15; }
+        .setting-value.error { color: #ef4444; }
+        .settings-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: transparent;
+            border: 1px solid rgba(100, 100, 100, 0.5);
+            border-radius: 6px;
+            color: #9ca3af;
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+        .settings-btn:hover {
+            background: rgba(0, 255, 136, 0.1);
+            border-color: rgba(0, 255, 136, 0.5);
+            color: #00ff88;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-white min-h-screen">
@@ -133,16 +190,21 @@
                 <h1 class="text-4xl font-bold text-green-400">AILA AI Trade</h1>
                 <p class="text-gray-400">Autonomous Intelligent Learning Algorithm</p>
             </div>
-            <a href="/" class="bot-btn" title="AILA Bot">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="11" width="18" height="10" rx="2"/>
-                    <circle cx="12" cy="5" r="2"/>
-                    <path d="M12 7v4"/>
-                    <line x1="8" y1="16" x2="8" y2="16"/>
-                    <line x1="16" y1="16" x2="16" y2="16"/>
-                </svg>
-                Bot
-            </a>
+            <div class="flex gap-3">
+                <button class="settings-btn" onclick="openSettingsModal()" title="Settings & Info">
+                    <i class="fa-solid fa-gear"></i> Settings
+                </button>
+                <a href="/" class="bot-btn" title="AILA Bot">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="11" width="18" height="10" rx="2"/>
+                        <circle cx="12" cy="5" r="2"/>
+                        <path d="M12 7v4"/>
+                        <line x1="8" y1="16" x2="8" y2="16"/>
+                        <line x1="16" y1="16" x2="16" y2="16"/>
+                    </svg>
+                    Bot
+                </a>
+            </div>
         </header>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -213,6 +275,19 @@
         <div class="card rounded-lg p-4">
             <h2 class="text-xl font-bold mb-4">Agent Logs</h2>
             <div id="logs" class="font-mono text-sm text-gray-400 max-h-64 overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal-overlay">
+        <div class="settings-modal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-green-400"><i class="fa-solid fa-gear"></i> Settings & Info</h3>
+                <button onclick="closeSettingsModal()" class="text-gray-400 hover:text-white text-xl">&times;</button>
+            </div>
+            <div id="settings-content" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <p class="text-gray-500">Loading...</p>
+            </div>
         </div>
     </div>
 
@@ -402,6 +477,155 @@
             } else {
                 document.getElementById('logs').innerHTML = '<p class="text-gray-500">No logs yet</p>';
             }
+        }
+
+        // Settings Modal functions
+        function openSettingsModal() {
+            document.getElementById('settings-modal').classList.add('show');
+            loadSettings();
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settings-modal').classList.remove('show');
+        }
+
+        document.getElementById('settings-modal').addEventListener('click', function(e) {
+            if (e.target === this) closeSettingsModal();
+        });
+
+        function valueClass(val, okCondition) {
+            if (okCondition === true) return 'ok';
+            if (okCondition === false) return 'error';
+            if (okCondition === 'warn') return 'warning';
+            return '';
+        }
+
+        function fmt(val, suffix = '') {
+            if (val === null || val === undefined) return '<span class="warning">N/A</span>';
+            if (typeof val === 'boolean') return val ? '<span class="ok">Yes</span>' : '<span class="error">No</span>';
+            return val + suffix;
+        }
+
+        async function loadSettings() {
+            const data = await fetchData('/settings/full');
+            if (!data) {
+                document.getElementById('settings-content').innerHTML = '<p class="text-red-400">Failed to load settings</p>';
+                return;
+            }
+
+            const html = `
+                <!-- Trading -->
+                <div class="settings-section">
+                    <h4><i class="fa-solid fa-chart-line"></i> Trading</h4>
+                    <div class="setting-row"><span class="setting-name">Min Confidence</span><span class="setting-value">${data.trading.min_confidence}%</span></div>
+                    <div class="setting-row"><span class="setting-name">Scan Interval</span><span class="setting-value">${data.trading.scan_interval_seconds}s</span></div>
+                    <div class="setting-row"><span class="setting-name">Scan All Pairs</span><span class="setting-value ${data.trading.scan_all_pairs ? 'ok' : ''}">${fmt(data.trading.scan_all_pairs)}</span></div>
+                    <div class="setting-row"><span class="setting-name">Pairs Cache TTL</span><span class="setting-value">${data.trading.pairs_cache_ttl}s</span></div>
+                    <div class="setting-row"><span class="setting-name">Claude Model</span><span class="setting-value" style="font-size:0.7rem">${data.trading.claude_model}</span></div>
+                </div>
+
+                <!-- Risk Limits -->
+                <div class="settings-section">
+                    <h4><i class="fa-solid fa-shield-halved"></i> Risk Limits (Hard)</h4>
+                    <div class="setting-row"><span class="setting-name">Max Leverage</span><span class="setting-value">${data.risk_limits.max_leverage}x</span></div>
+                    <div class="setting-row"><span class="setting-name">Max Position Size</span><span class="setting-value">${data.risk_limits.max_position_size_pct}%</span></div>
+                    <div class="setting-row"><span class="setting-name">Max Daily Loss</span><span class="setting-value">${data.risk_limits.max_daily_loss_pct}%</span></div>
+                    <div class="setting-row"><span class="setting-name">Max Drawdown</span><span class="setting-value">${data.risk_limits.max_drawdown_pct}%</span></div>
+                    <div class="setting-row"><span class="setting-name">Min Balance</span><span class="setting-value">$${data.risk_limits.min_balance_usdt}</span></div>
+                    <div class="setting-row"><span class="setting-name">Max Positions</span><span class="setting-value">${data.risk_limits.max_open_positions}</span></div>
+                    <div class="setting-row"><span class="setting-name">Min Order Size</span><span class="setting-value">$${data.risk_limits.min_order_size_usdt}</span></div>
+                </div>
+
+                <!-- Level Limits -->
+                <div class="settings-section">
+                    <h4><i class="fa-solid fa-star"></i> Level Limits (AI Level ${data.level_limits.current_level})</h4>
+                    <div class="setting-row"><span class="setting-name">XP</span><span class="setting-value">${data.level_limits.xp} / ${data.level_limits.next_level_xp}</span></div>
+                    <div class="setting-row"><span class="setting-name">Max Leverage</span><span class="setting-value">${data.level_limits.current_max_leverage}x</span></div>
+                    <div class="setting-row"><span class="setting-name">Max Positions</span><span class="setting-value">${data.level_limits.current_max_positions}</span></div>
+                    <div class="setting-row"><span class="setting-name">Risk/Trade</span><span class="setting-value">${data.level_limits.current_risk_per_trade}%</span></div>
+                </div>
+
+                <!-- Autopilot -->
+                <div class="settings-section">
+                    <h4><i class="fa-solid fa-robot"></i> Autopilot</h4>
+                    <div class="setting-row"><span class="setting-name">Running</span><span class="setting-value ${data.autopilot.running ? 'ok' : ''}">${fmt(data.autopilot.running)}</span></div>
+                    <div class="setting-row"><span class="setting-name">Max Trades/Hour</span><span class="setting-value">${data.autopilot.max_trades_per_hour}</span></div>
+                    <div class="setting-row"><span class="setting-name">Max Trades/Day</span><span class="setting-value">${data.autopilot.max_trades_per_day}</span></div>
+                    <div class="setting-row"><span class="setting-name">Cooldown After Loss</span><span class="setting-value">${data.autopilot.cooldown_after_loss_minutes} min</span></div>
+                    <div class="setting-row"><span class="setting-name">Multi-Confirmation</span><span class="setting-value">${fmt(data.autopilot.require_multiple_confirmations)}</span></div>
+                    <div class="setting-row"><span class="setting-name">Trades This Hour</span><span class="setting-value">${data.autopilot.trades_this_hour}</span></div>
+                    <div class="setting-row"><span class="setting-name">Trades Today</span><span class="setting-value">${data.autopilot.trades_today}</span></div>
+                </div>
+
+                <!-- Filters -->
+                <div class="settings-section">
+                    <h4><i class="fa-solid fa-filter"></i> Filters</h4>
+                    <div class="setting-row"><span class="setting-name">Volume Filter</span><span class="setting-value ${data.filters.volume_filter.enabled ? 'ok' : ''}">${fmt(data.filters.volume_filter.enabled)} (>$${(data.filters.volume_filter.min_volume_24h/1e6).toFixed(0)}M)</span></div>
+                    <div class="setting-row"><span class="setting-name">Volatility Filter</span><span class="setting-value ${data.filters.volatility_filter.enabled ? 'ok' : ''}">${fmt(data.filters.volatility_filter.enabled)} (${data.filters.volatility_filter.min_volatility_pct}-${data.filters.volatility_filter.max_volatility_pct}%)</span></div>
+                    <div class="setting-row"><span class="setting-name">Trend Filter</span><span class="setting-value ${data.filters.trend_filter.enabled ? 'ok' : ''}">${fmt(data.filters.trend_filter.enabled)}</span></div>
+                </div>
+
+                <!-- Indicators -->
+                <div class="settings-section">
+                    <h4><i class="fa-solid fa-chart-bar"></i> Indicators</h4>
+                    <div class="setting-row"><span class="setting-name">RSI (${data.indicators.rsi.period})</span><span class="setting-value ${data.indicators.rsi.enabled ? 'ok' : ''}">${fmt(data.indicators.rsi.enabled)}</span></div>
+                    <div class="setting-row"><span class="setting-name">EMA50</span><span class="setting-value ${data.indicators.ema50.enabled ? 'ok' : ''}">${fmt(data.indicators.ema50.enabled)}</span></div>
+                    <div class="setting-row"><span class="setting-name">EMA200</span><span class="setting-value warning">${fmt(data.indicators.ema200.enabled)} <small>(${data.indicators.ema200.issue})</small></span></div>
+                    <div class="setting-row"><span class="setting-name">ATR (${data.indicators.atr.period})</span><span class="setting-value ${data.indicators.atr.enabled ? 'ok' : ''}">${fmt(data.indicators.atr.enabled)}</span></div>
+                    <div class="setting-row"><span class="setting-name">SuperTrend</span><span class="setting-value error">${fmt(data.indicators.supertrend.enabled)}</span></div>
+                </div>
+
+                <!-- Integrations -->
+                <div class="settings-section">
+                    <h4><i class="fa-solid fa-plug"></i> Integrations</h4>
+                    <div class="setting-row"><span class="setting-name">News Sentiment</span><span class="setting-value ${data.integrations.news_sentiment.enabled ? 'ok' : ''}">${fmt(data.integrations.news_sentiment.enabled)} (wt: ${data.integrations.news_sentiment.weight})</span></div>
+                    <div class="setting-row"><span class="setting-name">Whale Tracker</span><span class="setting-value ${data.integrations.whale_tracker.enabled ? 'ok' : ''}">${fmt(data.integrations.whale_tracker.enabled)} (wt: ${data.integrations.whale_tracker.weight})</span></div>
+                    <div class="setting-row"><span class="setting-name">Whale Alert API</span><span class="setting-value error">${fmt(data.integrations.whale_tracker.whale_alert_api)}</span></div>
+                    <div class="setting-row"><span class="setting-name">Predictor</span><span class="setting-value ${data.integrations.predictor.enabled ? 'ok' : ''}">${fmt(data.integrations.predictor.enabled)} (wt: ${data.integrations.predictor.weight})</span></div>
+                </div>
+
+                <!-- Capital -->
+                <div class="settings-section">
+                    <h4><i class="fa-solid fa-coins"></i> Capital</h4>
+                    <div class="setting-row"><span class="setting-name">Total</span><span class="setting-value">$${data.capital.total.toFixed(2)}</span></div>
+                    <div class="setting-row"><span class="setting-name">Trading</span><span class="setting-value">$${data.capital.trading.toFixed(2)}</span></div>
+                    <div class="setting-row"><span class="setting-name">Reserve</span><span class="setting-value">$${data.capital.reserve.toFixed(2)} (${data.capital.reserve_pct}%)</span></div>
+                    <div class="setting-row"><span class="setting-name">Kelly Fraction</span><span class="setting-value">${data.capital.kelly_fraction}</span></div>
+                    <div class="setting-row"><span class="setting-name">Phase</span><span class="setting-value ok">${data.capital.phase}</span></div>
+                    <div class="setting-row"><span class="setting-name">Recommended Leverage</span><span class="setting-value">${data.capital.recommended_leverage}x</span></div>
+                </div>
+
+                <!-- Persistence -->
+                <div class="settings-section">
+                    <h4><i class="fa-solid fa-database"></i> Persistence</h4>
+                    <div class="setting-row"><span class="setting-name">Auto Save</span><span class="setting-value ${data.persistence.auto_save_running ? 'ok' : 'error'}">${fmt(data.persistence.auto_save_running)}</span></div>
+                    <div class="setting-row"><span class="setting-name">S3 Connected</span><span class="setting-value ${data.persistence.s3_connected ? 'ok' : 'warning'}">${fmt(data.persistence.s3_connected)}</span></div>
+                    <div class="setting-row"><span class="setting-name">Local Save Interval</span><span class="setting-value">${data.persistence.local_save_interval}s</span></div>
+                    <div class="setting-row"><span class="setting-name">Cloud Backup Interval</span><span class="setting-value">${data.persistence.cloud_backup_interval}s (1h)</span></div>
+                    <div class="setting-row"><span class="setting-name">Files Count</span><span class="setting-value">${data.persistence.files_count}</span></div>
+                </div>
+
+                <!-- Current Status -->
+                <div class="settings-section md:col-span-2">
+                    <h4><i class="fa-solid fa-circle-info"></i> Current Status</h4>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        <div class="setting-row flex-col"><span class="setting-name">Mode</span><span class="setting-value ${data.current_status.mode === 'AUTOPILOT' ? 'ok' : 'warning'}">${data.current_status.mode}</span></div>
+                        <div class="setting-row flex-col"><span class="setting-name">Balance</span><span class="setting-value">$${data.current_status.balance.toFixed(2)}</span></div>
+                        <div class="setting-row flex-col"><span class="setting-name">Open Positions</span><span class="setting-value">${data.current_status.open_positions}</span></div>
+                        <div class="setting-row flex-col"><span class="setting-name">Daily PnL</span><span class="setting-value ${data.current_status.daily_pnl >= 0 ? 'ok' : 'error'}">$${data.current_status.daily_pnl.toFixed(2)}</span></div>
+                        <div class="setting-row flex-col"><span class="setting-name">Daily Trades</span><span class="setting-value">${data.current_status.daily_trades}</span></div>
+                        <div class="setting-row flex-col"><span class="setting-name">Can Trade</span><span class="setting-value ${data.current_status.can_trade ? 'ok' : 'error'}">${fmt(data.current_status.can_trade)}</span></div>
+                        <div class="setting-row flex-col"><span class="setting-name">Crisis Mode</span><span class="setting-value ${!data.current_status.crisis_mode ? 'ok' : 'error'}">${fmt(!data.current_status.crisis_mode ? false : true)}</span></div>
+                        <div class="setting-row flex-col"><span class="setting-name">Learning</span><span class="setting-value ${data.current_status.learning_cycles_running ? 'ok' : ''}">${fmt(data.current_status.learning_cycles_running)}</span></div>
+                    </div>
+                </div>
+
+                <div class="md:col-span-2 text-center text-gray-500 text-xs mt-2">
+                    Last updated: ${data.timestamp}
+                </div>
+            `;
+
+            document.getElementById('settings-content').innerHTML = html;
         }
 
         updateDashboard();
