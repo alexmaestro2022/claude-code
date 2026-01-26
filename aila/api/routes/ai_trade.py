@@ -462,26 +462,8 @@ async def force_save():
 @router.post("/persistence/backup")
 async def force_cloud_backup():
     """Force immediate Yandex Object Storage backup."""
-    import asyncio
-    from concurrent.futures import ThreadPoolExecutor
-    from ...ai_trade.persistence import PersistenceManager
-
-    def do_backup():
-        """Run backup in thread to avoid blocking event loop."""
-        import asyncio
-        pm = PersistenceManager()
-        pm._init_s3_client()
-        # Run async backup in new event loop
-        loop = asyncio.new_event_loop()
-        try:
-            return loop.run_until_complete(pm.backup_to_cloud())
-        finally:
-            loop.close()
-
     try:
-        loop = asyncio.get_event_loop()
-        with ThreadPoolExecutor() as executor:
-            success = await loop.run_in_executor(executor, do_backup)
-        return {"success": success, "timestamp": datetime.utcnow().isoformat()}
+        orch = await get_orchestrator()
+        return await orch.backup_to_cloud_now()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
