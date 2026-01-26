@@ -35,6 +35,7 @@ from .risk_manager import RiskManager
 from .position_manager import PositionManager
 from .learning_cycles import LearningCycles
 from .persistence import PersistenceManager
+from .telegram_notifier import TelegramNotifier, get_telegram_notifier
 
 logger = logging.getLogger("ai_trade")
 
@@ -66,11 +67,14 @@ class AgentOrchestrator:
         self.risk_manager = RiskManager()
         self.position_manager = PositionManager(self._bybit_exchange)
 
+        # Telegram notifier for alerts
+        self.telegram = get_telegram_notifier()
+
         self.trader = TraderAgent(self.claude_client, self.knowledge_base, self.scanner, orchestrator=self)
         self.reviewer = ReviewerAgent(self.claude_client, self.knowledge_base)
         self.risk_guard = RiskGuardAgent(self.claude_client, self.knowledge_base, self.risk_manager)
         self.analyst = AnalystAgent(self.claude_client, self.knowledge_base)
-        self.logger_agent = LoggerAgent(self.claude_client, self.knowledge_base)
+        self.logger_agent = LoggerAgent(self.claude_client, self.knowledge_base, telegram_bot=self.telegram)
         self.mentor = MentorAgent(self.claude_client, self.knowledge_base)
         self.researcher = ResearcherAgent(self.claude_client, self.knowledge_base, self.scanner)
         self.whale_tracker = WhaleTrackerAgent(self.claude_client, self.knowledge_base, self._bybit_exchange)

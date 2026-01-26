@@ -964,6 +964,18 @@ STRATEGY_EVOLUTION (генетические алгоритмы, оптимиз�
 - **Используется агентами:** TRADER (анализ), MENTOR, RESEARCHER, PREDICTOR, NEWS, WHALE_TRACKER
 - **ВАЖНО:** Ключ НЕ хранится в репозитории, только в .env на сервере
 
+### Telegram уведомления AI Trade:
+- Bot: `@aila_ai_trade_bot`
+- Настройки в `.env`: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`
+- **Модуль:** `aila/ai_trade/telegram_notifier.py`
+- **События:**
+  - Открытие позиции (symbol, direction, size, entry, SL, TP)
+  - Закрытие позиции (PnL, причина)
+  - Stop Loss / Take Profit
+  - Критические ошибки
+  - Смена режима (OBSERVER → AUTOPILOT)
+- **Интеграция:** LoggerAgent получает telegram_bot в orchestrator.py
+
 ### Веб-интерфейс AI Trade:
 - **Страница**: `/ai-trade` (требует авторизации)
 - **API**: `/api/ai-trade/*` (роутер в `aila/api/routes/ai_trade.py`)

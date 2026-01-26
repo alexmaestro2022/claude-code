@@ -1,5 +1,6 @@
 """Position manager - handles order execution and tracking."""
 
+import asyncio
 import logging
 from datetime import datetime
 from typing import Any, Optional
@@ -7,6 +8,7 @@ from typing import Any, Optional
 from ..utils.common import retry_async
 from ..utils.position_conflict import check_position_conflict
 from .config import MIN_ORDER_SIZE_USDT
+from .telegram_notifier import get_telegram_notifier
 
 logger = logging.getLogger("ai_trade")
 
@@ -60,10 +62,18 @@ class PositionManager:
 
             self._open_positions[symbol] = position
             logger.info(f"Position opened: {direction} {symbol} @ {price}, lev={leverage}x")
+
+            # Send Telegram notification
+            asyncio.create_task(self._notify_position_opened(position, signal))
+
             return position
 
         except Exception as e:
             logger.error(f"Error opening position {symbol}: {e}")
+            # Notify about error
+            asyncio.create_task(
+                get_telegram_notifier().notify_error("Position Open", str(e))
+            )
             return None
 
     @retry_async(max_attempts=2, base_delay=1.0)
@@ -86,10 +96,17 @@ class PositionManager:
 
             del self._open_positions[symbol]
             logger.info(f"Position closed: {symbol} PnL={trade_result['pnl']:.2f}")
+
+            # Send Telegram notification
+            asyncio.create_task(self._notify_position_closed(trade_result))
+
             return trade_result
 
         except Exception as e:
             logger.error(f"Error closing position {symbol}: {e}")
+            asyncio.create_task(
+                get_telegram_notifier().notify_error("Position Close", str(e))
+            )
             return None
 
     async def check_positions(self) -> list[dict[str, Any]]:
@@ -201,3 +218,70 @@ class PositionManager:
         else:
             pnl_pct = (entry - current_price) / entry * 100
         return pnl_pct * position["leverage"]
+
+    async def _notify_position_opened(
+        self, position: dict[str, Any], signal: dict[str, Any]
+    ) -> None:
+        """Send Telegram notification for opened position."""
+        try:
+            telegram = get_telegram_notifier()
+            await telegram.notify_position_opened(
+                symbol=position["symbol"],
+                direction=position["direction"],
+                size_usdt=position.get("position_size_usdt", 0),
+                entry_price=position["entry_price"],
+                stop_loss=position.get("stop_loss"),
+                take_profit=position.get("take_profit"),
+                leverage=position.get("leverage", 1),
+                confidence=signal.get("confidence", 0),
+            )
+        except Exception as e:
+            logger.error(f"Telegram notification failed: {e}")
+
+    async def _notify_position_closed(self, trade_result: dict[str, Any]) -> None:
+        """Send Telegram notification for closed position."""
+        try:
+            telegram = get_telegram_notifier()
+
+            # Determine if SL or TP hit
+            reason = trade_result.get("close_reason", "manual")
+            pnl = trade_result.get("pnl", 0)
+
+            if "stop_loss" in reason.lower() or pnl < 0 and reason == "sl":
+                await telegram.notify_stop_loss_hit(
+                    symbol=trade_result["symbol"],
+                    direction=trade_result["direction"],
+                    loss_usdt=abs(pnl),
+                )
+            elif "take_profit" in reason.lower() or reason == "tp":
+                await telegram.notify_take_profit_hit(
+                    symbol=trade_result["symbol"],
+                    direction=trade_result["direction"],
+                    profit_usdt=pnl,
+                )
+            else:
+                # Calculate duration
+                opened_at = trade_result.get("opened_at", "")
+                closed_at = trade_result.get("closed_at", "")
+                duration = ""
+                if opened_at and closed_at:
+                    try:
+                        start = datetime.fromisoformat(opened_at)
+                        end = datetime.fromisoformat(closed_at)
+                        delta = end - start
+                        hours, remainder = divmod(int(delta.total_seconds()), 3600)
+                        minutes = remainder // 60
+                        duration = f"{hours}h {minutes}m" if hours else f"{minutes}m"
+                    except Exception:
+                        pass
+
+                await telegram.notify_position_closed(
+                    symbol=trade_result["symbol"],
+                    direction=trade_result["direction"],
+                    pnl_usdt=pnl,
+                    pnl_pct=trade_result.get("pnl_pct", 0),
+                    reason=reason,
+                    duration=duration,
+                )
+        except Exception as e:
+            logger.error(f"Telegram notification failed: {e}")
