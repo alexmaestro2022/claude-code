@@ -130,6 +130,19 @@ class PersistenceManager:
             logger.error(f"S3 client init error: {e}")
             return None
 
+    # Files to backup (whitelist)
+    BACKUP_FILES = [
+        "knowledge_base.json",
+        "trading_state.json",
+        "paper_trading.json",
+        "observer.json",
+        "evolution.json",
+        "risk_stats.json",
+        "autopilot.json",
+        "war_room.json",
+        "capital.json",
+    ]
+
     async def backup_to_cloud(self) -> bool:
         """Upload backup to Yandex Object Storage."""
         try:
@@ -139,13 +152,13 @@ class PersistenceManager:
             if not self._s3_client:
                 return False
 
-            # Create backup data from all local files
+            # Create backup data from whitelist files only
             backup_data: dict[str, Any] = {}
-            for json_file in self._data_dir.glob("*.json"):
-                if json_file.name.startswith("ai_trade_backup_"):
-                    continue  # Skip old backup files
-                with open(json_file, "r", encoding="utf-8") as f:
-                    backup_data[json_file.stem] = json.load(f)
+            for filename in self.BACKUP_FILES:
+                json_file = self._data_dir / filename
+                if json_file.exists():
+                    with open(json_file, "r", encoding="utf-8") as f:
+                        backup_data[json_file.stem] = json.load(f)
 
             # Backup filename format: ai_trade_backup_YYYY-MM-DD_HH-MM.json
             timestamp = datetime.utcnow().strftime("%Y-%m-%d_%H-%M")
