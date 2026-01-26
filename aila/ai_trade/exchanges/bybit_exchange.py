@@ -44,8 +44,10 @@ class BybitExchange(BaseExchange):
     @retry_async(max_attempts=2)
     async def get_orderbook(self, symbol: str, limit: int = 20) -> dict:
         """Get order book."""
+        # Normalize symbol: remove /USDT suffix if present
+        normalized_symbol = symbol.replace("/USDT", "USDT") if "/" in symbol else symbol
         result = self._client.get_orderbook(
-            category="linear", symbol=symbol, limit=limit
+            category="linear", symbol=normalized_symbol, limit=limit
         )
         if result["retCode"] == 0:
             return {
@@ -53,6 +55,10 @@ class BybitExchange(BaseExchange):
                 "asks": [(float(a[0]), float(a[1])) for a in result["result"]["a"]],
             }
         return {"bids": [], "asks": []}
+
+    async def fetch_order_book(self, symbol: str, limit: int = 20) -> dict:
+        """Alias for get_orderbook (ccxt-compatible name)."""
+        return await self.get_orderbook(symbol, limit)
 
     @retry_async(max_attempts=2)
     async def get_balance(self, currency: str = "USDT") -> float:

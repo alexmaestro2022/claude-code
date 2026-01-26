@@ -21,26 +21,75 @@ class MarketScanner:
         self._cache = TTLCache(default_ttl=30.0)
         self._last_scan: Optional[datetime] = None
 
-    async def get_top_pairs(self) -> list[dict[str, Any]]:
+    async def get_top_pairs(self, limit: int = None) -> list[dict[str, Any]]:
         """Get top trading pairs by volume and volatility."""
+        if limit is None:
+            limit = self._config["top_pairs_count"]
+
         cached = self._cache.get("top_pairs", ttl=30.0)
         if cached is not None:
-            return cached
+            return cached[:limit]
 
         try:
             tickers = await self._exchange.fetch_tickers()
             pairs = self._filter_pairs(tickers)
             pairs.sort(key=lambda x: x["volume_24h"], reverse=True)
-            result = pairs[:self._config["top_pairs_count"]]
+            result = pairs[:max(limit, self._config["top_pairs_count"])]
 
             self._cache.set("top_pairs", result)
             self._last_scan = datetime.now()
             logger.info(f"Market scan: {len(result)} pairs found")
-            return result
+            return result[:limit]
 
         except Exception as e:
             logger.error(f"Market scan error: {e}")
-            return self._cache.get("top_pairs") or []
+            cached_result = self._cache.get("top_pairs") or []
+            return cached_result[:limit] if cached_result else []
+
+    async def get_market_overview(self) -> dict[str, Any]:
+        """Get overall market health overview."""
+        try:
+            pairs = await self.get_top_pairs(limit=50)
+            if not pairs:
+                return {"status": "no_data", "health": "unknown"}
+
+            bullish = 0
+            bearish = 0
+            total_volume = 0
+
+            for pair in pairs:
+                change = pair.get("change_24h", 0)
+                if change > 0:
+                    bullish += 1
+                elif change < 0:
+                    bearish += 1
+                total_volume += pair.get("volume_24h", 0)
+
+            total = len(pairs)
+            bullish_pct = (bullish / total * 100) if total > 0 else 50
+
+            if bullish_pct > 65:
+                health = "bullish"
+            elif bullish_pct < 35:
+                health = "bearish"
+            else:
+                health = "neutral"
+
+            return {
+                "status": "ok",
+                "health": health,
+                "bullish_count": bullish,
+                "bearish_count": bearish,
+                "neutral_count": total - bullish - bearish,
+                "bullish_pct": round(bullish_pct, 1),
+                "total_volume_24h": total_volume,
+                "pairs_analyzed": total,
+                "timestamp": datetime.now().isoformat(),
+            }
+
+        except Exception as e:
+            logger.error(f"Market overview error: {e}")
+            return {"status": "error", "health": "unknown", "error": str(e)}
 
     async def get_market_data(
         self, symbol: str, timeframe: str = "15m", limit: int = 100
