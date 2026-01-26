@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AILA AI Trade</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         .card { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); }
         .glow { box-shadow: 0 0 20px rgba(0, 255, 136, 0.3); }
@@ -29,6 +30,100 @@
             box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
         }
         .bot-btn svg { width: 20px; height: 20px; }
+        .mode-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+        .mode-btn-observer {
+            background: rgba(100, 100, 100, 0.3);
+            color: #9ca3af;
+            border-color: rgba(100, 100, 100, 0.5);
+        }
+        .mode-btn-observer:hover {
+            background: rgba(234, 179, 8, 0.2);
+            color: #facc15;
+            border-color: rgba(234, 179, 8, 0.5);
+        }
+        .mode-btn-observer.active {
+            background: rgba(234, 179, 8, 0.3);
+            color: #facc15;
+            border-color: #facc15;
+            box-shadow: 0 0 10px rgba(234, 179, 8, 0.3);
+        }
+        .mode-btn-autopilot {
+            background: rgba(100, 100, 100, 0.3);
+            color: #9ca3af;
+            border-color: rgba(100, 100, 100, 0.5);
+        }
+        .mode-btn-autopilot:hover {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+            border-color: rgba(0, 255, 136, 0.5);
+        }
+        .mode-btn-autopilot.active {
+            background: rgba(0, 255, 136, 0.3);
+            color: #00ff88;
+            border-color: #00ff88;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 400px;
+            text-align: center;
+        }
+        .modal-btn {
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .modal-btn-confirm {
+            background: rgba(0, 255, 136, 0.3);
+            color: #00ff88;
+            border: 1px solid #00ff88;
+        }
+        .modal-btn-confirm:hover {
+            background: rgba(0, 255, 136, 0.5);
+        }
+        .modal-btn-cancel {
+            background: rgba(100, 100, 100, 0.3);
+            color: #9ca3af;
+            border: 1px solid rgba(100, 100, 100, 0.5);
+        }
+        .modal-btn-cancel:hover {
+            background: rgba(100, 100, 100, 0.5);
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-white min-h-screen">
@@ -70,7 +165,15 @@
             </div>
             <div class="card rounded-lg p-4">
                 <h3 class="text-gray-400 text-sm">Mode</h3>
-                <p class="text-3xl font-bold text-yellow-400" id="mode">OBSERVER</p>
+                <p class="text-3xl font-bold text-yellow-400 mb-3" id="mode">OBSERVER</p>
+                <div class="flex gap-2">
+                    <button id="btn-observer" class="mode-btn mode-btn-observer active" onclick="switchMode('OBSERVER')">
+                        <i class="fa-solid fa-eye"></i> OBSERVER
+                    </button>
+                    <button id="btn-autopilot" class="mode-btn mode-btn-autopilot" onclick="confirmAutopilot()">
+                        <i class="fa-solid fa-robot"></i> AUTOPILOT
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -113,6 +216,21 @@
         </div>
     </div>
 
+    <!-- Autopilot Confirmation Modal -->
+    <div id="autopilot-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="text-4xl mb-4"><i class="fa-solid fa-robot text-green-400"></i></div>
+            <h3 class="text-xl font-bold mb-2">Включить AUTOPILOT?</h3>
+            <p class="text-gray-400 mb-6">Вы уверены? AI начнёт торговать реальными деньгами.</p>
+            <div class="flex gap-3 justify-center">
+                <button class="modal-btn modal-btn-cancel" onclick="closeModal()">Отмена</button>
+                <button class="modal-btn modal-btn-confirm" onclick="startAutopilot()">
+                    <i class="fa-solid fa-play"></i> Да, включить
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API_BASE = '/api/ai-trade';
 
@@ -127,10 +245,78 @@
             }
         }
 
+        function updateModeButtons(mode) {
+            const btnObserver = document.getElementById('btn-observer');
+            const btnAutopilot = document.getElementById('btn-autopilot');
+            const modeDisplay = document.getElementById('mode');
+
+            if (mode === 'AUTOPILOT') {
+                btnObserver.classList.remove('active');
+                btnAutopilot.classList.add('active');
+                modeDisplay.textContent = 'AUTOPILOT';
+                modeDisplay.classList.remove('text-yellow-400');
+                modeDisplay.classList.add('text-green-400');
+            } else {
+                btnAutopilot.classList.remove('active');
+                btnObserver.classList.add('active');
+                modeDisplay.textContent = 'OBSERVER';
+                modeDisplay.classList.remove('text-green-400');
+                modeDisplay.classList.add('text-yellow-400');
+            }
+        }
+
+        async function switchMode(mode) {
+            if (mode === 'OBSERVER') {
+                try {
+                    const response = await fetch(API_BASE + '/mode', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ mode: 'OBSERVER' })
+                    });
+                    if (response.ok) {
+                        updateModeButtons('OBSERVER');
+                    }
+                } catch (e) {
+                    console.error('Switch mode error:', e);
+                }
+            }
+        }
+
+        function confirmAutopilot() {
+            document.getElementById('autopilot-modal').classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('autopilot-modal').classList.remove('show');
+        }
+
+        async function startAutopilot() {
+            closeModal();
+            try {
+                const response = await fetch(API_BASE + '/autopilot/start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                if (response.ok) {
+                    updateModeButtons('AUTOPILOT');
+                }
+            } catch (e) {
+                console.error('Start autopilot error:', e);
+            }
+        }
+
+        // Close modal on overlay click
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('autopilot-modal').addEventListener('click', function(e) {
+                if (e.target === this) closeModal();
+            });
+        });
+
         async function updateDashboard() {
             const status = await fetchData('/status');
             if (status) {
-                document.getElementById('mode').textContent = status.mode || 'OBSERVER';
+                const currentMode = status.mode || 'OBSERVER';
+                updateModeButtons(currentMode);
                 if (status.knowledge) {
                     document.getElementById('winrate').textContent =
                         (status.knowledge.win_rate * 100).toFixed(1) + '%';
