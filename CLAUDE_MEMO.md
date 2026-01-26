@@ -1129,6 +1129,30 @@ clamp(value, min_val, max_val)
 
 ---
 
+## 26. Systemd — Управление ботом
+
+### Сервис:
+- Файл: `/etc/systemd/system/aila.service`
+- User: `aila`
+- Автозапуск: включен (enabled)
+
+### Команды управления:
+```bash
+sudo systemctl status aila    # статус
+sudo systemctl start aila     # запуск
+sudo systemctl stop aila      # остановка
+sudo systemctl restart aila   # перезапуск
+sudo journalctl -u aila -f    # логи в реальном времени
+sudo journalctl -u aila -n 100  # последние 100 строк логов
+```
+
+### При перезагрузке сервера:
+- Бот запускается автоматически
+- Загружает данные из `/opt/aila/data/ai_trade/`
+- AI продолжает работу без потери данных
+
+---
+
 **Последнее обновление:** 2026-01-26
 **Текущая версия:** v2.2.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
