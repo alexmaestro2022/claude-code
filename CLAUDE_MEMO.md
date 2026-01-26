@@ -1116,11 +1116,19 @@ clamp(value, min_val, max_val)
 - **War room**: алерты, crisis mode
 - **Capital manager**: total, config
 
+### Инициализация при старте (ИСПРАВЛЕНО 2026-01-26):
+Orchestrator и persistence инициализируются автоматически при старте FastAPI:
+- `aila/api/main.py` — в `startup_event()` вызывается `get_orchestrator()`
+- Это запускает `start_persistence()` сразу при старте сервера
+- Ранее orchestrator инициализировался лениво (при первом API запросе), что приводило к `s3_connected: false` и `auto_save_running: false`
+
 ### Восстановление:
 При старте бота автоматически:
-1. Загружаются данные из `/opt/aila/data/ai_trade/`
-2. AI продолжает с того же места
-3. Никаких команд не требуется
+1. Инициализируется AgentOrchestrator в startup_event
+2. Запускается persistence с auto_save (каждые 60 сек)
+3. Подключается S3 клиент для Yandex Object Storage
+4. Загружаются данные из `/opt/aila/data/ai_trade/`
+5. AI продолжает с того же места
 
 ### API Endpoints:
 - `GET /api/ai-trade/persistence/status` — статус системы
@@ -1153,6 +1161,6 @@ sudo journalctl -u aila -n 100  # последние 100 строк логов
 
 ---
 
-**Последнее обновление:** 2026-01-26
+**Последнее обновление:** 2026-01-26 (исправлена инициализация persistence при старте)
 **Текущая версия:** v2.2.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
