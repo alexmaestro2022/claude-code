@@ -31,7 +31,9 @@ SCANNER_CONFIG = {
     "min_volatility_pct": 1,          # Min volatility
     "max_volatility_pct": 15,         # Max volatility
     "scan_interval_seconds": 60,      # Scan interval
-    "top_pairs_count": 20,            # Top pairs for analysis
+    "top_pairs_count": 20,            # Top pairs for analysis (fallback if SCAN_ALL_PAIRS=False)
+    "scan_all_pairs": True,           # Scan ALL USDT perpetual pairs dynamically
+    "pairs_cache_ttl": 3600,          # Cache instruments list for 1 hour
 }
 
 # Timeframes for analysis

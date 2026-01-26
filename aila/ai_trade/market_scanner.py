@@ -13,37 +13,103 @@ logger = logging.getLogger("ai_trade")
 class MarketScanner:
     """Scans market for trading opportunities with caching."""
 
-    __slots__ = ("_exchange", "_config", "_cache", "_last_scan")
+    __slots__ = (
+        "_exchange", "_config", "_cache", "_last_scan",
+        "_instruments_cache", "_instruments_updated", "_known_symbols"
+    )
 
     def __init__(self, exchange: Any) -> None:
         self._exchange = exchange
         self._config = SCANNER_CONFIG
         self._cache = TTLCache(default_ttl=30.0)
         self._last_scan: Optional[datetime] = None
+        self._instruments_cache: list[str] = []
+        self._instruments_updated: Optional[datetime] = None
+        self._known_symbols: set[str] = set()
+
+    async def _refresh_instruments(self) -> list[str]:
+        """
+        Refresh list of USDT perpetual instruments from exchange.
+        Caches for pairs_cache_ttl seconds (default 1 hour).
+        Logs new and delisted pairs.
+        """
+        ttl = self._config.get("pairs_cache_ttl", 3600)
+
+        # Check if cache is still valid
+        if (
+            self._instruments_cache
+            and self._instruments_updated
+            and (datetime.now() - self._instruments_updated).total_seconds() < ttl
+        ):
+            return self._instruments_cache
+
+        try:
+            # Fetch fresh instruments list
+            symbols = await self._exchange.get_usdt_perpetual_symbols()
+            new_set = set(symbols)
+
+            # Log changes on update (not first load)
+            if self._known_symbols:
+                added = new_set - self._known_symbols
+                removed = self._known_symbols - new_set
+                if added or removed:
+                    logger.info(
+                        f"Pairs updated: +{len(added)} new, -{len(removed)} delisted"
+                    )
+                    if added:
+                        logger.debug(f"New pairs: {sorted(added)}")
+                    if removed:
+                        logger.debug(f"Delisted pairs: {sorted(removed)}")
+            else:
+                logger.info(f"Loaded {len(symbols)} USDT perpetual pairs from Bybit")
+
+            self._instruments_cache = symbols
+            self._instruments_updated = datetime.now()
+            self._known_symbols = new_set
+            return symbols
+
+        except Exception as e:
+            logger.error(f"Error fetching instruments: {e}")
+            return self._instruments_cache or []
 
     async def get_top_pairs(self, limit: int = None) -> list[dict[str, Any]]:
         """Get top trading pairs by volume and volatility."""
+        scan_all = self._config.get("scan_all_pairs", False)
+
         if limit is None:
-            limit = self._config["top_pairs_count"]
+            limit = None if scan_all else self._config["top_pairs_count"]
 
         cached = self._cache.get("top_pairs", ttl=30.0)
         if cached is not None:
-            return cached[:limit]
+            return cached if limit is None else cached[:limit]
 
         try:
+            # Get allowed symbols if scanning all pairs
+            allowed_symbols: Optional[set[str]] = None
+            if scan_all:
+                instruments = await self._refresh_instruments()
+                allowed_symbols = set(instruments)
+
             tickers = await self._exchange.fetch_tickers()
-            pairs = self._filter_pairs(tickers)
+            pairs = self._filter_pairs(tickers, allowed_symbols)
             pairs.sort(key=lambda x: x["volume_24h"], reverse=True)
-            result = pairs[:max(limit, self._config["top_pairs_count"])]
+
+            # No limit if scanning all pairs
+            if limit is None:
+                result = pairs
+            else:
+                result = pairs[:max(limit, self._config["top_pairs_count"])]
 
             self._cache.set("top_pairs", result)
             self._last_scan = datetime.now()
             logger.info(f"Market scan: {len(result)} pairs found")
-            return result[:limit]
+            return result if limit is None else result[:limit]
 
         except Exception as e:
             logger.error(f"Market scan error: {e}")
             cached_result = self._cache.get("top_pairs") or []
+            if limit is None:
+                return cached_result
             return cached_result[:limit] if cached_result else []
 
     async def get_market_overview(self) -> dict[str, Any]:
@@ -137,11 +203,17 @@ class MarketScanner:
             logger.error(f"Error getting market data for {symbol}: {e}")
             return {}
 
-    def _filter_pairs(self, tickers: dict[str, Any]) -> list[dict[str, Any]]:
+    def _filter_pairs(
+        self, tickers: dict[str, Any], allowed_symbols: Optional[set[str]] = None
+    ) -> list[dict[str, Any]]:
         """Filter pairs by volume and volatility criteria."""
         pairs = []
         for symbol, ticker in tickers.items():
             if "/USDT" not in symbol:
+                continue
+
+            # Filter by allowed symbols if provided
+            if allowed_symbols and symbol not in allowed_symbols:
                 continue
 
             volume_24h = ticker.get("quoteVolume", 0) or 0

@@ -191,3 +191,26 @@ class BybitExchange(BaseExchange):
                         "percentage": float(item.get("price24hPcnt", 0)) * 100,
                     }
         return tickers
+
+    @retry_async(max_attempts=2)
+    async def get_usdt_perpetual_symbols(self) -> list[str]:
+        """
+        Get all active USDT perpetual symbols from Bybit.
+        Filters: status=Trading, quoteCoin=USDT, contractType=LinearPerpetual.
+        Returns list of symbols in ccxt format (e.g., BTC/USDT).
+        """
+        result = self._client.get_instruments_info(category="linear")
+        symbols = []
+        if result["retCode"] == 0:
+            for item in result["result"]["list"]:
+                if (
+                    item.get("status") == "Trading"
+                    and item.get("quoteCoin") == "USDT"
+                    and item.get("contractType") == "LinearPerpetual"
+                ):
+                    # Convert BTCUSDT -> BTC/USDT
+                    symbol = item["symbol"]
+                    if symbol.endswith("USDT"):
+                        ccxt_symbol = symbol[:-4] + "/USDT"
+                        symbols.append(ccxt_symbol)
+        return sorted(symbols)

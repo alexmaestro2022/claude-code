@@ -1261,6 +1261,56 @@ sudo systemctl restart aila
 
 ---
 
-**Последнее обновление:** 2026-01-26 (fix autopilot min balance $5, min level 1 for testing + fix status API isoformat)
+---
+
+## 29. Dynamic Pairs Scanning — Динамическое сканирование пар
+
+### Описание:
+AI Trade автоматически получает список ВСЕХ USDT perpetual фьючерсов с Bybit и сканирует их динамически. Список обновляется каждый час.
+
+### Изменения (2026-01-26):
+
+**config.py:**
+```python
+SCANNER_CONFIG = {
+    ...
+    "scan_all_pairs": True,           # Сканировать ВСЕ USDT perpetual пары
+    "pairs_cache_ttl": 3600,          # Кэш списка инструментов 1 час
+}
+```
+
+**bybit_exchange.py:**
+```python
+async def get_usdt_perpetual_symbols() -> list[str]:
+    """Получить все активные USDT perpetual пары с Bybit."""
+    # GET /v5/market/instruments-info?category=linear
+    # Фильтр: status=Trading, quoteCoin=USDT, contractType=LinearPerpetual
+```
+
+**market_scanner.py:**
+```python
+async def _refresh_instruments() -> list[str]:
+    """Обновить список инструментов с кэшированием."""
+    # Кэш на pairs_cache_ttl секунд
+    # Логирование: "Loaded X USDT perpetual pairs from Bybit"
+    # При обновлении: "Pairs updated: +Y new, -Z delisted"
+```
+
+### Как работает:
+1. При первом сканировании загружается полный список пар (~400+)
+2. Пары фильтруются по volume ($5M+) и volatility (1-15%)
+3. Результат: ~50 пар для детального анализа (вместо фиксированных 20)
+4. Список обновляется каждый час (новые добавляются, делистнутые удаляются)
+
+### Логи:
+```
+[INFO] Loaded 412 USDT perpetual pairs from Bybit
+[INFO] Scanning 50 pairs for opportunities
+[INFO] Pairs updated: +2 new, -1 delisted
+```
+
+---
+
+**Последнее обновление:** 2026-01-26 (dynamic scanning of all USDT perpetual futures)
 **Текущая версия:** v2.2.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
