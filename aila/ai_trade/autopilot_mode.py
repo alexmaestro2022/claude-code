@@ -80,7 +80,8 @@ class AutopilotMode:
         try:
             balance = await self._orchestrator.exchanges.primary.get_balance('USDT')
             # NOTE: $5 min is for testing only, production should be $50+
-            if balance < 5:
+            min_balance = 5
+            if balance < min_balance:
                 return {'passed': False, 'reason': f'Insufficient balance: ${balance}'}
             checks.append('balance_ok')
         except Exception as e:

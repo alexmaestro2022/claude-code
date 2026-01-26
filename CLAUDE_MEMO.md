@@ -1037,8 +1037,8 @@ clamp(value, min_val, max_val)
 ### Pre-flight checks (проверки перед запуском):
 1. System health check (war_room)
 2. Market safety check (не в кризисе)
-3. Balance check (минимум $50)
-4. AI level check (минимум уровень 3)
+3. Balance check (минимум $5 для тестирования, в проде $50+)
+4. AI level check (минимум уровень 1 для тестирования, в проде 3+)
 
 ### Конфигурация:
 ```python
@@ -1261,6 +1261,6 @@ sudo systemctl restart aila
 
 ---
 
-**Последнее обновление:** 2026-01-26 (fix autopilot/status + arbitrage symbol format)
+**Последнее обновление:** 2026-01-26 (fix autopilot min balance $5, min level 1 for testing + fix status API isoformat)
 **Текущая версия:** v2.2.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
