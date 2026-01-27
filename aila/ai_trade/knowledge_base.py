@@ -187,6 +187,10 @@ class KnowledgeBase:
         """Get current trader level."""
         return self.data.get("trader_profile", {}).get("level", 1)
 
+    async def get_trader_profile(self) -> dict[str, Any]:
+        """Get full trader profile for autopilot pre-flight check."""
+        return self.data.get("trader_profile", self._default_structure()["trader_profile"])
+
     def update_market_regime(self, regime: dict[str, Any]) -> None:
         """Update current market regime."""
         self.data["market_regime"] = {**regime, "updated_at": datetime.now().isoformat()}

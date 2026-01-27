@@ -85,12 +85,14 @@ class TraderAgent(BaseAgent):
             # PRE-FILTER: Skip LONG signals against BEARISH trend
             if decision == "LONG" and trend == "BEARISH":
                 self.log(f"{symbol}: LONG vs BEARISH trend - skipping")
+                analysis["_rejection_reason"] = "LONG vs BEARISH trend"
                 decision = "WAIT"
                 analysis["decision"] = "WAIT"
 
             # PRE-FILTER: Skip SHORT signals against BULLISH trend
             if decision == "SHORT" and trend == "BULLISH":
                 self.log(f"{symbol}: SHORT vs BULLISH trend - skipping")
+                analysis["_rejection_reason"] = "SHORT vs BULLISH trend"
                 decision = "WAIT"
                 analysis["decision"] = "WAIT"
 
@@ -108,6 +110,7 @@ class TraderAgent(BaseAgent):
                 "confidence": confidence,
                 "market_data": market_data,
                 "reasoning": analysis.get("reasoning", ""),
+                "rejection_reason": analysis.get("_rejection_reason"),
             })
 
             if decision != "WAIT" and confidence >= self.min_confidence:
@@ -275,9 +278,12 @@ Should this position be closed? Respond in JSON:
             price_str = f"{price:.4f}" if price else "N/A"
 
             # Determine rejection reason
+            rejection_reason = r.get("rejection_reason")
             status = "ACCEPTED" if confidence >= self.min_confidence and decision != "WAIT" else "rejected"
             if status == "rejected":
-                if decision == "WAIT":
+                if rejection_reason:
+                    reason = rejection_reason
+                elif decision == "WAIT":
                     reason = "no clear signal"
                 elif confidence < self.min_confidence:
                     reason = f"below threshold ({self.min_confidence}%)"

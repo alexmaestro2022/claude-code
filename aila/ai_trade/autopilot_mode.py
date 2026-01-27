@@ -55,6 +55,11 @@ class AutopilotMode:
 
     async def start(self) -> dict[str, Any]:
         """Start autopilot mode."""
+        # Stop observer if running to prevent duplicate scans
+        if hasattr(self._orchestrator, 'observer') and self._orchestrator.observer._running:
+            await self._orchestrator.observer.stop()
+            logger.info("Stopped Observer mode before starting Autopilot")
+
         safety_check = await self._pre_flight_check()
         if not safety_check['passed']:
             return {'status': 'failed', 'reason': safety_check['reason']}
@@ -136,11 +141,15 @@ class AutopilotMode:
                 # Start scanning
                 self._currently_scanning = True
                 self._current_pair = None
-                opportunity = await self._find_validated_opportunity()
-                # Finish scanning
-                self._currently_scanning = False
-                self._current_pair = None
-                self._last_scan_time = datetime.utcnow()
+                opportunity = None
+
+                try:
+                    opportunity = await self._find_validated_opportunity()
+                finally:
+                    # Always update scan time, even on error
+                    self._currently_scanning = False
+                    self._current_pair = None
+                    self._last_scan_time = datetime.utcnow()
 
                 if opportunity:
                     await self._execute_trade(opportunity)

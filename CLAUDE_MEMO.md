@@ -1502,6 +1502,70 @@ def _validate_and_adjust_rr(analysis, market_data, symbol):
 
 ---
 
-**Последнее обновление:** 2026-01-27 (feat: add visual AUTOPILOT activity indicator)
+## 32. ИСПРАВЛЕНИЕ 2026-01-27: Баги AUTOPILOT
+
+### Обнаруженные проблемы:
+1. **Дублирование сканов** — Observer и Autopilot работали параллельно, каждый скан выполнялся дважды
+2. **last_scan_time: null** — heartbeat API показывал null потому что exception прерывал цикл до записи времени
+3. **KnowledgeBase error** — отсутствовал метод `get_trader_profile()` для pre-flight check
+4. **Нечёткие rejection причины** — сигналы отфильтрованные по тренду (LONG vs BEARISH) показывались как "no clear signal"
+
+### Исправления:
+
+**1. autopilot_mode.py** — остановка Observer при запуске Autopilot:
+```python
+async def start(self):
+    # Stop observer if running to prevent duplicate scans
+    if hasattr(self._orchestrator, 'observer') and self._orchestrator.observer._running:
+        await self._orchestrator.observer.stop()
+```
+
+**2. autopilot_mode.py** — try-finally для last_scan_time:
+```python
+try:
+    opportunity = await self._find_validated_opportunity()
+finally:
+    # Always update scan time, even on error
+    self._currently_scanning = False
+    self._last_scan_time = datetime.utcnow()
+```
+
+**3. observer_mode.py** — остановка Autopilot при запуске Observer:
+```python
+async def start(self):
+    # Stop autopilot if running to prevent duplicate scans
+    if hasattr(self._orchestrator, 'autopilot') and self._orchestrator.autopilot._running:
+        await self._orchestrator.autopilot.stop()
+```
+
+**4. knowledge_base.py** — добавлен метод:
+```python
+async def get_trader_profile(self) -> dict:
+    """Get full trader profile for autopilot pre-flight check."""
+    return self.data.get("trader_profile", self._default_structure()["trader_profile"])
+```
+
+**5. trader.py** — улучшено логирование rejection reason:
+```python
+# При фильтрации по тренду сохраняется причина
+analysis["_rejection_reason"] = "LONG vs BEARISH trend"
+# В логах теперь отображается точная причина
+```
+
+### Результат:
+- ✅ Один скан = одна запись в логе (вместо двух)
+- ✅ heartbeat показывает актуальное last_scan_time
+- ✅ Pre-flight check работает без ошибок
+- ✅ Логи показывают точную причину rejection
+
+### Файлы изменены:
+- `aila/ai_trade/autopilot_mode.py`
+- `aila/ai_trade/observer_mode.py`
+- `aila/ai_trade/knowledge_base.py`
+- `aila/ai_trade/agents/trader.py`
+
+---
+
+**Последнее обновление:** 2026-01-27 (fix: AUTOPILOT duplicate scans, last_scan_time, get_trader_profile)
 **Текущая версия:** v2.2.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`

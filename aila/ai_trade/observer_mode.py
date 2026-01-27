@@ -23,7 +23,13 @@ class ObserverMode:
 
     async def start(self) -> None:
         """Start observation mode."""
+        # Stop autopilot if running to prevent duplicate scans
+        if hasattr(self._orchestrator, 'autopilot') and self._orchestrator.autopilot._running:
+            await self._orchestrator.autopilot.stop()
+            logger.info("Stopped Autopilot mode before starting Observer")
+
         self._running = True
+        self._orchestrator.mode = "OBSERVER"
         logger.info("Observer mode started")
 
         while self._running:
