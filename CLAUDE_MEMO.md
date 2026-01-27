@@ -26,6 +26,10 @@
 3. **НЕ переключайся на другие ветки** без разрешения
 4. **НЕ удаляй существующий код** без понимания что он делает
 5. **НЕ меняй ветку на сервере** без подтверждения пользователя
+6. **НЕ меняй критические настройки риск-менеджмента:**
+   - `min R:R ratio` в reviewer.py (1.5:1) — защита от плохих сделок
+   - `min_balance_usdt` в config.py ($10) — минимум для торговли
+   - `MIN_ORDER_SIZE_USDT` ($10) — лимит Bybit API, нельзя обойти
 
 ### ВСЕГДА ДЕЛАЙ:
 1. **Работай ТОЛЬКО в ветке** `claude/start-new-session-4XrKU`
@@ -1321,6 +1325,6 @@ async def _refresh_instruments() -> list[str]:
 
 ---
 
-**Последнее обновление:** 2026-01-27 (fix reviewer key bug, adjust R:R to 1.0:1, reduce min_balance to $5)
+**Последнее обновление:** 2026-01-27 (fix modified_opportunity key bug in autopilot_mode.py)
 **Текущая версия:** v2.2.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
