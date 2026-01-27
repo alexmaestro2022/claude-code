@@ -428,7 +428,7 @@ async def get_full_settings():
                 "files_count": persistence.get("files_count", 0),
             },
             "current_status": {
-                "mode": status.get("mode", "OBSERVER"),
+                "mode": status.get("mode", "IDLE"),
                 "balance": balance,
                 "open_positions": status.get("open_positions", 0),
                 "daily_pnl": risk_status.get("daily_pnl", 0),
@@ -445,55 +445,13 @@ async def get_full_settings():
 
 @router.post("/mode/{mode}")
 async def set_mode(mode: str):
-    """Set working mode (OBSERVER/ADVISOR/AUTOPILOT)."""
-    if mode.upper() not in ["OBSERVER", "ADVISOR", "AUTOPILOT"]:
-        raise HTTPException(status_code=400, detail="Invalid mode")
+    """Set working mode (IDLE/AUTOPILOT)."""
+    if mode.upper() not in ["IDLE", "AUTOPILOT"]:
+        raise HTTPException(status_code=400, detail="Invalid mode. Use IDLE or AUTOPILOT")
     try:
         orch = await get_orchestrator()
         orch.mode = mode.upper()
         return {"mode": mode.upper(), "status": "set"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# --- Observer Mode ---
-
-@router.post("/observer/start")
-async def start_observer():
-    """Start observer mode."""
-    try:
-        orch = await get_orchestrator()
-        return await orch.start_observer_mode()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.post("/observer/stop")
-async def stop_observer():
-    """Stop observer mode."""
-    try:
-        orch = await get_orchestrator()
-        return await orch.stop_observer_mode()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/observer/status")
-async def get_observer_status():
-    """Get observer mode status."""
-    try:
-        orch = await get_orchestrator()
-        return orch.observer.get_status()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/observer/signals")
-async def get_observer_signals(limit: int = 50):
-    """Get observer signals."""
-    try:
-        orch = await get_orchestrator()
-        return {"signals": orch.observer.get_signals(limit)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -563,6 +521,51 @@ async def stop_autopilot():
     try:
         orch = await get_orchestrator()
         return await orch.stop_autopilot()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/autopilot/stop-and-close")
+async def stop_autopilot_and_close():
+    """Stop autopilot and close all positions + cancel all orders."""
+    try:
+        orch = await get_orchestrator()
+
+        # 1. Stop autopilot
+        stop_result = await orch.stop_autopilot()
+
+        # 2. Close all positions
+        positions_result = await orch.exchange.close_all_positions()
+
+        # 3. Cancel all orders
+        orders_result = await orch.exchange.cancel_all_orders()
+
+        # 4. Send Telegram notification
+        total_pnl = positions_result.get("total_pnl", 0)
+        pnl_sign = "+" if total_pnl >= 0 else ""
+        message = f"""<b>AUTOPILOT STOPPED</b>
+
+Closed positions: <b>{positions_result.get('closed_count', 0)}</b>
+Cancelled orders: <b>{orders_result.get('cancelled_count', 0)}</b>
+Total PnL: <code>{pnl_sign}${total_pnl:.2f}</code>
+
+<i>{datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC</i>"""
+
+        if orch.telegram:
+            await orch.telegram.send_message(message)
+
+        return {
+            "status": "stopped",
+            "positions_closed": positions_result.get("closed_count", 0),
+            "orders_cancelled": orders_result.get("cancelled_count", 0),
+            "total_pnl": total_pnl,
+            "positions": positions_result.get("closed", []),
+            "orders": orders_result.get("cancelled", []),
+            "errors": {
+                "positions": positions_result.get("errors", []),
+                "orders": orders_result.get("errors", []),
+            }
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

@@ -217,3 +217,116 @@ class BybitExchange(BaseExchange):
                         ccxt_symbol = symbol[:-4] + "/USDT"
                         symbols.append(ccxt_symbol)
         return sorted(symbols)
+
+    @retry_async(max_attempts=2)
+    async def get_open_orders(self, symbol: Optional[str] = None) -> list[dict]:
+        """Get all open orders."""
+        params: dict = {"category": "linear", "settleCoin": "USDT"}
+        if symbol:
+            params["symbol"] = symbol
+        result = self._client.get_open_orders(**params)
+        orders: list[dict] = []
+        if result["retCode"] == 0:
+            for order in result["result"]["list"]:
+                orders.append({
+                    "order_id": order["orderId"],
+                    "symbol": order["symbol"],
+                    "side": order["side"],
+                    "price": float(order.get("price", 0)),
+                    "qty": float(order.get("qty", 0)),
+                    "order_type": order.get("orderType"),
+                    "status": order.get("orderStatus"),
+                })
+        return orders
+
+    @retry_async(max_attempts=2)
+    async def close_position(self, symbol: str, side: str, size: float) -> dict:
+        """Close a position by placing opposite market order."""
+        close_side = "Sell" if side.lower() == "buy" else "Buy"
+        result = self._client.place_order(
+            category="linear",
+            symbol=symbol,
+            side=close_side,
+            orderType="Market",
+            qty=str(size),
+            reduceOnly=True,
+        )
+        return {
+            "success": result["retCode"] == 0,
+            "order_id": result["result"].get("orderId") if result["retCode"] == 0 else None,
+            "message": result.get("retMsg"),
+        }
+
+    async def close_all_positions(self) -> dict:
+        """Close ALL open positions with market orders."""
+        positions = await self.get_positions()
+        closed = []
+        errors = []
+
+        for pos in positions:
+            try:
+                result = await self.close_position(
+                    symbol=pos["symbol"],
+                    side=pos["side"],
+                    size=pos["size"],
+                )
+                if result["success"]:
+                    closed.append({
+                        "symbol": pos["symbol"],
+                        "side": pos["side"],
+                        "size": pos["size"],
+                        "pnl": pos.get("pnl", 0),
+                    })
+                else:
+                    errors.append({
+                        "symbol": pos["symbol"],
+                        "error": result.get("message"),
+                    })
+            except Exception as e:
+                errors.append({
+                    "symbol": pos["symbol"],
+                    "error": str(e),
+                })
+
+        return {
+            "closed_count": len(closed),
+            "closed": closed,
+            "errors": errors,
+            "total_pnl": sum(p.get("pnl", 0) for p in closed),
+        }
+
+    async def cancel_all_orders(self) -> dict:
+        """Cancel ALL open orders."""
+        orders = await self.get_open_orders()
+        cancelled = []
+        errors = []
+
+        for order in orders:
+            try:
+                success = await self.cancel_order(
+                    symbol=order["symbol"],
+                    order_id=order["order_id"],
+                )
+                if success:
+                    cancelled.append({
+                        "order_id": order["order_id"],
+                        "symbol": order["symbol"],
+                    })
+                else:
+                    errors.append({
+                        "order_id": order["order_id"],
+                        "symbol": order["symbol"],
+                        "error": "Cancel failed",
+                    })
+            except Exception as e:
+                errors.append({
+                    "order_id": order["order_id"],
+                    "symbol": order["symbol"],
+                    "error": str(e),
+                })
+
+        return {
+            "cancelled_count": len(cancelled),
+            "cancelled": cancelled,
+            "errors": errors,
+        }

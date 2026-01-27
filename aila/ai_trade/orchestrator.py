@@ -23,7 +23,6 @@ from .agents.war_room import WarRoomAgent
 from .capital_manager import CapitalManager
 from .strategy_evolution import StrategyEvolution
 from .testing import Backtester, PaperTrader
-from .observer_mode import ObserverMode
 from .autopilot_mode import AutopilotMode
 from .scaling_manager import ScalingManager
 from .exchanges.multi_exchange import MultiExchangeManager
@@ -43,7 +42,7 @@ logger = logging.getLogger("ai_trade")
 class AgentOrchestrator:
     """Coordinates all agents. Flow: TRADER -> REVIEWER -> RISK_GUARD -> execute -> ANALYST."""
 
-    def __init__(self, exchange: Any = None, mode: str = "OBSERVER") -> None:
+    def __init__(self, exchange: Any = None, mode: str = "IDLE") -> None:
         self.mode = mode
 
         # Create BybitExchange with API keys from .env (ignore passed exchange)
@@ -89,7 +88,6 @@ class AgentOrchestrator:
         self.strategy_evolution = StrategyEvolution(self.claude_client, self.knowledge_base)
         self.backtester = Backtester(self.claude_client, self.knowledge_base)
         self.paper_trader = PaperTrader(initial_balance=1000)
-        self.observer = ObserverMode(self, self.paper_trader)
         self.autopilot = AutopilotMode(self)
         self.scaling_manager = ScalingManager(self.knowledge_base, self.capital_manager)
         self.learning = LearningCycles(self)
@@ -158,11 +156,11 @@ class AgentOrchestrator:
         cycle_result["status"] = "opportunity_found"
         self.logger_agent.log_opportunity(opportunity)
 
-        if self.mode == "OBSERVER":
+        if self.mode == "IDLE":
             self.logger_agent.log_event(
-                "SYSTEM", "OBSERVER_MODE",
+                "SYSTEM", "IDLE_MODE",
                 data={"pair": opportunity["pair"], "decision": opportunity["decision"]},
-                message=f"Observer mode - not executing {opportunity['decision']} {opportunity['pair']}",
+                message=f"IDLE mode - not executing {opportunity['decision']} {opportunity['pair']}",
             )
             return cycle_result
 
@@ -275,17 +273,6 @@ class AgentOrchestrator:
         for _ in range(generations):
             await self.strategy_evolution.evolve_generation(historical)
         return self.strategy_evolution.get_evolution_stats()
-
-    async def start_observer_mode(self) -> dict[str, Any]:
-        """Start observer mode with paper trading."""
-        self.mode = "OBSERVER"
-        asyncio.create_task(self.observer.start())
-        return {"status": "started", "mode": "OBSERVER"}
-
-    async def stop_observer_mode(self) -> dict[str, Any]:
-        """Stop observer mode."""
-        await self.observer.stop()
-        return {"status": "stopped"}
 
     async def start_autopilot(self) -> dict[str, Any]:
         """Start autopilot mode."""
@@ -461,13 +448,6 @@ class AgentOrchestrator:
                 ],
             }
 
-        # Observer
-        if hasattr(self, "observer"):
-            data["observer"] = {
-                "signals": getattr(self.observer, "_signals", []),
-                "running": getattr(self.observer, "_running", False),
-            }
-
         # Evolution
         if hasattr(self, "strategy_evolution"):
             population = getattr(self.strategy_evolution, "_population", [])
@@ -532,7 +512,9 @@ class AgentOrchestrator:
             # Trading state
             state = await self._persistence.load("trading_state")
             if state:
-                self.mode = state.get("mode", "OBSERVER")
+                # Map old OBSERVER mode to IDLE
+                mode = state.get("mode", "IDLE")
+                self.mode = "IDLE" if mode == "OBSERVER" else mode
                 restored += 1
 
             # Paper Trading
@@ -542,13 +524,6 @@ class AgentOrchestrator:
                     self.paper_trader._balance = paper.get("balance", 1000)
                 if hasattr(self.paper_trader, "_initial_balance"):
                     self.paper_trader._initial_balance = paper.get("initial_balance", 1000)
-                restored += 1
-
-            # Observer
-            obs = await self._persistence.load("observer")
-            if obs and hasattr(self, "observer"):
-                if hasattr(self.observer, "_signals"):
-                    self.observer._signals = obs.get("signals", [])
                 restored += 1
 
             # Evolution

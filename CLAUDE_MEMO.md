@@ -975,9 +975,10 @@ STRATEGY_EVOLUTION (генетические алгоритмы, оптимиз�
 - **Каждую неделю (воскресенье)**: глубокое обучение (MENTOR + RESEARCHER)
 
 ### Режимы работы:
-- **OBSERVER** — только анализ, без сделок
-- **ADVISOR** — предлагает сделки, пользователь подтверждает
-- **AUTOPILOT** — полностью автономная торговля
+- **IDLE** — система ожидает, никаких действий
+- **AUTOPILOT** — полностью автономная торговля и обучение
+
+> **ВАЖНО**: Observer mode удалён (2026-01-27). Теперь только IDLE и AUTOPILOT.
 
 ### Жёсткие лимиты рисков (AI не может нарушить):
 - Max leverage: 20x
@@ -1059,7 +1060,7 @@ STRATEGY_EVOLUTION (генетические алгоритмы, оптимиз�
   - Закрытие позиции (PnL, причина)
   - Stop Loss / Take Profit
   - Критические ошибки
-  - Смена режима (OBSERVER → AUTOPILOT)
+  - Смена режима (IDLE → AUTOPILOT)
 - **Интеграция:** LoggerAgent получает telegram_bot в orchestrator.py
 
 ### Веб-интерфейс AI Trade:
@@ -1067,7 +1068,7 @@ STRATEGY_EVOLUTION (генетические алгоритмы, оптимиз�
 - **API**: `/api/ai-trade/*` (роутер в `aila/api/routes/ai_trade.py`)
 - **Шаблон**: `aila/api/templates/ai_trade.html` (Tailwind CSS + Font Awesome)
 - **Endpoints**: status, agents, profile, portfolio, opportunities, market-context, prediction, sentiment, whale, capital, health, evolution, logs, settings, mode
-- **Кнопки режимов**: OBSERVER/AUTOPILOT с иконками (fa-eye/fa-robot), активный режим выделен цветом
+- **Кнопка режима**: AUTOPILOT (fa-robot), статус IDLE/AUTOPILOT показан над кнопкой
 - **Подтверждение AUTOPILOT**: модальное окно с предупреждением перед включением автоторговли
 - **Локализация RU/EN**: читает язык из localStorage/cookie `ailaLang` (синхронизация с основным ботом)
 - **Settings Panel** (добавлено 2026-01-26): кнопка "Settings" в хедере, модальное окно со ВСЕМИ параметрами:
@@ -1262,9 +1263,8 @@ clamp(value, min_val, max_val)
 
 ### Что сохраняется:
 - **Knowledge Base**: уровень, XP, навыки, правила, история обучения
-- **Trading state**: режим работы (OBSERVER/ADVISOR/AUTOPILOT)
+- **Trading state**: режим работы (IDLE/AUTOPILOT)
 - **Paper trading**: баланс, сделки, позиции
-- **Observer**: сигналы
 - **Strategy evolution**: поколение, популяция
 - **Risk stats**: PnL, trades, peak balance
 - **Autopilot**: stats, config
@@ -1665,6 +1665,36 @@ async def start(self):
 
 ---
 
-**Последнее обновление:** 2026-01-27 (fix: RISK_GUARD balance check with leverage + stop duplicate scans)
-**Текущая версия:** v2.2.0 (см. файл `/opt/aila/VERSION`)
+## 33. РЕФАКТОРИНГ 2026-01-27: Удаление Observer mode
+
+### Причина:
+- Observer mode создавал путаницу (два режима с пересекающейся функциональностью)
+- Проблема дублирования сканов (Observer + Autopilot параллельно)
+- Упрощение интерфейса
+
+### Изменения:
+1. **orchestrator.py** — удалён import и инициализация ObserverMode
+2. **autopilot_mode.py** — режим IDLE вместо OBSERVER при остановке
+3. **ai_trade.py (routes)** — удалены endpoints `/observer/*`
+4. **ai_trade.html** — удалена кнопка OBSERVER, одна кнопка AUTOPILOT
+
+### Новые режимы:
+- **IDLE** — система ожидает, ничего не делает
+- **AUTOPILOT** — активная торговля и обучение
+
+### UI:
+- Одна кнопка AUTOPILOT (включить/выключить)
+- Статус показывает IDLE (серый) или AUTOPILOT (зелёный)
+- При остановке закрывает все позиции и отменяет ордера
+
+### Файлы изменены:
+- `aila/ai_trade/orchestrator.py`
+- `aila/ai_trade/autopilot_mode.py`
+- `aila/api/routes/ai_trade.py`
+- `aila/api/templates/ai_trade.html`
+
+---
+
+**Последнее обновление:** 2026-01-27 (refactor: remove Observer mode, keep only Autopilot)
+**Текущая версия:** v2.3.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`

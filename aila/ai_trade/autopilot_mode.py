@@ -60,11 +60,6 @@ class AutopilotMode:
             logger.warning("Autopilot already running, ignoring start request")
             return {'status': 'already_running', 'mode': 'AUTOPILOT'}
 
-        # Stop observer if running to prevent duplicate scans
-        if hasattr(self._orchestrator, 'observer') and self._orchestrator.observer._running:
-            await self._orchestrator.observer.stop()
-            logger.info("Stopped Observer mode before starting Autopilot")
-
         safety_check = await self._pre_flight_check()
         if not safety_check['passed']:
             return {'status': 'failed', 'reason': safety_check['reason']}
@@ -80,9 +75,9 @@ class AutopilotMode:
     async def stop(self) -> dict[str, Any]:
         """Stop autopilot mode."""
         self._running = False
-        self._orchestrator.mode = "OBSERVER"
-        logger.warning("AUTOPILOT MODE DEACTIVATED")
-        return {'status': 'stopped'}
+        self._orchestrator.mode = "IDLE"
+        logger.warning("AUTOPILOT MODE DEACTIVATED - System IDLE")
+        return {'status': 'stopped', 'mode': 'IDLE'}
 
     async def _pre_flight_check(self) -> dict[str, Any]:
         """Pre-flight safety checks."""
@@ -305,7 +300,7 @@ class AutopilotMode:
 
         return {
             'running': self._running,
-            'mode': 'AUTOPILOT' if self._running else 'INACTIVE',
+            'mode': 'AUTOPILOT' if self._running else 'IDLE',
             'config': self._config,
             'stats': {
                 'trades_this_hour': self._stats['trades_this_hour'],
