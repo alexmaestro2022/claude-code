@@ -2,8 +2,9 @@
 
 import json
 import logging
-from datetime import datetime
-from typing import Any
+from datetime import datetime, date
+from pathlib import Path
+from typing import Any, Optional
 
 import anthropic
 
@@ -12,60 +13,228 @@ from .config import ANTHROPIC_API_KEY, CLAUDE_MODEL, CLAUDE_MODEL_HAIKU
 
 logger = logging.getLogger("ai_trade")
 
+# Pricing per 1M tokens (Jan 2025)
+PRICING = {
+    "sonnet": {"input": 3.0, "output": 15.0},  # $3/$15 per 1M tokens
+    "haiku": {"input": 0.25, "output": 1.25},  # $0.25/$1.25 per 1M tokens
+}
 
-class APIUsageCounter:
-    """Tracks Claude API usage for cost monitoring."""
 
-    __slots__ = ("_calls", "_input_tokens", "_output_tokens", "_start_time")
+class APIUsageTracker:
+    """Tracks Claude API usage with persistent daily/monthly storage."""
 
-    def __init__(self) -> None:
-        self._calls: dict[str, int] = {"sonnet": 0, "haiku": 0}
-        self._input_tokens: dict[str, int] = {"sonnet": 0, "haiku": 0}
-        self._output_tokens: dict[str, int] = {"sonnet": 0, "haiku": 0}
-        self._start_time = datetime.utcnow()
+    __slots__ = (
+        "_session_start", "_data_path", "_data",
+        "_daily_cost_warning", "_monthly_cost_warning",
+    )
 
-    def record(self, model: str, input_tokens: int, output_tokens: int) -> None:
-        """Record API call usage."""
-        key = "haiku" if "haiku" in model.lower() else "sonnet"
-        self._calls[key] += 1
-        self._input_tokens[key] += input_tokens
-        self._output_tokens[key] += output_tokens
+    def __init__(self, data_path: str = "/opt/aila/data/ai_trade/api_usage.json") -> None:
+        self._session_start = datetime.utcnow()
+        self._data_path = Path(data_path)
+        self._daily_cost_warning = 5.0  # Warning if daily cost > $5
+        self._monthly_cost_warning = 100.0  # Warning if monthly cost > $100
+        self._data = self._load_data()
 
-    def get_stats(self) -> dict[str, Any]:
-        """Get usage statistics and estimated cost."""
-        # Pricing per 1M tokens (Jan 2025)
-        sonnet_input = 3.0  # $3/1M
-        sonnet_output = 15.0  # $15/1M
-        haiku_input = 0.25  # $0.25/1M
-        haiku_output = 1.25  # $1.25/1M
+    def _load_data(self) -> dict[str, Any]:
+        """Load usage data from file."""
+        default = {
+            "session": self._empty_session(),
+            "daily": {},
+            "monthly": {},
+            "total": {"calls": 0, "cost": 0.0, "input_tokens": 0, "output_tokens": 0},
+            "warnings": [],
+        }
+        try:
+            if self._data_path.exists():
+                with open(self._data_path, "r") as f:
+                    data = json.load(f)
+                    # Reset session on load
+                    data["session"] = self._empty_session()
+                    return data
+        except Exception as e:
+            logger.error(f"Failed to load API usage data: {e}")
+        return default
 
-        sonnet_cost = (
-            self._input_tokens["sonnet"] * sonnet_input / 1_000_000
-            + self._output_tokens["sonnet"] * sonnet_output / 1_000_000
-        )
-        haiku_cost = (
-            self._input_tokens["haiku"] * haiku_input / 1_000_000
-            + self._output_tokens["haiku"] * haiku_output / 1_000_000
-        )
-
-        runtime = (datetime.utcnow() - self._start_time).total_seconds()
+    def _empty_session(self) -> dict[str, Any]:
+        """Create empty session data structure."""
         return {
-            "calls": self._calls.copy(),
-            "total_calls": sum(self._calls.values()),
-            "input_tokens": self._input_tokens.copy(),
-            "output_tokens": self._output_tokens.copy(),
-            "estimated_cost_usd": {
-                "sonnet": round(sonnet_cost, 4),
-                "haiku": round(haiku_cost, 4),
-                "total": round(sonnet_cost + haiku_cost, 4),
-            },
-            "runtime_hours": round(runtime / 3600, 2),
-            "cost_per_hour": round((sonnet_cost + haiku_cost) / max(runtime / 3600, 0.01), 4),
+            "start_time": self._session_start.isoformat(),
+            "calls": {"sonnet": 0, "haiku": 0},
+            "input_tokens": {"sonnet": 0, "haiku": 0},
+            "output_tokens": {"sonnet": 0, "haiku": 0},
         }
 
+    def _save_data(self) -> None:
+        """Save usage data to file."""
+        try:
+            self._data_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(self._data_path, "w") as f:
+                json.dump(self._data, f, indent=2, default=str)
+        except Exception as e:
+            logger.error(f"Failed to save API usage data: {e}")
 
-# Global usage counter
-api_usage = APIUsageCounter()
+    def _calculate_cost(self, model_key: str, input_tokens: int, output_tokens: int) -> float:
+        """Calculate cost in USD for given tokens."""
+        pricing = PRICING.get(model_key, PRICING["sonnet"])
+        return (
+            input_tokens * pricing["input"] / 1_000_000
+            + output_tokens * pricing["output"] / 1_000_000
+        )
+
+    def record(self, model: str, input_tokens: int, output_tokens: int) -> Optional[str]:
+        """
+        Record API call usage. Returns warning message if cost threshold exceeded.
+        """
+        key = "haiku" if "haiku" in model.lower() else "sonnet"
+        cost = self._calculate_cost(key, input_tokens, output_tokens)
+        today = date.today().isoformat()
+        month = today[:7]  # YYYY-MM
+
+        # Update session
+        self._data["session"]["calls"][key] += 1
+        self._data["session"]["input_tokens"][key] += input_tokens
+        self._data["session"]["output_tokens"][key] += output_tokens
+
+        # Update daily
+        if today not in self._data["daily"]:
+            self._data["daily"][today] = {
+                "calls": {"sonnet": 0, "haiku": 0},
+                "cost": {"sonnet": 0.0, "haiku": 0.0},
+                "input_tokens": {"sonnet": 0, "haiku": 0},
+                "output_tokens": {"sonnet": 0, "haiku": 0},
+            }
+        self._data["daily"][today]["calls"][key] += 1
+        self._data["daily"][today]["cost"][key] += cost
+        self._data["daily"][today]["input_tokens"][key] += input_tokens
+        self._data["daily"][today]["output_tokens"][key] += output_tokens
+
+        # Update monthly
+        if month not in self._data["monthly"]:
+            self._data["monthly"][month] = {
+                "calls": {"sonnet": 0, "haiku": 0},
+                "cost": {"sonnet": 0.0, "haiku": 0.0},
+            }
+        self._data["monthly"][month]["calls"][key] += 1
+        self._data["monthly"][month]["cost"][key] += cost
+
+        # Update total
+        self._data["total"]["calls"] += 1
+        self._data["total"]["cost"] += cost
+        self._data["total"]["input_tokens"] += input_tokens
+        self._data["total"]["output_tokens"] += output_tokens
+
+        # Save periodically (every 10 calls)
+        if self._data["total"]["calls"] % 10 == 0:
+            self._save_data()
+
+        # Check warnings
+        warning = None
+        daily_total = sum(self._data["daily"].get(today, {}).get("cost", {}).values())
+        monthly_total = sum(self._data["monthly"].get(month, {}).get("cost", {}).values())
+
+        if daily_total >= self._daily_cost_warning:
+            warning = f"⚠️ Daily API cost ${daily_total:.2f} exceeds ${self._daily_cost_warning} limit!"
+        elif monthly_total >= self._monthly_cost_warning:
+            warning = f"⚠️ Monthly API cost ${monthly_total:.2f} exceeds ${self._monthly_cost_warning} limit!"
+
+        if warning and warning not in self._data.get("warnings", []):
+            self._data.setdefault("warnings", []).append(warning)
+            logger.warning(warning)
+
+        return warning
+
+    def get_stats(self) -> dict[str, Any]:
+        """Get comprehensive usage statistics."""
+        today = date.today().isoformat()
+        month = today[:7]
+
+        # Session stats
+        session = self._data["session"]
+        session_runtime = (datetime.utcnow() - self._session_start).total_seconds()
+        session_cost = (
+            self._calculate_cost("sonnet", session["input_tokens"]["sonnet"], session["output_tokens"]["sonnet"])
+            + self._calculate_cost("haiku", session["input_tokens"]["haiku"], session["output_tokens"]["haiku"])
+        )
+
+        # Today stats
+        today_data = self._data["daily"].get(today, {
+            "calls": {"sonnet": 0, "haiku": 0},
+            "cost": {"sonnet": 0.0, "haiku": 0.0},
+        })
+        today_calls = sum(today_data.get("calls", {}).values())
+        today_cost = sum(today_data.get("cost", {}).values())
+
+        # Month stats
+        month_data = self._data["monthly"].get(month, {
+            "calls": {"sonnet": 0, "haiku": 0},
+            "cost": {"sonnet": 0.0, "haiku": 0.0},
+        })
+        month_calls = sum(month_data.get("calls", {}).values())
+        month_cost = sum(month_data.get("cost", {}).values())
+
+        return {
+            "session": {
+                "start_time": session["start_time"],
+                "runtime_hours": round(session_runtime / 3600, 2),
+                "calls": session["calls"],
+                "total_calls": sum(session["calls"].values()),
+                "input_tokens": session["input_tokens"],
+                "output_tokens": session["output_tokens"],
+                "cost_usd": round(session_cost, 4),
+                "cost_per_hour": round(session_cost / max(session_runtime / 3600, 0.01), 4),
+            },
+            "today": {
+                "date": today,
+                "calls": today_data.get("calls", {}),
+                "total_calls": today_calls,
+                "cost_usd": round(today_cost, 4),
+                "cost_breakdown": today_data.get("cost", {}),
+                "warning": today_cost >= self._daily_cost_warning,
+            },
+            "month": {
+                "month": month,
+                "calls": month_data.get("calls", {}),
+                "total_calls": month_calls,
+                "cost_usd": round(month_cost, 4),
+                "cost_breakdown": month_data.get("cost", {}),
+                "warning": month_cost >= self._monthly_cost_warning,
+            },
+            "total": {
+                "all_time_calls": self._data["total"]["calls"],
+                "all_time_cost_usd": round(self._data["total"]["cost"], 4),
+                "all_time_input_tokens": self._data["total"]["input_tokens"],
+                "all_time_output_tokens": self._data["total"]["output_tokens"],
+            },
+            "limits": {
+                "daily_warning_usd": self._daily_cost_warning,
+                "monthly_warning_usd": self._monthly_cost_warning,
+            },
+            "pricing": PRICING,
+        }
+
+    def set_warning_limits(self, daily: float = None, monthly: float = None) -> None:
+        """Set warning limits for daily/monthly cost."""
+        if daily is not None:
+            self._daily_cost_warning = daily
+        if monthly is not None:
+            self._monthly_cost_warning = monthly
+
+    def get_recent_warnings(self) -> list[str]:
+        """Get recent warnings."""
+        return self._data.get("warnings", [])[-10:]
+
+    def clear_warnings(self) -> None:
+        """Clear all warnings."""
+        self._data["warnings"] = []
+        self._save_data()
+
+    def force_save(self) -> None:
+        """Force save data to file."""
+        self._save_data()
+
+
+# Global usage tracker
+api_usage = APIUsageTracker()
 
 
 class ClaudeClient:
@@ -92,12 +261,15 @@ class ClaudeClient:
             )
             response_text = message.content[0].text
 
-            # Record usage
-            api_usage.record(
+            # Record usage and check for warnings
+            warning = api_usage.record(
                 model,
                 message.usage.input_tokens,
                 message.usage.output_tokens,
             )
+            if warning:
+                logger.warning(warning)
+
             logger.debug(
                 f"API call: {model} | in={message.usage.input_tokens} out={message.usage.output_tokens}"
             )
@@ -298,3 +470,18 @@ Respond STRICTLY in JSON:
 def get_api_usage() -> dict[str, Any]:
     """Get current API usage statistics."""
     return api_usage.get_stats()
+
+
+def set_api_usage_limits(daily: float = None, monthly: float = None) -> None:
+    """Set API usage warning limits."""
+    api_usage.set_warning_limits(daily, monthly)
+
+
+def get_api_warnings() -> list[str]:
+    """Get recent API usage warnings."""
+    return api_usage.get_recent_warnings()
+
+
+def save_api_usage() -> None:
+    """Force save API usage data."""
+    api_usage.force_save()

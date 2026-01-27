@@ -141,6 +141,7 @@ class PersistenceManager:
         "autopilot.json",
         "war_room.json",
         "capital.json",
+        "api_usage.json",  # Claude API usage tracking
     ]
 
     async def backup_to_cloud(self) -> bool:

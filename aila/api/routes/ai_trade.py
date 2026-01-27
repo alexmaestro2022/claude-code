@@ -34,6 +34,29 @@ async def get_status():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/api-usage")
+async def get_api_usage():
+    """Get Claude API usage statistics."""
+    try:
+        from ...ai_trade.claude_client import get_api_usage, get_api_warnings
+        stats = get_api_usage()
+        stats["warnings"] = get_api_warnings()
+        return stats
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/api-usage/limits")
+async def set_api_usage_limits(daily: float = None, monthly: float = None):
+    """Set API usage warning limits."""
+    try:
+        from ...ai_trade.claude_client import set_api_usage_limits
+        set_api_usage_limits(daily=daily, monthly=monthly)
+        return {"success": True, "daily_limit": daily, "monthly_limit": monthly}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/agents")
 async def get_agents():
     """List all agents and their status."""

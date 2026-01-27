@@ -322,6 +322,12 @@
                 <p class="text-gray-400">Autonomous Intelligent Learning Algorithm</p>
             </div>
             <div class="flex gap-3 items-center">
+                <!-- API Cost Indicator -->
+                <div id="api-cost-indicator" class="hidden px-3 py-1 rounded-lg text-xs cursor-pointer hover:bg-gray-700" onclick="openSettingsModal()" title="Claude API Cost">
+                    <span class="text-gray-400"><i class="fa-solid fa-robot text-purple-400"></i> API:</span>
+                    <span id="api-cost-today" class="text-green-400 ml-1">$0.00</span>
+                    <span class="text-gray-500">/day</span>
+                </div>
                 <button class="settings-btn" onclick="openSettingsModal()" data-i18n="settings">
                     <i class="fa-solid fa-gear"></i> <span data-i18n="settings">Settings</span>
                 </button>
@@ -492,7 +498,16 @@
                 integrations: 'Интеграции',
                 capital: 'Капитал',
                 persistence: 'Сохранение',
+                api_usage: 'Claude API',
                 current_status: 'Текущий статус',
+                // API Usage
+                api_calls_today: 'Вызовов сегодня',
+                api_cost_today: 'Расход сегодня',
+                api_cost_month: 'Расход за месяц',
+                api_cost_total: 'Общий расход',
+                api_model_breakdown: 'По моделям',
+                api_cost_per_hour: 'Стоимость/час',
+                api_warning_limit: 'Лимит предупр.',
                 // Settings labels
                 min_confidence: 'Мин. уверенность',
                 scan_interval: 'Интервал сканирования',
@@ -599,7 +614,16 @@
                 integrations: 'Integrations',
                 capital: 'Capital',
                 persistence: 'Persistence',
+                api_usage: 'Claude API',
                 current_status: 'Current Status',
+                // API Usage
+                api_calls_today: 'Calls Today',
+                api_cost_today: 'Cost Today',
+                api_cost_month: 'Cost This Month',
+                api_cost_total: 'Total Cost',
+                api_model_breakdown: 'By Model',
+                api_cost_per_hour: 'Cost/Hour',
+                api_warning_limit: 'Warning Limit',
                 // Settings labels
                 min_confidence: 'Min Confidence',
                 scan_interval: 'Scan Interval',
@@ -1016,6 +1040,14 @@
                     <div class="setting-row"><span class="setting-name">${t('files_count')}</span><span class="setting-value">${data.persistence.files_count}</span></div>
                 </div>
 
+                <!-- Claude API Usage -->
+                <div class="settings-section" id="api-usage-section">
+                    <h4><i class="fa-solid fa-robot"></i> ${t('api_usage')}</h4>
+                    <div id="api-usage-content">
+                        <div class="text-gray-500 text-sm">${t('loading')}</div>
+                    </div>
+                </div>
+
                 <!-- Current Status -->
                 <div class="settings-section md:col-span-2">
                     <h4><i class="fa-solid fa-circle-info"></i> ${t('current_status')}</h4>
@@ -1037,6 +1069,107 @@
             `;
 
             document.getElementById('settings-content').innerHTML = html;
+
+            // Load API usage data separately
+            loadApiUsage();
+        }
+
+        // ==================== API USAGE ====================
+        async function loadApiUsage() {
+            try {
+                const data = await fetchData('/api-usage');
+                if (!data) return;
+
+                const container = document.getElementById('api-usage-content');
+                if (!container) return;
+
+                const warningClass = data.today?.warning ? 'error' : (data.month?.warning ? 'warning' : '');
+                const warningIcon = data.today?.warning || data.month?.warning ?
+                    '<i class="fa-solid fa-triangle-exclamation text-yellow-400 ml-1"></i>' : '';
+
+                container.innerHTML = `
+                    <div class="setting-row">
+                        <span class="setting-name">${t('api_calls_today')}</span>
+                        <span class="setting-value">${data.today?.total_calls || 0}</span>
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-name">${t('api_cost_today')}${warningIcon}</span>
+                        <span class="setting-value ${warningClass}">$${(data.today?.cost_usd || 0).toFixed(4)}</span>
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-name">${t('api_cost_month')}</span>
+                        <span class="setting-value ${data.month?.warning ? 'warning' : ''}">$${(data.month?.cost_usd || 0).toFixed(4)}</span>
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-name">${t('api_cost_total')}</span>
+                        <span class="setting-value">$${(data.total?.all_time_cost_usd || 0).toFixed(4)}</span>
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-name">${t('api_cost_per_hour')}</span>
+                        <span class="setting-value">$${(data.session?.cost_per_hour || 0).toFixed(4)}</span>
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-name">${t('api_model_breakdown')}</span>
+                        <span class="setting-value text-xs">
+                            <span class="text-purple-400">S:${data.today?.calls?.sonnet || 0}</span> /
+                            <span class="text-green-400">H:${data.today?.calls?.haiku || 0}</span>
+                        </span>
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-name">${t('api_warning_limit')}</span>
+                        <span class="setting-value">$${data.limits?.daily_warning_usd || 5}/day</span>
+                    </div>
+                    ${data.warnings && data.warnings.length > 0 ? `
+                        <div class="mt-2 p-2 bg-yellow-900/30 rounded text-yellow-400 text-xs">
+                            <i class="fa-solid fa-triangle-exclamation mr-1"></i>
+                            ${data.warnings[data.warnings.length - 1]}
+                        </div>
+                    ` : ''}
+                `;
+            } catch (e) {
+                console.error('API usage load error:', e);
+            }
+        }
+
+        async function updateApiCostIndicator() {
+            try {
+                const data = await fetchData('/api-usage');
+                if (!data) return;
+
+                const indicator = document.getElementById('api-cost-indicator');
+                const costEl = document.getElementById('api-cost-today');
+                if (!indicator || !costEl) return;
+
+                const todayCost = data.today?.cost_usd || 0;
+                const warningLimit = data.limits?.daily_warning_usd || 5;
+
+                // Show indicator
+                indicator.classList.remove('hidden');
+                indicator.classList.add('flex');
+
+                // Update cost value
+                costEl.textContent = `$${todayCost.toFixed(2)}`;
+
+                // Update color based on warning
+                if (data.today?.warning) {
+                    costEl.classList.remove('text-green-400', 'text-yellow-400');
+                    costEl.classList.add('text-red-400');
+                    indicator.classList.add('bg-red-900/30');
+                    indicator.classList.remove('bg-yellow-900/30', 'bg-gray-800');
+                } else if (todayCost > warningLimit * 0.7) {
+                    costEl.classList.remove('text-green-400', 'text-red-400');
+                    costEl.classList.add('text-yellow-400');
+                    indicator.classList.add('bg-yellow-900/30');
+                    indicator.classList.remove('bg-red-900/30', 'bg-gray-800');
+                } else {
+                    costEl.classList.remove('text-red-400', 'text-yellow-400');
+                    costEl.classList.add('text-green-400');
+                    indicator.classList.add('bg-gray-800');
+                    indicator.classList.remove('bg-red-900/30', 'bg-yellow-900/30');
+                }
+            } catch (e) {
+                console.error('API cost indicator error:', e);
+            }
         }
 
         // ==================== AUTOPILOT HEARTBEAT ====================
@@ -1137,8 +1270,10 @@
         // Initialize
         applyLanguage();
         updateDashboard();
+        updateApiCostIndicator();
         startHeartbeatPolling();
         setInterval(updateDashboard, 30000);
+        setInterval(updateApiCostIndicator, 60000);  // Update API cost every minute
 
         // Listen for language changes from main bot (other tabs/windows)
         window.addEventListener('storage', function(e) {
