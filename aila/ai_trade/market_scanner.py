@@ -158,7 +158,7 @@ class MarketScanner:
             return {"status": "error", "health": "unknown", "error": str(e)}
 
     async def get_market_data(
-        self, symbol: str, timeframe: str = "15m", limit: int = 100
+        self, symbol: str, timeframe: str = "15m", limit: int = 250
     ) -> dict[str, Any]:
         """Get detailed market data with indicators for a symbol."""
         cache_key = f"market:{symbol}:{timeframe}"
