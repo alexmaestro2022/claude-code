@@ -242,14 +242,10 @@ class AutopilotMode:
                 confidence=opportunity.get('confidence', 50)
             )
 
-            result = await self._orchestrator.position_manager.open_position(
-                pair=opportunity['pair'],
-                direction=opportunity['decision'].lower(),
-                size=size['position_size_usdt'],
-                leverage=opportunity.get('leverage', 5),
-                stop_loss=opportunity['stop_loss'],
-                take_profit=opportunity['take_profit']
-            )
+            # Add calculated size to opportunity for position_manager
+            opportunity['position_size_usdt'] = size['position_size_usdt']
+
+            result = await self._orchestrator.position_manager.open_position(opportunity)
 
             if result.get('success'):
                 self._stats['trades_this_hour'] += 1
