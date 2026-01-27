@@ -1356,6 +1356,6 @@ async def _refresh_instruments() -> list[str]:
 
 ---
 
-**Последнее обновление:** 2026-01-27 (fix position size calculation with leverage - now can trade with $8.72)
+**Последнее обновление:** 2026-01-27 (add RU/EN localization and parameter tooltips to AI Trade UI)
 **Текущая версия:** v2.2.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
