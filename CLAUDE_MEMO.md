@@ -1321,6 +1321,6 @@ async def _refresh_instruments() -> list[str]:
 
 ---
 
-**Последнее обновление:** 2026-01-27 (detailed TRADER analysis logging, fix symbol format for Bybit API)
+**Последнее обновление:** 2026-01-27 (fix reviewer key bug, adjust R:R to 1.0:1, reduce min_balance to $5)
 **Текущая версия:** v2.2.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
