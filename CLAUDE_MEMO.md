@@ -1019,11 +1019,17 @@ STRATEGY_EVOLUTION (генетические алгоритмы, оптимиз�
 
 **Мониторинг расходов API (добавлено 2026-01-27):**
 - Индикатор в хедере: показывает расход за день
-- Settings modal: секция "Claude API" с детальной статистикой
+- Settings modal: секция "Claude API" с детальной статистикой + Top consumers
 - Файл данных: `/opt/aila/data/ai_trade/api_usage.json`
-- API endpoint: `GET /api/ai-trade/api-usage`
+- API endpoint: `GET /api/ai-trade/api-usage` (includes top_consumers, today_top_consumers)
 - Лимиты: $5/день (warning), $100/месяц (warning)
 - Endpoint для изменения лимитов: `PUT /api/ai-trade/api-usage/limits`
+
+**Детальное логирование токенов:**
+- Лог файл: `/opt/aila/logs/ai_trade/api_usage.log`
+- Формат: `[timestamp] AGENT action | model | input | output | cost | context`
+- Пример: `[2026-01-27 12:00:00] TRADER batch_analyze | model=sonnet | input=3500 | output=800 | cost=$0.0225 | pairs=50`
+- Статистика по агентам: calls, cost, avg_cost, avg_input, avg_output, pct_of_total
 
 **ВАЖНО:** Ключ НЕ хранится в репозитории, только в .env на сервере
 
@@ -1594,6 +1600,6 @@ analysis["_rejection_reason"] = "LONG vs BEARISH trend"
 
 ---
 
-**Последнее обновление:** 2026-01-27 (feat: Claude API usage tracking + batch optimization)
+**Последнее обновление:** 2026-01-27 (feat: detailed token logging + top consumers)
 **Текущая версия:** v2.2.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
