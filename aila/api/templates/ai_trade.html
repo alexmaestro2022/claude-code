@@ -923,8 +923,22 @@
             });
         });
 
+        // Cache for inactive autopilot mode
+        let lastPrediction = null;
+        let lastWhale = null;
+        let lastSentiment = null;
+
+        function showInactiveWidget(elementId, label) {
+            document.getElementById(elementId).innerHTML =
+                `<div class="text-xl text-gray-500">INACTIVE</div>
+                <div class="text-gray-600 text-sm">Autopilot stopped</div>`;
+        }
+
         async function updateDashboard() {
             const status = await fetchData('/status');
+            const autopilotStatus = await fetchData('/autopilot/status');
+            const isAutopilotRunning = autopilotStatus && autopilotStatus.running;
+
             if (status) {
                 const currentMode = status.mode || 'IDLE';
                 updateModeButtons(currentMode);
@@ -963,45 +977,75 @@
             if (agents && agents.agents) {
                 const agentsHtml = agents.agents.map(a =>
                     `<div class="bg-gray-800 rounded p-2 text-center">
-                        <div class="text-green-400 text-xs pulse">&#9679;</div>
+                        <div class="${isAutopilotRunning ? 'text-green-400' : 'text-gray-500'} text-xs ${isAutopilotRunning ? 'pulse' : ''}">&#9679;</div>
                         <div class="text-xs font-bold">${a.name}</div>
                     </div>`
                 ).join('');
                 document.getElementById('agents-grid').innerHTML = agentsHtml;
             }
 
-            const sentiment = await fetchData('/sentiment');
-            if (sentiment && sentiment.market_sentiment) {
-                const s = sentiment.market_sentiment;
-                const sentimentText = s.sentiment || s.label || 'unknown';
-                const isNegative = sentimentText.includes('fear') || sentimentText.includes('bearish');
-                document.getElementById('sentiment').innerHTML =
-                    `<div class="text-2xl font-bold ${isNegative ? 'text-red-400' : 'text-green-400'}">${sentimentText}</div>
-                    <div class="text-gray-400">Score: ${s.score || 0}/100</div>`;
-            } else {
-                document.getElementById('sentiment').innerHTML = '<p class="text-gray-500">Loading...</p>';
-            }
+            // Only fetch Claude API data if autopilot is running
+            if (isAutopilotRunning) {
+                const sentiment = await fetchData('/sentiment');
+                if (sentiment && sentiment.market_sentiment) {
+                    lastSentiment = sentiment;
+                    const s = sentiment.market_sentiment;
+                    const sentimentText = s.sentiment || s.label || 'unknown';
+                    const isNegative = sentimentText.includes('fear') || sentimentText.includes('bearish');
+                    document.getElementById('sentiment').innerHTML =
+                        `<div class="text-2xl font-bold ${isNegative ? 'text-red-400' : 'text-green-400'}">${sentimentText}</div>
+                        <div class="text-gray-400">Score: ${s.score || 0}/100</div>`;
+                }
 
-            const prediction = await fetchData('/prediction/BTCUSDT');
-            if (prediction && prediction.prediction) {
-                const p = prediction.prediction;
-                const dir = p.direction || 'unknown';
-                document.getElementById('prediction').innerHTML =
-                    `<div class="text-2xl font-bold ${dir === 'up' ? 'text-green-400' : 'text-red-400'}">${dir.toUpperCase()}</div>
-                    <div class="text-gray-400">Probability: ${p.probability || 0}%</div>
-                    <div class="text-gray-400">Confidence: ${p.confidence || 0}%</div>`;
-            } else {
-                document.getElementById('prediction').innerHTML = '<p class="text-gray-500">Loading...</p>';
-            }
+                const prediction = await fetchData('/prediction/BTCUSDT');
+                if (prediction && prediction.prediction) {
+                    lastPrediction = prediction;
+                    const p = prediction.prediction;
+                    const dir = p.direction || 'unknown';
+                    document.getElementById('prediction').innerHTML =
+                        `<div class="text-2xl font-bold ${dir === 'up' ? 'text-green-400' : 'text-red-400'}">${dir.toUpperCase()}</div>
+                        <div class="text-gray-400">Probability: ${p.probability || 0}%</div>
+                        <div class="text-gray-400">Confidence: ${p.confidence || 0}%</div>`;
+                }
 
-            const whale = await fetchData('/whale/BTCUSDT');
-            if (whale) {
-                document.getElementById('whale-signal').innerHTML =
-                    `<div class="text-2xl font-bold">${whale.signal || 'neutral'}</div>
-                    <div class="text-gray-400">Confidence: ${whale.confidence || 0}%</div>
-                    <div class="text-gray-400 text-sm mt-2">${whale.reasoning || ''}</div>`;
+                const whale = await fetchData('/whale/BTCUSDT');
+                if (whale) {
+                    lastWhale = whale;
+                    document.getElementById('whale-signal').innerHTML =
+                        `<div class="text-2xl font-bold">${whale.signal || 'neutral'}</div>
+                        <div class="text-gray-400">Confidence: ${whale.confidence || 0}%</div>
+                        <div class="text-gray-400 text-sm mt-2">${whale.reasoning || ''}</div>`;
+                }
             } else {
-                document.getElementById('whale-signal').innerHTML = '<p class="text-gray-500">Loading...</p>';
+                // Autopilot inactive - show cached data or inactive status
+                if (lastSentiment && lastSentiment.market_sentiment) {
+                    const s = lastSentiment.market_sentiment;
+                    const sentimentText = s.sentiment || s.label || 'unknown';
+                    const isNegative = sentimentText.includes('fear') || sentimentText.includes('bearish');
+                    document.getElementById('sentiment').innerHTML =
+                        `<div class="text-xl ${isNegative ? 'text-red-400' : 'text-green-400'} opacity-50">${sentimentText}</div>
+                        <div class="text-gray-500 text-sm">Cached (autopilot off)</div>`;
+                } else {
+                    showInactiveWidget('sentiment', 'Sentiment');
+                }
+
+                if (lastPrediction && lastPrediction.prediction) {
+                    const p = lastPrediction.prediction;
+                    const dir = p.direction || 'unknown';
+                    document.getElementById('prediction').innerHTML =
+                        `<div class="text-xl ${dir === 'up' ? 'text-green-400' : 'text-red-400'} opacity-50">${dir.toUpperCase()}</div>
+                        <div class="text-gray-500 text-sm">Cached (autopilot off)</div>`;
+                } else {
+                    showInactiveWidget('prediction', 'Prediction');
+                }
+
+                if (lastWhale) {
+                    document.getElementById('whale-signal').innerHTML =
+                        `<div class="text-xl opacity-50">${lastWhale.signal || 'neutral'}</div>
+                        <div class="text-gray-500 text-sm">Cached (autopilot off)</div>`;
+                } else {
+                    showInactiveWidget('whale-signal', 'Whale');
+                }
             }
 
             const logs = await fetchData('/logs?limit=20');

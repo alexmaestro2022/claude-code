@@ -1724,6 +1724,61 @@ async def start(self):
 
 ---
 
-**Последнее обновление:** 2026-01-27 (feat: improve SHORT signal prompts)
+## 35. UI Polling — оптимизация API вызовов (2026-01-27)
+
+### Проблема:
+- UI делал polling каждые 30 сек на endpoints `/prediction/BTCUSDT` и `/whale/BTCUSDT`
+- Эти запросы вызывали Claude API даже при выключенном автопилоте
+- Лишние расходы на API (~$2/час при неактивном боте)
+
+### Решение:
+
+**1. ai_trade.html — проверка статуса автопилота:**
+```javascript
+async function updateDashboard() {
+    const autopilotStatus = await fetchData('/autopilot/status');
+    const isAutopilotRunning = autopilotStatus && autopilotStatus.running;
+
+    if (isAutopilotRunning) {
+        // Fetch fresh data from Claude API
+        fetchData('/prediction/BTCUSDT');
+        fetchData('/whale/BTCUSDT');
+    } else {
+        // Show cached data or "inactive" status
+        showInactiveWidget('prediction', 'Prediction');
+    }
+}
+```
+
+**2. ai_trade.py — кэширование endpoints:**
+```python
+# Cache for inactive autopilot
+_prediction_cache: dict[str, dict[str, Any]] = {}
+_whale_cache: dict[str, dict[str, Any]] = {}
+CACHE_TTL_SECONDS = 300  # 5 minutes
+
+@router.get("/prediction/{pair}")
+async def get_prediction(pair: str):
+    if not await _is_autopilot_running():
+        # Return cached data, no Claude API call
+        return cached_data
+    # Autopilot active - fetch fresh data
+    result = await orch.predictor.predict_movement(pair)
+    _prediction_cache[pair] = result
+    return result
+```
+
+### Результат:
+- При выключенном автопилоте: 0 API вызовов от UI polling
+- При включённом: нормальная работа с обновлениями
+- UI показывает "Cached (autopilot off)" вместо пустого поля
+
+### Файлы изменены:
+- `aila/api/routes/ai_trade.py` — кэширование + проверка autopilot
+- `aila/api/templates/ai_trade.html` — условный polling
+
+---
+
+**Последнее обновление:** 2026-01-27 (fix: UI polling no API when autopilot off)
 **Текущая версия:** v2.3.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`

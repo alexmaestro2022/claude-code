@@ -3,8 +3,8 @@ API endpoints for AI Trade module.
 """
 
 import os
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, timedelta
+from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException
 
@@ -12,6 +12,31 @@ router = APIRouter(prefix="/api/ai-trade", tags=["AI Trade"])
 
 # Lazy orchestrator initialization
 _orchestrator = None
+
+# Cache for prediction/whale data when autopilot is inactive
+_prediction_cache: dict[str, dict[str, Any]] = {}
+_whale_cache: dict[str, dict[str, Any]] = {}
+_sentiment_cache: dict[str, Any] = {}
+CACHE_TTL_SECONDS = 300  # 5 minutes cache TTL
+
+
+def _is_cache_valid(cache_entry: dict[str, Any]) -> bool:
+    """Check if cache entry is still valid."""
+    if not cache_entry or "timestamp" not in cache_entry:
+        return False
+    cached_time = datetime.fromisoformat(cache_entry["timestamp"])
+    return datetime.utcnow() - cached_time < timedelta(seconds=CACHE_TTL_SECONDS)
+
+
+async def _is_autopilot_running() -> bool:
+    """Check if autopilot is currently running."""
+    try:
+        orch = await get_orchestrator()
+        if hasattr(orch, "autopilot") and orch.autopilot:
+            return orch.autopilot._running
+    except Exception:
+        pass
+    return False
 
 
 async def get_orchestrator():
@@ -147,43 +172,127 @@ async def get_market_context(pair: str):
 
 @router.get("/prediction/{pair}")
 async def get_prediction(pair: str):
-    """Price movement prediction."""
+    """Price movement prediction. Returns cached data if autopilot is inactive."""
     try:
+        autopilot_running = await _is_autopilot_running()
+
+        # If autopilot is not running, return cached data
+        if not autopilot_running:
+            if pair in _prediction_cache and _is_cache_valid(_prediction_cache[pair]):
+                cached = _prediction_cache[pair].copy()
+                cached["cached"] = True
+                cached["autopilot_running"] = False
+                return cached
+            # Return empty response if no cache
+            return {
+                "pair": pair,
+                "prediction": None,
+                "reversal": None,
+                "cached": True,
+                "autopilot_running": False,
+                "timestamp": datetime.utcnow().isoformat()
+            }
+
+        # Autopilot running - fetch fresh data
         orch = await get_orchestrator()
         prediction = await orch.predictor.predict_movement(pair)
         reversal = await orch.predictor.detect_reversal(pair)
-        return {
+
+        result = {
             "pair": pair,
             "prediction": prediction,
             "reversal": reversal,
+            "cached": False,
+            "autopilot_running": True,
             "timestamp": datetime.utcnow().isoformat()
         }
+
+        # Update cache
+        _prediction_cache[pair] = result
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/sentiment")
 async def get_sentiment():
-    """Market sentiment."""
+    """Market sentiment. Returns cached data if autopilot is inactive."""
+    global _sentiment_cache
     try:
+        autopilot_running = await _is_autopilot_running()
+
+        # If autopilot is not running, return cached data
+        if not autopilot_running:
+            if _sentiment_cache and _is_cache_valid(_sentiment_cache):
+                cached = _sentiment_cache.copy()
+                cached["cached"] = True
+                cached["autopilot_running"] = False
+                return cached
+            # Return empty response if no cache
+            return {
+                "market_sentiment": None,
+                "breaking_news": None,
+                "cached": True,
+                "autopilot_running": False,
+                "timestamp": datetime.utcnow().isoformat()
+            }
+
+        # Autopilot running - fetch fresh data
         orch = await get_orchestrator()
         market = await orch.news_agent.get_market_sentiment()
         breaking = await orch.news_agent.detect_breaking_news()
-        return {
+
+        result = {
             "market_sentiment": market,
             "breaking_news": breaking,
+            "cached": False,
+            "autopilot_running": True,
             "timestamp": datetime.utcnow().isoformat()
         }
+
+        # Update cache
+        _sentiment_cache = result
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/whale/{pair}")
 async def get_whale_signal(pair: str):
-    """Whale signals."""
+    """Whale signals. Returns cached data if autopilot is inactive."""
     try:
+        autopilot_running = await _is_autopilot_running()
+
+        # If autopilot is not running, return cached data
+        if not autopilot_running:
+            if pair in _whale_cache and _is_cache_valid(_whale_cache[pair]):
+                cached = _whale_cache[pair].copy()
+                cached["cached"] = True
+                cached["autopilot_running"] = False
+                return cached
+            # Return empty response if no cache
+            return {
+                "pair": pair,
+                "signal": None,
+                "confidence": 0,
+                "reasoning": "Autopilot inactive",
+                "cached": True,
+                "autopilot_running": False,
+                "timestamp": datetime.utcnow().isoformat()
+            }
+
+        # Autopilot running - fetch fresh data
         orch = await get_orchestrator()
-        return await orch.whale_tracker.get_whale_signal(pair)
+        result = await orch.whale_tracker.get_whale_signal(pair)
+
+        # Add metadata and cache
+        if isinstance(result, dict):
+            result["cached"] = False
+            result["autopilot_running"] = True
+            result["timestamp"] = datetime.utcnow().isoformat()
+            _whale_cache[pair] = result
+
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
