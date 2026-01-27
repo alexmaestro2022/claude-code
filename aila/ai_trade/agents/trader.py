@@ -10,6 +10,11 @@ from .base_agent import BaseAgent
 class TraderAgent(BaseAgent):
     """Main trader agent. Scans market and proposes trades for review."""
 
+    # Minimum Risk:Reward ratio for trades
+    MIN_RR_RATIO: float = 1.5
+    # Minimum stop loss distance (percentage)
+    MIN_SL_DISTANCE_PCT: float = 2.0
+
     def __init__(
         self, claude_client: Any, knowledge_base: Any,
         market_scanner: Any, orchestrator: Any = None,
@@ -75,6 +80,26 @@ class TraderAgent(BaseAgent):
 
             decision = analysis.get("decision", "WAIT")
             confidence = analysis.get("confidence", 0)
+            trend = market_data.get("trend", "NEUTRAL")
+
+            # PRE-FILTER: Skip LONG signals against BEARISH trend
+            if decision == "LONG" and trend == "BEARISH":
+                self.log(f"{symbol}: LONG vs BEARISH trend - skipping")
+                decision = "WAIT"
+                analysis["decision"] = "WAIT"
+
+            # PRE-FILTER: Skip SHORT signals against BULLISH trend
+            if decision == "SHORT" and trend == "BULLISH":
+                self.log(f"{symbol}: SHORT vs BULLISH trend - skipping")
+                decision = "WAIT"
+                analysis["decision"] = "WAIT"
+
+            # Validate and adjust R:R ratio
+            if decision != "WAIT":
+                analysis = self._validate_and_adjust_rr(
+                    analysis, market_data, symbol
+                )
+                decision = analysis.get("decision", "WAIT")
 
             # Collect result for detailed logging
             all_analysis_results.append({
@@ -270,3 +295,77 @@ Should this position be closed? Respond in JSON:
             )
 
         self.log("=" * 60)
+
+    def _validate_and_adjust_rr(
+        self, analysis: dict[str, Any], market_data: dict[str, Any], symbol: str
+    ) -> dict[str, Any]:
+        """
+        Validate and adjust Risk:Reward ratio.
+        If R:R < 1.5:1, try to adjust TP. If impossible, set decision to WAIT.
+        """
+        entry = analysis.get("entry_price")
+        sl = analysis.get("stop_loss")
+        tp = analysis.get("take_profit")
+        decision = analysis.get("decision", "WAIT")
+
+        if not all([entry, sl, tp]) or entry <= 0:
+            return analysis
+
+        # Calculate current R:R
+        if decision == "LONG":
+            sl_distance = entry - sl
+            tp_distance = tp - entry
+        else:  # SHORT
+            sl_distance = sl - entry
+            tp_distance = entry - tp
+
+        if sl_distance <= 0:
+            self.log(f"{symbol}: Invalid SL distance ({sl_distance}), skipping")
+            analysis["decision"] = "WAIT"
+            return analysis
+
+        # Calculate SL distance percentage
+        sl_pct = abs(sl_distance / entry) * 100
+        if sl_pct < self.MIN_SL_DISTANCE_PCT:
+            # Adjust SL to minimum distance
+            if decision == "LONG":
+                new_sl = entry * (1 - self.MIN_SL_DISTANCE_PCT / 100)
+                sl_distance = entry - new_sl
+            else:
+                new_sl = entry * (1 + self.MIN_SL_DISTANCE_PCT / 100)
+                sl_distance = new_sl - entry
+            self.log(
+                f"{symbol}: SL too tight ({sl_pct:.1f}%), "
+                f"adjusted to {self.MIN_SL_DISTANCE_PCT}%"
+            )
+            analysis["stop_loss"] = new_sl
+
+        # Calculate R:R ratio
+        rr_ratio = tp_distance / sl_distance if sl_distance > 0 else 0
+
+        if rr_ratio < self.MIN_RR_RATIO:
+            # Try to adjust TP to meet minimum R:R
+            required_tp_distance = sl_distance * self.MIN_RR_RATIO
+
+            if decision == "LONG":
+                new_tp = entry + required_tp_distance
+            else:  # SHORT
+                new_tp = entry - required_tp_distance
+
+            # Validate new TP is reasonable (not more than 10% from entry)
+            tp_pct = abs(required_tp_distance / entry) * 100
+            if tp_pct > 10:
+                self.log(
+                    f"{symbol}: R:R={rr_ratio:.2f} too low, required TP ({tp_pct:.1f}%) "
+                    f"exceeds 10% limit - skipping"
+                )
+                analysis["decision"] = "WAIT"
+                return analysis
+
+            self.log(
+                f"{symbol}: R:R adjusted from {rr_ratio:.2f}:1 to {self.MIN_RR_RATIO}:1 "
+                f"(TP: {tp:.6f} -> {new_tp:.6f})"
+            )
+            analysis["take_profit"] = new_tp
+
+        return analysis

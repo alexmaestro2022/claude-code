@@ -3,7 +3,7 @@
     "stats": {
       "trades_this_hour": 0,
       "trades_today": 0,
-      "last_hour_reset": "2026-01-27 06:57:56.109734",
+      "last_hour_reset": "2026-01-27 08:59:56.684117",
       "last_day_reset": "2026-01-27"
     },
     "config": {
@@ -16,6 +16,6 @@
     },
     "running": false
   },
-  "saved_at": "2026-01-27T07:14:31.172883",
+  "saved_at": "2026-01-27T09:37:42.161963",
   "version": "2.0"
 }

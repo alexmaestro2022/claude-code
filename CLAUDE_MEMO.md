@@ -1413,6 +1413,60 @@ async def validate_trade(self, opportunity: dict) -> dict:
 
 ---
 
-**Последнее обновление:** 2026-01-27 (fix: AI Trade не открывал сделки - validate_trade + R/R ratio)
+## 31. ИСПРАВЛЕНИЕ 2026-01-27: Улучшение качества сигналов TRADER
+
+### Проблема:
+TRADER генерировал сигналы которые REVIEWER отклонял из-за:
+1. R/R ratio ниже 1.5:1 (1.2-1.4)
+2. LONG против BEARISH тренда
+3. Слишком близкий Stop Loss (2-2.5%)
+
+### Решение — Pre-filtering в trader.py:
+
+**1. Фильтр направления тренда:**
+```python
+# PRE-FILTER: Skip LONG signals against BEARISH trend
+if decision == "LONG" and trend == "BEARISH":
+    self.log(f"{symbol}: LONG vs BEARISH trend - skipping")
+    decision = "WAIT"
+
+# PRE-FILTER: Skip SHORT signals against BULLISH trend
+if decision == "SHORT" and trend == "BULLISH":
+    self.log(f"{symbol}: SHORT vs BULLISH trend - skipping")
+    decision = "WAIT"
+```
+
+**2. Валидация и автокорректировка R:R ratio:**
+```python
+MIN_RR_RATIO = 1.5  # Минимальный R:R
+MIN_SL_DISTANCE_PCT = 2.0  # Минимальный SL 2%
+
+def _validate_and_adjust_rr(analysis, market_data, symbol):
+    # 1. Проверяет SL distance >= 2%
+    # 2. Если SL слишком близко — корректирует
+    # 3. Вычисляет R:R ratio
+    # 4. Если R:R < 1.5 — корректирует TP
+    # 5. Если корректировка TP > 10% — отклоняет сигнал
+```
+
+**3. Логирование корректировок:**
+```
+[TRADER] SKR/USDT: SL too tight (1.5%), adjusted to 2.0%
+[TRADER] SKR/USDT: R:R adjusted from 1.2:1 to 1.5:1 (TP: 0.0248 -> 0.0256)
+[TRADER] ENSO/USDT: LONG vs BEARISH trend - skipping
+```
+
+### Файлы:
+- `aila/ai_trade/agents/trader.py` — добавлены `MIN_RR_RATIO`, `MIN_SL_DISTANCE_PCT`, `_validate_and_adjust_rr()`
+
+### Результат:
+- Сигналы с R:R < 1.5 автоматически корректируются или отклоняются
+- LONG vs BEARISH / SHORT vs BULLISH отсекаются до отправки в REVIEWER
+- REVIEWER получает только качественные сигналы
+- Меньше ненужных вызовов Claude API (экономия токенов)
+
+---
+
+**Последнее обновление:** 2026-01-27 (improve: better SL/TP calculation and trend filter in TRADER)
 **Текущая версия:** v2.2.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
