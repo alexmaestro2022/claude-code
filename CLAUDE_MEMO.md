@@ -64,6 +64,37 @@
 
 ---
 
+## 2.1 ⚠️ ПРАВИЛА РАБОТЫ С AI TRADE — ЗАПРЕЩЕНО МЕНЯТЬ БЕЗ СОГЛАСОВАНИЯ:
+
+### Параметры торговой стратегии:
+- `min_confidence` (порог уверенности) — config.py, autopilot_mode.py
+- `min_rr_ratio` (минимальный Risk/Reward 1.5:1) — reviewer.py
+- Веса индикаторов и их влияние на confidence
+- Логику расчёта confidence в TRADER
+- Логику REVIEWER (критерии одобрения/отклонения)
+- Логику RISK_GUARD (лимиты и вето)
+
+### Параметры риск-менеджмента (config.py):
+- `max_leverage`, `max_positions`, `max_risk_pct`
+- `max_daily_loss_pct`, `max_drawdown_pct`
+- `min_balance_usdt` ($10), `MIN_ORDER_SIZE_USDT` ($10 — лимит Bybit API)
+- Level benefits (бонусы за уровни) — knowledge_base.json
+
+### Параметры обучения (knowledge_base.py, learning_cycles.py):
+- XP rewards/penalties
+- Формулу повышения уровня (×1.3 каждый уровень)
+- Логику MENTOR и ANALYST
+
+### ✅ Можно менять БЕЗ согласования:
+- Исправление багов (неработающий код)
+- Добавление логирования
+- UI/интерфейс
+- Новый функционал (по запросу пользователя)
+
+### 🚨 ПРАВИЛО: Перед любым изменением торговой логики — СПРОСИТЬ ПОЛЬЗОВАТЕЛЯ!
+
+---
+
 ## 3. Инфраструктура
 
 | Компонент | Значение |
@@ -1325,6 +1356,6 @@ async def _refresh_instruments() -> list[str]:
 
 ---
 
-**Последнее обновление:** 2026-01-27 (fix modified_opportunity key bug in autopilot_mode.py)
+**Последнее обновление:** 2026-01-27 (add AI Trade protection rules to CLAUDE_MEMO)
 **Текущая версия:** v2.2.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
