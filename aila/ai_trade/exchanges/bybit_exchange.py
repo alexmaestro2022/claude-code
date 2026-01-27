@@ -142,6 +142,9 @@ class BybitExchange(BaseExchange):
         self, symbol: str, timeframe: str = "15", limit: int = 100
     ) -> list[list]:
         """Fetch OHLCV candle data (ccxt-compatible format)."""
+        # Convert symbol from ccxt format (BTC/USDT) to Bybit format (BTCUSDT)
+        bybit_symbol = symbol.replace("/", "")
+
         # Convert timeframe to Bybit interval format
         interval_map = {
             "1m": "1", "3m": "3", "5m": "5", "15m": "15", "30m": "30",
@@ -152,7 +155,7 @@ class BybitExchange(BaseExchange):
 
         result = self._client.get_kline(
             category="linear",
-            symbol=symbol,
+            symbol=bybit_symbol,
             interval=interval,
             limit=limit,
         )

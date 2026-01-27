@@ -45,6 +45,11 @@ class TraderAgent(BaseAgent):
 
         best_opportunity = None
         best_confidence = 0
+        # Collect all analysis results for detailed logging
+        all_analysis_results: list[dict] = []
+
+        skipped_no_data = 0
+        skipped_api_error = 0
 
         for pair_info in pairs[:10]:  # Analyze top 10
             symbol = pair_info["symbol"]
@@ -52,6 +57,7 @@ class TraderAgent(BaseAgent):
             # Get detailed market data
             market_data = await self.scanner.get_market_data(symbol)
             if not market_data:
+                skipped_no_data += 1
                 continue
 
             # Get knowledge context for this pair
@@ -63,13 +69,21 @@ class TraderAgent(BaseAgent):
             )
 
             if "error" in analysis:
+                skipped_api_error += 1
                 self.log(f"Analysis error for {symbol}: {analysis['error']}", "error")
                 continue
 
             decision = analysis.get("decision", "WAIT")
             confidence = analysis.get("confidence", 0)
 
-            self.log(f"{symbol}: {decision} (confidence={confidence}%)")
+            # Collect result for detailed logging
+            all_analysis_results.append({
+                "symbol": symbol,
+                "decision": decision,
+                "confidence": confidence,
+                "market_data": market_data,
+                "reasoning": analysis.get("reasoning", ""),
+            })
 
             if decision != "WAIT" and confidence >= self.min_confidence:
                 if confidence > best_confidence:
@@ -89,6 +103,13 @@ class TraderAgent(BaseAgent):
                         "expected_duration": analysis.get("expected_duration", "1h"),
                         "market_data": market_data,
                     }
+
+        # Log statistics
+        if skipped_no_data > 0 or skipped_api_error > 0:
+            self.log(f"Skipped: {skipped_no_data} no data, {skipped_api_error} API errors")
+
+        # Log detailed analysis for top 5 pairs by confidence
+        self._log_top_pairs_analysis(all_analysis_results)
 
         if best_opportunity:
             # Enrich with whale and news context if orchestrator available
@@ -192,3 +213,60 @@ Should this position be closed? Respond in JSON:
 """
         result = await self.claude_client.analyze(prompt)
         return result
+
+    def _log_top_pairs_analysis(self, results: list[dict]) -> None:
+        """Log detailed analysis for top 5 pairs by confidence."""
+        self.log(f"Analysis completed for {len(results)} pairs")
+        if not results:
+            self.log("No pairs passed analysis (check market_data or Claude API)")
+            return
+
+        # Sort by confidence descending
+        sorted_results = sorted(results, key=lambda x: x["confidence"], reverse=True)
+        top_5 = sorted_results[:5]
+
+        self.log("=" * 60)
+        self.log("TOP 5 PAIRS ANALYSIS:")
+
+        for r in top_5:
+            symbol = r["symbol"]
+            md = r["market_data"]
+            confidence = r["confidence"]
+            decision = r["decision"]
+
+            # Format indicator values
+            ema50 = md.get("ema50")
+            ema200 = md.get("ema200")
+            rsi = md.get("rsi")
+            atr = md.get("atr")
+            trend = md.get("trend", "UNKNOWN")
+            price = md.get("price")
+
+            # Format values for logging
+            ema50_str = f"{ema50:.4f}" if ema50 else "N/A"
+            ema200_str = f"{ema200:.4f}" if ema200 else "N/A"
+            rsi_str = f"{rsi:.1f}" if rsi else "N/A"
+            atr_str = f"{atr:.6f}" if atr else "N/A"
+            price_str = f"{price:.4f}" if price else "N/A"
+
+            # Determine rejection reason
+            status = "ACCEPTED" if confidence >= self.min_confidence and decision != "WAIT" else "rejected"
+            if status == "rejected":
+                if decision == "WAIT":
+                    reason = "no clear signal"
+                elif confidence < self.min_confidence:
+                    reason = f"below threshold ({self.min_confidence}%)"
+                else:
+                    reason = "unknown"
+                status_str = f"rejected: {reason}"
+            else:
+                status_str = f"ACCEPTED for {decision}"
+
+            # Log detailed line
+            self.log(
+                f"{symbol}: price={price_str}, EMA50={ema50_str}, EMA200={ema200_str}, "
+                f"RSI={rsi_str}, ATR={atr_str}, trend={trend}, "
+                f"decision={decision}, confidence={confidence}% ({status_str})"
+            )
+
+        self.log("=" * 60)

@@ -169,6 +169,7 @@ class MarketScanner:
         try:
             ohlcv = await self._exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
             if not ohlcv or len(ohlcv) < 20:
+                logger.warning(f"Insufficient data for {symbol}: got {len(ohlcv) if ohlcv else 0} candles")
                 return {}
 
             closes = [c[4] for c in ohlcv]
@@ -200,7 +201,7 @@ class MarketScanner:
             return result
 
         except Exception as e:
-            logger.error(f"Error getting market data for {symbol}: {e}")
+            logger.error(f"Error getting market data for {symbol}: {type(e).__name__}: {e}")
             return {}
 
     def _filter_pairs(
