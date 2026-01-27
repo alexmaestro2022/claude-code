@@ -150,7 +150,7 @@ class AutopilotMode:
             return None
 
         if review.get('decision') == 'MODIFY':
-            opportunity = review.get('modified', opportunity)
+            opportunity = review.get('modified_opportunity', opportunity)
 
         risk_check = await self._orchestrator.risk_guard.validate_trade(opportunity)
         if not risk_check.get('approved'):

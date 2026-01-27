@@ -61,7 +61,7 @@ Trend: {opportunity.get('market_data', {}).get('trend')}
 
 ## REVIEW CHECKLIST
 1. Is the direction consistent with the trend?
-2. Is the risk/reward ratio acceptable (min 1.5:1)?
+2. Is the risk/reward ratio acceptable (min 1.0:1)?
 3. Is the stop loss reasonable (not too tight, not too wide)?
 4. Is the leverage appropriate for the volatility?
 5. Is the position size within safe limits?
