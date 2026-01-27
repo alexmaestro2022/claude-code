@@ -95,7 +95,7 @@ Find patterns and respond in JSON:
     "overall_assessment": "summary"
 }}
 """
-        result = await self.claude_client.analyze(prompt)
+        result = await self.claude_client.analyze(prompt, use_haiku=True)
 
         if "error" not in result:
             self.log(f"Pattern analysis complete: {result.get('overall_assessment', '')}")

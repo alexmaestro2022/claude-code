@@ -63,7 +63,7 @@ ANALYZE AND RESPOND IN JSON:
     "risk_adjustment": "increase" | "decrease" | "maintain"
 }}
 """
-        result = await self.claude_client.analyze(prompt)
+        result = await self.claude_client.analyze(prompt, use_haiku=True)
 
         if "error" not in result:
             self.log(f"Daily review: Grade={result.get('grade')}")
@@ -108,7 +108,7 @@ Explain briefly and respond in JSON:
     "xp_penalty": -5 to -30
 }}
 """
-        result = await self.claude_client.analyze(prompt)
+        result = await self.claude_client.analyze(prompt, use_haiku=True)
 
         if "error" not in result:
             # Add new rule if provided
@@ -185,7 +185,7 @@ Respond in JSON:
     "motivation": "motivational message for the trader"
 }}
 """
-        result = await self.claude_client.analyze(prompt)
+        result = await self.claude_client.analyze(prompt, use_haiku=True)
 
         if "error" not in result:
             self.log(f"Weekly training: Grade={result.get('weekly_grade')}, Focus={result.get('training_focus')}")

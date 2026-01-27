@@ -2,7 +2,8 @@ import os
 
 # Anthropic API
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
-CLAUDE_MODEL = "claude-sonnet-4-20250514"
+CLAUDE_MODEL = "claude-sonnet-4-20250514"  # For critical agents (TRADER, REVIEWER)
+CLAUDE_MODEL_HAIKU = "claude-haiku-4-5-20251001"  # For non-critical agents (NEWS, MENTOR, ANALYST)
 
 # Hard risk limits (AI cannot override these)
 RISK_LIMITS = {

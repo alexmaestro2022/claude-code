@@ -34,7 +34,7 @@ class NewsAgent(BaseAgent):
             knowledge_base=knowledge_base,
             log_path="/opt/aila/logs/ai_trade/news.log",
         )
-        self._cache = TTLCache(default_ttl=60.0)
+        self._cache = TTLCache(default_ttl=300.0)  # Increased from 60s to 5min
         self._session: Optional[aiohttp.ClientSession] = None
 
     async def _get_session(self) -> aiohttp.ClientSession:
@@ -79,11 +79,11 @@ Respond in JSON:
 {{"sentiment": "bullish"|"bearish"|"neutral", "impact_score": 1-10,
 "affected_pairs": ["BTCUSDT"], "reaction_time": "immediate"|"hours"|"days",
 "recommended_action": "buy"|"sell"|"wait"|"close_positions"}}"""
-        return await self.claude_client.analyze(prompt)
+        return await self.claude_client.analyze(prompt, use_haiku=True)
 
     async def get_market_sentiment(self) -> dict[str, Any]:
         """Overall market sentiment from Fear & Greed + AI."""
-        cached = self._cache.get("market_sentiment", ttl=300.0)
+        cached = self._cache.get("market_sentiment", ttl=600.0)  # Increased from 300s to 10min
         if cached is not None:
             return cached
 
@@ -96,7 +96,7 @@ Respond in JSON:
 {{"overall_sentiment": "extreme_fear"|"fear"|"neutral"|"greed"|"extreme_greed",
 "sentiment_score": 0-100, "risk_level": "low"|"medium"|"high"|"extreme"}}"""
 
-        result = await self.claude_client.analyze(prompt)
+        result = await self.claude_client.analyze(prompt, use_haiku=True)
         if "error" not in result:
             self._cache.set("market_sentiment", result)
             self.log(f"Market sentiment: {result.get('overall_sentiment')}")
@@ -126,7 +126,7 @@ Respond in JSON:
     async def get_pair_sentiment(self, pair: str) -> dict[str, Any]:
         """Sentiment analysis for a specific pair."""
         cache_key = f"pair_sentiment:{pair}"
-        cached = self._cache.get(cache_key, ttl=120.0)
+        cached = self._cache.get(cache_key, ttl=300.0)  # Increased from 120s to 5min
         if cached is not None:
             return cached
 
@@ -146,7 +146,7 @@ Respond in JSON:
 {{"pair": "{pair}", "sentiment": "very_bearish"|"bearish"|"neutral"|"bullish"|"very_bullish",
 "sentiment_score": -100 to +100, "news_impact": "positive"|"negative"|"neutral"|"no_news"}}"""
 
-        result = await self.claude_client.analyze(prompt)
+        result = await self.claude_client.analyze(prompt, use_haiku=True)
         if "error" not in result:
             self._cache.set(cache_key, result)
             self.log(f"{pair} sentiment: {result.get('sentiment')}")

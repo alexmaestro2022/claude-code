@@ -24,7 +24,7 @@ class PredictorAgent(BaseAgent):
             log_path="/opt/aila/logs/ai_trade/predictor.log",
         )
         self.scanner = scanner
-        self._cache = TTLCache(default_ttl=30.0)
+        self._cache = TTLCache(default_ttl=180.0)  # Increased from 30s to 3min
 
     async def think(self, context: dict[str, Any]) -> dict[str, Any]:
         """Process prediction context."""
@@ -41,7 +41,7 @@ class PredictorAgent(BaseAgent):
     ) -> dict[str, Any]:
         """Predict price movement for a pair."""
         cache_key = f"predict:{pair}:{timeframe}"
-        cached = self._cache.get(cache_key, ttl=30.0)
+        cached = self._cache.get(cache_key, ttl=180.0)
         if cached is not None:
             return cached
 
@@ -88,7 +88,7 @@ Respond in JSON only:
     async def detect_reversal(self, pair: str) -> dict[str, Any]:
         """Detect trend reversal probability."""
         cache_key = f"reversal:{pair}"
-        cached = self._cache.get(cache_key, ttl=30.0)
+        cached = self._cache.get(cache_key, ttl=180.0)
         if cached is not None:
             return cached
 

@@ -28,7 +28,7 @@ from .autopilot_mode import AutopilotMode
 from .scaling_manager import ScalingManager
 from .exchanges.multi_exchange import MultiExchangeManager
 from .exchanges.bybit_exchange import BybitExchange
-from .claude_client import ClaudeClient
+from .claude_client import ClaudeClient, get_api_usage
 from .knowledge_base import KnowledgeBase
 from .market_scanner import MarketScanner
 from .risk_manager import RiskManager
@@ -628,3 +628,7 @@ class AgentOrchestrator:
     def get_persistence_status(self) -> dict[str, Any]:
         """Get persistence system status."""
         return self._persistence.get_status()
+
+    def get_api_usage_stats(self) -> dict[str, Any]:
+        """Get Claude API usage statistics for cost monitoring."""
+        return get_api_usage()

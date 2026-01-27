@@ -29,7 +29,7 @@ class WhaleTrackerAgent(BaseAgent):
             log_path="/opt/aila/logs/ai_trade/whale_tracker.log",
         )
         self.exchange = exchange
-        self._cache = TTLCache(default_ttl=60.0)
+        self._cache = TTLCache(default_ttl=300.0)  # Increased from 60s to 5min
         self._session: Optional[aiohttp.ClientSession] = None
 
     async def _get_session(self) -> aiohttp.ClientSession:
@@ -180,7 +180,7 @@ Respond in JSON:
     async def get_whale_signal(self, pair: str, market_data: Optional[dict[str, Any]] = None) -> dict[str, Any]:
         """Combined whale signal from all sources (parallel)."""
         cache_key = f"whale_signal:{pair}"
-        cached = self._cache.get(cache_key, ttl=60.0)
+        cached = self._cache.get(cache_key, ttl=300.0)  # Increased from 60s to 5min
         if cached is not None:
             return cached
 
