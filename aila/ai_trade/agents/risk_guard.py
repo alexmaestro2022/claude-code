@@ -57,11 +57,14 @@ class RiskGuardAgent(BaseAgent):
             adjustments["position_size_pct"] = RISK_LIMITS["max_position_size_pct"]
             issues.append(f"Position size {position_pct}% exceeds max {RISK_LIMITS['max_position_size_pct']}%")
 
-        # 2. Balance checks
-        if balance < RISK_LIMITS["min_balance_usdt"]:
-            self.log(f"VETO: Balance ${balance} below minimum", "warning")
-            self._record_veto(opportunity, "Insufficient balance")
-            return {"approved": False, "reason": f"Balance ${balance:.2f} below min ${RISK_LIMITS['min_balance_usdt']}"}
+        # 2. Balance checks (with leverage consideration)
+        # With leverage, we need less margin: min_margin = min_order_size / leverage
+        min_order_size = RISK_LIMITS["min_balance_usdt"]  # $10 min order size (Bybit limit)
+        min_margin_needed = min_order_size / max(leverage, 1)
+        if balance < min_margin_needed:
+            self.log(f"VETO: Balance ${balance:.2f} below min margin ${min_margin_needed:.2f}", "warning")
+            self._record_veto(opportunity, "Insufficient margin")
+            return {"approved": False, "reason": f"Balance ${balance:.2f} below min margin ${min_margin_needed:.2f} (${min_order_size} order/{leverage}x)"}
 
         # 3. Daily loss check
         risk_status = self.risk_manager.get_status()

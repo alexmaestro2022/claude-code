@@ -1617,6 +1617,54 @@ analysis["_rejection_reason"] = "LONG vs BEARISH trend"
 
 ---
 
-**Последнее обновление:** 2026-01-27 (feat: add Claude API usage widget to AI Trade main screen)
+## 32. ИСПРАВЛЕНИЕ 2026-01-27: Balance check с учётом leverage + дублирование сканов
+
+### Проблема 1: RISK_GUARD блокировал сделки при достаточном балансе
+```
+VETO: Balance $8.72 below minimum $10
+```
+При балансе $8.72 и leverage 2x, минимальная маржа = $10 / 2 = $5. Баланса хватало!
+
+### Проблема 2: Двойное сканирование
+Каждый цикл сканирования выполнялся дважды — Observer и Autopilot работали параллельно.
+
+### Исправления:
+
+**1. risk_guard.py** — balance check с учётом leverage:
+```python
+# Было:
+if balance < RISK_LIMITS["min_balance_usdt"]:  # $10
+    return VETO
+
+# Стало:
+min_order_size = RISK_LIMITS["min_balance_usdt"]  # $10 min order (Bybit limit)
+min_margin_needed = min_order_size / max(leverage, 1)  # With leverage
+if balance < min_margin_needed:
+    return VETO
+```
+
+**2. autopilot_mode.py и observer_mode.py** — защита от дублирования:
+```python
+async def start(self):
+    # Prevent duplicate starts
+    if self._running:
+        logger.warning("Already running, ignoring start request")
+        return
+    ...
+```
+
+### Результат:
+- Баланс $8.72 с leverage 2x: min_margin = $10/2 = $5 → $8.72 > $5 ✅
+- Один режим не может запуститься дважды
+- Observer и Autopilot не работают параллельно
+
+### Файлы изменены:
+- `aila/ai_trade/agents/risk_guard.py`
+- `aila/ai_trade/autopilot_mode.py`
+- `aila/ai_trade/observer_mode.py`
+
+---
+
+**Последнее обновление:** 2026-01-27 (fix: RISK_GUARD balance check with leverage + stop duplicate scans)
 **Текущая версия:** v2.2.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`

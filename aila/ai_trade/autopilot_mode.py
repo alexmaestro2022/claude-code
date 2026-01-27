@@ -55,6 +55,11 @@ class AutopilotMode:
 
     async def start(self) -> dict[str, Any]:
         """Start autopilot mode."""
+        # Prevent duplicate starts
+        if self._running:
+            logger.warning("Autopilot already running, ignoring start request")
+            return {'status': 'already_running', 'mode': 'AUTOPILOT'}
+
         # Stop observer if running to prevent duplicate scans
         if hasattr(self._orchestrator, 'observer') and self._orchestrator.observer._running:
             await self._orchestrator.observer.stop()
