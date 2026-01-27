@@ -3,8 +3,8 @@
     "stats": {
       "trades_this_hour": 0,
       "trades_today": 0,
-      "last_hour_reset": "2026-01-26 22:59:02.813471",
-      "last_day_reset": "2026-01-26"
+      "last_hour_reset": "2026-01-27 06:57:56.109734",
+      "last_day_reset": "2026-01-27"
     },
     "config": {
       "scan_interval_seconds": 60,
@@ -14,8 +14,8 @@
       "cooldown_after_loss_minutes": 30,
       "require_multiple_confirmations": true
     },
-    "running": true
+    "running": false
   },
-  "saved_at": "2026-01-26T22:59:57.101996",
+  "saved_at": "2026-01-27T07:14:31.172883",
   "version": "2.0"
 }

@@ -54,30 +54,6 @@
             visibility: visible;
             opacity: 1;
         }
-        /* Language switcher */
-        .lang-switcher {
-            display: flex;
-            gap: 4px;
-            background: rgba(0, 0, 0, 0.3);
-            padding: 4px;
-            border-radius: 6px;
-        }
-        .lang-btn {
-            padding: 4px 10px;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            color: #6b7280;
-            background: transparent;
-            border: none;
-        }
-        .lang-btn:hover { color: #9ca3af; }
-        .lang-btn.active {
-            background: rgba(0, 255, 136, 0.2);
-            color: #00ff88;
-        }
         .card { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); }
         .glow { box-shadow: 0 0 20px rgba(0, 255, 136, 0.3); }
         .pulse { animation: pulse 2s infinite; }
@@ -262,10 +238,6 @@
                 <p class="text-gray-400">Autonomous Intelligent Learning Algorithm</p>
             </div>
             <div class="flex gap-3 items-center">
-                <div class="lang-switcher">
-                    <button class="lang-btn" id="lang-ru" onclick="setLanguage('ru')">RU</button>
-                    <button class="lang-btn" id="lang-en" onclick="setLanguage('en')">EN</button>
-                </div>
                 <button class="settings-btn" onclick="openSettingsModal()" data-i18n="settings">
                     <i class="fa-solid fa-gear"></i> <span data-i18n="settings">Settings</span>
                 </button>
@@ -586,23 +558,27 @@
             }
         };
 
-        let currentLang = localStorage.getItem('aila_language') || 'ru';
+        // Get language from main bot's settings (same key as main.py)
+        function getLanguage() {
+            // Try localStorage first (same key as main bot)
+            let lang = localStorage.getItem('ailaLang');
+            if (lang) return lang;
+
+            // Fallback to cookie
+            const match = document.cookie.match(/ailaLang=([^;]+)/);
+            if (match) return match[1];
+
+            // Default to Russian
+            return 'ru';
+        }
+
+        let currentLang = getLanguage();
 
         function t(key) {
             return translations[currentLang][key] || translations['en'][key] || key;
         }
 
-        function setLanguage(lang) {
-            currentLang = lang;
-            localStorage.setItem('aila_language', lang);
-            applyLanguage();
-        }
-
         function applyLanguage() {
-            // Update language buttons
-            document.getElementById('lang-ru').classList.toggle('active', currentLang === 'ru');
-            document.getElementById('lang-en').classList.toggle('active', currentLang === 'en');
-
             // Update all elements with data-i18n
             document.querySelectorAll('[data-i18n]').forEach(el => {
                 const key = el.getAttribute('data-i18n');
@@ -950,9 +926,9 @@
         updateDashboard();
         setInterval(updateDashboard, 30000);
 
-        // Listen for language changes from other tabs/windows
+        // Listen for language changes from main bot (other tabs/windows)
         window.addEventListener('storage', function(e) {
-            if (e.key === 'aila_language') {
+            if (e.key === 'ailaLang') {
                 currentLang = e.newValue || 'ru';
                 applyLanguage();
             }

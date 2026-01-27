@@ -1018,6 +1018,7 @@ STRATEGY_EVOLUTION (генетические алгоритмы, оптимиз�
 - **Endpoints**: status, agents, profile, portfolio, opportunities, market-context, prediction, sentiment, whale, capital, health, evolution, logs, settings, mode
 - **Кнопки режимов**: OBSERVER/AUTOPILOT с иконками (fa-eye/fa-robot), активный режим выделен цветом
 - **Подтверждение AUTOPILOT**: модальное окно с предупреждением перед включением автоторговли
+- **Локализация RU/EN**: читает язык из localStorage/cookie `ailaLang` (синхронизация с основным ботом)
 - **Settings Panel** (добавлено 2026-01-26): кнопка "Settings" в хедере, модальное окно со ВСЕМИ параметрами:
   - Trading: min_confidence, scan_interval, top_pairs_count, min_volume_24h, volatility range
   - Risk Limits: max_leverage, max_position_pct, max_daily_loss_pct, max_drawdown_pct, min_balance
@@ -1356,6 +1357,6 @@ async def _refresh_instruments() -> list[str]:
 
 ---
 
-**Последнее обновление:** 2026-01-27 (add RU/EN localization and parameter tooltips to AI Trade UI)
+**Последнее обновление:** 2026-01-27 (sync AI Trade language with main bot settings)
 **Текущая версия:** v2.2.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
