@@ -529,6 +529,8 @@ class ClaudeClient:
 - Prefer pairs with high volume (>$10M daily)
 - Check for trend alignment (price vs EMA50 vs EMA200)
 - Consider volatility (ATR) for stop loss calculation
+- LONG: price > EMA50 > EMA200, RSI 40-70, trend=BULLISH
+- SHORT: price < EMA50 < EMA200, RSI 30-60, trend=BEARISH (SHORT is SELLING, profit when price DROPS)
 
 ## TASK
 Analyze all pairs and respond STRICTLY in JSON:
@@ -552,7 +554,8 @@ Analyze all pairs and respond STRICTLY in JSON:
 CRITICAL:
 - If NO pair has a good setup, choose "WAIT"
 - Better to miss a trade than lose money
-- Only choose LONG/SHORT if confidence >= 70%"""
+- Only choose LONG/SHORT if confidence >= 70%
+- Consider SHORT for BEARISH trends (downtrending pairs can be profitable!)"""
 
     @staticmethod
     def _build_market_prompt(
@@ -592,6 +595,8 @@ Indicators:
 2. Stop loss distance: minimum 3% from entry for volatile coins, 2% for stable
 3. Leverage: max 2x for meme/volatile coins, max 3x for major coins (BTC, ETH, BNB)
 4. Position size: 2-4% of capital
+5. LONG: price > EMA50 > EMA200, trend=BULLISH
+6. SHORT: price < EMA50 < EMA200, trend=BEARISH (profit when price DROPS)
 
 ## TASK
 Respond STRICTLY in JSON:

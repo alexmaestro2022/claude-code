@@ -1695,6 +1695,35 @@ async def start(self):
 
 ---
 
-**Последнее обновление:** 2026-01-27 (refactor: remove Observer mode, keep only Autopilot)
+## 34. SHORT позиции — улучшение промптов (2026-01-27)
+
+### Проблема:
+- Код полностью поддерживал SHORT, но Claude (trader AI) генерировал только LONG сигналы
+- Даже для BEARISH пар возвращал LONG → блокировался проверкой тренда
+
+### Диагностика:
+| Компонент | LONG | SHORT |
+|-----------|------|-------|
+| Claude Prompt | ✅ | ✅ |
+| trader.py | ✅ | ✅ |
+| autopilot_mode.py | ✅ | ✅ |
+| risk_guard.py | ✅ | ✅ |
+| position_manager.py | ✅ | ✅ |
+| bybit_exchange.py | ✅ | ✅ |
+
+### Решение:
+Добавлено в промпты `claude_client.py`:
+```
+- LONG: price > EMA50 > EMA200, RSI 40-70, trend=BULLISH
+- SHORT: price < EMA50 < EMA200, RSI 30-60, trend=BEARISH (profit when price DROPS)
+- Consider SHORT for BEARISH trends (downtrending pairs can be profitable!)
+```
+
+### Файлы изменены:
+- `aila/ai_trade/claude_client.py` — улучшены промпты для SHORT
+
+---
+
+**Последнее обновление:** 2026-01-27 (feat: improve SHORT signal prompts)
 **Текущая версия:** v2.3.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
