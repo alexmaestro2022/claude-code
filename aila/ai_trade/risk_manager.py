@@ -41,9 +41,12 @@ class RiskManager:
         if balance > self.peak_balance:
             self.peak_balance = balance
 
-        # Check minimum balance
-        if balance < self._limits["min_balance_usdt"]:
-            return {"approved": False, "reason": f"Balance ${balance} below min ${self._limits['min_balance_usdt']}"}
+        # Check minimum balance considering leverage
+        # With leverage, we only need margin = min_order_size / leverage
+        leverage = signal.get("leverage", 5)
+        min_margin_needed = self._limits["min_balance_usdt"] / leverage
+        if balance < min_margin_needed:
+            return {"approved": False, "reason": f"Balance ${balance:.2f} below min margin ${min_margin_needed:.2f} (for ${self._limits['min_balance_usdt']} order with {leverage}x)"}
 
         # Check max open positions
         if self.open_positions_count >= self._limits["max_open_positions"]:

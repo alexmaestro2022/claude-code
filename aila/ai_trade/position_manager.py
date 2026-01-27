@@ -40,10 +40,13 @@ class PositionManager:
             position_size_usdt = signal.get("position_size_usdt", 0)
 
             # Enforce minimum order size for Bybit
+            # Bybit requires min $10 position size, but margin = position_size / leverage
             if position_size_usdt < MIN_ORDER_SIZE_USDT:
+                # Calculate required margin for minimum order
+                required_margin = MIN_ORDER_SIZE_USDT / leverage
                 logger.info(
                     f"Calculated size: ${position_size_usdt:.2f}, "
-                    f"using minimum: ${MIN_ORDER_SIZE_USDT}"
+                    f"using minimum: ${MIN_ORDER_SIZE_USDT} (margin: ${required_margin:.2f} with {leverage}x)"
                 )
                 position_size_usdt = MIN_ORDER_SIZE_USDT
                 signal["position_size_usdt"] = position_size_usdt
