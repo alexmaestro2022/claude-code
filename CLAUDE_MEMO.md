@@ -993,11 +993,31 @@ STRATEGY_EVOLUTION (генетические алгоритмы, оптимиз�
 - Логи: `/opt/aila/logs/ai_trade.log`
 - Логи агентов: `/opt/aila/logs/ai_trade/{agent}.log` (включая hedge_master.log)
 
-### Claude API:
-- Модель: `claude-sonnet-4-20250514`
-- API ключ: переменная `ANTHROPIC_API_KEY` в `/opt/aila/.env`
-- **Используется агентами:** TRADER (анализ), MENTOR, RESEARCHER, PREDICTOR, NEWS, WHALE_TRACKER
-- **ВАЖНО:** Ключ НЕ хранится в репозитории, только в .env на сервере
+### Claude API (ОПТИМИЗАЦИЯ 2026-01-27):
+**Модели:**
+- `claude-sonnet-4-20250514` — критичные агенты (TRADER, REVIEWER, PREDICTOR, WHALE_TRACKER, WAR_ROOM)
+- `claude-haiku-4-5-20251001` — вспомогательные агенты (NEWS, MENTOR, ANALYST)
+
+**Оптимизация batch-анализа:**
+- TRADER: вместо 10 отдельных запросов → **1 batch-запрос со всеми 50 парами**
+- Экономия: ~90% снижение стоимости Claude API
+
+**Кэширование (увеличенный TTL):**
+- WHALE_TRACKER: 60s → **300s (5 мин)**
+- NEWS pair_sentiment: 120s → **300s (5 мин)**
+- NEWS market_sentiment: 300s → **600s (10 мин)**
+- PREDICTOR: 30s → **180s (3 мин)**
+
+**Счётчик API:**
+- `get_api_usage()` в `claude_client.py` — статистика вызовов и стоимости
+- API endpoint: `GET /api/ai-trade/status` включает `api_usage` с подсчётом cost per hour
+
+**Файлы:**
+- `claude_client.py` — batch_analyze_market(), APIUsageCounter, use_haiku параметр
+- `config.py` — CLAUDE_MODEL_HAIKU
+- `orchestrator.py` — get_api_usage_stats()
+
+**ВАЖНО:** Ключ НЕ хранится в репозитории, только в .env на сервере
 
 ### Telegram уведомления AI Trade:
 - Bot: `@aila_ai_trade_bot`
