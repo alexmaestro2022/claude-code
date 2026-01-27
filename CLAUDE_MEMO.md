@@ -1017,6 +1017,14 @@ STRATEGY_EVOLUTION (генетические алгоритмы, оптимиз�
 - `config.py` — CLAUDE_MODEL_HAIKU
 - `orchestrator.py` — get_api_usage_stats()
 
+**Мониторинг расходов API (добавлено 2026-01-27):**
+- Индикатор в хедере: показывает расход за день
+- Settings modal: секция "Claude API" с детальной статистикой
+- Файл данных: `/opt/aila/data/ai_trade/api_usage.json`
+- API endpoint: `GET /api/ai-trade/api-usage`
+- Лимиты: $5/день (warning), $100/месяц (warning)
+- Endpoint для изменения лимитов: `PUT /api/ai-trade/api-usage/limits`
+
 **ВАЖНО:** Ключ НЕ хранится в репозитории, только в .env на сервере
 
 ### Telegram уведомления AI Trade:
@@ -1586,6 +1594,6 @@ analysis["_rejection_reason"] = "LONG vs BEARISH trend"
 
 ---
 
-**Последнее обновление:** 2026-01-27 (fix: AUTOPILOT duplicate scans, last_scan_time, get_trader_profile)
+**Последнее обновление:** 2026-01-27 (feat: Claude API usage tracking + batch optimization)
 **Текущая версия:** v2.2.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
