@@ -399,7 +399,7 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
             <div class="card rounded-lg p-4">
                 <h2 class="text-xl font-bold mb-4" data-i18n="sentiment">Sentiment</h2>
                 <div id="sentiment"></div>
@@ -407,6 +407,16 @@
             <div class="card rounded-lg p-4">
                 <h2 class="text-xl font-bold mb-4" data-i18n="prediction_btc">Prediction BTC</h2>
                 <div id="prediction"></div>
+            </div>
+            <!-- Claude API Usage Widget -->
+            <div class="card rounded-lg p-4" id="api-usage-widget">
+                <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-robot text-purple-400"></i>
+                    <span data-i18n="claude_api_usage">Claude API</span>
+                </h2>
+                <div id="api-widget-content">
+                    <div class="text-gray-500 text-sm">Loading...</div>
+                </div>
             </div>
         </div>
 
@@ -499,6 +509,7 @@
                 capital: 'Капитал',
                 persistence: 'Сохранение',
                 api_usage: 'Claude API',
+                claude_api_usage: 'Claude API',
                 current_status: 'Текущий статус',
                 // API Usage
                 api_calls_today: 'Вызовов сегодня',
@@ -509,6 +520,13 @@
                 api_cost_per_hour: 'Стоимость/час',
                 api_warning_limit: 'Лимит предупр.',
                 api_top_consumers: 'Топ потребителей (сегодня)',
+                api_cost_week: 'Расход за неделю',
+                api_tokens: 'Токены',
+                api_budget: 'Бюджет',
+                api_budget_remaining: 'Осталось',
+                api_budget_warning: '⚠️ Превышено 80% бюджета!',
+                api_budget_exceeded: '🚨 Бюджет превышен!',
+                api_set_budget: 'Установить бюджет',
                 // Settings labels
                 min_confidence: 'Мин. уверенность',
                 scan_interval: 'Интервал сканирования',
@@ -616,6 +634,7 @@
                 capital: 'Capital',
                 persistence: 'Persistence',
                 api_usage: 'Claude API',
+                claude_api_usage: 'Claude API',
                 current_status: 'Current Status',
                 // API Usage
                 api_calls_today: 'Calls Today',
@@ -626,6 +645,13 @@
                 api_cost_per_hour: 'Cost/Hour',
                 api_warning_limit: 'Warning Limit',
                 api_top_consumers: 'Top consumers (today)',
+                api_cost_week: 'Week Cost',
+                api_tokens: 'Tokens',
+                api_budget: 'Budget',
+                api_budget_remaining: 'Remaining',
+                api_budget_warning: '⚠️ Over 80% of budget!',
+                api_budget_exceeded: '🚨 Budget exceeded!',
+                api_set_budget: 'Set Budget',
                 // Settings labels
                 min_confidence: 'Min Confidence',
                 scan_interval: 'Scan Interval',
@@ -1076,7 +1102,169 @@
             loadApiUsage();
         }
 
-        // ==================== API USAGE ====================
+        // ==================== API USAGE WIDGET ====================
+        async function updateApiUsageWidget() {
+            try {
+                const data = await fetchData('/api-usage');
+                if (!data) return;
+
+                const container = document.getElementById('api-widget-content');
+                if (!container) return;
+
+                const todayCost = data.today?.cost_usd || 0;
+                const todayCalls = data.today?.total_calls || 0;
+                const weekCost = data.week?.cost_usd || 0;
+                const budget = data.budget?.daily_budget_usd || 10;
+                const budgetPct = data.budget?.budget_used_pct || 0;
+                const budgetRemaining = data.budget?.budget_remaining_usd || budget;
+                const isWarning = data.budget?.warning_80pct || false;
+                const isOver = data.budget?.over_budget || false;
+
+                const sonnetCalls = data.today?.calls?.sonnet || 0;
+                const haikuCalls = data.today?.calls?.haiku || 0;
+                const totalInputTokens = (data.session?.input_tokens?.sonnet || 0) + (data.session?.input_tokens?.haiku || 0);
+                const totalOutputTokens = (data.session?.output_tokens?.sonnet || 0) + (data.session?.output_tokens?.haiku || 0);
+
+                // Determine progress bar color
+                let progressColor = 'bg-green-500';
+                let progressBg = 'bg-green-900/30';
+                if (isOver) {
+                    progressColor = 'bg-red-500';
+                    progressBg = 'bg-red-900/30';
+                } else if (isWarning) {
+                    progressColor = 'bg-yellow-500';
+                    progressBg = 'bg-yellow-900/30';
+                }
+
+                container.innerHTML = `
+                    <!-- Budget Progress Bar -->
+                    <div class="mb-4">
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-gray-400">${t('api_budget')}: $${budget.toFixed(2)}</span>
+                            <span class="${isOver ? 'text-red-400' : isWarning ? 'text-yellow-400' : 'text-green-400'}">
+                                ${budgetPct.toFixed(1)}%
+                            </span>
+                        </div>
+                        <div class="w-full h-3 ${progressBg} rounded-full overflow-hidden">
+                            <div class="${progressColor} h-full rounded-full transition-all duration-500"
+                                 style="width: ${Math.min(budgetPct, 100)}%"></div>
+                        </div>
+                        ${isOver ? `<div class="text-red-400 text-xs mt-1 animate-pulse">${t('api_budget_exceeded')}</div>` : ''}
+                        ${isWarning && !isOver ? `<div class="text-yellow-400 text-xs mt-1">${t('api_budget_warning')}</div>` : ''}
+                    </div>
+
+                    <!-- Stats Grid -->
+                    <div class="grid grid-cols-2 gap-3 text-sm">
+                        <div class="bg-gray-800/50 rounded p-2">
+                            <div class="text-gray-400 text-xs">${t('api_cost_today')}</div>
+                            <div class="text-xl font-bold ${isOver ? 'text-red-400' : isWarning ? 'text-yellow-400' : 'text-green-400'}">
+                                $${todayCost.toFixed(2)}
+                            </div>
+                        </div>
+                        <div class="bg-gray-800/50 rounded p-2">
+                            <div class="text-gray-400 text-xs">${t('api_cost_week')}</div>
+                            <div class="text-xl font-bold text-blue-400">$${weekCost.toFixed(2)}</div>
+                        </div>
+                        <div class="bg-gray-800/50 rounded p-2">
+                            <div class="text-gray-400 text-xs">${t('api_calls_today')}</div>
+                            <div class="text-lg font-bold text-white">${todayCalls}</div>
+                            <div class="text-xs text-gray-500">
+                                <span class="text-purple-400">S:${sonnetCalls}</span> /
+                                <span class="text-cyan-400">H:${haikuCalls}</span>
+                            </div>
+                        </div>
+                        <div class="bg-gray-800/50 rounded p-2">
+                            <div class="text-gray-400 text-xs">${t('api_tokens')}</div>
+                            <div class="text-xs mt-1">
+                                <span class="text-gray-400">in:</span>
+                                <span class="text-white">${formatTokens(totalInputTokens)}</span>
+                            </div>
+                            <div class="text-xs">
+                                <span class="text-gray-400">out:</span>
+                                <span class="text-white">${formatTokens(totalOutputTokens)}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Budget Remaining -->
+                    <div class="mt-3 flex justify-between items-center text-sm">
+                        <span class="text-gray-400">${t('api_budget_remaining')}:</span>
+                        <span class="${budgetRemaining > 0 ? 'text-green-400' : 'text-red-400'} font-bold">
+                            $${budgetRemaining.toFixed(2)}
+                        </span>
+                    </div>
+
+                    <!-- Set Budget Button -->
+                    <button onclick="openBudgetModal()" class="mt-3 w-full py-2 px-3 text-xs border border-gray-600 rounded hover:border-purple-400 hover:text-purple-400 transition-colors">
+                        <i class="fa-solid fa-gear mr-1"></i> ${t('api_set_budget')}
+                    </button>
+                `;
+            } catch (e) {
+                console.error('API usage widget error:', e);
+            }
+        }
+
+        function formatTokens(num) {
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return num.toString();
+        }
+
+        // Budget Modal
+        function openBudgetModal() {
+            const currentBudget = document.querySelector('#api-widget-content')?.dataset?.budget || 10;
+            const modal = document.createElement('div');
+            modal.id = 'budget-modal';
+            modal.className = 'modal-overlay show';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <h3 class="text-xl font-bold mb-4 text-purple-400">
+                        <i class="fa-solid fa-wallet"></i> ${t('api_set_budget')}
+                    </h3>
+                    <div class="mb-4">
+                        <label class="block text-gray-400 text-sm mb-2">Daily Budget (USD)</label>
+                        <input type="number" id="budget-input" value="${currentBudget}"
+                               class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white focus:border-purple-400 focus:outline-none"
+                               min="0" step="0.5">
+                    </div>
+                    <div class="flex gap-3">
+                        <button onclick="closeBudgetModal()" class="modal-btn modal-btn-cancel flex-1">
+                            ${t('cancel')}
+                        </button>
+                        <button onclick="saveBudget()" class="modal-btn modal-btn-confirm flex-1" style="background: rgba(147, 51, 234, 0.3); border-color: #9333ea; color: #c084fc;">
+                            <i class="fa-solid fa-check"></i> Save
+                        </button>
+                    </div>
+                </div>
+            `;
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) closeBudgetModal();
+            });
+            document.body.appendChild(modal);
+        }
+
+        function closeBudgetModal() {
+            const modal = document.getElementById('budget-modal');
+            if (modal) modal.remove();
+        }
+
+        async function saveBudget() {
+            const input = document.getElementById('budget-input');
+            const budget = parseFloat(input?.value) || 10;
+            try {
+                const response = await fetch(API_BASE + '/api-usage/budget?budget=' + budget, {
+                    method: 'PUT',
+                });
+                if (response.ok) {
+                    closeBudgetModal();
+                    updateApiUsageWidget();
+                }
+            } catch (e) {
+                console.error('Save budget error:', e);
+            }
+        }
+
+        // ==================== API USAGE (Settings Modal) ====================
         async function loadApiUsage() {
             try {
                 const data = await fetchData('/api-usage');
@@ -1291,9 +1479,11 @@
         applyLanguage();
         updateDashboard();
         updateApiCostIndicator();
+        updateApiUsageWidget();
         startHeartbeatPolling();
         setInterval(updateDashboard, 30000);
         setInterval(updateApiCostIndicator, 60000);  // Update API cost every minute
+        setInterval(updateApiUsageWidget, 30000);  // Update API widget every 30 seconds
 
         // Listen for language changes from main bot (other tabs/windows)
         window.addEventListener('storage', function(e) {

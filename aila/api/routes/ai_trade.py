@@ -59,6 +59,16 @@ async def set_api_usage_limits(daily: float = None, monthly: float = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.put("/api-usage/budget")
+async def set_api_budget(budget: float):
+    """Set user's daily API budget."""
+    try:
+        from ...ai_trade.claude_client import set_daily_budget
+        return set_daily_budget(budget)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/agents")
 async def get_agents():
     """List all agents and their status."""

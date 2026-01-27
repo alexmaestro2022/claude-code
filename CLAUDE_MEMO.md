@@ -1018,12 +1018,29 @@ STRATEGY_EVOLUTION (генетические алгоритмы, оптимиз�
 - `orchestrator.py` — get_api_usage_stats()
 
 **Мониторинг расходов API (добавлено 2026-01-27):**
+- **Виджет на главном экране AI Trade** — показывает расход, бюджет, прогресс-бар
 - Индикатор в хедере: показывает расход за день
 - Settings modal: секция "Claude API" с детальной статистикой + Top consumers
 - Файл данных: `/opt/aila/data/ai_trade/api_usage.json`
-- API endpoint: `GET /api/ai-trade/api-usage` (includes top_consumers, today_top_consumers)
+- API endpoint: `GET /api/ai-trade/api-usage` (includes top_consumers, today_top_consumers, week, budget)
 - Лимиты: $5/день (warning), $100/месяц (warning)
 - Endpoint для изменения лимитов: `PUT /api/ai-trade/api-usage/limits`
+- Endpoint для установки бюджета: `PUT /api/ai-trade/api-usage/budget?budget=10`
+
+**Виджет Claude API Usage (добавлено 2026-01-27):**
+- Расположение: главный экран AI Trade, рядом с Sentiment и Prediction
+- Прогресс-бар бюджета с цветовой индикацией:
+  - Зелёный: < 80% бюджета
+  - Жёлтый: >= 80% бюджета (предупреждение)
+  - Красный: > 100% бюджета (превышен)
+- Статистика:
+  - Расход сегодня: $X.XX
+  - Расход за неделю: $X.XX
+  - Вызовов сегодня: X (Sonnet: Y, Haiku: Z)
+  - Токенов: input X / output Y
+  - Остаток бюджета: $X.XX
+- Кнопка "Set Budget" — модальное окно для установки дневного бюджета
+- Автообновление каждые 30 секунд
 
 **Детальное логирование токенов:**
 - Лог файл: `/opt/aila/logs/ai_trade/api_usage.log`
@@ -1600,6 +1617,6 @@ analysis["_rejection_reason"] = "LONG vs BEARISH trend"
 
 ---
 
-**Последнее обновление:** 2026-01-27 (feat: detailed token logging + top consumers)
+**Последнее обновление:** 2026-01-27 (feat: add Claude API usage widget to AI Trade main screen)
 **Текущая версия:** v2.2.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`

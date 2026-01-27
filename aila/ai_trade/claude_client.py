@@ -2,7 +2,7 @@
 
 import json
 import logging
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from pathlib import Path
 from typing import Any, Optional
 
@@ -35,7 +35,7 @@ class APIUsageTracker:
 
     __slots__ = (
         "_session_start", "_data_path", "_data",
-        "_daily_cost_warning", "_monthly_cost_warning",
+        "_daily_cost_warning", "_monthly_cost_warning", "_daily_budget",
     )
 
     def __init__(self, data_path: str = "/opt/aila/data/ai_trade/api_usage.json") -> None:
@@ -43,7 +43,10 @@ class APIUsageTracker:
         self._data_path = Path(data_path)
         self._daily_cost_warning = 5.0  # Warning if daily cost > $5
         self._monthly_cost_warning = 100.0  # Warning if monthly cost > $100
+        self._daily_budget = 10.0  # User's daily budget limit
         self._data = self._load_data()
+        # Load budget from data if saved
+        self._daily_budget = self._data.get("settings", {}).get("daily_budget", 10.0)
 
     def _load_data(self) -> dict[str, Any]:
         """Load usage data from file."""
@@ -269,6 +272,17 @@ class APIUsageTracker:
                 "daily_warning_usd": self._daily_cost_warning,
                 "monthly_warning_usd": self._monthly_cost_warning,
             },
+            "budget": {
+                "daily_budget_usd": self._daily_budget,
+                "today_spent_usd": round(today_cost, 4),
+                "budget_used_pct": round(today_cost / max(self._daily_budget, 0.01) * 100, 1),
+                "budget_remaining_usd": round(max(0, self._daily_budget - today_cost), 4),
+                "over_budget": today_cost > self._daily_budget,
+                "warning_80pct": today_cost >= self._daily_budget * 0.8,
+            },
+            "week": {
+                "cost_usd": self.get_week_cost(),
+            },
             "pricing": PRICING,
         }
 
@@ -324,6 +338,26 @@ class APIUsageTracker:
             self._daily_cost_warning = daily
         if monthly is not None:
             self._monthly_cost_warning = monthly
+
+    def set_daily_budget(self, budget: float) -> None:
+        """Set user's daily budget limit."""
+        self._daily_budget = max(0.0, budget)
+        self._data.setdefault("settings", {})["daily_budget"] = self._daily_budget
+        self._save_data()
+
+    def get_daily_budget(self) -> float:
+        """Get user's daily budget limit."""
+        return self._daily_budget
+
+    def get_week_cost(self) -> float:
+        """Calculate total cost for the last 7 days."""
+        week_cost = 0.0
+        today = date.today()
+        for i in range(7):
+            day = (today - timedelta(days=i)).isoformat()
+            day_data = self._data["daily"].get(day, {})
+            week_cost += sum(day_data.get("cost", {}).values())
+        return round(week_cost, 4)
 
     def get_recent_warnings(self) -> list[str]:
         """Get recent warnings."""
@@ -625,3 +659,17 @@ def get_api_warnings() -> list[str]:
 def save_api_usage() -> None:
     """Force save API usage data."""
     api_usage.force_save()
+
+
+def set_daily_budget(budget: float) -> dict[str, Any]:
+    """Set user's daily budget limit."""
+    api_usage.set_daily_budget(budget)
+    return {
+        "success": True,
+        "daily_budget_usd": api_usage.get_daily_budget(),
+    }
+
+
+def get_daily_budget() -> float:
+    """Get user's daily budget limit."""
+    return api_usage.get_daily_budget()
