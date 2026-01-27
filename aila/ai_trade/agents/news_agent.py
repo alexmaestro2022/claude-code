@@ -79,7 +79,9 @@ Respond in JSON:
 {{"sentiment": "bullish"|"bearish"|"neutral", "impact_score": 1-10,
 "affected_pairs": ["BTCUSDT"], "reaction_time": "immediate"|"hours"|"days",
 "recommended_action": "buy"|"sell"|"wait"|"close_positions"}}"""
-        return await self.claude_client.analyze(prompt, use_haiku=True)
+        return await self.claude_client.analyze(
+            prompt, use_haiku=True, agent="NEWS", action="impact", context=f"title={news.get('title', '')[:50]}"
+        )
 
     async def get_market_sentiment(self) -> dict[str, Any]:
         """Overall market sentiment from Fear & Greed + AI."""
@@ -96,7 +98,9 @@ Respond in JSON:
 {{"overall_sentiment": "extreme_fear"|"fear"|"neutral"|"greed"|"extreme_greed",
 "sentiment_score": 0-100, "risk_level": "low"|"medium"|"high"|"extreme"}}"""
 
-        result = await self.claude_client.analyze(prompt, use_haiku=True)
+        result = await self.claude_client.analyze(
+            prompt, use_haiku=True, agent="NEWS", action="market_sentiment", context="type=market"
+        )
         if "error" not in result:
             self._cache.set("market_sentiment", result)
             self.log(f"Market sentiment: {result.get('overall_sentiment')}")
@@ -146,7 +150,9 @@ Respond in JSON:
 {{"pair": "{pair}", "sentiment": "very_bearish"|"bearish"|"neutral"|"bullish"|"very_bullish",
 "sentiment_score": -100 to +100, "news_impact": "positive"|"negative"|"neutral"|"no_news"}}"""
 
-        result = await self.claude_client.analyze(prompt, use_haiku=True)
+        result = await self.claude_client.analyze(
+            prompt, use_haiku=True, agent="NEWS", action="pair_sentiment", context=f"pair={pair}"
+        )
         if "error" not in result:
             self._cache.set(cache_key, result)
             self.log(f"{pair} sentiment: {result.get('sentiment')}")

@@ -92,7 +92,9 @@ Respond STRICTLY in JSON:
 CRITICAL: If decision is MODIFY, you MUST provide ALL 4 modification values (not null).
 Calculate proper values that meet the thresholds above.
 """
-        result = await self.claude_client.analyze(prompt)
+        result = await self.claude_client.analyze(
+            prompt, agent="REVIEWER", action="validate", context=f"pair={opportunity['pair']}"
+        )
 
         if "error" in result:
             self.log(f"Review error: {result['error']}", "error")

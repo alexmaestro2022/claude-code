@@ -133,6 +133,40 @@ async def _fetch_price(self, session: aiohttp.ClientSession, pair: str) -> dict:
 - Проверить обработку ошибок
 - Проверить логирование
 
+## ПРАВИЛО: Логирование токенов Claude API
+
+При добавлении ЛЮБОГО нового вызова Claude API — ОБЯЗАТЕЛЬНО добавлять логирование через параметры `agent`, `action`, `context`:
+
+```python
+result = await self.claude_client.analyze(
+    prompt,
+    use_haiku=True,  # или False для Sonnet
+    agent="AGENT_NAME",  # Имя агента: TRADER, REVIEWER, NEWS, WHALE, PREDICTOR, MENTOR, ANALYST
+    action="action_type",  # Тип действия: analyze, validate, sentiment, signal, etc.
+    context="key=value",  # Контекст: pair=BTCUSDT, type=market, trades=10, etc.
+)
+```
+
+### Обязательные данные в логе:
+- **agent**: Имя агента (TRADER, REVIEWER, NEWS, WHALE, PREDICTOR, MENTOR, ANALYST)
+- **action**: Тип действия (batch_analyze, validate, sentiment, signal, movement, etc.)
+- **model**: Модель (sonnet/haiku)
+- **input/output tokens**: Количество токенов
+- **cost**: Рассчитанная стоимость в USD
+- **context**: Дополнительный контекст (pair, type, count)
+
+### Формат лога в `/opt/aila/logs/ai_trade/api_usage.log`:
+```
+[2026-01-27 12:00:00] TRADER batch_analyze | model=sonnet | input=3500 | output=800 | cost=$0.0225 | pairs=50
+[2026-01-27 12:00:05] REVIEWER validate | model=sonnet | input=1200 | output=400 | cost=$0.0096 | pair=BTCUSDT
+[2026-01-27 12:00:10] NEWS sentiment | model=haiku | input=800 | output=200 | cost=$0.0004 | type=market
+```
+
+### ВАЖНО:
+- Это правило обязательно для ВСЕХ новых и существующих вызовов Claude API
+- Без логирования нельзя отслеживать расходы по агентам
+- Статистика доступна через `GET /api/ai-trade/api-usage` и в UI
+
 ## Управление правилами
 - "запомни правило:" + текст — добавить новое правило в CLAUDE_RULES.md
 - "удали правило:" + текст — удалить указанное правило из CLAUDE_RULES.md

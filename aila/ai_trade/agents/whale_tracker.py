@@ -135,7 +135,9 @@ Market: {context}
 Respond in JSON:
 {{"phase": "accumulation"|"distribution"|"neutral", "confidence": 0-100,
 "whale_activity": "low"|"medium"|"high", "expected_move": "up"|"down"|"sideways"}}"""
-        return await self.claude_client.analyze(prompt)
+        return await self.claude_client.analyze(
+            prompt, agent="WHALE", action="accumulation", context=f"pair={pair}"
+        )
 
     async def analyze_orderbook_whales(self, pair: str) -> dict[str, Any]:
         """Find large walls in the orderbook."""
@@ -204,7 +206,9 @@ Respond in JSON:
 {{"whale_signal": "strong_buy"|"buy"|"neutral"|"sell"|"strong_sell",
 "confidence": 0-100, "whale_activity_level": "low"|"medium"|"high"}}"""
 
-        result = await self.claude_client.analyze(prompt)
+        result = await self.claude_client.analyze(
+            prompt, agent="WHALE", action="signal", context=f"pair={pair}"
+        )
         if "error" not in result:
             self._cache.set(cache_key, result)
             self.log(f"{pair} whale signal: {result.get('whale_signal')}")
@@ -215,7 +219,9 @@ Respond in JSON:
         prompt = f"""Analyze likely exchange flows for {base_asset}.
 Respond in JSON:
 {{"net_flow": "inflow"|"outflow"|"neutral", "signal": "bullish"|"bearish"|"neutral", "confidence": 0-100}}"""
-        return await self.claude_client.analyze(prompt)
+        return await self.claude_client.analyze(
+            prompt, agent="WHALE", action="flow_analysis", context=f"asset={base_asset}"
+        )
 
     async def close(self) -> None:
         """Close the HTTP session."""

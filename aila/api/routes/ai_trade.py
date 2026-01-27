@@ -38,9 +38,11 @@ async def get_status():
 async def get_api_usage():
     """Get Claude API usage statistics."""
     try:
-        from ...ai_trade.claude_client import get_api_usage, get_api_warnings
+        from ...ai_trade.claude_client import get_api_usage, get_api_warnings, get_top_consumers, get_today_top_consumers
         stats = get_api_usage()
         stats["warnings"] = get_api_warnings()
+        stats["top_consumers"] = get_top_consumers(10)
+        stats["today_top_consumers"] = get_today_top_consumers(10)
         return stats
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

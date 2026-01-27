@@ -508,6 +508,7 @@
                 api_model_breakdown: 'По моделям',
                 api_cost_per_hour: 'Стоимость/час',
                 api_warning_limit: 'Лимит предупр.',
+                api_top_consumers: 'Топ потребителей (сегодня)',
                 // Settings labels
                 min_confidence: 'Мин. уверенность',
                 scan_interval: 'Интервал сканирования',
@@ -624,6 +625,7 @@
                 api_model_breakdown: 'By Model',
                 api_cost_per_hour: 'Cost/Hour',
                 api_warning_limit: 'Warning Limit',
+                api_top_consumers: 'Top consumers (today)',
                 // Settings labels
                 min_confidence: 'Min Confidence',
                 scan_interval: 'Scan Interval',
@@ -1123,6 +1125,24 @@
                         <div class="mt-2 p-2 bg-yellow-900/30 rounded text-yellow-400 text-xs">
                             <i class="fa-solid fa-triangle-exclamation mr-1"></i>
                             ${data.warnings[data.warnings.length - 1]}
+                        </div>
+                    ` : ''}
+
+                    ${data.today_top_consumers && data.today_top_consumers.length > 0 ? `
+                        <div class="mt-3 pt-2 border-t border-gray-700">
+                            <div class="text-xs text-gray-400 mb-2">${t('api_top_consumers')}</div>
+                            <div class="space-y-1 text-xs">
+                                ${data.today_top_consumers.slice(0, 5).map(c => `
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-gray-300">${c.agent}</span>
+                                        <span>
+                                            <span class="text-gray-500">${c.calls} calls</span>
+                                            <span class="text-green-400 ml-2">$${c.cost.toFixed(4)}</span>
+                                            <span class="text-gray-500 ml-1">(${c.pct_of_today}%)</span>
+                                        </span>
+                                    </div>
+                                `).join('')}
+                            </div>
                         </div>
                     ` : ''}
                 `;

@@ -13,6 +13,16 @@ from .config import ANTHROPIC_API_KEY, CLAUDE_MODEL, CLAUDE_MODEL_HAIKU
 
 logger = logging.getLogger("ai_trade")
 
+# Setup dedicated API usage logger
+api_usage_logger = logging.getLogger("ai_trade.api_usage")
+_api_log_path = Path("/opt/aila/logs/ai_trade/api_usage.log")
+_api_log_path.parent.mkdir(parents=True, exist_ok=True)
+_api_handler = logging.FileHandler(_api_log_path, encoding="utf-8")
+_api_handler.setFormatter(logging.Formatter("[%(asctime)s] %(message)s", "%Y-%m-%d %H:%M:%S"))
+api_usage_logger.addHandler(_api_handler)
+api_usage_logger.setLevel(logging.INFO)
+api_usage_logger.propagate = False
+
 # Pricing per 1M tokens (Jan 2025)
 PRICING = {
     "sonnet": {"input": 3.0, "output": 15.0},  # $3/$15 per 1M tokens
@@ -21,7 +31,7 @@ PRICING = {
 
 
 class APIUsageTracker:
-    """Tracks Claude API usage with persistent daily/monthly storage."""
+    """Tracks Claude API usage with persistent daily/monthly storage and per-agent stats."""
 
     __slots__ = (
         "_session_start", "_data_path", "_data",
@@ -42,6 +52,7 @@ class APIUsageTracker:
             "daily": {},
             "monthly": {},
             "total": {"calls": 0, "cost": 0.0, "input_tokens": 0, "output_tokens": 0},
+            "agents": {},  # Per-agent statistics
             "warnings": [],
         }
         try:
@@ -50,6 +61,9 @@ class APIUsageTracker:
                     data = json.load(f)
                     # Reset session on load
                     data["session"] = self._empty_session()
+                    # Ensure agents dict exists
+                    if "agents" not in data:
+                        data["agents"] = {}
                     return data
         except Exception as e:
             logger.error(f"Failed to load API usage data: {e}")
@@ -81,14 +95,30 @@ class APIUsageTracker:
             + output_tokens * pricing["output"] / 1_000_000
         )
 
-    def record(self, model: str, input_tokens: int, output_tokens: int) -> Optional[str]:
+    def record(
+        self,
+        model: str,
+        input_tokens: int,
+        output_tokens: int,
+        agent: str = "UNKNOWN",
+        action: str = "analyze",
+        context: str = "",
+    ) -> Optional[str]:
         """
-        Record API call usage. Returns warning message if cost threshold exceeded.
+        Record API call usage with detailed logging.
+        Returns warning message if cost threshold exceeded.
         """
         key = "haiku" if "haiku" in model.lower() else "sonnet"
         cost = self._calculate_cost(key, input_tokens, output_tokens)
         today = date.today().isoformat()
         month = today[:7]  # YYYY-MM
+
+        # Log detailed call to api_usage.log
+        ctx = f" | {context}" if context else ""
+        api_usage_logger.info(
+            f"{agent} {action} | model={key} | input={input_tokens} | "
+            f"output={output_tokens} | cost=${cost:.4f}{ctx}"
+        )
 
         # Update session
         self._data["session"]["calls"][key] += 1
@@ -102,11 +132,23 @@ class APIUsageTracker:
                 "cost": {"sonnet": 0.0, "haiku": 0.0},
                 "input_tokens": {"sonnet": 0, "haiku": 0},
                 "output_tokens": {"sonnet": 0, "haiku": 0},
+                "agents": {},  # Per-agent daily stats
             }
-        self._data["daily"][today]["calls"][key] += 1
-        self._data["daily"][today]["cost"][key] += cost
-        self._data["daily"][today]["input_tokens"][key] += input_tokens
-        self._data["daily"][today]["output_tokens"][key] += output_tokens
+        daily = self._data["daily"][today]
+        daily["calls"][key] += 1
+        daily["cost"][key] += cost
+        daily["input_tokens"][key] += input_tokens
+        daily["output_tokens"][key] += output_tokens
+
+        # Update daily per-agent stats
+        if "agents" not in daily:
+            daily["agents"] = {}
+        if agent not in daily["agents"]:
+            daily["agents"][agent] = {"calls": 0, "cost": 0.0, "input_tokens": 0, "output_tokens": 0}
+        daily["agents"][agent]["calls"] += 1
+        daily["agents"][agent]["cost"] += cost
+        daily["agents"][agent]["input_tokens"] += input_tokens
+        daily["agents"][agent]["output_tokens"] += output_tokens
 
         # Update monthly
         if month not in self._data["monthly"]:
@@ -122,6 +164,22 @@ class APIUsageTracker:
         self._data["total"]["cost"] += cost
         self._data["total"]["input_tokens"] += input_tokens
         self._data["total"]["output_tokens"] += output_tokens
+
+        # Update global per-agent stats
+        if agent not in self._data["agents"]:
+            self._data["agents"][agent] = {
+                "calls": 0, "cost": 0.0, "input_tokens": 0, "output_tokens": 0,
+                "avg_cost": 0.0, "avg_input": 0, "avg_output": 0,
+            }
+        agent_data = self._data["agents"][agent]
+        agent_data["calls"] += 1
+        agent_data["cost"] += cost
+        agent_data["input_tokens"] += input_tokens
+        agent_data["output_tokens"] += output_tokens
+        # Update averages
+        agent_data["avg_cost"] = agent_data["cost"] / agent_data["calls"]
+        agent_data["avg_input"] = agent_data["input_tokens"] // agent_data["calls"]
+        agent_data["avg_output"] = agent_data["output_tokens"] // agent_data["calls"]
 
         # Save periodically (every 10 calls)
         if self._data["total"]["calls"] % 10 == 0:
@@ -160,6 +218,7 @@ class APIUsageTracker:
         today_data = self._data["daily"].get(today, {
             "calls": {"sonnet": 0, "haiku": 0},
             "cost": {"sonnet": 0.0, "haiku": 0.0},
+            "agents": {},
         })
         today_calls = sum(today_data.get("calls", {}).values())
         today_cost = sum(today_data.get("cost", {}).values())
@@ -190,6 +249,7 @@ class APIUsageTracker:
                 "cost_usd": round(today_cost, 4),
                 "cost_breakdown": today_data.get("cost", {}),
                 "warning": today_cost >= self._daily_cost_warning,
+                "agents": today_data.get("agents", {}),
             },
             "month": {
                 "month": month,
@@ -211,6 +271,52 @@ class APIUsageTracker:
             },
             "pricing": PRICING,
         }
+
+    def get_top_consumers(self, limit: int = 10) -> list[dict[str, Any]]:
+        """Get top API consumers by cost."""
+        agents = self._data.get("agents", {})
+        sorted_agents = sorted(
+            [
+                {
+                    "agent": name,
+                    "calls": data["calls"],
+                    "cost": round(data["cost"], 4),
+                    "avg_cost": round(data["avg_cost"], 6),
+                    "avg_input": data["avg_input"],
+                    "avg_output": data["avg_output"],
+                    "pct_of_total": round(
+                        data["cost"] / max(self._data["total"]["cost"], 0.0001) * 100, 1
+                    ),
+                }
+                for name, data in agents.items()
+            ],
+            key=lambda x: x["cost"],
+            reverse=True,
+        )
+        return sorted_agents[:limit]
+
+    def get_today_top_consumers(self, limit: int = 10) -> list[dict[str, Any]]:
+        """Get today's top API consumers by cost."""
+        today = date.today().isoformat()
+        today_data = self._data["daily"].get(today, {})
+        agents = today_data.get("agents", {})
+        today_total = sum(today_data.get("cost", {}).values())
+
+        sorted_agents = sorted(
+            [
+                {
+                    "agent": name,
+                    "calls": data["calls"],
+                    "cost": round(data["cost"], 4),
+                    "avg_cost": round(data["cost"] / max(data["calls"], 1), 6),
+                    "pct_of_today": round(data["cost"] / max(today_total, 0.0001) * 100, 1),
+                }
+                for name, data in agents.items()
+            ],
+            key=lambda x: x["cost"],
+            reverse=True,
+        )
+        return sorted_agents[:limit]
 
     def set_warning_limits(self, daily: float = None, monthly: float = None) -> None:
         """Set warning limits for daily/monthly cost."""
@@ -249,7 +355,13 @@ class ClaudeClient:
 
     @retry_async(max_attempts=3, base_delay=2.0, exceptions=(anthropic.APIError,))
     async def analyze(
-        self, prompt: str, max_tokens: int = 4096, use_haiku: bool = False
+        self,
+        prompt: str,
+        max_tokens: int = 4096,
+        use_haiku: bool = False,
+        agent: str = "UNKNOWN",
+        action: str = "analyze",
+        context: str = "",
     ) -> dict[str, Any]:
         """Send prompt to Claude and return parsed JSON response."""
         model = self._model_haiku if use_haiku else self._model
@@ -261,18 +373,17 @@ class ClaudeClient:
             )
             response_text = message.content[0].text
 
-            # Record usage and check for warnings
+            # Record usage with detailed logging
             warning = api_usage.record(
-                model,
-                message.usage.input_tokens,
-                message.usage.output_tokens,
+                model=model,
+                input_tokens=message.usage.input_tokens,
+                output_tokens=message.usage.output_tokens,
+                agent=agent,
+                action=action,
+                context=context,
             )
             if warning:
                 logger.warning(warning)
-
-            logger.debug(
-                f"API call: {model} | in={message.usage.input_tokens} out={message.usage.output_tokens}"
-            )
 
             return self._extract_json(response_text)
         except anthropic.APIError:
@@ -292,19 +403,38 @@ class ClaudeClient:
             return {"decision": "WAIT", "reason": "No pairs to analyze"}
 
         prompt = self._build_batch_market_prompt(pairs_data, knowledge)
-        return await self.analyze(prompt, max_tokens=4096, use_haiku=False)
+        return await self.analyze(
+            prompt,
+            max_tokens=4096,
+            use_haiku=False,
+            agent="TRADER",
+            action="batch_analyze",
+            context=f"pairs={len(pairs_data)}",
+        )
 
     async def get_market_analysis(
         self, pair: str, market_data: dict[str, Any], knowledge: dict[str, Any]
     ) -> dict[str, Any]:
         """Analyze market and make entry decision (legacy single-pair method)."""
         prompt = self._build_market_prompt(pair, market_data, knowledge)
-        return await self.analyze(prompt)
+        return await self.analyze(
+            prompt,
+            agent="TRADER",
+            action="single_analyze",
+            context=f"pair={pair}",
+        )
 
     async def analyze_trade_result(self, trade: dict[str, Any]) -> dict[str, Any]:
         """Analyze completed trade for learning (uses Haiku - non-critical)."""
         prompt = self._build_trade_analysis_prompt(trade)
-        return await self.analyze(prompt, use_haiku=True)
+        pair = trade.get("symbol", trade.get("pair", "unknown"))
+        return await self.analyze(
+            prompt,
+            use_haiku=True,
+            agent="ANALYST",
+            action="trade_result",
+            context=f"pair={pair}",
+        )
 
     @staticmethod
     def _extract_json(text: str) -> dict[str, Any]:
@@ -470,6 +600,16 @@ Respond STRICTLY in JSON:
 def get_api_usage() -> dict[str, Any]:
     """Get current API usage statistics."""
     return api_usage.get_stats()
+
+
+def get_top_consumers(limit: int = 10) -> list[dict[str, Any]]:
+    """Get top API consumers by cost (all time)."""
+    return api_usage.get_top_consumers(limit)
+
+
+def get_today_top_consumers(limit: int = 10) -> list[dict[str, Any]]:
+    """Get today's top API consumers by cost."""
+    return api_usage.get_today_top_consumers(limit)
 
 
 def set_api_usage_limits(daily: float = None, monthly: float = None) -> None:

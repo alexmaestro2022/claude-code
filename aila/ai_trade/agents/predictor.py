@@ -79,7 +79,9 @@ Respond in JSON only:
 "signals": ["signal1", "signal2"], "risks": ["risk1", "risk2"],
 "reasoning": "explanation"}}"""
 
-        result = await self.claude_client.analyze(prompt)
+        result = await self.claude_client.analyze(
+            prompt, agent="PREDICTOR", action="movement", context=f"pair={pair}"
+        )
         if "error" not in result:
             self._cache.set(cache_key, result)
             self.log(f"{pair}: {result.get('direction')} ({result.get('probability')}%)")
@@ -111,7 +113,9 @@ Respond in JSON only:
 "signals": ["signal1"], "confirmation_needed": ["what is needed"],
 "reasoning": "explanation"}}"""
 
-        result = await self.claude_client.analyze(prompt)
+        result = await self.claude_client.analyze(
+            prompt, agent="PREDICTOR", action="reversal", context=f"pair={pair}"
+        )
         if "error" not in result:
             self._cache.set(cache_key, result)
             self.log(f"{pair} reversal: {result.get('reversal_type')} "
@@ -132,7 +136,9 @@ Respond in JSON only:
 {{"current_pattern": "pattern name",
 "similar_cases": [{{"date": "approx date", "outcome": "what happened", "move_pct": number}}],
 "average_outcome": number, "win_rate": number, "recommendation": "text"}}"""
-        return await self.claude_client.analyze(prompt)
+        return await self.claude_client.analyze(
+            prompt, agent="PREDICTOR", action="patterns", context=f"pair={pair}"
+        )
 
     async def _get_indicators(
         self, pair: str, timeframe: str
