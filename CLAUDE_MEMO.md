@@ -1112,6 +1112,41 @@ clamp(value, min_val, max_val)
 - `POST /api/ai-trade/autopilot/stop` — остановить автопилот
 - `GET /api/ai-trade/autopilot/status` — статус автопилота
 - `PUT /api/ai-trade/autopilot/config` — обновить конфиг
+- `GET /api/ai-trade/autopilot/heartbeat` — real-time статус для UI индикатора
+
+### Visual Activity Indicator (добавлено 2026-01-27):
+**Визуальный индикатор активности AUTOPILOT в UI:**
+
+1. **Пульсирующий круг** рядом с кнопкой AUTOPILOT:
+   - Зелёный + пульсация = активен
+   - Быстрая анимация = сканирует
+   - Оранжевый = предупреждение (>120 сек без скана)
+   - Серый = остановлен
+
+2. **Status Bar внизу экрана:**
+   - Слева: иконка состояния + текст "AUTOPILOT активен/остановлен"
+   - При сканировании: спиннер + текущая пара
+   - Справа: количество пар, время с последнего скана
+
+3. **Heartbeat endpoint возвращает:**
+   ```json
+   {
+     "running": true,
+     "last_scan_time": "2026-01-27T17:15:30",
+     "seconds_since_last_scan": 45.2,
+     "currently_scanning": false,
+     "current_pair": null,
+     "pairs_count": 50,
+     "scan_interval": 60
+   }
+   ```
+
+4. **JavaScript polling каждые 5 секунд** для обновления индикатора
+
+**Файлы:**
+- `aila/ai_trade/autopilot_mode.py` — добавлены `get_heartbeat()`, tracking scan time
+- `aila/api/routes/ai_trade.py` — добавлен endpoint `/autopilot/heartbeat`
+- `aila/api/templates/ai_trade.html` — добавлен status bar, CSS анимации, JS polling
 
 ---
 
@@ -1467,6 +1502,6 @@ def _validate_and_adjust_rr(analysis, market_data, symbol):
 
 ---
 
-**Последнее обновление:** 2026-01-27 (improve: better SL/TP calculation and trend filter in TRADER)
+**Последнее обновление:** 2026-01-27 (feat: add visual AUTOPILOT activity indicator)
 **Текущая версия:** v2.2.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`

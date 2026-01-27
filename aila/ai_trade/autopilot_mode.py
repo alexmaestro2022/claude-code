@@ -24,12 +24,20 @@ if not logger.handlers:
 class AutopilotMode:
     """Fully autonomous trading mode."""
 
-    __slots__ = ['_orchestrator', '_running', '_config', '_stats', '_last_trade_time']
+    __slots__ = [
+        '_orchestrator', '_running', '_config', '_stats', '_last_trade_time',
+        '_last_scan_time', '_currently_scanning', '_current_pair', '_pairs_count'
+    ]
 
     def __init__(self, orchestrator: Any) -> None:
         self._orchestrator = orchestrator
         self._running = False
         self._last_trade_time: Optional[datetime] = None
+        # Scan tracking
+        self._last_scan_time: Optional[datetime] = None
+        self._currently_scanning: bool = False
+        self._current_pair: Optional[str] = None
+        self._pairs_count: int = 0
         self._config = {
             'scan_interval_seconds': 60,
             'min_confidence': 70,
@@ -125,7 +133,14 @@ class AutopilotMode:
                     await asyncio.sleep(300)
                     continue
 
+                # Start scanning
+                self._currently_scanning = True
+                self._current_pair = None
                 opportunity = await self._find_validated_opportunity()
+                # Finish scanning
+                self._currently_scanning = False
+                self._current_pair = None
+                self._last_scan_time = datetime.utcnow()
 
                 if opportunity:
                     await self._execute_trade(opportunity)
@@ -146,6 +161,13 @@ class AutopilotMode:
 
     async def _find_validated_opportunity(self) -> Optional[dict[str, Any]]:
         """Find and validate trading opportunity."""
+        # Track pairs count from scanner
+        try:
+            pairs = await self._orchestrator.trader.scanner.get_top_pairs()
+            self._pairs_count = len(pairs) if pairs else 0
+        except Exception:
+            self._pairs_count = 0
+
         opportunity = await self._orchestrator.trader.find_opportunity()
 
         if not opportunity or opportunity.get('decision') not in ['LONG', 'SHORT']:
@@ -289,3 +311,33 @@ class AutopilotMode:
         self._config.update(new_config)
         logger.info(f"Autopilot config updated: {new_config}")
         return self._config
+
+    def get_heartbeat(self) -> dict[str, Any]:
+        """Get real-time autopilot heartbeat for UI indicator."""
+        now = datetime.utcnow()
+
+        # Calculate seconds since last scan
+        seconds_since_scan: Optional[float] = None
+        if self._last_scan_time:
+            last_scan = self._last_scan_time
+            if isinstance(last_scan, str):
+                try:
+                    last_scan = datetime.fromisoformat(last_scan.replace(' ', 'T'))
+                except ValueError:
+                    last_scan = None
+            if last_scan:
+                seconds_since_scan = (now - last_scan).total_seconds()
+
+        return {
+            'running': self._running,
+            'last_scan_time': self._last_scan_time.isoformat() if self._last_scan_time else None,
+            'seconds_since_last_scan': round(seconds_since_scan, 1) if seconds_since_scan else None,
+            'currently_scanning': self._currently_scanning,
+            'current_pair': self._current_pair,
+            'pairs_count': self._pairs_count,
+            'scan_interval': self._config.get('scan_interval_seconds', 60),
+        }
+
+    def set_current_pair(self, pair: Optional[str]) -> None:
+        """Set currently scanning pair (called by trader agent)."""
+        self._current_pair = pair

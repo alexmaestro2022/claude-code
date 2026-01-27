@@ -228,9 +228,93 @@
             border-color: rgba(0, 255, 136, 0.5);
             color: #00ff88;
         }
+        /* Autopilot Activity Indicator */
+        .autopilot-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .autopilot-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #4b5563;
+        }
+        .autopilot-dot.active {
+            background: #00ff88;
+            animation: autopilot-pulse 2s infinite;
+        }
+        .autopilot-dot.scanning {
+            background: #00ff88;
+            animation: autopilot-scan 0.5s infinite;
+        }
+        .autopilot-dot.warning {
+            background: #f59e0b;
+            animation: autopilot-pulse 1s infinite;
+        }
+        @keyframes autopilot-pulse {
+            0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0, 255, 136, 0.7); }
+            50% { opacity: 0.6; box-shadow: 0 0 10px 3px rgba(0, 255, 136, 0.4); }
+        }
+        @keyframes autopilot-scan {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3); opacity: 0.7; }
+        }
+        /* Status Bar */
+        .autopilot-status-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border-top: 1px solid rgba(0, 255, 136, 0.3);
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.875rem;
+            z-index: 100;
+            transition: all 0.3s;
+        }
+        .autopilot-status-bar.inactive {
+            border-top-color: rgba(100, 100, 100, 0.3);
+        }
+        .status-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .status-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            color: #9ca3af;
+        }
+        .scan-timer {
+            font-family: monospace;
+        }
+        .scan-timer.warning {
+            color: #f59e0b;
+        }
+        .scanning-pair {
+            color: #00ff88;
+            font-weight: 500;
+        }
+        .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(0, 255, 136, 0.3);
+            border-top-color: #00ff88;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
-<body class="bg-gray-900 text-white min-h-screen">
+<body class="bg-gray-900 text-white min-h-screen" style="padding-bottom: 50px;">
     <div class="container mx-auto px-4 py-8">
         <header class="mb-8 flex justify-between items-start">
             <div>
@@ -280,6 +364,7 @@
                         <i class="fa-solid fa-eye"></i> OBSERVER
                     </button>
                     <button id="btn-autopilot" class="mode-btn mode-btn-autopilot" onclick="confirmAutopilot()">
+                        <span id="autopilot-btn-dot" class="autopilot-dot" style="width:8px;height:8px;"></span>
                         <i class="fa-solid fa-robot"></i> AUTOPILOT
                     </button>
                 </div>
@@ -350,6 +435,23 @@
                     <i class="fa-solid fa-play"></i> <span data-i18n="yes_enable">Yes, enable</span>
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- Autopilot Status Bar -->
+    <div id="autopilot-status-bar" class="autopilot-status-bar inactive" style="display: none;">
+        <div class="status-left">
+            <div class="autopilot-indicator">
+                <span id="status-dot" class="autopilot-dot"></span>
+                <span id="status-text" class="text-gray-400">AUTOPILOT</span>
+            </div>
+            <span id="status-scanning" class="scanning-pair" style="display: none;">
+                <span class="spinner"></span> <span data-i18n="scanning">Scanning</span>: <span id="current-pair">...</span>
+            </span>
+        </div>
+        <div class="status-right">
+            <span><span data-i18n="pairs">Pairs</span>: <span id="pairs-count">0</span></span>
+            <span><span data-i18n="last_scan">Last scan</span>: <span id="scan-timer" class="scan-timer">--</span></span>
         </div>
     </div>
 
@@ -455,7 +557,15 @@
                 tip_kelly: 'Коэффициент Келли для оптимального размера позиции. 0.5 = половина от оптимального.',
                 tip_phase: 'Фаза роста капитала. Влияет на рекомендации по риску.',
                 tip_can_trade: 'Может ли система сейчас открывать сделки.',
-                tip_crisis: 'Активируется при резких движениях рынка для защиты капитала.'
+                tip_crisis: 'Активируется при резких движениях рынка для защиты капитала.',
+                // Autopilot status bar
+                scanning: 'Сканирование',
+                pairs: 'Пар',
+                last_scan: 'Последний скан',
+                autopilot_active: 'AUTOPILOT активен',
+                autopilot_stopped: 'AUTOPILOT остановлен',
+                seconds_ago: ' сек назад',
+                no_scan_yet: 'Ещё не было'
             },
             en: {
                 // Main UI
@@ -554,7 +664,15 @@
                 tip_kelly: 'Kelly criterion for optimal position size. 0.5 = half of optimal.',
                 tip_phase: 'Capital growth phase. Affects risk recommendations.',
                 tip_can_trade: 'Whether system can currently open trades.',
-                tip_crisis: 'Activates during sharp market moves to protect capital.'
+                tip_crisis: 'Activates during sharp market moves to protect capital.',
+                // Autopilot status bar
+                scanning: 'Scanning',
+                pairs: 'Pairs',
+                last_scan: 'Last scan',
+                autopilot_active: 'AUTOPILOT active',
+                autopilot_stopped: 'AUTOPILOT stopped',
+                seconds_ago: 's ago',
+                no_scan_yet: 'No scan yet'
             }
         };
 
@@ -921,9 +1039,105 @@
             document.getElementById('settings-content').innerHTML = html;
         }
 
+        // ==================== AUTOPILOT HEARTBEAT ====================
+        let heartbeatInterval = null;
+        let lastHeartbeat = null;
+
+        async function updateAutopilotHeartbeat() {
+            try {
+                const data = await fetchData('/autopilot/heartbeat');
+                if (!data) return;
+
+                lastHeartbeat = data;
+                const statusBar = document.getElementById('autopilot-status-bar');
+                const statusDot = document.getElementById('status-dot');
+                const statusText = document.getElementById('status-text');
+                const btnDot = document.getElementById('autopilot-btn-dot');
+                const scanningEl = document.getElementById('status-scanning');
+                const currentPairEl = document.getElementById('current-pair');
+                const pairsCountEl = document.getElementById('pairs-count');
+                const scanTimerEl = document.getElementById('scan-timer');
+
+                if (data.running) {
+                    // Show status bar
+                    statusBar.style.display = 'flex';
+                    statusBar.classList.remove('inactive');
+
+                    // Update dot state
+                    statusDot.classList.remove('warning');
+                    btnDot.classList.remove('warning');
+
+                    if (data.currently_scanning) {
+                        statusDot.classList.add('scanning');
+                        statusDot.classList.remove('active');
+                        btnDot.classList.add('scanning');
+                        btnDot.classList.remove('active');
+                        scanningEl.style.display = 'inline';
+                        currentPairEl.textContent = data.current_pair || '...';
+                    } else {
+                        statusDot.classList.add('active');
+                        statusDot.classList.remove('scanning');
+                        btnDot.classList.add('active');
+                        btnDot.classList.remove('scanning');
+                        scanningEl.style.display = 'none';
+                    }
+
+                    statusText.textContent = t('autopilot_active');
+                    statusText.classList.remove('text-gray-400');
+                    statusText.classList.add('text-green-400');
+
+                    // Pairs count
+                    pairsCountEl.textContent = data.pairs_count || 0;
+
+                    // Scan timer
+                    if (data.seconds_since_last_scan !== null) {
+                        const secs = Math.round(data.seconds_since_last_scan);
+                        scanTimerEl.textContent = secs + t('seconds_ago');
+                        if (secs > 120) {
+                            scanTimerEl.classList.add('warning');
+                            statusDot.classList.add('warning');
+                            btnDot.classList.add('warning');
+                        } else {
+                            scanTimerEl.classList.remove('warning');
+                        }
+                    } else {
+                        scanTimerEl.textContent = t('no_scan_yet');
+                    }
+                } else {
+                    // Autopilot stopped
+                    statusBar.style.display = 'flex';
+                    statusBar.classList.add('inactive');
+                    statusDot.classList.remove('active', 'scanning', 'warning');
+                    btnDot.classList.remove('active', 'scanning', 'warning');
+                    statusText.textContent = t('autopilot_stopped');
+                    statusText.classList.add('text-gray-400');
+                    statusText.classList.remove('text-green-400');
+                    scanningEl.style.display = 'none';
+                    scanTimerEl.textContent = '--';
+                }
+            } catch (e) {
+                console.error('Heartbeat error:', e);
+            }
+        }
+
+        function startHeartbeatPolling() {
+            // Initial fetch
+            updateAutopilotHeartbeat();
+            // Poll every 5 seconds
+            heartbeatInterval = setInterval(updateAutopilotHeartbeat, 5000);
+        }
+
+        function stopHeartbeatPolling() {
+            if (heartbeatInterval) {
+                clearInterval(heartbeatInterval);
+                heartbeatInterval = null;
+            }
+        }
+
         // Initialize
         applyLanguage();
         updateDashboard();
+        startHeartbeatPolling();
         setInterval(updateDashboard, 30000);
 
         // Listen for language changes from main bot (other tabs/windows)

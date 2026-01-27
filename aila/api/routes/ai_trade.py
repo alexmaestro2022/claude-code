@@ -552,6 +552,16 @@ async def update_autopilot_config(config: dict):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/autopilot/heartbeat")
+async def get_autopilot_heartbeat():
+    """Get real-time autopilot heartbeat for UI activity indicator."""
+    try:
+        orch = await get_orchestrator()
+        return orch.autopilot.get_heartbeat()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # --- Scaling Manager ---
 
 @router.get("/scaling")
