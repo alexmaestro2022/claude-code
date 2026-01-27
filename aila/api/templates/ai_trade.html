@@ -7,6 +7,77 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
+        /* Tooltip styles */
+        .tooltip-icon {
+            color: #6b7280;
+            cursor: help;
+            margin-left: 4px;
+            font-size: 0.75rem;
+            transition: color 0.2s;
+        }
+        .tooltip-icon:hover { color: #00ff88; }
+        .tooltip-container {
+            position: relative;
+            display: inline-block;
+        }
+        .tooltip-text {
+            visibility: hidden;
+            opacity: 0;
+            position: absolute;
+            z-index: 100;
+            background: #1f2937;
+            color: #e5e7eb;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            line-height: 1.4;
+            width: 220px;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            transition: all 0.2s;
+        }
+        .tooltip-text::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #1f2937 transparent transparent transparent;
+        }
+        .tooltip-container:hover .tooltip-text,
+        .tooltip-container.active .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+        /* Language switcher */
+        .lang-switcher {
+            display: flex;
+            gap: 4px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 4px;
+            border-radius: 6px;
+        }
+        .lang-btn {
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #6b7280;
+            background: transparent;
+            border: none;
+        }
+        .lang-btn:hover { color: #9ca3af; }
+        .lang-btn.active {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+        }
         .card { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); }
         .glow { box-shadow: 0 0 20px rgba(0, 255, 136, 0.3); }
         .pulse { animation: pulse 2s infinite; }
@@ -190,9 +261,13 @@
                 <h1 class="text-4xl font-bold text-green-400">AILA AI Trade</h1>
                 <p class="text-gray-400">Autonomous Intelligent Learning Algorithm</p>
             </div>
-            <div class="flex gap-3">
-                <button class="settings-btn" onclick="openSettingsModal()" title="Settings & Info">
-                    <i class="fa-solid fa-gear"></i> Settings
+            <div class="flex gap-3 items-center">
+                <div class="lang-switcher">
+                    <button class="lang-btn" id="lang-ru" onclick="setLanguage('ru')">RU</button>
+                    <button class="lang-btn" id="lang-en" onclick="setLanguage('en')">EN</button>
+                </div>
+                <button class="settings-btn" onclick="openSettingsModal()" data-i18n="settings">
+                    <i class="fa-solid fa-gear"></i> <span data-i18n="settings">Settings</span>
                 </button>
                 <a href="/" class="bot-btn" title="AILA Bot">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -209,7 +284,7 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <div class="card rounded-lg p-4 glow">
-                <h3 class="text-gray-400 text-sm">AI Level</h3>
+                <h3 class="text-gray-400 text-sm" data-i18n="ai_level">AI Level</h3>
                 <p class="text-3xl font-bold text-green-400" id="level">1</p>
                 <div class="w-full bg-gray-700 rounded-full h-2 mt-2">
                     <div class="bg-green-400 h-2 rounded-full" id="xp-bar" style="width: 0%"></div>
@@ -217,16 +292,16 @@
                 <p class="text-xs text-gray-500 mt-1"><span id="xp">0</span> XP</p>
             </div>
             <div class="card rounded-lg p-4">
-                <h3 class="text-gray-400 text-sm">Balance</h3>
+                <h3 class="text-gray-400 text-sm" data-i18n="balance">Balance</h3>
                 <p class="text-3xl font-bold" id="balance">$0.00</p>
                 <p class="text-sm text-green-400" id="pnl">+0%</p>
             </div>
             <div class="card rounded-lg p-4">
-                <h3 class="text-gray-400 text-sm">Win Rate</h3>
+                <h3 class="text-gray-400 text-sm" data-i18n="win_rate">Win Rate</h3>
                 <p class="text-3xl font-bold text-blue-400" id="winrate">0%</p>
             </div>
             <div class="card rounded-lg p-4">
-                <h3 class="text-gray-400 text-sm">Mode</h3>
+                <h3 class="text-gray-400 text-sm" data-i18n="mode">Mode</h3>
                 <p class="text-3xl font-bold text-yellow-400 mb-3" id="mode">OBSERVER</p>
                 <div class="flex gap-2">
                     <button id="btn-observer" class="mode-btn mode-btn-observer active" onclick="switchMode('OBSERVER')">
@@ -241,39 +316,39 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
             <div class="card rounded-lg p-4 lg:col-span-2">
-                <h2 class="text-xl font-bold mb-4">Agents</h2>
+                <h2 class="text-xl font-bold mb-4" data-i18n="agents">Agents</h2>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-2" id="agents-grid"></div>
             </div>
             <div class="card rounded-lg p-4">
-                <h2 class="text-xl font-bold mb-4">Skills</h2>
+                <h2 class="text-xl font-bold mb-4" data-i18n="skills">Skills</h2>
                 <div id="skills-list"></div>
             </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
             <div class="card rounded-lg p-4">
-                <h2 class="text-xl font-bold mb-4">Opportunities</h2>
+                <h2 class="text-xl font-bold mb-4" data-i18n="opportunities">Opportunities</h2>
                 <div id="opportunities" class="space-y-2"></div>
             </div>
             <div class="card rounded-lg p-4">
-                <h2 class="text-xl font-bold mb-4">Whale Signal</h2>
+                <h2 class="text-xl font-bold mb-4" data-i18n="whale_signal">Whale Signal</h2>
                 <div id="whale-signal"></div>
             </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
             <div class="card rounded-lg p-4">
-                <h2 class="text-xl font-bold mb-4">Sentiment</h2>
+                <h2 class="text-xl font-bold mb-4" data-i18n="sentiment">Sentiment</h2>
                 <div id="sentiment"></div>
             </div>
             <div class="card rounded-lg p-4">
-                <h2 class="text-xl font-bold mb-4">Prediction BTC</h2>
+                <h2 class="text-xl font-bold mb-4" data-i18n="prediction_btc">Prediction BTC</h2>
                 <div id="prediction"></div>
             </div>
         </div>
 
         <div class="card rounded-lg p-4">
-            <h2 class="text-xl font-bold mb-4">Agent Logs</h2>
+            <h2 class="text-xl font-bold mb-4" data-i18n="agent_logs">Agent Logs</h2>
             <div id="logs" class="font-mono text-sm text-gray-400 max-h-64 overflow-y-auto"></div>
         </div>
     </div>
@@ -295,12 +370,12 @@
     <div id="autopilot-modal" class="modal-overlay">
         <div class="modal-content">
             <div class="text-4xl mb-4"><i class="fa-solid fa-robot text-green-400"></i></div>
-            <h3 class="text-xl font-bold mb-2">Включить AUTOPILOT?</h3>
-            <p class="text-gray-400 mb-6">Вы уверены? AI начнёт торговать реальными деньгами.</p>
+            <h3 class="text-xl font-bold mb-2" data-i18n="autopilot_confirm_title">Enable AUTOPILOT?</h3>
+            <p class="text-gray-400 mb-6" data-i18n="autopilot_confirm_text">Are you sure? AI will start trading with real money.</p>
             <div class="flex gap-3 justify-center">
-                <button class="modal-btn modal-btn-cancel" onclick="closeModal()">Отмена</button>
+                <button class="modal-btn modal-btn-cancel" onclick="closeModal()" data-i18n="cancel">Cancel</button>
                 <button class="modal-btn modal-btn-confirm" onclick="startAutopilot()">
-                    <i class="fa-solid fa-play"></i> Да, включить
+                    <i class="fa-solid fa-play"></i> <span data-i18n="yes_enable">Yes, enable</span>
                 </button>
             </div>
         </div>
@@ -308,6 +383,248 @@
 
     <script>
         const API_BASE = '/api/ai-trade';
+
+        // Translations
+        const translations = {
+            ru: {
+                // Main UI
+                settings: 'Настройки',
+                ai_level: 'AI Уровень',
+                balance: 'Баланс',
+                win_rate: 'Win Rate',
+                mode: 'Режим',
+                agents: 'Агенты',
+                skills: 'Навыки',
+                opportunities: 'Возможности',
+                whale_signal: 'Whale Сигнал',
+                sentiment: 'Настроение рынка',
+                prediction_btc: 'Прогноз BTC',
+                agent_logs: 'Логи агентов',
+                cancel: 'Отмена',
+                yes_enable: 'Да, включить',
+                autopilot_confirm_title: 'Включить AUTOPILOT?',
+                autopilot_confirm_text: 'Вы уверены? AI начнёт торговать реальными деньгами.',
+                loading: 'Загрузка...',
+                no_skills: 'Навыков пока нет',
+                no_logs: 'Логов пока нет',
+                // Settings sections
+                settings_title: 'Настройки и информация',
+                trading: 'Торговля',
+                risk_limits: 'Лимиты риска (жёсткие)',
+                level_limits: 'Лимиты уровня',
+                autopilot: 'Автопилот',
+                filters: 'Фильтры',
+                indicators: 'Индикаторы',
+                integrations: 'Интеграции',
+                capital: 'Капитал',
+                persistence: 'Сохранение',
+                current_status: 'Текущий статус',
+                // Settings labels
+                min_confidence: 'Мин. уверенность',
+                scan_interval: 'Интервал сканирования',
+                scan_all_pairs: 'Сканировать все пары',
+                pairs_cache_ttl: 'TTL кэша пар',
+                claude_model: 'Модель Claude',
+                max_leverage: 'Макс. плечо',
+                max_position_size: 'Макс. размер позиции',
+                max_daily_loss: 'Макс. дневной убыток',
+                max_drawdown: 'Макс. просадка',
+                min_balance: 'Мин. баланс',
+                max_positions: 'Макс. позиций',
+                min_order_size: 'Мин. размер ордера',
+                current_level: 'Текущий уровень',
+                risk_per_trade: 'Риск на сделку',
+                running: 'Запущен',
+                max_trades_hour: 'Макс. сделок/час',
+                max_trades_day: 'Макс. сделок/день',
+                cooldown_after_loss: 'Пауза после убытка',
+                multi_confirm: 'Мульти-подтверждение',
+                trades_this_hour: 'Сделок за час',
+                trades_today: 'Сделок сегодня',
+                volume_filter: 'Фильтр объёма',
+                volatility_filter: 'Фильтр волатильности',
+                trend_filter: 'Фильтр тренда',
+                total: 'Всего',
+                reserve: 'Резерв',
+                kelly_fraction: 'Коэфф. Келли',
+                phase: 'Фаза',
+                recommended_leverage: 'Рекомендуемое плечо',
+                auto_save: 'Автосохранение',
+                s3_connected: 'S3 подключён',
+                local_save_interval: 'Интервал лок. сохр.',
+                cloud_backup_interval: 'Интервал облака',
+                files_count: 'Кол-во файлов',
+                open_positions: 'Откр. позиций',
+                daily_pnl: 'PnL за день',
+                daily_trades: 'Сделок за день',
+                can_trade: 'Может торговать',
+                crisis_mode: 'Режим кризиса',
+                learning: 'Обучение',
+                last_updated: 'Обновлено',
+                // Tooltips
+                tip_min_confidence: 'Минимальный уровень уверенности AI для открытия сделки. 70% = только качественные сигналы.',
+                tip_scan_interval: 'Как часто AI сканирует рынок в поисках возможностей.',
+                tip_max_leverage: 'Максимальное кредитное плечо. Level 1 = 5x. Растёт с уровнем AI.',
+                tip_max_position_size: 'Максимальный размер позиции в % от депозита.',
+                tip_max_daily_loss: 'Лимит дневных потерь. При достижении торговля останавливается.',
+                tip_max_drawdown: 'Максимальная просадка от пика баланса. При достижении торговля останавливается.',
+                tip_min_balance: 'Минимальный баланс для торговли. С плечом 5x нужно $2 маржи для ордера $10.',
+                tip_max_positions: 'Максимальное количество одновременно открытых позиций.',
+                tip_min_order_size: 'Минимальный размер ордера на Bybit Futures. Это лимит биржи.',
+                tip_rr_ratio: 'Минимальное соотношение прибыль/риск. 1.5:1 = прибыль в 1.5 раза больше риска.',
+                tip_level: 'Уровень AI растёт с опытом. Выше уровень = больше возможностей.',
+                tip_risk_per_trade: 'Риск на одну сделку в % от депозита. Level 1 = 1%.',
+                tip_max_trades_hour: 'Защита от переторговки. Максимум сделок в час.',
+                tip_max_trades_day: 'Защита от переторговки. Максимум сделок в день.',
+                tip_cooldown: 'Пауза после убыточной сделки для анализа.',
+                tip_multi_confirm: 'Требовать подтверждения от whale, prediction, sentiment.',
+                tip_volume_filter: 'Фильтрует пары с низким объёмом торгов.',
+                tip_volatility_filter: 'Фильтрует слишком спокойные или слишком волатильные пары.',
+                tip_kelly: 'Коэффициент Келли для оптимального размера позиции. 0.5 = половина от оптимального.',
+                tip_phase: 'Фаза роста капитала. Влияет на рекомендации по риску.',
+                tip_can_trade: 'Может ли система сейчас открывать сделки.',
+                tip_crisis: 'Активируется при резких движениях рынка для защиты капитала.'
+            },
+            en: {
+                // Main UI
+                settings: 'Settings',
+                ai_level: 'AI Level',
+                balance: 'Balance',
+                win_rate: 'Win Rate',
+                mode: 'Mode',
+                agents: 'Agents',
+                skills: 'Skills',
+                opportunities: 'Opportunities',
+                whale_signal: 'Whale Signal',
+                sentiment: 'Market Sentiment',
+                prediction_btc: 'Prediction BTC',
+                agent_logs: 'Agent Logs',
+                cancel: 'Cancel',
+                yes_enable: 'Yes, enable',
+                autopilot_confirm_title: 'Enable AUTOPILOT?',
+                autopilot_confirm_text: 'Are you sure? AI will start trading with real money.',
+                loading: 'Loading...',
+                no_skills: 'No skills yet',
+                no_logs: 'No logs yet',
+                // Settings sections
+                settings_title: 'Settings & Info',
+                trading: 'Trading',
+                risk_limits: 'Risk Limits (Hard)',
+                level_limits: 'Level Limits',
+                autopilot: 'Autopilot',
+                filters: 'Filters',
+                indicators: 'Indicators',
+                integrations: 'Integrations',
+                capital: 'Capital',
+                persistence: 'Persistence',
+                current_status: 'Current Status',
+                // Settings labels
+                min_confidence: 'Min Confidence',
+                scan_interval: 'Scan Interval',
+                scan_all_pairs: 'Scan All Pairs',
+                pairs_cache_ttl: 'Pairs Cache TTL',
+                claude_model: 'Claude Model',
+                max_leverage: 'Max Leverage',
+                max_position_size: 'Max Position Size',
+                max_daily_loss: 'Max Daily Loss',
+                max_drawdown: 'Max Drawdown',
+                min_balance: 'Min Balance',
+                max_positions: 'Max Positions',
+                min_order_size: 'Min Order Size',
+                current_level: 'Current Level',
+                risk_per_trade: 'Risk/Trade',
+                running: 'Running',
+                max_trades_hour: 'Max Trades/Hour',
+                max_trades_day: 'Max Trades/Day',
+                cooldown_after_loss: 'Cooldown After Loss',
+                multi_confirm: 'Multi-Confirmation',
+                trades_this_hour: 'Trades This Hour',
+                trades_today: 'Trades Today',
+                volume_filter: 'Volume Filter',
+                volatility_filter: 'Volatility Filter',
+                trend_filter: 'Trend Filter',
+                total: 'Total',
+                reserve: 'Reserve',
+                kelly_fraction: 'Kelly Fraction',
+                phase: 'Phase',
+                recommended_leverage: 'Recommended Leverage',
+                auto_save: 'Auto Save',
+                s3_connected: 'S3 Connected',
+                local_save_interval: 'Local Save Interval',
+                cloud_backup_interval: 'Cloud Backup Interval',
+                files_count: 'Files Count',
+                open_positions: 'Open Positions',
+                daily_pnl: 'Daily PnL',
+                daily_trades: 'Daily Trades',
+                can_trade: 'Can Trade',
+                crisis_mode: 'Crisis Mode',
+                learning: 'Learning',
+                last_updated: 'Last updated',
+                // Tooltips
+                tip_min_confidence: 'Minimum AI confidence to open trade. 70% = quality signals only.',
+                tip_scan_interval: 'How often AI scans market for opportunities.',
+                tip_max_leverage: 'Maximum leverage. Level 1 = 5x. Increases with AI level.',
+                tip_max_position_size: 'Maximum position size as % of deposit.',
+                tip_max_daily_loss: 'Daily loss limit. Trading stops when reached.',
+                tip_max_drawdown: 'Maximum drawdown from peak balance. Trading stops when reached.',
+                tip_min_balance: 'Minimum balance for trading. With 5x leverage need $2 margin for $10 order.',
+                tip_max_positions: 'Maximum number of simultaneous open positions.',
+                tip_min_order_size: 'Minimum order size on Bybit Futures. Exchange limit.',
+                tip_rr_ratio: 'Minimum reward/risk ratio. 1.5:1 = reward 1.5x greater than risk.',
+                tip_level: 'AI level grows with experience. Higher level = more capabilities.',
+                tip_risk_per_trade: 'Risk per trade as % of deposit. Level 1 = 1%.',
+                tip_max_trades_hour: 'Overtrading protection. Max trades per hour.',
+                tip_max_trades_day: 'Overtrading protection. Max trades per day.',
+                tip_cooldown: 'Pause after losing trade for analysis.',
+                tip_multi_confirm: 'Require confirmation from whale, prediction, sentiment.',
+                tip_volume_filter: 'Filters pairs with low trading volume.',
+                tip_volatility_filter: 'Filters too calm or too volatile pairs.',
+                tip_kelly: 'Kelly criterion for optimal position size. 0.5 = half of optimal.',
+                tip_phase: 'Capital growth phase. Affects risk recommendations.',
+                tip_can_trade: 'Whether system can currently open trades.',
+                tip_crisis: 'Activates during sharp market moves to protect capital.'
+            }
+        };
+
+        let currentLang = localStorage.getItem('aila_language') || 'ru';
+
+        function t(key) {
+            return translations[currentLang][key] || translations['en'][key] || key;
+        }
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            localStorage.setItem('aila_language', lang);
+            applyLanguage();
+        }
+
+        function applyLanguage() {
+            // Update language buttons
+            document.getElementById('lang-ru').classList.toggle('active', currentLang === 'ru');
+            document.getElementById('lang-en').classList.toggle('active', currentLang === 'en');
+
+            // Update all elements with data-i18n
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (translations[currentLang][key]) {
+                    el.textContent = translations[currentLang][key];
+                }
+            });
+
+            // Re-render settings if modal is open
+            if (document.getElementById('settings-modal').classList.contains('show')) {
+                loadSettings();
+            }
+        }
+
+        function tooltip(key) {
+            const tip = t('tip_' + key);
+            if (!tip || tip === 'tip_' + key) return '';
+            return `<span class="tooltip-container" onclick="this.classList.toggle('active')">
+                <i class="fa-solid fa-circle-info tooltip-icon"></i>
+                <span class="tooltip-text">${tip}</span>
+            </span>`;
+        }
 
         async function fetchData(endpoint) {
             try {
@@ -516,58 +833,58 @@
             const html = `
                 <!-- Trading -->
                 <div class="settings-section">
-                    <h4><i class="fa-solid fa-chart-line"></i> Trading</h4>
-                    <div class="setting-row"><span class="setting-name">Min Confidence</span><span class="setting-value">${data.trading.min_confidence}%</span></div>
-                    <div class="setting-row"><span class="setting-name">Scan Interval</span><span class="setting-value">${data.trading.scan_interval_seconds}s</span></div>
-                    <div class="setting-row"><span class="setting-name">Scan All Pairs</span><span class="setting-value ${data.trading.scan_all_pairs ? 'ok' : ''}">${fmt(data.trading.scan_all_pairs)}</span></div>
-                    <div class="setting-row"><span class="setting-name">Pairs Cache TTL</span><span class="setting-value">${data.trading.pairs_cache_ttl}s</span></div>
-                    <div class="setting-row"><span class="setting-name">Claude Model</span><span class="setting-value" style="font-size:0.7rem">${data.trading.claude_model}</span></div>
+                    <h4><i class="fa-solid fa-chart-line"></i> ${t('trading')}</h4>
+                    <div class="setting-row"><span class="setting-name">${t('min_confidence')}${tooltip('min_confidence')}</span><span class="setting-value">${data.trading.min_confidence}%</span></div>
+                    <div class="setting-row"><span class="setting-name">${t('scan_interval')}${tooltip('scan_interval')}</span><span class="setting-value">${data.trading.scan_interval_seconds}s</span></div>
+                    <div class="setting-row"><span class="setting-name">${t('scan_all_pairs')}</span><span class="setting-value ${data.trading.scan_all_pairs ? 'ok' : ''}">${fmt(data.trading.scan_all_pairs)}</span></div>
+                    <div class="setting-row"><span class="setting-name">${t('pairs_cache_ttl')}</span><span class="setting-value">${data.trading.pairs_cache_ttl}s</span></div>
+                    <div class="setting-row"><span class="setting-name">${t('claude_model')}</span><span class="setting-value" style="font-size:0.7rem">${data.trading.claude_model}</span></div>
                 </div>
 
                 <!-- Risk Limits -->
                 <div class="settings-section">
-                    <h4><i class="fa-solid fa-shield-halved"></i> Risk Limits (Hard)</h4>
-                    <div class="setting-row"><span class="setting-name">Max Leverage</span><span class="setting-value">${data.risk_limits.max_leverage}x</span></div>
-                    <div class="setting-row"><span class="setting-name">Max Position Size</span><span class="setting-value">${data.risk_limits.max_position_size_pct}%</span></div>
-                    <div class="setting-row"><span class="setting-name">Max Daily Loss</span><span class="setting-value">${data.risk_limits.max_daily_loss_pct}%</span></div>
-                    <div class="setting-row"><span class="setting-name">Max Drawdown</span><span class="setting-value">${data.risk_limits.max_drawdown_pct}%</span></div>
-                    <div class="setting-row"><span class="setting-name">Min Balance</span><span class="setting-value">$${data.risk_limits.min_balance_usdt}</span></div>
-                    <div class="setting-row"><span class="setting-name">Max Positions</span><span class="setting-value">${data.risk_limits.max_open_positions}</span></div>
-                    <div class="setting-row"><span class="setting-name">Min Order Size</span><span class="setting-value">$${data.risk_limits.min_order_size_usdt}</span></div>
+                    <h4><i class="fa-solid fa-shield-halved"></i> ${t('risk_limits')}</h4>
+                    <div class="setting-row"><span class="setting-name">${t('max_leverage')}${tooltip('max_leverage')}</span><span class="setting-value">${data.risk_limits.max_leverage}x</span></div>
+                    <div class="setting-row"><span class="setting-name">${t('max_position_size')}${tooltip('max_position_size')}</span><span class="setting-value">${data.risk_limits.max_position_size_pct}%</span></div>
+                    <div class="setting-row"><span class="setting-name">${t('max_daily_loss')}${tooltip('max_daily_loss')}</span><span class="setting-value">${data.risk_limits.max_daily_loss_pct}%</span></div>
+                    <div class="setting-row"><span class="setting-name">${t('max_drawdown')}${tooltip('max_drawdown')}</span><span class="setting-value">${data.risk_limits.max_drawdown_pct}%</span></div>
+                    <div class="setting-row"><span class="setting-name">${t('min_balance')}${tooltip('min_balance')}</span><span class="setting-value">$${data.risk_limits.min_balance_usdt}</span></div>
+                    <div class="setting-row"><span class="setting-name">${t('max_positions')}${tooltip('max_positions')}</span><span class="setting-value">${data.risk_limits.max_open_positions}</span></div>
+                    <div class="setting-row"><span class="setting-name">${t('min_order_size')}${tooltip('min_order_size')}</span><span class="setting-value">$${data.risk_limits.min_order_size_usdt}</span></div>
                 </div>
 
                 <!-- Level Limits -->
                 <div class="settings-section">
-                    <h4><i class="fa-solid fa-star"></i> Level Limits (AI Level ${data.level_limits.current_level})</h4>
+                    <h4><i class="fa-solid fa-star"></i> ${t('level_limits')} (AI Level ${data.level_limits.current_level})${tooltip('level')}</h4>
                     <div class="setting-row"><span class="setting-name">XP</span><span class="setting-value">${data.level_limits.xp} / ${data.level_limits.next_level_xp}</span></div>
-                    <div class="setting-row"><span class="setting-name">Max Leverage</span><span class="setting-value">${data.level_limits.current_max_leverage}x</span></div>
-                    <div class="setting-row"><span class="setting-name">Max Positions</span><span class="setting-value">${data.level_limits.current_max_positions}</span></div>
-                    <div class="setting-row"><span class="setting-name">Risk/Trade</span><span class="setting-value">${data.level_limits.current_risk_per_trade}%</span></div>
+                    <div class="setting-row"><span class="setting-name">${t('max_leverage')}</span><span class="setting-value">${data.level_limits.current_max_leverage}x</span></div>
+                    <div class="setting-row"><span class="setting-name">${t('max_positions')}</span><span class="setting-value">${data.level_limits.current_max_positions}</span></div>
+                    <div class="setting-row"><span class="setting-name">${t('risk_per_trade')}${tooltip('risk_per_trade')}</span><span class="setting-value">${data.level_limits.current_risk_per_trade}%</span></div>
                 </div>
 
                 <!-- Autopilot -->
                 <div class="settings-section">
-                    <h4><i class="fa-solid fa-robot"></i> Autopilot</h4>
-                    <div class="setting-row"><span class="setting-name">Running</span><span class="setting-value ${data.autopilot.running ? 'ok' : ''}">${fmt(data.autopilot.running)}</span></div>
-                    <div class="setting-row"><span class="setting-name">Max Trades/Hour</span><span class="setting-value">${data.autopilot.max_trades_per_hour}</span></div>
-                    <div class="setting-row"><span class="setting-name">Max Trades/Day</span><span class="setting-value">${data.autopilot.max_trades_per_day}</span></div>
-                    <div class="setting-row"><span class="setting-name">Cooldown After Loss</span><span class="setting-value">${data.autopilot.cooldown_after_loss_minutes} min</span></div>
-                    <div class="setting-row"><span class="setting-name">Multi-Confirmation</span><span class="setting-value">${fmt(data.autopilot.require_multiple_confirmations)}</span></div>
-                    <div class="setting-row"><span class="setting-name">Trades This Hour</span><span class="setting-value">${data.autopilot.trades_this_hour}</span></div>
-                    <div class="setting-row"><span class="setting-name">Trades Today</span><span class="setting-value">${data.autopilot.trades_today}</span></div>
+                    <h4><i class="fa-solid fa-robot"></i> ${t('autopilot')}</h4>
+                    <div class="setting-row"><span class="setting-name">${t('running')}</span><span class="setting-value ${data.autopilot.running ? 'ok' : ''}">${fmt(data.autopilot.running)}</span></div>
+                    <div class="setting-row"><span class="setting-name">${t('max_trades_hour')}${tooltip('max_trades_hour')}</span><span class="setting-value">${data.autopilot.max_trades_per_hour}</span></div>
+                    <div class="setting-row"><span class="setting-name">${t('max_trades_day')}${tooltip('max_trades_day')}</span><span class="setting-value">${data.autopilot.max_trades_per_day}</span></div>
+                    <div class="setting-row"><span class="setting-name">${t('cooldown_after_loss')}${tooltip('cooldown')}</span><span class="setting-value">${data.autopilot.cooldown_after_loss_minutes} min</span></div>
+                    <div class="setting-row"><span class="setting-name">${t('multi_confirm')}${tooltip('multi_confirm')}</span><span class="setting-value">${fmt(data.autopilot.require_multiple_confirmations)}</span></div>
+                    <div class="setting-row"><span class="setting-name">${t('trades_this_hour')}</span><span class="setting-value">${data.autopilot.trades_this_hour}</span></div>
+                    <div class="setting-row"><span class="setting-name">${t('trades_today')}</span><span class="setting-value">${data.autopilot.trades_today}</span></div>
                 </div>
 
                 <!-- Filters -->
                 <div class="settings-section">
-                    <h4><i class="fa-solid fa-filter"></i> Filters</h4>
-                    <div class="setting-row"><span class="setting-name">Volume Filter</span><span class="setting-value ${data.filters.volume_filter.enabled ? 'ok' : ''}">${fmt(data.filters.volume_filter.enabled)} (>$${(data.filters.volume_filter.min_volume_24h/1e6).toFixed(0)}M)</span></div>
-                    <div class="setting-row"><span class="setting-name">Volatility Filter</span><span class="setting-value ${data.filters.volatility_filter.enabled ? 'ok' : ''}">${fmt(data.filters.volatility_filter.enabled)} (${data.filters.volatility_filter.min_volatility_pct}-${data.filters.volatility_filter.max_volatility_pct}%)</span></div>
-                    <div class="setting-row"><span class="setting-name">Trend Filter</span><span class="setting-value ${data.filters.trend_filter.enabled ? 'ok' : ''}">${fmt(data.filters.trend_filter.enabled)}</span></div>
+                    <h4><i class="fa-solid fa-filter"></i> ${t('filters')}</h4>
+                    <div class="setting-row"><span class="setting-name">${t('volume_filter')}${tooltip('volume_filter')}</span><span class="setting-value ${data.filters.volume_filter.enabled ? 'ok' : ''}">${fmt(data.filters.volume_filter.enabled)} (>$${(data.filters.volume_filter.min_volume_24h/1e6).toFixed(0)}M)</span></div>
+                    <div class="setting-row"><span class="setting-name">${t('volatility_filter')}${tooltip('volatility_filter')}</span><span class="setting-value ${data.filters.volatility_filter.enabled ? 'ok' : ''}">${fmt(data.filters.volatility_filter.enabled)} (${data.filters.volatility_filter.min_volatility_pct}-${data.filters.volatility_filter.max_volatility_pct}%)</span></div>
+                    <div class="setting-row"><span class="setting-name">${t('trend_filter')}</span><span class="setting-value ${data.filters.trend_filter.enabled ? 'ok' : ''}">${fmt(data.filters.trend_filter.enabled)}</span></div>
                 </div>
 
                 <!-- Indicators -->
                 <div class="settings-section">
-                    <h4><i class="fa-solid fa-chart-bar"></i> Indicators</h4>
+                    <h4><i class="fa-solid fa-chart-bar"></i> ${t('indicators')}</h4>
                     <div class="setting-row"><span class="setting-name">RSI (${data.indicators.rsi.period})</span><span class="setting-value ${data.indicators.rsi.enabled ? 'ok' : ''}">${fmt(data.indicators.rsi.enabled)}</span></div>
                     <div class="setting-row"><span class="setting-name">EMA50</span><span class="setting-value ${data.indicators.ema50.enabled ? 'ok' : ''}">${fmt(data.indicators.ema50.enabled)}</span></div>
                     <div class="setting-row"><span class="setting-name">EMA200</span><span class="setting-value warning">${fmt(data.indicators.ema200.enabled)} <small>(${data.indicators.ema200.issue})</small></span></div>
@@ -577,7 +894,7 @@
 
                 <!-- Integrations -->
                 <div class="settings-section">
-                    <h4><i class="fa-solid fa-plug"></i> Integrations</h4>
+                    <h4><i class="fa-solid fa-plug"></i> ${t('integrations')}</h4>
                     <div class="setting-row"><span class="setting-name">News Sentiment</span><span class="setting-value ${data.integrations.news_sentiment.enabled ? 'ok' : ''}">${fmt(data.integrations.news_sentiment.enabled)} (wt: ${data.integrations.news_sentiment.weight})</span></div>
                     <div class="setting-row"><span class="setting-name">Whale Tracker</span><span class="setting-value ${data.integrations.whale_tracker.enabled ? 'ok' : ''}">${fmt(data.integrations.whale_tracker.enabled)} (wt: ${data.integrations.whale_tracker.weight})</span></div>
                     <div class="setting-row"><span class="setting-name">Whale Alert API</span><span class="setting-value error">${fmt(data.integrations.whale_tracker.whale_alert_api)}</span></div>
@@ -586,50 +903,60 @@
 
                 <!-- Capital -->
                 <div class="settings-section">
-                    <h4><i class="fa-solid fa-coins"></i> Capital</h4>
-                    <div class="setting-row"><span class="setting-name">Total</span><span class="setting-value">$${data.capital.total.toFixed(2)}</span></div>
+                    <h4><i class="fa-solid fa-coins"></i> ${t('capital')}</h4>
+                    <div class="setting-row"><span class="setting-name">${t('total')}</span><span class="setting-value">$${data.capital.total.toFixed(2)}</span></div>
                     <div class="setting-row"><span class="setting-name">Trading</span><span class="setting-value">$${data.capital.trading.toFixed(2)}</span></div>
-                    <div class="setting-row"><span class="setting-name">Reserve</span><span class="setting-value">$${data.capital.reserve.toFixed(2)} (${data.capital.reserve_pct}%)</span></div>
-                    <div class="setting-row"><span class="setting-name">Kelly Fraction</span><span class="setting-value">${data.capital.kelly_fraction}</span></div>
-                    <div class="setting-row"><span class="setting-name">Phase</span><span class="setting-value ok">${data.capital.phase}</span></div>
-                    <div class="setting-row"><span class="setting-name">Recommended Leverage</span><span class="setting-value">${data.capital.recommended_leverage}x</span></div>
+                    <div class="setting-row"><span class="setting-name">${t('reserve')}</span><span class="setting-value">$${data.capital.reserve.toFixed(2)} (${data.capital.reserve_pct}%)</span></div>
+                    <div class="setting-row"><span class="setting-name">${t('kelly_fraction')}${tooltip('kelly')}</span><span class="setting-value">${data.capital.kelly_fraction}</span></div>
+                    <div class="setting-row"><span class="setting-name">${t('phase')}${tooltip('phase')}</span><span class="setting-value ok">${data.capital.phase}</span></div>
+                    <div class="setting-row"><span class="setting-name">${t('recommended_leverage')}</span><span class="setting-value">${data.capital.recommended_leverage}x</span></div>
                 </div>
 
                 <!-- Persistence -->
                 <div class="settings-section">
-                    <h4><i class="fa-solid fa-database"></i> Persistence</h4>
-                    <div class="setting-row"><span class="setting-name">Auto Save</span><span class="setting-value ${data.persistence.auto_save_running ? 'ok' : 'error'}">${fmt(data.persistence.auto_save_running)}</span></div>
-                    <div class="setting-row"><span class="setting-name">S3 Connected</span><span class="setting-value ${data.persistence.s3_connected ? 'ok' : 'warning'}">${fmt(data.persistence.s3_connected)}</span></div>
-                    <div class="setting-row"><span class="setting-name">Local Save Interval</span><span class="setting-value">${data.persistence.local_save_interval}s</span></div>
-                    <div class="setting-row"><span class="setting-name">Cloud Backup Interval</span><span class="setting-value">${data.persistence.cloud_backup_interval}s (1h)</span></div>
-                    <div class="setting-row"><span class="setting-name">Files Count</span><span class="setting-value">${data.persistence.files_count}</span></div>
+                    <h4><i class="fa-solid fa-database"></i> ${t('persistence')}</h4>
+                    <div class="setting-row"><span class="setting-name">${t('auto_save')}</span><span class="setting-value ${data.persistence.auto_save_running ? 'ok' : 'error'}">${fmt(data.persistence.auto_save_running)}</span></div>
+                    <div class="setting-row"><span class="setting-name">${t('s3_connected')}</span><span class="setting-value ${data.persistence.s3_connected ? 'ok' : 'warning'}">${fmt(data.persistence.s3_connected)}</span></div>
+                    <div class="setting-row"><span class="setting-name">${t('local_save_interval')}</span><span class="setting-value">${data.persistence.local_save_interval}s</span></div>
+                    <div class="setting-row"><span class="setting-name">${t('cloud_backup_interval')}</span><span class="setting-value">${data.persistence.cloud_backup_interval}s (1h)</span></div>
+                    <div class="setting-row"><span class="setting-name">${t('files_count')}</span><span class="setting-value">${data.persistence.files_count}</span></div>
                 </div>
 
                 <!-- Current Status -->
                 <div class="settings-section md:col-span-2">
-                    <h4><i class="fa-solid fa-circle-info"></i> Current Status</h4>
+                    <h4><i class="fa-solid fa-circle-info"></i> ${t('current_status')}</h4>
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
-                        <div class="setting-row flex-col"><span class="setting-name">Mode</span><span class="setting-value ${data.current_status.mode === 'AUTOPILOT' ? 'ok' : 'warning'}">${data.current_status.mode}</span></div>
-                        <div class="setting-row flex-col"><span class="setting-name">Balance</span><span class="setting-value">$${data.current_status.balance.toFixed(2)}</span></div>
-                        <div class="setting-row flex-col"><span class="setting-name">Open Positions</span><span class="setting-value">${data.current_status.open_positions}</span></div>
-                        <div class="setting-row flex-col"><span class="setting-name">Daily PnL</span><span class="setting-value ${data.current_status.daily_pnl >= 0 ? 'ok' : 'error'}">$${data.current_status.daily_pnl.toFixed(2)}</span></div>
-                        <div class="setting-row flex-col"><span class="setting-name">Daily Trades</span><span class="setting-value">${data.current_status.daily_trades}</span></div>
-                        <div class="setting-row flex-col"><span class="setting-name">Can Trade</span><span class="setting-value ${data.current_status.can_trade ? 'ok' : 'error'}">${fmt(data.current_status.can_trade)}</span></div>
-                        <div class="setting-row flex-col"><span class="setting-name">Crisis Mode</span><span class="setting-value ${!data.current_status.crisis_mode ? 'ok' : 'error'}">${fmt(!data.current_status.crisis_mode ? false : true)}</span></div>
-                        <div class="setting-row flex-col"><span class="setting-name">Learning</span><span class="setting-value ${data.current_status.learning_cycles_running ? 'ok' : ''}">${fmt(data.current_status.learning_cycles_running)}</span></div>
+                        <div class="setting-row flex-col"><span class="setting-name">${t('mode')}</span><span class="setting-value ${data.current_status.mode === 'AUTOPILOT' ? 'ok' : 'warning'}">${data.current_status.mode}</span></div>
+                        <div class="setting-row flex-col"><span class="setting-name">${t('balance')}</span><span class="setting-value">$${data.current_status.balance.toFixed(2)}</span></div>
+                        <div class="setting-row flex-col"><span class="setting-name">${t('open_positions')}</span><span class="setting-value">${data.current_status.open_positions}</span></div>
+                        <div class="setting-row flex-col"><span class="setting-name">${t('daily_pnl')}</span><span class="setting-value ${data.current_status.daily_pnl >= 0 ? 'ok' : 'error'}">$${data.current_status.daily_pnl.toFixed(2)}</span></div>
+                        <div class="setting-row flex-col"><span class="setting-name">${t('daily_trades')}</span><span class="setting-value">${data.current_status.daily_trades}</span></div>
+                        <div class="setting-row flex-col"><span class="setting-name">${t('can_trade')}${tooltip('can_trade')}</span><span class="setting-value ${data.current_status.can_trade ? 'ok' : 'error'}">${fmt(data.current_status.can_trade)}</span></div>
+                        <div class="setting-row flex-col"><span class="setting-name">${t('crisis_mode')}${tooltip('crisis')}</span><span class="setting-value ${!data.current_status.crisis_mode ? 'ok' : 'error'}">${fmt(!data.current_status.crisis_mode ? false : true)}</span></div>
+                        <div class="setting-row flex-col"><span class="setting-name">${t('learning')}</span><span class="setting-value ${data.current_status.learning_cycles_running ? 'ok' : ''}">${fmt(data.current_status.learning_cycles_running)}</span></div>
                     </div>
                 </div>
 
                 <div class="md:col-span-2 text-center text-gray-500 text-xs mt-2">
-                    Last updated: ${data.timestamp}
+                    ${t('last_updated')}: ${data.timestamp}
                 </div>
             `;
 
             document.getElementById('settings-content').innerHTML = html;
         }
 
+        // Initialize
+        applyLanguage();
         updateDashboard();
         setInterval(updateDashboard, 30000);
+
+        // Listen for language changes from other tabs/windows
+        window.addEventListener('storage', function(e) {
+            if (e.key === 'aila_language') {
+                currentLang = e.newValue || 'ru';
+                applyLanguage();
+            }
+        });
     </script>
 </body>
 </html>
