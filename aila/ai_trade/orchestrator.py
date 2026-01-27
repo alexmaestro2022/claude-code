@@ -72,7 +72,7 @@ class AgentOrchestrator:
 
         self.trader = TraderAgent(self.claude_client, self.knowledge_base, self.scanner, orchestrator=self)
         self.reviewer = ReviewerAgent(self.claude_client, self.knowledge_base)
-        self.risk_guard = RiskGuardAgent(self.claude_client, self.knowledge_base, self.risk_manager)
+        self.risk_guard = RiskGuardAgent(self.claude_client, self.knowledge_base, self.risk_manager, orchestrator=self)
         self.analyst = AnalystAgent(self.claude_client, self.knowledge_base)
         self.logger_agent = LoggerAgent(self.claude_client, self.knowledge_base, telegram_bot=self.telegram)
         self.mentor = MentorAgent(self.claude_client, self.knowledge_base)

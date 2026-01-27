@@ -9,6 +9,16 @@ from datetime import datetime
 from typing import Any, Optional
 
 logger = logging.getLogger("ai_trade.autopilot")
+logger.setLevel(logging.INFO)
+
+# Add file handler if not exists
+if not logger.handlers:
+    _handler = logging.FileHandler("/opt/aila/logs/ai_trade/autopilot.log")
+    _handler.setFormatter(logging.Formatter(
+        "%(asctime)s [%(levelname)s] [%(name)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S"
+    ))
+    logger.addHandler(_handler)
 
 
 class AutopilotMode:
@@ -151,8 +161,11 @@ class AutopilotMode:
 
         if review.get('decision') == 'MODIFY':
             opportunity = review.get('modified_opportunity', opportunity)
+            logger.info(f"Reviewer MODIFY, modified_opportunity exists: {review.get('modified_opportunity') is not None}")
 
+        logger.info(f"Calling risk_guard.validate_trade for {opportunity['pair']}")
         risk_check = await self._orchestrator.risk_guard.validate_trade(opportunity)
+        logger.info(f"Risk check result: approved={risk_check.get('approved')}")
         if not risk_check.get('approved'):
             logger.info(f"Risk guard blocked: {risk_check.get('reason')}")
             return None

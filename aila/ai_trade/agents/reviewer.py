@@ -68,6 +68,11 @@ Trend: {opportunity.get('market_data', {}).get('trend')}
 6. Are there any of the known mistakes being repeated?
 7. Is the confidence level justified by the data?
 
+## REQUIRED THRESHOLDS
+- R/R ratio >= 1.5:1 (REJECT if below)
+- Leverage: max 2x for meme/volatile coins, max 3x for majors
+- Stop loss: min 3% from entry for volatile, min 2% for majors
+
 ## TASK
 Respond STRICTLY in JSON:
 
@@ -77,15 +82,15 @@ Respond STRICTLY in JSON:
     "risk_reward_ratio": number,
     "issues_found": ["issue1", "issue2"],
     "modifications": {{
-        "leverage": number or null,
-        "position_size_pct": number or null,
-        "stop_loss": number or null,
-        "take_profit": number or null
+        "leverage": number (REQUIRED if MODIFY),
+        "position_size_pct": number (REQUIRED if MODIFY),
+        "stop_loss": number (REQUIRED if MODIFY),
+        "take_profit": number (REQUIRED if MODIFY)
     }}
 }}
 
-If MODIFY — fill in modifications with suggested values.
-If APPROVE or REJECT — modifications can be empty.
+CRITICAL: If decision is MODIFY, you MUST provide ALL 4 modification values (not null).
+Calculate proper values that meet the thresholds above.
 """
         result = await self.claude_client.analyze(prompt)
 

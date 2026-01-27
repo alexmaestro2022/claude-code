@@ -95,6 +95,12 @@ Indicators:
 ## MISTAKES TO AVOID
 {json.dumps(mistakes, indent=2)}
 
+## RISK MANAGEMENT RULES (MANDATORY)
+1. Risk/Reward ratio MUST be >= 1.5:1 (take_profit distance / stop_loss distance)
+2. Stop loss distance: minimum 3% from entry for volatile coins, 2% for stable
+3. Leverage: max 2x for meme/volatile coins, max 3x for major coins (BTC, ETH, BNB)
+4. Position size: 2-4% of capital
+
 ## TASK
 Respond STRICTLY in JSON:
 {{
@@ -102,16 +108,16 @@ Respond STRICTLY in JSON:
     "confidence": 0-100,
     "strategy": "strategy name",
     "entry_price": number or null,
-    "stop_loss": number or null,
-    "take_profit": number or null,
-    "leverage": 1-20,
-    "position_size_pct": 1-10,
+    "stop_loss": number or null (min 3% from entry),
+    "take_profit": number or null (must give R/R >= 1.5),
+    "leverage": 1-3 (2 for volatile, 3 for majors),
+    "position_size_pct": 2-4,
     "reasoning": "detailed reasoning",
     "risks": ["risk1", "risk2"],
     "expected_duration": "5m" | "1h" | "4h" | "1d"
 }}
 
-If unsure - choose WAIT. Better to miss a trade than lose money."""
+CRITICAL: If R/R < 1.5 - choose WAIT. Better to miss a trade than lose money."""
 
     @staticmethod
     def _build_trade_analysis_prompt(trade: dict[str, Any]) -> str:

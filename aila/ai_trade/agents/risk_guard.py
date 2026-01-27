@@ -11,7 +11,13 @@ from ..config import RISK_LIMITS
 class RiskGuardAgent(BaseAgent):
     """Enforces ALL risk limits. Has VETO power over any trade."""
 
-    def __init__(self, claude_client: Any, knowledge_base: Any, risk_manager: Any) -> None:
+    def __init__(
+        self,
+        claude_client: Any,
+        knowledge_base: Any,
+        risk_manager: Any,
+        orchestrator: Any = None,
+    ) -> None:
         super().__init__(
             name="RISK_GUARD",
             claude_client=claude_client,
@@ -19,6 +25,7 @@ class RiskGuardAgent(BaseAgent):
             log_path="/opt/aila/logs/ai_trade/risk_guard.log",
         )
         self.risk_manager = risk_manager
+        self.orchestrator = orchestrator
         self.vetoed_trades: list[dict[str, Any]] = []
 
     async def think(self, context: dict[str, Any]) -> dict[str, Any]:
@@ -186,3 +193,13 @@ class RiskGuardAgent(BaseAgent):
         })
         # Keep last 50
         self.vetoed_trades = self.vetoed_trades[-50:]
+
+    async def validate_trade(self, opportunity: dict) -> dict:
+        """Alias for check() with auto balance fetch."""
+        balance = 100  # Default fallback
+        if self.orchestrator and hasattr(self.orchestrator, 'exchanges'):
+            try:
+                balance = await self.orchestrator.exchanges.primary.get_balance('USDT')
+            except Exception as e:
+                self.log(f"Failed to get balance: {e}", "warning")
+        return await self.check(opportunity, balance)

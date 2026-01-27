@@ -1357,6 +1357,62 @@ async def _refresh_instruments() -> list[str]:
 
 ---
 
-**Последнее обновление:** 2026-01-27 (sync AI Trade language with main bot settings)
+## 30. ИСПРАВЛЕНИЕ 2026-01-27: AI Trade не открывал сделки
+
+### Проблема:
+Автопилот находил сигналы (LONG 1000PEPE/USDT @ confidence=75%), но сделки не открывались.
+
+### Причины:
+1. **Отсутствующий метод validate_trade()** — в `autopilot_mode.py` вызывался `risk_guard.validate_trade()`, но в `risk_guard.py` был только метод `check()`. Это вызывало AttributeError.
+
+2. **Плохой R/R ratio** — TRADER генерировал сделки с R/R 1.2-1.4 (требуется минимум 1.5:1).
+
+3. **Высокий leverage 3x** — для волатильных монет (PEPE, SKR) leverage 3x слишком высокий.
+
+4. **Слишком близкий stop loss** — 2-2.5% от цены входа недостаточно для мем-коинов.
+
+### Исправления:
+
+**1. risk_guard.py** — добавлен метод `validate_trade()`:
+```python
+async def validate_trade(self, opportunity: dict) -> dict:
+    """Alias for check() with auto balance fetch."""
+    balance = 100
+    if self.orchestrator and hasattr(self.orchestrator, 'exchanges'):
+        try:
+            balance = await self.orchestrator.exchanges.primary.get_balance('USDT')
+        except Exception as e:
+            self.log(f"Failed to get balance: {e}", "warning")
+    return await self.check(opportunity, balance)
+```
++ добавлен параметр `orchestrator` в `__init__`
+
+**2. orchestrator.py** — передаётся `orchestrator=self` при создании RiskGuardAgent
+
+**3. claude_client.py** — улучшен промпт для TRADER:
+```
+## RISK MANAGEMENT RULES (MANDATORY)
+1. Risk/Reward ratio MUST be >= 1.5:1
+2. Stop loss distance: minimum 3% for volatile, 2% for stable
+3. Leverage: max 2x for meme/volatile, max 3x for majors (BTC, ETH, BNB)
+4. Position size: 2-4% of capital
+```
+
+**4. reviewer.py** — улучшен промпт для REVIEWER:
+- Добавлено требование заполнять ВСЕ 4 поля modifications при MODIFY
+- Добавлены REQUIRED THRESHOLDS секция
+
+**5. autopilot_mode.py** — добавлено логирование в файл `/opt/aila/logs/ai_trade/autopilot.log`
+
+### Результат:
+После применения изменений и перезапуска бота (`sudo systemctl restart aila`), AI Trade должен:
+- Генерировать сделки с R/R >= 1.5
+- Использовать leverage 2-3x в зависимости от волатильности
+- Ставить stop loss минимум 3% от входа
+- Применять modifications при MODIFY
+
+---
+
+**Последнее обновление:** 2026-01-27 (fix: AI Trade не открывал сделки - validate_trade + R/R ratio)
 **Текущая версия:** v2.2.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
