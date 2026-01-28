@@ -2086,6 +2086,24 @@ GET  /api/ai-trade/levels/config       — Конфиг уровней
 
 ---
 
-**Последнее обновление:** 2026-01-28 (feat: integrate SNIPER with separate levels, knowledge, stats)
+### Исправления 2026-01-28:
+
+1. **Добавлен метод `get_open_positions()`** в `aila/ai_trade/position_manager.py`:
+   - Фиксит ошибку "Position sync error: 'PositionManager' object has no attribute 'get_open_positions'"
+   - Теперь QUEUE корректно синхронизирует открытые позиции
+
+2. **Увеличен дневной лимит API** с $1 до $5 в `data/ai_trade/api_usage.json`:
+   - Старый лимит $1/день вызывал автоматическую остановку AUTOPILOT
+   - Настройка: `settings.daily_limit`
+
+### Проверенная работа SNIPER:
+- ✅ SNIPER сканирует каждые 10 секунд
+- ✅ TRADER и SNIPER работают параллельно
+- ✅ Verbose логи SNIPER каждые 60 секунд
+- ✅ Smart Queue с приоритетами (SNIPER=HIGH, TRADER=NORMAL)
+
+---
+
+**Последнее обновление:** 2026-01-28 (fix: add get_open_positions() method, increase daily API limit)
 **Текущая версия:** v2.4.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
