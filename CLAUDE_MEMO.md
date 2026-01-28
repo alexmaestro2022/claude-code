@@ -2102,8 +2102,16 @@ GET  /api/ai-trade/levels/config       — Конфиг уровней
 - ✅ Verbose логи SNIPER каждые 60 секунд
 - ✅ Smart Queue с приоритетами (SNIPER=HIGH, TRADER=NORMAL)
 
+3. **Добавлены карточки TRADER и SNIPER** в UI (`ai_trade.html`):
+   - Две карточки в ряд перед секцией Agents
+   - Level, XP прогресс-бар, Winrate, PnL, сделки, API расход
+   - SNIPER: дополнительно "Last Snipe" время
+   - Цветовая индикация: PnL (зелёный/красный), статус (Active/Paused/Cooldown)
+   - Автообновление каждые 30 секунд
+   - Локализация RU/EN
+
 ---
 
-**Последнее обновление:** 2026-01-28 (fix: add get_open_positions() method, increase daily API limit)
+**Последнее обновление:** 2026-01-28 (feat: add TRADER and SNIPER statistics cards to UI)
 **Текущая версия:** v2.4.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
