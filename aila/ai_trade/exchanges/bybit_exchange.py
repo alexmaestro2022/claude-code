@@ -138,6 +138,31 @@ class BybitExchange(BaseExchange):
         return 0.0
 
     @retry_async(max_attempts=2)
+    async def set_leverage(self, leverage: int, symbol: str) -> bool:
+        """Set leverage for symbol on Bybit."""
+        # Convert symbol from ccxt format (BTC/USDT) to Bybit format (BTCUSDT)
+        bybit_symbol = symbol.replace("/", "") if "/" in symbol else symbol
+        try:
+            result = self._client.set_leverage(
+                category="linear",
+                symbol=bybit_symbol,
+                buyLeverage=str(leverage),
+                sellLeverage=str(leverage),
+            )
+            if result["retCode"] == 0:
+                logger.info(f"Leverage set to {leverage}x for {bybit_symbol}")
+                return True
+            # Code 110043 = leverage not modified (already set to this value)
+            if result["retCode"] == 110043:
+                logger.debug(f"Leverage already {leverage}x for {bybit_symbol}")
+                return True
+            logger.warning(f"Failed to set leverage: {result.get('retMsg')}")
+            return False
+        except Exception as e:
+            logger.error(f"Error setting leverage for {bybit_symbol}: {e}")
+            return False
+
+    @retry_async(max_attempts=2)
     async def fetch_ohlcv(
         self, symbol: str, timeframe: str = "15", limit: int = 100
     ) -> list[list]:

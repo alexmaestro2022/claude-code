@@ -55,3 +55,7 @@ class BaseExchange(ABC):
     @abstractmethod
     async def get_funding_rate(self, symbol: str) -> float:
         """Get funding rate for symbol."""
+
+    @abstractmethod
+    async def set_leverage(self, leverage: int, symbol: str) -> bool:
+        """Set leverage for symbol."""
