@@ -228,7 +228,15 @@ class AutopilotMode:
 
     async def _execute_trade(self, opportunity: dict[str, Any]) -> Optional[dict[str, Any]]:
         """Execute validated trade."""
-        logger.warning(f"Executing: {opportunity['decision']} {opportunity['pair']}")
+        symbol = opportunity['pair']
+        side = opportunity['decision']
+        entry_price = opportunity.get('entry_price', 0)
+
+        # Log: all checks passed, ready to execute
+        logger.warning(
+            f"[READY_TO_TRADE] {symbol} {side} @ {entry_price} - "
+            f"all checks passed, executing..."
+        )
 
         try:
             size = await self._orchestrator.calculate_trade_size(
@@ -250,13 +258,13 @@ class AutopilotMode:
 
                 await self._orchestrator.knowledge_base.add_xp(5, 'entry_timing')
 
-                logger.info(f"Trade opened: {opportunity['pair']} {opportunity['decision']}")
+                logger.info(f"[TRADE_OPENED] {symbol} {side} @ {entry_price}")
                 return result
             else:
-                logger.error(f"Trade failed: position not opened for {opportunity['pair']}")
+                logger.error(f"[TRADE_FAILED] {symbol} {side} - position not opened")
                 return None
         except Exception as e:
-            logger.error(f"Trade execution error: {e}")
+            logger.error(f"[TRADE_FAILED] {symbol} {side} - {e}")
             return None
 
     def _reset_counters_if_needed(self) -> None:

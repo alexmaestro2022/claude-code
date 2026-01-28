@@ -296,6 +296,12 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+        /* Log color coding */
+        .log-ready-to-trade { color: #FFD700 !important; font-weight: bold; }
+        .log-trade-opened { color: #28a745 !important; font-weight: bold; }
+        .log-trade-failed { color: #dc3545 !important; font-weight: bold; }
+        .log-reviewer-approved { color: #FFD700 !important; }
+        .log-error { color: #dc3545 !important; }
     </style>
 </head>
 <body class="bg-gray-900 text-white min-h-screen" style="padding-bottom: 50px;">
@@ -783,6 +789,17 @@
             </span>`;
         }
 
+        // Get CSS class for log color coding
+        function getLogColorClass(logText) {
+            if (logText.includes('[READY_TO_TRADE]')) return 'log-ready-to-trade';
+            if (logText.includes('[TRADE_OPENED]')) return 'log-trade-opened';
+            if (logText.includes('[TRADE_FAILED]')) return 'log-trade-failed';
+            if (logText.includes('approved=True') && logText.includes('all checks passed')) return 'log-ready-to-trade';
+            if (logText.includes('Trade opened:')) return 'log-trade-opened';
+            if (logText.includes('ERROR') || logText.includes('error')) return 'log-error';
+            return '';
+        }
+
         async function fetchData(endpoint) {
             try {
                 const response = await fetch(API_BASE + endpoint);
@@ -1050,9 +1067,11 @@
 
             const logs = await fetchData('/logs?limit=20');
             if (logs && logs.logs && logs.logs.length > 0) {
-                const logsHtml = logs.logs.map(l =>
-                    `<div class="border-b border-gray-700 py-1">${typeof l === 'string' ? l : `[${l.agent}] ${l.log}`}</div>`
-                ).join('');
+                const logsHtml = logs.logs.map(l => {
+                    const logText = typeof l === 'string' ? l : `[${l.agent}] ${l.log}`;
+                    const logClass = getLogColorClass(logText);
+                    return `<div class="border-b border-gray-700 py-1 ${logClass}">${logText}</div>`;
+                }).join('');
                 document.getElementById('logs').innerHTML = logsHtml;
             } else {
                 document.getElementById('logs').innerHTML = '<p class="text-gray-500">No logs yet</p>';
