@@ -151,12 +151,21 @@ class AutopilotMode:
         return {'passed': True, 'checks': checks}
 
     async def _sync_positions(self) -> None:
-        """Sync open positions with signal queue."""
+        """Sync open positions with signal queue using REAL exchange data."""
         try:
-            positions = await self._orchestrator.position_manager.get_open_positions()
-            open_pairs = [p.get("symbol", "") for p in positions]
+            # Get real positions from exchange
+            real_positions = await self._orchestrator.exchanges.primary.get_positions()
+            open_pairs = []
+            for p in real_positions:
+                size = float(p.get('size', 0))
+                if size != 0:
+                    symbol = p.get('symbol', '')
+                    # Convert BTCUSDT -> BTC/USDT for queue
+                    if '/' not in symbol and symbol.endswith('USDT'):
+                        symbol = symbol[:-4] + '/USDT'
+                    open_pairs.append(symbol)
             self._signal_queue.sync_positions(open_pairs)
-            logger.info(f"[QUEUE] Synced {len(open_pairs)} open positions")
+            logger.info(f"[QUEUE] Synced {len(open_pairs)} open positions from exchange")
         except Exception as e:
             logger.error(f"Position sync error: {e}")
 
@@ -239,9 +248,15 @@ class AutopilotMode:
                 return
 
             # Check position limit before scanning
+            # Use REAL positions from exchange, not internal cache
             limits = self._agent_stats.get_level_limits("TRADER")
             max_positions = limits.get('max_positions', 1)
-            current_positions = self._orchestrator.position_manager.get_open_count()
+            try:
+                real_positions = await self._orchestrator.exchanges.primary.get_positions()
+                current_positions = len([p for p in real_positions if float(p.get('size', 0)) != 0])
+            except Exception as e:
+                logger.warning(f"[TRADER][CASCADE] Error fetching positions: {e}, using cache")
+                current_positions = self._orchestrator.position_manager.get_open_count()
 
             if current_positions >= max_positions and pause_on_position_limit:
                 self._cascade_stats['paused_reason'] = 'position_limit'
