@@ -66,11 +66,14 @@ class PositionManager:
                 logger.error(f"[POSITION] Failed to get ticker for {symbol}: {ticker}")
                 return None
             price = ticker["last"]
-            amount = position_size_usdt / price
-            logger.info(f"[POSITION] Price: {price}, amount: {amount:.6f}")
+            raw_amount = position_size_usdt / price
+
+            # Round quantity to valid precision for Bybit
+            amount = await self._exchange.round_qty(symbol, raw_amount)
+            logger.info(f"[POSITION] Price: {price}, raw_qty: {raw_amount:.8f}, rounded_qty: {amount}")
 
             side = "buy" if direction == "LONG" else "sell"
-            logger.info(f"[POSITION] Creating market order: {side} {amount:.6f} {symbol}")
+            logger.info(f"[POSITION] Creating market order: {side} {amount} {symbol}")
             order = await self._exchange.create_market_order(symbol, side, amount)
             if not order or "id" not in order:
                 logger.error(f"[POSITION] Failed to create market order for {symbol}: {order}")

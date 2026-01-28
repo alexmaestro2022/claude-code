@@ -1,6 +1,7 @@
 """Bybit exchange implementation."""
 
 import logging
+import math
 from typing import Optional
 
 from pybit.unified_trading import HTTP
@@ -14,7 +15,7 @@ logger = logging.getLogger("ai_trade.exchange.bybit")
 class BybitExchange(BaseExchange):
     """Bybit exchange via pybit unified trading API."""
 
-    __slots__ = ("_client",)
+    __slots__ = ("_client", "_instruments_cache")
 
     def __init__(
         self, api_key: str = "", api_secret: str = "", testnet: bool = False
@@ -25,6 +26,7 @@ class BybitExchange(BaseExchange):
             api_secret=api_secret,
             testnet=testnet,
         )
+        self._instruments_cache: dict[str, dict] = {}
 
     @retry_async(max_attempts=2)
     async def get_ticker(self, symbol: str) -> dict:
@@ -68,6 +70,58 @@ class BybitExchange(BaseExchange):
     async def fetch_order_book(self, symbol: str, limit: int = 20) -> dict:
         """Alias for get_orderbook (ccxt-compatible name)."""
         return await self.get_orderbook(symbol, limit)
+
+    @retry_async(max_attempts=2)
+    async def get_instrument_info(self, symbol: str) -> dict:
+        """Get instrument info including qty precision (qtyStep)."""
+        bybit_symbol = symbol.replace("/", "") if "/" in symbol else symbol
+
+        # Check cache first
+        if bybit_symbol in self._instruments_cache:
+            return self._instruments_cache[bybit_symbol]
+
+        result = self._client.get_instruments_info(
+            category="linear", symbol=bybit_symbol
+        )
+        if result["retCode"] == 0 and result["result"]["list"]:
+            info = result["result"]["list"][0]
+            lot_filter = info.get("lotSizeFilter", {})
+            price_filter = info.get("priceFilter", {})
+            instrument = {
+                "symbol": bybit_symbol,
+                "qtyStep": float(lot_filter.get("qtyStep", "0.001")),
+                "minQty": float(lot_filter.get("minOrderQty", "0.001")),
+                "maxQty": float(lot_filter.get("maxOrderQty", "100000")),
+                "tickSize": float(price_filter.get("tickSize", "0.01")),
+            }
+            self._instruments_cache[bybit_symbol] = instrument
+            return instrument
+        return {"qtyStep": 0.001, "minQty": 0.001, "maxQty": 100000, "tickSize": 0.01}
+
+    async def get_qty_precision(self, symbol: str) -> float:
+        """Get quantity step (precision) for symbol."""
+        info = await self.get_instrument_info(symbol)
+        return info.get("qtyStep", 0.001)
+
+    async def round_qty(self, symbol: str, qty: float) -> float:
+        """Round quantity to valid precision for Bybit."""
+        info = await self.get_instrument_info(symbol)
+        qty_step = info.get("qtyStep", 0.001)
+        min_qty = info.get("minQty", 0.001)
+
+        # Round down to nearest step
+        if qty_step > 0:
+            precision = int(round(-math.log10(qty_step)))
+            rounded = math.floor(qty / qty_step) * qty_step
+            rounded = round(rounded, precision)
+        else:
+            rounded = qty
+
+        # Ensure minimum quantity
+        if rounded < min_qty:
+            rounded = min_qty
+
+        return rounded
 
     @retry_async(max_attempts=2)
     async def get_balance(self, currency: str = "USDT") -> float:

@@ -1826,6 +1826,42 @@ async def get_prediction(pair: str):
 
 ---
 
-**Последнее обновление:** 2026-01-28 (fix: add debug trade pipeline + symbol normalization)
+## 37. Исправление Qty Invalid (2026-01-28)
+
+### Проблема:
+```
+Qty invalid: "26.157467957101755" — слишком много десятичных знаков
+```
+
+Bybit API требует округления qty до qtyStep (например 0.01 для JTO).
+
+### Решение:
+
+**bybit_exchange.py — новые методы:**
+```python
+async def get_instrument_info(symbol) -> dict:
+    """Получает qtyStep, minQty, maxQty из /v5/market/instruments-info"""
+
+async def get_qty_precision(symbol) -> float:
+    """Возвращает qtyStep для символа"""
+
+async def round_qty(symbol, qty) -> float:
+    """Округляет qty до правильной точности (floor к qtyStep)"""
+```
+
+**position_manager.py — использование round_qty:**
+```python
+raw_amount = position_size_usdt / price
+amount = await self._exchange.round_qty(symbol, raw_amount)
+logger.info(f"[POSITION] Price: {price}, raw_qty: {raw_amount:.8f}, rounded_qty: {amount}")
+```
+
+### Файлы изменены:
+- `aila/ai_trade/exchanges/bybit_exchange.py` — добавлены get_instrument_info, get_qty_precision, round_qty
+- `aila/ai_trade/position_manager.py` — округление qty перед созданием ордера
+
+---
+
+**Последнее обновление:** 2026-01-28 (fix: qty precision + debug trade pipeline)
 **Текущая версия:** v2.3.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
