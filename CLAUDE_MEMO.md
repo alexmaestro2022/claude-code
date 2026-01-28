@@ -2178,8 +2178,15 @@ POST /api/ai-trade/agent/{agent}/disable        — Выключить аген�
    - Также читается `require_confirmations` для полного отключения
    - Первая успешная сделка после исправления: 1000RATS/USDT LONG
 
+8. **Добавлен виджет позиций** (feat: add positions endpoint and widget with real-time PnL):
+   - `GET /api/ai-trade/positions` — открытые позиции с Bybit
+   - `POST /api/ai-trade/positions/{symbol}/close` — закрыть позицию
+   - UI виджет с реальным PnL, обновление каждые 10 секунд
+   - Кнопка закрытия с подтверждением
+   - Локализация RU/EN
+
 ---
 
-**Последнее обновление:** 2026-01-28 (fix: apply confirmations setting from trader_settings.json)
+**Последнее обновление:** 2026-01-28 (feat: add positions endpoint and widget with real-time PnL)
 **Текущая версия:** v2.4.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
