@@ -1785,6 +1785,6 @@ async def get_prediction(pair: str):
 
 ---
 
-**Последнее обновление:** 2026-01-28 (fix: add set_leverage method to BybitExchange)
+**Последнее обновление:** 2026-01-28 (fix: handle None responses + ccxt-compatible methods)
 **Текущая версия:** v2.3.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
