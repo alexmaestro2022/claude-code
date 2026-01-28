@@ -123,6 +123,57 @@ class BybitExchange(BaseExchange):
 
         return rounded
 
+    async def get_price_precision(self, symbol: str) -> float:
+        """Get price tick size (precision) for symbol."""
+        info = await self.get_instrument_info(symbol)
+        return info.get("tickSize", 0.01)
+
+    async def round_price(self, symbol: str, price: float) -> float:
+        """Round price to valid precision for Bybit."""
+        info = await self.get_instrument_info(symbol)
+        tick_size = info.get("tickSize", 0.01)
+
+        if tick_size > 0:
+            precision = int(round(-math.log10(tick_size)))
+            rounded = round(price / tick_size) * tick_size
+            rounded = round(rounded, precision)
+        else:
+            rounded = price
+
+        return rounded
+
+    @staticmethod
+    def normalize_symbol(symbol: str) -> str:
+        """Normalize symbol from ccxt format (BTC/USDT) to Bybit format (BTCUSDT)."""
+        return symbol.replace("/", "") if "/" in symbol else symbol
+
+    async def get_klines(
+        self, symbol: str, timeframe: str = "15m", limit: int = 100
+    ) -> list[list]:
+        """Alias for fetch_ohlcv (Bybit-style name)."""
+        return await self.fetch_ohlcv(symbol, timeframe, limit)
+
+    @retry_async(max_attempts=2)
+    async def get_position(self, symbol: str) -> dict | None:
+        """Get single position by symbol."""
+        bybit_symbol = self.normalize_symbol(symbol)
+        result = self._client.get_positions(
+            category="linear", symbol=bybit_symbol
+        )
+        if result["retCode"] == 0:
+            for pos in result["result"]["list"]:
+                if float(pos["size"]) > 0:
+                    return {
+                        "symbol": pos["symbol"],
+                        "side": pos["side"],
+                        "size": float(pos["size"]),
+                        "entry_price": float(pos["avgPrice"]),
+                        "mark_price": float(pos["markPrice"]),
+                        "pnl": float(pos["unrealisedPnl"]),
+                        "leverage": pos["leverage"],
+                    }
+        return None
+
     @retry_async(max_attempts=2)
     async def get_balance(self, currency: str = "USDT") -> float:
         """Get balance for currency."""

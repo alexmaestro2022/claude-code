@@ -167,6 +167,30 @@ result = await self.claude_client.analyze(
 - Без логирования нельзя отслеживать расходы по агентам
 - Статистика доступна через `GET /api/ai-trade/api-usage` и в UI
 
+## ПРАВИЛО: Code Review для AI Trade
+
+### Перед изменением Exchange кода:
+1. **Проверить чеклист** `/opt/aila/docs/EXCHANGE_CHECKLIST.md`
+2. **Убедиться что все методы реализованы** (Market Data, Account, Orders, Position, Helpers)
+3. **Проверить нормализацию символов** — использовать `normalize_symbol()`
+4. **Проверить округление** — qty через `round_qty()`, price через `round_price()`
+5. **Добавить `@retry_async`** для всех API вызовов
+
+### Перед изменением Agents кода:
+1. **Логирование API вызовов** — agent, action, context обязательны
+2. **Stage logging** в autopilot — `[STAGE 1-5]` для каждого этапа
+3. **Проверить что VETO права** не нарушены (RISK_GUARD имеет абсолютное VETO)
+
+### Перед деплоем:
+1. **Запустить тесты**: `cd /opt/aila && python -m pytest tests/test_bybit_exchange.py -v`
+2. **Проверить логи на ошибки**: `grep -i error /opt/aila/logs/ai_trade/*.log | tail -20`
+3. **Проверить статус автопилота**: `curl -s localhost:8080/api/ai-trade/autopilot/status`
+
+### Документация:
+- **Методы exchange**: `/opt/aila/docs/EXCHANGE_CHECKLIST.md`
+- **API агентов**: `/opt/aila/docs/AI_TRADE_API.md`
+- **Общая информация**: `/opt/aila/CLAUDE_MEMO.md`
+
 ## Управление правилами
 - "запомни правило:" + текст — добавить новое правило в CLAUDE_RULES.md
 - "удали правило:" + текст — удалить указанное правило из CLAUDE_RULES.md

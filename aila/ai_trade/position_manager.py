@@ -168,12 +168,17 @@ class PositionManager:
         take_profit = signal.get("take_profit")
         sl_side = "sell" if direction == "LONG" else "buy"
 
+        # Round prices to valid precision
         if stop_loss:
+            stop_loss = await self._exchange.round_price(symbol, stop_loss)
+            logger.info(f"[POSITION] Setting SL @ {stop_loss}")
             await self._exchange.create_order(
                 symbol, "stop_market", sl_side, amount,
                 params={"stopPrice": stop_loss, "reduceOnly": True},
             )
         if take_profit:
+            take_profit = await self._exchange.round_price(symbol, take_profit)
+            logger.info(f"[POSITION] Setting TP @ {take_profit}")
             await self._exchange.create_order(
                 symbol, "take_profit_market", sl_side, amount,
                 params={"stopPrice": take_profit, "reduceOnly": True},
