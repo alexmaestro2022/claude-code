@@ -54,11 +54,17 @@ class PositionManager:
             await self._exchange.set_leverage(leverage, symbol)
 
             ticker = await self._exchange.fetch_ticker(symbol)
+            if not ticker or "last" not in ticker:
+                logger.error(f"Failed to get ticker for {symbol}")
+                return None
             price = ticker["last"]
             amount = position_size_usdt / price
 
             side = "buy" if direction == "LONG" else "sell"
             order = await self._exchange.create_market_order(symbol, side, amount)
+            if not order or "id" not in order:
+                logger.error(f"Failed to create market order for {symbol}")
+                return None
 
             position = self._build_position(signal, order, price, amount)
             await self._set_sl_tp(symbol, signal, direction, amount)

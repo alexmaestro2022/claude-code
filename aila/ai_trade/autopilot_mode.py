@@ -242,7 +242,8 @@ class AutopilotMode:
 
             result = await self._orchestrator.position_manager.open_position(opportunity)
 
-            if result.get('success'):
+            if result:
+                # open_position returns position dict on success, None on failure
                 self._stats['trades_this_hour'] += 1
                 self._stats['trades_today'] += 1
                 self._last_trade_time = datetime.utcnow()
@@ -250,10 +251,10 @@ class AutopilotMode:
                 await self._orchestrator.knowledge_base.add_xp(5, 'entry_timing')
 
                 logger.info(f"Trade opened: {opportunity['pair']} {opportunity['decision']}")
+                return result
             else:
-                logger.error(f"Trade failed: {result.get('error')}")
-
-            return result
+                logger.error(f"Trade failed: position not opened for {opportunity['pair']}")
+                return None
         except Exception as e:
             logger.error(f"Trade execution error: {e}")
             return None

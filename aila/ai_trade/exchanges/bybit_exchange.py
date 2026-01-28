@@ -29,17 +29,26 @@ class BybitExchange(BaseExchange):
     @retry_async(max_attempts=2)
     async def get_ticker(self, symbol: str) -> dict:
         """Get current price ticker."""
-        result = self._client.get_tickers(category="linear", symbol=symbol)
+        # Normalize symbol: remove /USDT suffix if present
+        bybit_symbol = symbol.replace("/", "") if "/" in symbol else symbol
+        result = self._client.get_tickers(category="linear", symbol=bybit_symbol)
         if result["retCode"] == 0 and result["result"]["list"]:
             ticker = result["result"]["list"][0]
+            price = float(ticker["lastPrice"])
             return {
                 "symbol": symbol,
-                "price": float(ticker["lastPrice"]),
+                "price": price,
+                "last": price,  # ccxt-compatible alias
                 "bid": float(ticker.get("bid1Price", 0)),
                 "ask": float(ticker.get("ask1Price", 0)),
                 "volume_24h": float(ticker.get("volume24h", 0)),
             }
+        logger.warning(f"No ticker data for {bybit_symbol}")
         return {}
+
+    async def fetch_ticker(self, symbol: str) -> dict:
+        """Alias for get_ticker (ccxt-compatible name)."""
+        return await self.get_ticker(symbol)
 
     @retry_async(max_attempts=2)
     async def get_orderbook(self, symbol: str, limit: int = 20) -> dict:
@@ -101,10 +110,118 @@ class BybitExchange(BaseExchange):
         }
 
     @retry_async(max_attempts=2)
-    async def cancel_order(self, symbol: str, order_id: str) -> bool:
+    async def create_market_order(
+        self, symbol: str, side: str, amount: float, params: Optional[dict] = None
+    ) -> dict:
+        """Create a market order (ccxt-compatible)."""
+        bybit_symbol = symbol.replace("/", "") if "/" in symbol else symbol
+        order_params: dict = {
+            "category": "linear",
+            "symbol": bybit_symbol,
+            "side": side.capitalize(),
+            "orderType": "Market",
+            "qty": str(amount),
+        }
+        if params:
+            if params.get("reduceOnly"):
+                order_params["reduceOnly"] = True
+        result = self._client.place_order(**order_params)
+        if result["retCode"] == 0:
+            return {
+                "id": result["result"].get("orderId"),
+                "symbol": symbol,
+                "side": side,
+                "amount": amount,
+                "status": "filled",
+            }
+        logger.error(f"Market order failed: {result.get('retMsg')}")
+        return {}
+
+    @retry_async(max_attempts=2)
+    async def create_order(
+        self,
+        symbol: str,
+        order_type: str,
+        side: str,
+        amount: float,
+        price: Optional[float] = None,
+        params: Optional[dict] = None,
+    ) -> dict:
+        """Create an order with specified type (ccxt-compatible)."""
+        bybit_symbol = symbol.replace("/", "") if "/" in symbol else symbol
+        # Map ccxt order types to Bybit
+        type_map = {
+            "stop_market": "Market",
+            "take_profit_market": "Market",
+            "limit": "Limit",
+            "market": "Market",
+        }
+        bybit_type = type_map.get(order_type.lower(), "Market")
+
+        order_params: dict = {
+            "category": "linear",
+            "symbol": bybit_symbol,
+            "side": side.capitalize(),
+            "orderType": bybit_type,
+            "qty": str(amount),
+        }
+
+        if params:
+            if params.get("reduceOnly"):
+                order_params["reduceOnly"] = True
+            if params.get("stopPrice"):
+                order_params["triggerPrice"] = str(params["stopPrice"])
+                # Determine trigger direction
+                if order_type.lower() == "stop_market":
+                    # Stop loss: trigger when price goes against position
+                    order_params["triggerDirection"] = 2 if side.lower() == "sell" else 1
+                elif order_type.lower() == "take_profit_market":
+                    # Take profit: trigger when price goes in favor
+                    order_params["triggerDirection"] = 1 if side.lower() == "sell" else 2
+
+        if price and bybit_type == "Limit":
+            order_params["price"] = str(price)
+
+        result = self._client.place_order(**order_params)
+        if result["retCode"] == 0:
+            return {
+                "id": result["result"].get("orderId"),
+                "symbol": symbol,
+                "type": order_type,
+                "side": side,
+                "amount": amount,
+            }
+        logger.warning(f"Order creation note: {result.get('retMsg')}")
+        return {}
+
+    @retry_async(max_attempts=2)
+    async def fetch_open_orders(self, symbol: Optional[str] = None) -> list[dict]:
+        """Fetch open orders (ccxt-compatible)."""
+        params: dict = {"category": "linear", "settleCoin": "USDT"}
+        if symbol:
+            bybit_symbol = symbol.replace("/", "") if "/" in symbol else symbol
+            params["symbol"] = bybit_symbol
+        result = self._client.get_open_orders(**params)
+        orders: list[dict] = []
+        if result["retCode"] == 0:
+            for order in result["result"]["list"]:
+                orders.append({
+                    "id": order["orderId"],
+                    "symbol": order["symbol"],
+                    "side": order["side"].lower(),
+                    "price": float(order.get("price", 0)),
+                    "amount": float(order.get("qty", 0)),
+                    "type": order.get("orderType", "").lower(),
+                    "status": order.get("orderStatus", "").lower(),
+                })
+        return orders
+
+    @retry_async(max_attempts=2)
+    async def cancel_order(self, order_id: str, symbol: str) -> bool:
         """Cancel an order."""
+        bybit_symbol = symbol.replace("/", "") if "/" in symbol else symbol
         result = self._client.cancel_order(
-            category="linear", symbol=symbol, orderId=order_id
+            category="linear", symbol=bybit_symbol, orderId=order_id
         )
         return result["retCode"] == 0
 
