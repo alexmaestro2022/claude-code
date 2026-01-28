@@ -1983,12 +1983,13 @@ cd /opt/aila && /opt/aila/venv/bin/python -m pytest tests/test_bybit_exchange.py
 - Удалена секция Claude API из общих настроек (settings-modal)
 - Добавлены функции `openApiSettingsModal()` и `closeApiSettingsModal()`
 
-**UI:**
+**UI (обновлено):**
 - Шестерёнка в правом верхнем углу карточки → открывает модалку с настройками
-- Настройки: начальный баланс, toggle лимитов, дневной/общий лимит, прогресс-бары
+- Модалка настроек (`loadApiUsage()`): начальный баланс + сброс, toggle лимитов, дневной/общий лимит, кнопка сохранить
+- Общие настройки (`loadApiUsageStats()`): прогресс-бары, остаток баланса, вызовы сегодня, модели, последний сброс, топ потребителей по агентам
 
 ---
 
-**Последнее обновление:** 2026-01-28 (refactor: Claude API settings modal)
+**Последнее обновление:** 2026-01-28 (fix: restore API usage statistics)
 **Текущая версия:** v2.3.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
