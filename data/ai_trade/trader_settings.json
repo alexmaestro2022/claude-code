@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "scan_interval_seconds": 60,
+  "min_confidence": 70,
+  "min_rr_ratio": 1.5,
+  "min_sl_distance_pct": 2,
+  "cooldown_seconds": 300,
+  "max_trades_per_day": 10,
+  "pause_after_losses": 3,
+  "pause_duration_minutes": 60,
+  "require_confirmations": true,
+  "min_confirmations": 2,
+  "last_modified": "2026-01-28T20:04:38.587983"
+}

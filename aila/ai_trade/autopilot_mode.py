@@ -32,7 +32,7 @@ class AutopilotMode:
         '_orchestrator', '_running', '_config', '_stats', '_last_trade_time',
         '_last_scan_time', '_currently_scanning', '_current_pair', '_pairs_count',
         '_signal_queue', '_agent_stats', '_sniper_scan_counter',
-        '_last_sniper_scan', '_current_agent'
+        '_last_sniper_scan', '_current_agent', '_cascade_stats'
     ]
 
     def __init__(self, orchestrator: Any) -> None:
@@ -51,6 +51,15 @@ class AutopilotMode:
         # Signal queue and agent stats
         self._signal_queue = SignalQueue()
         self._agent_stats = AgentStatsManager()
+
+        # Cascade analysis stats
+        self._cascade_stats = {
+            'current_stage': None,  # 'vip_p1', 'p2', 'p3', or None
+            'paused_reason': None,  # 'position_limit' or None
+            'last_cascade_at': None,
+            'stages_completed': {'vip_p1': 0, 'p2': 0, 'p3': 0},
+            'signals_found': {'vip': 0, 'p1': 0, 'p2': 0, 'p3': 0},
+        }
 
         self._config = {
             'scan_interval_seconds': 60,       # TRADER scan interval
@@ -206,7 +215,7 @@ class AutopilotMode:
             await asyncio.gather(*tasks, return_exceptions=True)
 
     async def _scan_trader(self) -> None:
-        """Scan for TRADER opportunities."""
+        """Scan for TRADER opportunities with cascade analysis."""
         self._currently_scanning = True
         self._current_agent = "TRADER"
         self._current_pair = None
@@ -218,39 +227,218 @@ class AutopilotMode:
                 logger.info(f"[TRADER] Paused: {reason}")
                 return
 
-            # Get pairs count
-            try:
-                pairs = await self._orchestrator.trader.scanner.get_top_pairs()
-                self._pairs_count = len(pairs) if pairs else 0
-            except Exception:
-                self._pairs_count = 0
+            # Get cascade settings
+            from .agent_settings import get_agent_settings
+            settings = get_agent_settings().get_settings("TRADER")
+            cascade_enabled = settings.get('cascade_enabled', True)
+            pause_on_position_limit = settings.get('pause_on_position_limit', True)
 
-            logger.info("[TRADER][STAGE 1] Scanning for opportunities...")
-            opportunity = await self._orchestrator.trader.find_opportunity()
+            if not cascade_enabled:
+                # Fallback to standard scan
+                await self._scan_trader_standard()
+                return
 
-            if opportunity and opportunity.get('decision') in ['LONG', 'SHORT']:
-                pair = opportunity.get('pair', 'UNKNOWN')
-                confidence = opportunity.get('confidence', 0)
-                logger.info(f"[TRADER][STAGE 1] Found: {opportunity.get('decision')} {pair} @ {confidence}%")
+            # Check position limit before scanning
+            limits = self._agent_stats.get_level_limits("TRADER")
+            max_positions = limits.get('max_positions', 1)
+            current_positions = self._orchestrator.position_manager.get_open_count()
 
-                if confidence >= self._config['min_confidence']:
-                    # Add to queue with NORMAL priority
-                    result = self._signal_queue.add_signal(
-                        signal=opportunity,
-                        agent="TRADER",
-                        priority=SignalPriority.NORMAL,
-                    )
-                    if result.get("added"):
-                        self._stats['trader_signals'] += 1
-                else:
-                    logger.info(f"[TRADER][STAGE 1] Confidence {confidence}% < min {self._config['min_confidence']}%")
-            else:
-                logger.info("[TRADER][STAGE 1] No valid opportunity found")
+            if current_positions >= max_positions and pause_on_position_limit:
+                self._cascade_stats['paused_reason'] = 'position_limit'
+                self._cascade_stats['current_stage'] = None
+                logger.info(
+                    f"[TRADER][CASCADE] Paused: position limit reached "
+                    f"({current_positions}/{max_positions})"
+                )
+                return
+
+            self._cascade_stats['paused_reason'] = None
+
+            # Get pairs by priority
+            p1_max = settings.get('priority_1_max_pairs', 10)
+            p2_max = settings.get('priority_2_max_pairs', 10)
+            p3_max = settings.get('priority_3_max_pairs', 10)
+            min_change = settings.get('min_24h_change_pct', 3.0)
+            max_change = settings.get('max_24h_change_pct', 50.0)
+
+            pairs_by_priority = await self._orchestrator.trader.scanner.get_pairs_by_priority(
+                min_change=min_change,
+                max_change=max_change,
+                p1_max=p1_max,
+                p2_max=p2_max,
+                p3_max=p3_max,
+            )
+
+            vip_pairs = pairs_by_priority.get('vip', [])
+            p1_pairs = pairs_by_priority.get('priority_1', [])
+            p2_pairs = pairs_by_priority.get('priority_2', [])
+            p3_pairs = pairs_by_priority.get('priority_3', [])
+
+            total_pairs = len(vip_pairs) + len(p1_pairs) + len(p2_pairs) + len(p3_pairs)
+            self._pairs_count = total_pairs
+
+            logger.info(
+                f"[TRADER][CASCADE] Starting cascade analysis: "
+                f"VIP={len(vip_pairs)}, P1={len(p1_pairs)}, P2={len(p2_pairs)}, P3={len(p3_pairs)}"
+            )
+
+            # STAGE 1: VIP + Priority 1
+            self._cascade_stats['current_stage'] = 'vip_p1'
+            stage1_pairs = vip_pairs + p1_pairs
+
+            if stage1_pairs:
+                logger.info(f"[TRADER][CASCADE][STAGE 1] Analyzing {len(stage1_pairs)} VIP+P1 pairs...")
+                opportunity = await self._analyze_pairs_batch(stage1_pairs, "vip_p1")
+
+                if opportunity:
+                    added = await self._add_opportunity_to_queue(opportunity)
+                    if added:
+                        self._cascade_stats['stages_completed']['vip_p1'] += 1
+                        # Check if position limit reached after adding signal
+                        if current_positions + 1 >= max_positions:
+                            logger.info("[TRADER][CASCADE] Position limit will be reached, stopping cascade")
+                            self._cascade_stats['last_cascade_at'] = datetime.utcnow()
+                            return
+
+            # STAGE 2: Priority 2
+            self._cascade_stats['current_stage'] = 'p2'
+            if p2_pairs:
+                logger.info(f"[TRADER][CASCADE][STAGE 2] Analyzing {len(p2_pairs)} P2 pairs...")
+                opportunity = await self._analyze_pairs_batch(p2_pairs, "p2")
+
+                if opportunity:
+                    added = await self._add_opportunity_to_queue(opportunity)
+                    if added:
+                        self._cascade_stats['stages_completed']['p2'] += 1
+                        if current_positions + 1 >= max_positions:
+                            logger.info("[TRADER][CASCADE] Position limit will be reached, stopping cascade")
+                            self._cascade_stats['last_cascade_at'] = datetime.utcnow()
+                            return
+
+            # STAGE 3: Priority 3
+            self._cascade_stats['current_stage'] = 'p3'
+            if p3_pairs:
+                logger.info(f"[TRADER][CASCADE][STAGE 3] Analyzing {len(p3_pairs)} P3 pairs...")
+                opportunity = await self._analyze_pairs_batch(p3_pairs, "p3")
+
+                if opportunity:
+                    added = await self._add_opportunity_to_queue(opportunity)
+                    if added:
+                        self._cascade_stats['stages_completed']['p3'] += 1
+
+            self._cascade_stats['current_stage'] = None
+            self._cascade_stats['last_cascade_at'] = datetime.utcnow()
+            logger.info("[TRADER][CASCADE] Cascade analysis complete")
 
         finally:
             self._last_scan_time = datetime.utcnow()
             self._currently_scanning = False
             self._current_agent = None
+
+    async def _scan_trader_standard(self) -> None:
+        """Standard TRADER scan without cascade (fallback)."""
+        try:
+            pairs = await self._orchestrator.trader.scanner.get_top_pairs()
+            self._pairs_count = len(pairs) if pairs else 0
+        except Exception:
+            self._pairs_count = 0
+
+        logger.info("[TRADER][STAGE 1] Scanning for opportunities (standard mode)...")
+        opportunity = await self._orchestrator.trader.find_opportunity()
+
+        if opportunity and opportunity.get('decision') in ['LONG', 'SHORT']:
+            await self._add_opportunity_to_queue(opportunity)
+        else:
+            logger.info("[TRADER][STAGE 1] No valid opportunity found")
+
+    async def _analyze_pairs_batch(
+        self, pairs: list[dict], stage: str
+    ) -> dict | None:
+        """Analyze batch of pairs and return best opportunity using batch Claude API."""
+        # Filter out pairs that are already in queue or have open positions
+        filtered_pairs = []
+        for pair_data in pairs:
+            symbol = pair_data.get('symbol', '')
+            if self._signal_queue.has_signal(symbol) or self._signal_queue.has_position(symbol):
+                continue
+            filtered_pairs.append(pair_data)
+
+        if not filtered_pairs:
+            logger.info(f"[TRADER][CASCADE][{stage.upper()}] No new pairs to analyze")
+            return None
+
+        # Fetch market data for all pairs in parallel
+        pairs_with_data = []
+        for pair_data in filtered_pairs:
+            symbol = pair_data.get('symbol', '')
+            self._current_pair = symbol
+
+            try:
+                market_data = await self._orchestrator.trader.scanner.get_market_data(symbol)
+                if market_data:
+                    pairs_with_data.append({
+                        "symbol": symbol,
+                        "market_data": market_data
+                    })
+            except Exception as e:
+                logger.debug(f"[TRADER][CASCADE] Error fetching {symbol}: {e}")
+
+        if not pairs_with_data:
+            logger.info(f"[TRADER][CASCADE][{stage.upper()}] No market data available")
+            return None
+
+        # Use batch analysis (single Claude API call for the entire stage)
+        try:
+            opportunity = await self._orchestrator.trader.analyze_pairs(pairs_with_data)
+
+            if opportunity and opportunity.get('decision') in ['LONG', 'SHORT']:
+                symbol = opportunity.get('pair', 'UNKNOWN')
+                confidence = opportunity.get('confidence', 0)
+
+                logger.info(
+                    f"[TRADER][CASCADE][{stage.upper()}] Found: "
+                    f"{opportunity.get('decision')} {symbol} @ {confidence}%"
+                )
+
+                # Track signal source
+                if stage == 'vip_p1':
+                    if symbol in ['BTC/USDT', 'ETH/USDT', 'SOL/USDT']:
+                        self._cascade_stats['signals_found']['vip'] += 1
+                    else:
+                        self._cascade_stats['signals_found']['p1'] += 1
+                else:
+                    self._cascade_stats['signals_found'][stage] += 1
+
+                return opportunity
+
+        except Exception as e:
+            logger.error(f"[TRADER][CASCADE][{stage.upper()}] Batch analysis error: {e}")
+
+        return None
+
+    async def _add_opportunity_to_queue(self, opportunity: dict) -> bool:
+        """Add opportunity to signal queue if valid."""
+        pair = opportunity.get('pair', 'UNKNOWN')
+        confidence = opportunity.get('confidence', 0)
+        decision = opportunity.get('decision', 'UNKNOWN')
+
+        logger.info(f"[TRADER][STAGE 1] Found: {decision} {pair} @ {confidence}%")
+
+        if confidence >= self._config['min_confidence']:
+            result = self._signal_queue.add_signal(
+                signal=opportunity,
+                agent="TRADER",
+                priority=SignalPriority.NORMAL,
+            )
+            if result.get("added"):
+                self._stats['trader_signals'] += 1
+                return True
+        else:
+            logger.info(
+                f"[TRADER][STAGE 1] Confidence {confidence}% < min {self._config['min_confidence']}%"
+            )
+
+        return False
 
     async def _scan_sniper(self) -> None:
         """Scan for SNIPER opportunities."""
@@ -580,6 +768,12 @@ Trades today: {stats['trades_today']}
                     'limits': self._agent_stats.get_level_limits("TRADER"),
                     'paused': self._agent_stats.is_paused("TRADER")[0],
                     'cooldown_remaining': self._signal_queue.get_cooldown_remaining("TRADER"),
+                    'cascade': {
+                        'current_stage': self._cascade_stats['current_stage'],
+                        'paused_reason': self._cascade_stats['paused_reason'],
+                        'signals_found': self._cascade_stats['signals_found'],
+                        'stages_completed': self._cascade_stats['stages_completed'],
+                    },
                 },
                 'sniper': {
                     'enabled': self._config.get('sniper_enabled', True),
@@ -623,6 +817,15 @@ Trades today: {stats['trades_today']}
             if last_sniper:
                 seconds_since_sniper = (now - last_sniper).total_seconds()
 
+        # Get cascade status
+        cascade_status = None
+        if self._cascade_stats['paused_reason']:
+            cascade_status = 'paused'
+        elif self._cascade_stats['current_stage']:
+            cascade_status = 'scanning'
+        else:
+            cascade_status = 'idle'
+
         return {
             'running': self._running,
             'last_scan_time': self._last_scan_time.isoformat() if self._last_scan_time else None,
@@ -636,6 +839,13 @@ Trades today: {stats['trades_today']}
             'scan_interval': self._config.get('scan_interval_seconds', 60),
             'sniper_scan_interval': self._config.get('sniper_scan_interval_seconds', 10),
             'queue_size': len(self._signal_queue._queue),
+            'cascade': {
+                'status': cascade_status,
+                'current_stage': self._cascade_stats['current_stage'],
+                'paused_reason': self._cascade_stats['paused_reason'],
+                'last_cascade_at': self._cascade_stats['last_cascade_at'].isoformat() if self._cascade_stats['last_cascade_at'] else None,
+                'signals_found': self._cascade_stats['signals_found'],
+            },
         }
 
     def set_current_pair(self, pair: Optional[str]) -> None:

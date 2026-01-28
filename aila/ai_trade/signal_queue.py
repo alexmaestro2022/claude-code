@@ -179,6 +179,14 @@ class SignalQueue:
         """Sync position pairs with actual open positions."""
         self._position_pairs = set(open_pairs)
 
+    def has_signal(self, pair: str) -> bool:
+        """Check if pair is already in queue or being processed."""
+        return pair in self._processed_pairs
+
+    def has_position(self, pair: str) -> bool:
+        """Check if pair has open position."""
+        return pair in self._position_pairs
+
     def _is_on_cooldown(self, agent: str) -> bool:
         """Check if agent is on cooldown."""
         cooldown_until = self._cooldowns.get(agent)

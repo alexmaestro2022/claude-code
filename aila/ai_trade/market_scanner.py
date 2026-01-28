@@ -295,3 +295,110 @@ class MarketScanner:
             )
             true_ranges.append(tr)
         return sum(true_ranges[-period:]) / period
+
+    async def get_pairs_by_priority(
+        self,
+        min_change: float = 3.0,
+        max_change: float = 50.0,
+        p1_max: int = 10,
+        p2_max: int = 10,
+        p3_max: int = 10,
+    ) -> dict[str, list[dict[str, Any]]]:
+        """
+        Get pairs categorized by priority based on 24h change.
+
+        VIP: BTC, ETH, SOL (always included regardless of change)
+        Priority 1: +5% to +20% (start of trend) - best opportunities
+        Priority 2: +20% to +35% (middle of trend) - moderate risk
+        Priority 3: +35% to +50% (late trend) - higher risk
+
+        Excludes:
+        - Pairs with <min_change% (flat/no momentum)
+        - Pairs with >max_change% (too risky, except VIP)
+        """
+        VIP_PAIRS = {"BTC/USDT", "ETH/USDT", "SOL/USDT"}
+
+        cached = self._cache.get("pairs_by_priority", ttl=30.0)
+        if cached is not None:
+            return cached
+
+        try:
+            tickers = await self._exchange.fetch_tickers()
+
+            vip = []
+            priority_1 = []  # 5-20%
+            priority_2 = []  # 20-35%
+            priority_3 = []  # 35-50%
+
+            for symbol, ticker in tickers.items():
+                if "/USDT" not in symbol:
+                    continue
+
+                volume_24h = ticker.get("quoteVolume", 0) or 0
+                if volume_24h < self._config.get("min_volume_24h", 1_000_000):
+                    continue
+
+                change_24h = ticker.get("percentage", 0) or 0
+                abs_change = abs(change_24h)
+
+                pair_data = {
+                    "symbol": symbol,
+                    "price": ticker.get("last", 0),
+                    "volume_24h": volume_24h,
+                    "change_24h": change_24h,
+                    "high_24h": ticker.get("high", 0),
+                    "low_24h": ticker.get("low", 0),
+                }
+
+                # VIP pairs always included
+                if symbol in VIP_PAIRS:
+                    vip.append(pair_data)
+                    continue
+
+                # Filter by change range
+                if abs_change < min_change:
+                    continue  # Too flat
+                if abs_change > max_change:
+                    continue  # Too risky
+
+                # Categorize by priority (use absolute change for direction-agnostic)
+                if 5.0 <= abs_change < 20.0:
+                    priority_1.append(pair_data)
+                elif 20.0 <= abs_change < 35.0:
+                    priority_2.append(pair_data)
+                elif 35.0 <= abs_change <= max_change:
+                    priority_3.append(pair_data)
+
+            # Sort each priority by volume (higher volume = more liquid)
+            priority_1.sort(key=lambda x: x["volume_24h"], reverse=True)
+            priority_2.sort(key=lambda x: x["volume_24h"], reverse=True)
+            priority_3.sort(key=lambda x: x["volume_24h"], reverse=True)
+
+            result = {
+                "vip": vip,
+                "priority_1": priority_1[:p1_max],
+                "priority_2": priority_2[:p2_max],
+                "priority_3": priority_3[:p3_max],
+                "stats": {
+                    "vip_count": len(vip),
+                    "p1_total": len(priority_1),
+                    "p1_selected": min(len(priority_1), p1_max),
+                    "p2_total": len(priority_2),
+                    "p2_selected": min(len(priority_2), p2_max),
+                    "p3_total": len(priority_3),
+                    "p3_selected": min(len(priority_3), p3_max),
+                },
+            }
+
+            self._cache.set("pairs_by_priority", result)
+            logger.info(
+                f"[CASCADE] Pairs by priority: VIP={len(vip)}, "
+                f"P1={result['stats']['p1_selected']}/{result['stats']['p1_total']}, "
+                f"P2={result['stats']['p2_selected']}/{result['stats']['p2_total']}, "
+                f"P3={result['stats']['p3_selected']}/{result['stats']['p3_total']}"
+            )
+            return result
+
+        except Exception as e:
+            logger.error(f"[CASCADE] Error getting pairs by priority: {e}")
+            return {"vip": [], "priority_1": [], "priority_2": [], "priority_3": [], "stats": {}}

@@ -2187,6 +2187,90 @@ POST /api/ai-trade/agent/{agent}/disable        — Выключить аген�
 
 ---
 
-**Последнее обновление:** 2026-01-28 (feat: add positions endpoint and widget with real-time PnL)
+## 40. Каскадный анализ пар TRADER (2026-01-28)
+
+### Назначение:
+Оптимизация использования Claude API через каскадный анализ пар по приоритетам.
+Экономия токенов за счёт остановки анализа при достижении лимита позиций.
+
+### Логика каскадного анализа:
+
+1. **Проверка лимита позиций** перед сканированием:
+   - Если текущих позиций >= max_positions (из level limits) → пауза
+   - Статус: "Paused (position limit reached)"
+   - Сканирование возобновится когда позиция закроется
+
+2. **Приоритезация пар по 24h change:**
+
+| Группа | Изменение 24h | Описание | Риск |
+|--------|---------------|----------|------|
+| VIP | любое | BTC, ETH, SOL — всегда анализируются | низкий |
+| Priority 1 | 5-20% | Начало тренда, лучшие возможности | низкий |
+| Priority 2 | 20-35% | Середина тренда | средний |
+| Priority 3 | 35-50% | Поздний тренд | высокий |
+| Исключены | <3% | Слишком плоские, нет momentum | - |
+| Исключены | >50% | Слишком рискованные (кроме VIP) | - |
+
+3. **Каскадный анализ в 3 этапа:**
+   - **STAGE 1:** VIP + Priority 1 → batch Claude API call
+   - Если найден сигнал → проверка лимита → если не достигнут → продолжить
+   - **STAGE 2:** Priority 2 → batch Claude API call
+   - Если найден сигнал → проверка лимита → если не достигнут → продолжить
+   - **STAGE 3:** Priority 3 → batch Claude API call
+
+4. **Экономия токенов:**
+   - При лимите 1 позиция → только Stage 1 (VIP + P1)
+   - При лимите 2 позиции → Stage 1 + Stage 2 (если нужно)
+   - Не анализируем рискованные P3 если уже нашли хороший сигнал
+
+### Новые настройки в TRADER (agent_settings.py):
+
+| Параметр | По умолчанию | Диапазон | Описание |
+|----------|--------------|----------|----------|
+| cascade_enabled | true | bool | Включить каскадный анализ |
+| pause_on_position_limit | true | bool | Пауза при достижении лимита |
+| priority_1_max_pairs | 10 | 5-30 | Макс пар в P1 |
+| priority_2_max_pairs | 10 | 5-30 | Макс пар в P2 |
+| priority_3_max_pairs | 10 | 5-30 | Макс пар в P3 |
+| min_24h_change_pct | 3.0 | 1-10 | Мин изменение для анализа |
+| max_24h_change_pct | 50.0 | 30-100 | Макс изменение для анализа |
+
+### Изменённые файлы:
+- `aila/ai_trade/agent_settings.py` — TRADER_DEFAULTS, TRADER_VALIDATION
+- `aila/ai_trade/market_scanner.py` — метод `get_pairs_by_priority()`
+- `aila/ai_trade/autopilot_mode.py` — метод `_scan_trader()` с каскадом
+- `aila/ai_trade/agents/trader.py` — метод `analyze_pairs()`
+- `aila/ai_trade/signal_queue.py` — методы `has_signal()`, `has_position()`
+
+### Новые методы:
+- `MarketScanner.get_pairs_by_priority()` — возвращает пары по приоритетам
+- `TraderAgent.analyze_pairs(pairs_data)` — batch анализ списка пар
+- `SignalQueue.has_signal(pair)` — проверка наличия в очереди
+- `SignalQueue.has_position(pair)` — проверка открытой позиции
+
+### Статистика каскада в API:
+В `GET /api/ai-trade/autopilot/heartbeat`:
+```json
+{
+  "cascade": {
+    "status": "scanning|paused|idle",
+    "current_stage": "vip_p1|p2|p3|null",
+    "paused_reason": "position_limit|null",
+    "signals_found": {"vip": 0, "p1": 0, "p2": 0, "p3": 0}
+  }
+}
+```
+
+### Логирование:
+```
+[TRADER][CASCADE] Starting cascade analysis: VIP=3, P1=8, P2=5, P3=3
+[TRADER][CASCADE][STAGE 1] Analyzing 11 VIP+P1 pairs...
+[TRADER][CASCADE][VIP_P1] Found: LONG BTCUSDT @ 85%
+[TRADER][CASCADE] Position limit will be reached, stopping cascade
+```
+
+---
+
+**Последнее обновление:** 2026-01-28 (feat: implement cascade analysis with position limit pause)
 **Текущая версия:** v2.4.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`

@@ -23,6 +23,14 @@ TRADER_DEFAULTS = {
     "pause_duration_minutes": 60,
     "require_confirmations": True,
     "min_confirmations": 2,
+    # Cascade analysis settings
+    "cascade_enabled": True,
+    "pause_on_position_limit": True,
+    "priority_1_max_pairs": 10,
+    "priority_2_max_pairs": 10,
+    "priority_3_max_pairs": 10,
+    "min_24h_change_pct": 3.0,
+    "max_24h_change_pct": 50.0,
     "last_modified": None,
 }
 
@@ -62,6 +70,12 @@ TRADER_VALIDATION = {
     "pause_after_losses": {"min": 2, "max": 10},
     "pause_duration_minutes": {"min": 15, "max": 240},
     "min_confirmations": {"min": 1, "max": 3},
+    # Cascade validation
+    "priority_1_max_pairs": {"min": 5, "max": 30},
+    "priority_2_max_pairs": {"min": 5, "max": 30},
+    "priority_3_max_pairs": {"min": 5, "max": 30},
+    "min_24h_change_pct": {"min": 1.0, "max": 10.0},
+    "max_24h_change_pct": {"min": 30.0, "max": 100.0},
 }
 
 SNIPER_VALIDATION = {

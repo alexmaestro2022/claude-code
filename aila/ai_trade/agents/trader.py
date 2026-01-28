@@ -140,6 +140,99 @@ class TraderAgent(BaseAgent):
 
         return best_opportunity
 
+    async def analyze_pairs(
+        self, pairs_data: list[dict[str, Any]]
+    ) -> Optional[dict]:
+        """
+        Analyze a pre-filtered list of pairs with market data.
+        Used by cascade analysis to analyze priority groups.
+
+        Args:
+            pairs_data: List of dicts with 'symbol' and 'market_data' keys
+
+        Returns:
+            Best opportunity dict or None
+        """
+        if not pairs_data:
+            return None
+
+        self.log(f"Cascade: Analyzing {len(pairs_data)} pairs...")
+
+        # Get knowledge context
+        knowledge = self.knowledge_base.get_context_for_analysis("")
+
+        # Single Claude API call for all pairs
+        analysis = await self.claude_client.batch_analyze_market(pairs_data, knowledge)
+
+        if "error" in analysis:
+            self.log(f"Cascade analysis error: {analysis['error']}", "error")
+            return None
+
+        decision = analysis.get("decision", "WAIT")
+        confidence = analysis.get("confidence", 0)
+        pair = analysis.get("pair")
+
+        if decision == "WAIT" or confidence < self.min_confidence:
+            self.log(f"Cascade: No opportunity in batch (decision={decision}, conf={confidence}%)")
+            return None
+
+        # Get market data for the selected pair
+        market_data = next(
+            (p["market_data"] for p in pairs_data if p["symbol"] == pair),
+            {}
+        )
+
+        # Validate trend alignment
+        trend = market_data.get("trend", "NEUTRAL")
+        if decision == "LONG" and trend == "BEARISH":
+            self.log(f"Cascade: {pair} LONG vs BEARISH trend - skipping")
+            return None
+        if decision == "SHORT" and trend == "BULLISH":
+            self.log(f"Cascade: {pair} SHORT vs BULLISH trend - skipping")
+            return None
+
+        # Build opportunity
+        opportunity = {
+            "pair": pair,
+            "decision": decision,
+            "confidence": confidence,
+            "strategy": analysis.get("strategy", "cascade_analysis"),
+            "entry_price": analysis.get("entry_price"),
+            "stop_loss": analysis.get("stop_loss"),
+            "take_profit": analysis.get("take_profit"),
+            "leverage": analysis.get("leverage", 2),
+            "position_size_pct": analysis.get("position_size_pct", 2),
+            "reasoning": analysis.get("reasoning", ""),
+            "risks": analysis.get("risks", []),
+            "expected_duration": analysis.get("expected_duration", "1h"),
+            "market_data": market_data,
+            "pairs_analyzed": len(pairs_data),
+        }
+
+        # Validate and adjust R:R ratio
+        opportunity = self._validate_and_adjust_rr(opportunity, market_data, pair)
+        if opportunity.get("decision") == "WAIT":
+            self.log(f"Cascade: {pair} R:R validation failed")
+            return None
+
+        # Enrich with whale and news context
+        if self.orchestrator:
+            opportunity = await self._enrich_with_context(opportunity)
+            if opportunity.get("decision") == "WAIT":
+                return None
+
+        self.log(
+            f"Cascade opportunity: {opportunity['decision']} "
+            f"{opportunity['pair']} @ confidence={opportunity['confidence']}%"
+        )
+
+        # Final confidence check after adjustments
+        if opportunity["confidence"] < self.min_confidence:
+            self.log("Cascade: Confidence dropped below threshold after adjustments")
+            return None
+
+        return opportunity
+
     async def _fetch_all_market_data(
         self, pairs: list[dict[str, Any]]
     ) -> list[dict[str, Any]]:
