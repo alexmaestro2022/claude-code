@@ -1332,100 +1332,91 @@
                 const container = document.getElementById('api-widget-content');
                 if (!container) return;
 
-                const todayCost = data.today?.cost_usd || 0;
-                const todayCalls = data.today?.total_calls || 0;
-                const weekCost = data.week?.cost_usd || 0;
-                const budget = data.budget?.daily_budget_usd || 10;
-                const budgetPct = data.budget?.budget_used_pct || 0;
-                const budgetRemaining = data.budget?.budget_remaining_usd || budget;
-                const isWarning = data.budget?.warning_80pct || false;
-                const isOver = data.budget?.over_budget || false;
+                const budget = data.budget || {};
+                const accumulatedCost = budget.accumulated_cost || 0;
+                const dailyCost = budget.daily_cost || data.today?.cost_usd || 0;
+                const remainingBalance = budget.remaining_balance || 0;
+                const dailyLimit = budget.daily_limit || 10;
+                const totalLimit = budget.total_limit || 50;
+                const dailyPct = budget.daily_pct || 0;
+                const totalPct = budget.total_pct || 0;
+                const lastResetDate = budget.last_reset_date ? new Date(budget.last_reset_date).toLocaleDateString() : '-';
 
                 const sonnetCalls = data.today?.calls?.sonnet || 0;
                 const haikuCalls = data.today?.calls?.haiku || 0;
-                const totalInputTokens = (data.session?.input_tokens?.sonnet || 0) + (data.session?.input_tokens?.haiku || 0);
-                const totalOutputTokens = (data.session?.output_tokens?.sonnet || 0) + (data.session?.output_tokens?.haiku || 0);
 
-                // Determine progress bar color
-                let progressColor = 'bg-green-500';
-                let progressBg = 'bg-green-900/30';
-                if (isOver) {
-                    progressColor = 'bg-red-500';
-                    progressBg = 'bg-red-900/30';
-                } else if (isWarning) {
-                    progressColor = 'bg-yellow-500';
-                    progressBg = 'bg-yellow-900/30';
-                }
+                // Progress bar colors
+                const getDailyColor = () => {
+                    if (dailyPct >= 100) return { bar: 'bg-red-500', bg: 'bg-red-900/30', text: 'text-red-400' };
+                    if (dailyPct >= 80) return { bar: 'bg-yellow-500', bg: 'bg-yellow-900/30', text: 'text-yellow-400' };
+                    return { bar: 'bg-green-500', bg: 'bg-green-900/30', text: 'text-green-400' };
+                };
+                const getTotalColor = () => {
+                    if (totalPct >= 100) return { bar: 'bg-red-500', bg: 'bg-red-900/30', text: 'text-red-400' };
+                    if (totalPct >= 80) return { bar: 'bg-yellow-500', bg: 'bg-yellow-900/30', text: 'text-yellow-400' };
+                    return { bar: 'bg-blue-500', bg: 'bg-blue-900/30', text: 'text-blue-400' };
+                };
+                const dailyColors = getDailyColor();
+                const totalColors = getTotalColor();
 
                 container.innerHTML = `
-                    <!-- Budget Progress Bar -->
+                    <!-- Daily Progress Bar -->
+                    <div class="mb-3">
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-gray-400">${t('api_cost_today')}</span>
+                            <span class="${dailyColors.text}">$${dailyCost.toFixed(2)} / $${dailyLimit.toFixed(2)} (${dailyPct.toFixed(1)}%)</span>
+                        </div>
+                        <div class="w-full h-2 ${dailyColors.bg} rounded-full overflow-hidden">
+                            <div class="${dailyColors.bar} h-full rounded-full transition-all duration-500" style="width: ${Math.min(dailyPct, 100)}%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Total Progress Bar -->
                     <div class="mb-4">
                         <div class="flex justify-between text-xs mb-1">
-                            <span class="text-gray-400">${t('api_budget')}: $${budget.toFixed(2)}</span>
-                            <span class="${isOver ? 'text-red-400' : isWarning ? 'text-yellow-400' : 'text-green-400'}">
-                                ${budgetPct.toFixed(1)}%
-                            </span>
+                            <span class="text-gray-400">${t('api_cost_total')}</span>
+                            <span class="${totalColors.text}">$${accumulatedCost.toFixed(2)} / $${totalLimit.toFixed(2)} (${totalPct.toFixed(1)}%)</span>
                         </div>
-                        <div class="w-full h-3 ${progressBg} rounded-full overflow-hidden">
-                            <div class="${progressColor} h-full rounded-full transition-all duration-500"
-                                 style="width: ${Math.min(budgetPct, 100)}%"></div>
+                        <div class="w-full h-2 ${totalColors.bg} rounded-full overflow-hidden">
+                            <div class="${totalColors.bar} h-full rounded-full transition-all duration-500" style="width: ${Math.min(totalPct, 100)}%"></div>
                         </div>
-                        ${isOver ? `<div class="text-red-400 text-xs mt-1 animate-pulse">${t('api_budget_exceeded')}</div>` : ''}
-                        ${isWarning && !isOver ? `<div class="text-yellow-400 text-xs mt-1">${t('api_budget_warning')}</div>` : ''}
                     </div>
 
-                    <!-- Stats Grid -->
-                    <div class="grid grid-cols-2 gap-3 text-sm">
-                        <div class="bg-gray-800/50 rounded p-2">
-                            <div class="text-gray-400 text-xs">${t('api_cost_today')}</div>
-                            <div class="text-xl font-bold ${isOver ? 'text-red-400' : isWarning ? 'text-yellow-400' : 'text-green-400'}">
-                                $${todayCost.toFixed(2)}
-                            </div>
+                    <!-- Stats List -->
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">${t('api_remaining_balance')}</span>
+                            <span class="${remainingBalance > 0 ? 'text-green-400' : 'text-red-400'} font-medium">$${remainingBalance.toFixed(2)}</span>
                         </div>
-                        <div class="bg-gray-800/50 rounded p-2">
-                            <div class="text-gray-400 text-xs">${t('api_cost_week')}</div>
-                            <div class="text-xl font-bold text-blue-400">$${weekCost.toFixed(2)}</div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">${t('api_calls_today')}</span>
+                            <span class="text-white">${data.today?.total_calls || 0}</span>
                         </div>
-                        <div class="bg-gray-800/50 rounded p-2">
-                            <div class="text-gray-400 text-xs">${t('api_calls_today')}</div>
-                            <div class="text-lg font-bold text-white">${todayCalls}</div>
-                            <div class="text-xs text-gray-500">
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">${t('api_model_breakdown')}</span>
+                            <span class="text-xs">
                                 <span class="text-purple-400">S:${sonnetCalls}</span> /
                                 <span class="text-cyan-400">H:${haikuCalls}</span>
-                            </div>
+                            </span>
                         </div>
-                        <div class="bg-gray-800/50 rounded p-2">
-                            <div class="text-gray-400 text-xs">${t('api_tokens')}</div>
-                            <div class="text-xs mt-1">
-                                <span class="text-gray-400">in:</span>
-                                <span class="text-white">${formatTokens(totalInputTokens)}</span>
-                            </div>
-                            <div class="text-xs">
-                                <span class="text-gray-400">out:</span>
-                                <span class="text-white">${formatTokens(totalOutputTokens)}</span>
-                            </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">${t('api_last_reset')}</span>
+                            <span class="text-gray-500">${lastResetDate}</span>
                         </div>
                     </div>
 
-                    <!-- Budget Remaining -->
-                    <div class="mt-3 flex justify-between items-center text-sm">
-                        <span class="text-gray-400">${t('api_budget_remaining')}:</span>
-                        <span class="${budgetRemaining > 0 ? 'text-green-400' : 'text-red-400'} font-bold">
-                            $${budgetRemaining.toFixed(2)}
-                        </span>
-                    </div>
-
-                    <!-- Agent Usage Statistics -->
+                    <!-- Top Consumers -->
                     ${data.today_top_consumers && data.today_top_consumers.length > 0 ? `
-                        <div class="mt-3 pt-3 border-t border-gray-700">
+                        <div class="mt-4 pt-3 border-t border-gray-700">
                             <div class="text-xs text-gray-400 mb-2">${t('api_top_consumers')}</div>
                             <div class="space-y-1">
                                 ${data.today_top_consumers.slice(0, 5).map(c => `
                                     <div class="flex justify-between items-center text-xs">
                                         <span class="text-gray-300 font-medium">${c.agent}</span>
-                                        <div class="flex items-center gap-2">
-                                            <span class="text-green-400">$${c.cost.toFixed(4)}</span>
-                                            <span class="text-purple-400 w-12 text-right">${c.pct_of_today}%</span>
+                                        <div class="flex items-center gap-3">
+                                            <span class="text-gray-500">${c.calls}</span>
+                                            <span class="text-green-400 w-16 text-right">$${c.cost.toFixed(4)}</span>
+                                            <span class="text-purple-400 w-10 text-right">${c.pct_of_today}%</span>
                                         </div>
                                     </div>
                                 `).join('')}
