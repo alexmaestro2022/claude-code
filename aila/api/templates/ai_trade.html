@@ -574,6 +574,7 @@
                 persistence: 'Сохранение',
                 api_usage: 'Claude API',
                 claude_api_usage: 'Claude API',
+                statistics: 'статистика',
                 current_status: 'Текущий статус',
                 // API Usage
                 api_calls_today: 'Вызовов сегодня',
@@ -720,6 +721,7 @@
                 persistence: 'Persistence',
                 api_usage: 'Claude API',
                 claude_api_usage: 'Claude API',
+                statistics: 'statistics',
                 current_status: 'Current Status',
                 // API Usage
                 api_calls_today: 'Calls Today',
@@ -1287,6 +1289,14 @@
                     <div class="setting-row"><span class="setting-name">${t('files_count')}</span><span class="setting-value">${data.persistence.files_count}</span></div>
                 </div>
 
+                <!-- Claude API Statistics -->
+                <div class="settings-section">
+                    <h4><i class="fa-solid fa-robot"></i> ${t('api_usage')} <span class="text-gray-500 text-xs">(${t('statistics')})</span></h4>
+                    <div id="api-usage-stats-content">
+                        <div class="text-gray-500 text-sm">${t('loading')}</div>
+                    </div>
+                </div>
+
                 <!-- Current Status -->
                 <div class="settings-section md:col-span-2">
                     <h4><i class="fa-solid fa-circle-info"></i> ${t('current_status')}</h4>
@@ -1308,6 +1318,9 @@
             `;
 
             document.getElementById('settings-content').innerHTML = html;
+
+            // Load API usage statistics separately
+            loadApiUsageStats();
         }
 
         // ==================== API USAGE WIDGET ====================
@@ -1467,7 +1480,7 @@
             }
         }
 
-        // ==================== API USAGE (Card Settings Modal) ====================
+        // ==================== API USAGE SETTINGS (Card Modal) ====================
         async function loadApiUsage() {
             try {
                 const data = await fetchData('/api-usage');
@@ -1478,30 +1491,10 @@
 
                 const budget = data.budget || {};
                 const initialBalance = budget.initial_balance || 50;
-                const accumulatedCost = budget.accumulated_cost || 0;
-                const dailyCost = budget.daily_cost || data.today?.cost_usd || 0;
-                const remainingBalance = budget.remaining_balance || (initialBalance - accumulatedCost);
                 const useBudgetLimit = budget.use_budget_limit || false;
                 const dailyLimit = budget.daily_limit || 10;
                 const totalLimit = budget.total_limit || 50;
-                const dailyPct = budget.daily_pct || 0;
-                const totalPct = budget.total_pct || 0;
                 const limitReached = budget.limit_reached || false;
-                const lastResetDate = budget.last_reset_date ? new Date(budget.last_reset_date).toLocaleDateString() : '-';
-
-                // Progress bar colors
-                const getDailyColor = () => {
-                    if (dailyPct >= 100) return { bar: 'bg-red-500', bg: 'bg-red-900/30', text: 'text-red-400' };
-                    if (dailyPct >= 80) return { bar: 'bg-yellow-500', bg: 'bg-yellow-900/30', text: 'text-yellow-400' };
-                    return { bar: 'bg-green-500', bg: 'bg-green-900/30', text: 'text-green-400' };
-                };
-                const getTotalColor = () => {
-                    if (totalPct >= 100) return { bar: 'bg-red-500', bg: 'bg-red-900/30', text: 'text-red-400' };
-                    if (totalPct >= 80) return { bar: 'bg-yellow-500', bg: 'bg-yellow-900/30', text: 'text-yellow-400' };
-                    return { bar: 'bg-blue-500', bg: 'bg-blue-900/30', text: 'text-blue-400' };
-                };
-                const dailyColors = getDailyColor();
-                const totalColors = getTotalColor();
 
                 container.innerHTML = `
                     <!-- Initial Balance + Reset Button -->
@@ -1525,7 +1518,7 @@
                     </div>
 
                     <!-- Budget Limits (shown when toggle is ON) -->
-                    <div id="budget-limits-section" class="${useBudgetLimit ? '' : 'hidden'} mb-3 pb-3 border-b border-gray-700">
+                    <div id="budget-limits-section" class="${useBudgetLimit ? '' : 'hidden'}">
                         <div class="setting-row mb-2">
                             <span class="setting-name">${t('api_daily_limit')}</span>
                             <div class="flex items-center gap-2">
@@ -1549,9 +1542,48 @@
                             </div>
                         ` : ''}
                     </div>
+                `;
+            } catch (e) {
+                console.error('API usage load error:', e);
+            }
+        }
 
+        // ==================== API USAGE STATISTICS (General Settings) ====================
+        async function loadApiUsageStats() {
+            try {
+                const data = await fetchData('/api-usage');
+                if (!data) return;
+
+                const container = document.getElementById('api-usage-stats-content');
+                if (!container) return;
+
+                const budget = data.budget || {};
+                const accumulatedCost = budget.accumulated_cost || 0;
+                const dailyCost = budget.daily_cost || data.today?.cost_usd || 0;
+                const remainingBalance = budget.remaining_balance || 0;
+                const dailyLimit = budget.daily_limit || 10;
+                const totalLimit = budget.total_limit || 50;
+                const dailyPct = budget.daily_pct || 0;
+                const totalPct = budget.total_pct || 0;
+                const lastResetDate = budget.last_reset_date ? new Date(budget.last_reset_date).toLocaleDateString() : '-';
+
+                // Progress bar colors
+                const getDailyColor = () => {
+                    if (dailyPct >= 100) return { bar: 'bg-red-500', bg: 'bg-red-900/30', text: 'text-red-400' };
+                    if (dailyPct >= 80) return { bar: 'bg-yellow-500', bg: 'bg-yellow-900/30', text: 'text-yellow-400' };
+                    return { bar: 'bg-green-500', bg: 'bg-green-900/30', text: 'text-green-400' };
+                };
+                const getTotalColor = () => {
+                    if (totalPct >= 100) return { bar: 'bg-red-500', bg: 'bg-red-900/30', text: 'text-red-400' };
+                    if (totalPct >= 80) return { bar: 'bg-yellow-500', bg: 'bg-yellow-900/30', text: 'text-yellow-400' };
+                    return { bar: 'bg-blue-500', bg: 'bg-blue-900/30', text: 'text-blue-400' };
+                };
+                const dailyColors = getDailyColor();
+                const totalColors = getTotalColor();
+
+                container.innerHTML = `
                     <!-- Daily Progress Bar -->
-                    <div class="mb-3">
+                    <div class="mb-2">
                         <div class="flex justify-between text-xs mb-1">
                             <span class="text-gray-400">${t('api_cost_today')}</span>
                             <span class="${dailyColors.text}">$${dailyCost.toFixed(2)} / $${dailyLimit.toFixed(2)} (${dailyPct.toFixed(1)}%)</span>
@@ -1572,13 +1604,11 @@
                         </div>
                     </div>
 
-                    <!-- Remaining Balance -->
-                    <div class="setting-row mb-3 pb-3 border-b border-gray-700">
+                    <!-- Stats -->
+                    <div class="setting-row">
                         <span class="setting-name">${t('api_remaining_balance')}</span>
                         <span class="setting-value ${remainingBalance > 0 ? 'text-green-400' : 'text-red-400'}">$${remainingBalance.toFixed(2)}</span>
                     </div>
-
-                    <!-- Stats -->
                     <div class="setting-row">
                         <span class="setting-name">${t('api_calls_today')}</span>
                         <span class="setting-value">${data.today?.total_calls || 0}</span>
@@ -1596,16 +1626,16 @@
                     </div>
 
                     ${data.today_top_consumers && data.today_top_consumers.length > 0 ? `
-                        <div class="mt-3 pt-2 border-t border-gray-700">
-                            <div class="text-xs text-gray-400 mb-2">${t('api_top_consumers')}</div>
+                        <div class="mt-2 pt-2 border-t border-gray-700">
+                            <div class="text-xs text-gray-400 mb-1">${t('api_top_consumers')}</div>
                             <div class="space-y-1 text-xs">
                                 ${data.today_top_consumers.slice(0, 5).map(c => `
                                     <div class="flex justify-between items-center">
                                         <span class="text-gray-300">${c.agent}</span>
                                         <span>
-                                            <span class="text-gray-500">${c.calls} calls</span>
-                                            <span class="text-green-400 ml-2">$${c.cost.toFixed(4)}</span>
-                                            <span class="text-gray-500 ml-1">(${c.pct_of_today}%)</span>
+                                            <span class="text-gray-500">${c.calls}</span>
+                                            <span class="text-green-400 ml-1">$${c.cost.toFixed(4)}</span>
+                                            <span class="text-gray-500">(${c.pct_of_today}%)</span>
                                         </span>
                                     </div>
                                 `).join('')}
@@ -1614,7 +1644,7 @@
                     ` : ''}
                 `;
             } catch (e) {
-                console.error('API usage load error:', e);
+                console.error('API usage stats load error:', e);
             }
         }
 
