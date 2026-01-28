@@ -1,0 +1,23 @@
+{
+  "data": {
+    "created_at": "2026-01-28T00:00:00",
+    "agent": "TRADER",
+    "description": "Knowledge base for trend-based trading patterns",
+    "best_pairs": [],
+    "worst_pairs": [],
+    "successful_patterns": [],
+    "failed_patterns": [],
+    "learned_rules": [],
+    "mistakes_to_avoid": [],
+    "market_conditions": {
+      "best_for_trading": ["trending", "high_volume"],
+      "avoid_trading": ["choppy", "low_volume", "pre_news"]
+    },
+    "timeframe_performance": {
+      "15m": {"trades": 0, "wins": 0, "pnl": 0}
+    },
+    "strategy_performance": {}
+  },
+  "saved_at": "2026-01-28T00:00:00",
+  "version": "2.0"
+}

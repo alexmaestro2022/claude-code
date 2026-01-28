@@ -142,6 +142,12 @@ class PersistenceManager:
         "war_room.json",
         "capital.json",
         "api_usage.json",  # Claude API usage tracking
+        # Agent-specific files
+        "trader_knowledge.json",
+        "sniper_knowledge.json",
+        "shared_knowledge.json",
+        "trader_stats.json",
+        "sniper_stats.json",
     ]
 
     async def backup_to_cloud(self) -> bool:

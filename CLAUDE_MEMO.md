@@ -1999,6 +1999,93 @@ cd /opt/aila && /opt/aila/venv/bin/python -m pytest tests/test_bybit_exchange.py
 
 ---
 
-**Последнее обновление:** 2026-01-28 (feat: add token usage to card)
-**Текущая версия:** v2.3.0 (см. файл `/opt/aila/VERSION`)
+## 39. Интеграция SNIPER в Autopilot (2026-01-28)
+
+### Что реализовано:
+
+**1. Параллельная работа TRADER и SNIPER:**
+- TRADER сканирует каждые 60 сек (тренды, паттерны)
+- SNIPER сканирует каждые 10 сек (breakouts, breakdowns, liquidation cascades)
+- Оба агента работают одновременно в autopilot loop
+
+**2. Раздельные уровни и XP:**
+- `TRADER_LEVELS` в config.py (level 1-10, max leverage 3-25x)
+- `SNIPER_LEVELS` в config.py (level 1-10, max leverage 2-20x, более консервативные)
+- XP начисляется только агенту который открыл сделку
+- Level Up уведомления в Telegram с новыми лимитами
+
+**3. Раздельная статистика:**
+- `/opt/aila/data/ai_trade/trader_stats.json` — stats TRADER
+- `/opt/aila/data/ai_trade/sniper_stats.json` — stats SNIPER
+- Включает: winrate, pnl, trades, consecutive wins/losses, api_usage
+
+**4. Раздельные базы знаний:**
+- `/opt/aila/data/ai_trade/trader_knowledge.json` — паттерны для трендов
+- `/opt/aila/data/ai_trade/sniper_knowledge.json` — паттерны для пробоев
+- `/opt/aila/data/ai_trade/shared_knowledge.json` — общие правила риска
+
+**5. Smart Signal Queue:**
+- `signal_queue.py` — умная очередь сигналов
+- SNIPER = HIGH приоритет (быстрая реакция на пробои)
+- TRADER = NORMAL приоритет
+- Correlation check — не открывать BTC от обоих агентов
+- Дедупликация — один сигнал на пару
+
+**6. Cooldowns и паузы:**
+- TRADER: 5 мин между сделками
+- SNIPER: 1 мин между сделками
+- Loss streak: 3 лосса подряд → пауза 1 час
+
+**7. Логирование с источником:**
+```
+[TRADER][STAGE 1] Scanning for opportunities...
+[TRADER][STAGE 2] Sending to Reviewer: BTCUSDT
+[SNIPER][STAGE 1] Found: breakout LONG ETHUSDT @ 75%
+```
+
+**8. Telegram уведомления:**
+- 📈 TRADER или 🎯 SNIPER в начале
+- Показывает триггер (для SNIPER: Breakout/Breakdown)
+- Stats агента: Level, Winrate, PnL
+
+### Новые файлы:
+- `aila/ai_trade/signal_queue.py` — SignalQueue class
+- `aila/ai_trade/agent_stats.py` — AgentStatsManager class
+- `data/ai_trade/trader_knowledge.json`
+- `data/ai_trade/sniper_knowledge.json`
+- `data/ai_trade/shared_knowledge.json`
+- `data/ai_trade/trader_stats.json`
+- `data/ai_trade/sniper_stats.json`
+
+### Изменённые файлы:
+- `aila/ai_trade/config.py` — TRADER_LEVELS, SNIPER_LEVELS, AGENT_XP_THRESHOLDS
+- `aila/ai_trade/persistence.py` — новые файлы в бэкап
+- `aila/ai_trade/autopilot_mode.py` — полная переработка с SNIPER
+- `aila/api/routes/ai_trade.py` — новые endpoints
+
+### Новые API endpoints:
+```
+GET  /api/ai-trade/agent-stats         — Stats обоих агентов
+GET  /api/ai-trade/agent-stats/{agent} — Stats одного агента
+POST /api/ai-trade/agent-stats/{agent}/clear-pause
+POST /api/ai-trade/agent-stats/{agent}/clear-cooldown
+GET  /api/ai-trade/queue/status        — Статус очереди
+GET  /api/ai-trade/queue/items         — Элементы в очереди
+POST /api/ai-trade/queue/clear         — Очистить очередь
+GET  /api/ai-trade/sniper/scan         — Ручной скан SNIPER
+GET  /api/ai-trade/levels/config       — Конфиг уровней
+```
+
+### SNIPER триггеры:
+| Триггер | Условие | Направление |
+|---------|---------|-------------|
+| breakout | price > 99.9% of 24h high, RSI 55-80 | LONG |
+| breakdown | price < 100.1% of 24h low, RSI 20-45 | SHORT |
+| liquidation_cascade | change_24h > 5%, extreme RSI | Контр-тренд |
+| funding_flip | (заглушка) | - |
+
+---
+
+**Последнее обновление:** 2026-01-28 (feat: integrate SNIPER with separate levels, knowledge, stats)
+**Текущая версия:** v2.4.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`

@@ -800,3 +800,157 @@ async def force_cloud_backup():
         return await orch.backup_to_cloud_now()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== AGENT STATS ====================
+
+
+@router.get("/agent-stats")
+async def get_agent_stats():
+    """Get stats for both TRADER and SNIPER agents."""
+    try:
+        orch = await get_orchestrator()
+        return orch.autopilot.get_agent_stats()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/agent-stats/{agent}")
+async def get_single_agent_stats(agent: str):
+    """Get stats for specific agent (TRADER or SNIPER)."""
+    if agent.upper() not in ["TRADER", "SNIPER"]:
+        raise HTTPException(status_code=400, detail="Invalid agent. Use TRADER or SNIPER")
+    try:
+        orch = await get_orchestrator()
+        return orch.autopilot._agent_stats.get_stats(agent.upper())
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/agent-stats/{agent}/clear-pause")
+async def clear_agent_pause(agent: str):
+    """Clear pause for agent (TRADER or SNIPER)."""
+    if agent.upper() not in ["TRADER", "SNIPER"]:
+        raise HTTPException(status_code=400, detail="Invalid agent. Use TRADER or SNIPER")
+    try:
+        orch = await get_orchestrator()
+        orch.autopilot.clear_agent_pause(agent.upper())
+        return {"success": True, "agent": agent.upper(), "paused": False}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/agent-stats/{agent}/clear-cooldown")
+async def clear_agent_cooldown(agent: str):
+    """Clear cooldown for agent (TRADER or SNIPER)."""
+    if agent.upper() not in ["TRADER", "SNIPER"]:
+        raise HTTPException(status_code=400, detail="Invalid agent. Use TRADER or SNIPER")
+    try:
+        orch = await get_orchestrator()
+        orch.autopilot.clear_agent_cooldown(agent.upper())
+        return {"success": True, "agent": agent.upper(), "cooldown": 0}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== SIGNAL QUEUE ====================
+
+
+@router.get("/queue/status")
+async def get_queue_status():
+    """Get signal queue status."""
+    try:
+        orch = await get_orchestrator()
+        return orch.autopilot.get_queue_status()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/queue/items")
+async def get_queue_items():
+    """Get all items in signal queue."""
+    try:
+        orch = await get_orchestrator()
+        items = orch.autopilot._signal_queue.get_queue_items()
+        return {"items": items, "count": len(items)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/queue/clear")
+async def clear_queue():
+    """Clear signal queue."""
+    try:
+        orch = await get_orchestrator()
+        orch.autopilot._signal_queue.clear()
+        return {"success": True, "message": "Queue cleared"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/queue/config")
+async def update_queue_config(config: dict):
+    """Update signal queue configuration."""
+    try:
+        orch = await get_orchestrator()
+        orch.autopilot._signal_queue.update_config(config)
+        return {"success": True, "config": config}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== SNIPER ====================
+
+
+@router.get("/sniper/scan")
+async def scan_sniper_opportunities():
+    """Manually scan for sniper opportunities."""
+    try:
+        orch = await get_orchestrator()
+        snipes = await orch.scan_snipe_opportunities()
+        return {
+            "snipes": snipes,
+            "count": len(snipes),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/sniper/pending")
+async def get_pending_snipes():
+    """Get pending snipe opportunities."""
+    try:
+        orch = await get_orchestrator()
+        pending = await orch.sniper.get_pending_snipes()
+        return {"pending": pending, "count": len(pending)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/sniper/cancel/{pair}")
+async def cancel_snipe(pair: str):
+    """Cancel pending snipe for a pair."""
+    try:
+        orch = await get_orchestrator()
+        cancelled = await orch.sniper.cancel_snipe(pair)
+        return {"success": cancelled, "pair": pair}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== AGENT LEVELS CONFIG ====================
+
+
+@router.get("/levels/config")
+async def get_levels_config():
+    """Get TRADER and SNIPER level configurations."""
+    try:
+        from ...ai_trade.config import TRADER_LEVELS, SNIPER_LEVELS, AGENT_XP_THRESHOLDS
+        return {
+            "trader_levels": TRADER_LEVELS,
+            "sniper_levels": SNIPER_LEVELS,
+            "xp_thresholds": AGENT_XP_THRESHOLDS,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -40,6 +40,58 @@ SCANNER_CONFIG = {
 # Timeframes for analysis
 TIMEFRAMES = ["1m", "5m", "15m", "1h", "4h"]
 
-# Knowledge base path
+# Knowledge base paths
 KNOWLEDGE_BASE_PATH = "/opt/aila/data/ai_knowledge.json"
+TRADER_KNOWLEDGE_PATH = "/opt/aila/data/ai_trade/trader_knowledge.json"
+SNIPER_KNOWLEDGE_PATH = "/opt/aila/data/ai_trade/sniper_knowledge.json"
+SHARED_KNOWLEDGE_PATH = "/opt/aila/data/ai_trade/shared_knowledge.json"
+TRADER_STATS_PATH = "/opt/aila/data/ai_trade/trader_stats.json"
+SNIPER_STATS_PATH = "/opt/aila/data/ai_trade/sniper_stats.json"
 LOG_PATH = "/opt/aila/logs/ai_trade.log"
+
+# TRADER levels (trend-based trading)
+TRADER_LEVELS = {
+    1: {"max_leverage": 3, "max_positions": 1, "max_risk_pct": 1.0, "max_daily_trades": 5},
+    2: {"max_leverage": 5, "max_positions": 1, "max_risk_pct": 1.5, "max_daily_trades": 7},
+    3: {"max_leverage": 7, "max_positions": 2, "max_risk_pct": 1.5, "max_daily_trades": 8},
+    4: {"max_leverage": 10, "max_positions": 2, "max_risk_pct": 2.0, "max_daily_trades": 10},
+    5: {"max_leverage": 12, "max_positions": 2, "max_risk_pct": 2.0, "max_daily_trades": 12},
+    6: {"max_leverage": 15, "max_positions": 3, "max_risk_pct": 2.5, "max_daily_trades": 15},
+    7: {"max_leverage": 17, "max_positions": 3, "max_risk_pct": 2.5, "max_daily_trades": 17},
+    8: {"max_leverage": 20, "max_positions": 3, "max_risk_pct": 3.0, "max_daily_trades": 20},
+    9: {"max_leverage": 22, "max_positions": 4, "max_risk_pct": 3.0, "max_daily_trades": 22},
+    10: {"max_leverage": 25, "max_positions": 5, "max_risk_pct": 3.5, "max_daily_trades": 25},
+}
+
+# SNIPER levels (breakout trading - more conservative)
+SNIPER_LEVELS = {
+    1: {"max_leverage": 2, "max_positions": 1, "max_risk_pct": 0.5, "max_daily_trades": 10},
+    2: {"max_leverage": 3, "max_positions": 1, "max_risk_pct": 0.75, "max_daily_trades": 12},
+    3: {"max_leverage": 5, "max_positions": 1, "max_risk_pct": 1.0, "max_daily_trades": 15},
+    4: {"max_leverage": 7, "max_positions": 2, "max_risk_pct": 1.0, "max_daily_trades": 17},
+    5: {"max_leverage": 8, "max_positions": 2, "max_risk_pct": 1.25, "max_daily_trades": 20},
+    6: {"max_leverage": 10, "max_positions": 2, "max_risk_pct": 1.5, "max_daily_trades": 22},
+    7: {"max_leverage": 12, "max_positions": 3, "max_risk_pct": 1.5, "max_daily_trades": 25},
+    8: {"max_leverage": 15, "max_positions": 3, "max_risk_pct": 2.0, "max_daily_trades": 27},
+    9: {"max_leverage": 17, "max_positions": 3, "max_risk_pct": 2.0, "max_daily_trades": 30},
+    10: {"max_leverage": 20, "max_positions": 4, "max_risk_pct": 2.5, "max_daily_trades": 35},
+}
+
+# XP thresholds for level up (same for both agents)
+AGENT_XP_THRESHOLDS = {
+    1: 0, 2: 100, 3: 250, 4: 500, 5: 1000,
+    6: 2000, 7: 3500, 8: 5500, 9: 8000, 10: 12000,
+}
+
+# Agent cooldowns (seconds)
+AGENT_COOLDOWNS = {
+    "TRADER": 300,   # 5 min between trades
+    "SNIPER": 60,    # 1 min between trades
+}
+
+# Performance limits
+PERFORMANCE_LIMITS = {
+    "min_winrate_week": 40,      # Min winrate over week (%)
+    "loss_streak_pause": 3,      # Pause after N consecutive losses
+    "loss_streak_pause_minutes": 60,  # Pause duration
+}

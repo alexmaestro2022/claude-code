@@ -1,0 +1,35 @@
+{
+  "data": {
+    "created_at": "2026-01-28T00:00:00",
+    "agent": "SNIPER",
+    "description": "Knowledge base for breakout/breakdown trading patterns",
+    "best_pairs": [],
+    "worst_pairs": [],
+    "successful_triggers": {
+      "breakout": [],
+      "breakdown": [],
+      "liquidation_cascade": [],
+      "funding_flip": []
+    },
+    "failed_triggers": {
+      "breakout": [],
+      "breakdown": [],
+      "liquidation_cascade": [],
+      "funding_flip": []
+    },
+    "learned_rules": [],
+    "mistakes_to_avoid": [],
+    "market_conditions": {
+      "best_for_sniping": ["breakout_forming", "high_volume_spike", "extreme_rsi"],
+      "avoid_sniping": ["ranging", "low_volume", "post_news"]
+    },
+    "trigger_performance": {
+      "breakout": {"trades": 0, "wins": 0, "pnl": 0},
+      "breakdown": {"trades": 0, "wins": 0, "pnl": 0},
+      "liquidation_cascade": {"trades": 0, "wins": 0, "pnl": 0},
+      "funding_flip": {"trades": 0, "wins": 0, "pnl": 0}
+    }
+  },
+  "saved_at": "2026-01-28T00:00:00",
+  "version": "2.0"
+}

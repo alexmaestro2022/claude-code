@@ -1,0 +1,30 @@
+{
+  "data": {
+    "created_at": "2026-01-28T00:00:00",
+    "description": "Shared knowledge for all agents - risk rules and trading hours",
+    "risk_rules": {
+      "max_daily_loss_pct": 5,
+      "max_drawdown_pct": 15,
+      "max_correlation_positions": 1,
+      "emergency_stop_loss_pct": 10
+    },
+    "trading_hours": {
+      "best_hours_utc": [8, 9, 10, 11, 12, 13, 14, 15, 16],
+      "avoid_hours_utc": [0, 1, 2, 3, 4, 5],
+      "high_volatility_hours_utc": [13, 14, 15, 20, 21]
+    },
+    "market_events": {
+      "avoid_before_minutes": 30,
+      "avoid_after_minutes": 15,
+      "high_impact_events": ["FOMC", "CPI", "NFP", "GDP"]
+    },
+    "correlation_groups": {
+      "btc_eth": ["BTCUSDT", "ETHUSDT"],
+      "alt_l1": ["SOLUSDT", "AVAXUSDT", "NEARUSDT"],
+      "memes": ["DOGEUSDT", "SHIBUSDT", "PEPEUSDT"]
+    },
+    "global_lessons": []
+  },
+  "saved_at": "2026-01-28T00:00:00",
+  "version": "2.0"
+}

@@ -1,0 +1,51 @@
+{
+  "data": {
+    "agent": "SNIPER",
+    "level": 1,
+    "xp": 0,
+    "xp_to_next_level": 100,
+    "total_trades": 0,
+    "winning_trades": 0,
+    "losing_trades": 0,
+    "winrate": 0.0,
+    "total_pnl_usdt": 0.0,
+    "total_pnl_percent": 0.0,
+    "best_trade_usdt": 0.0,
+    "worst_trade_usdt": 0.0,
+    "avg_trade_duration_minutes": 0,
+    "avg_rr_ratio": 0.0,
+    "consecutive_wins": 0,
+    "consecutive_losses": 0,
+    "max_consecutive_wins": 0,
+    "max_consecutive_losses": 0,
+    "trades_today": 0,
+    "pnl_today_usdt": 0.0,
+    "trades_this_week": 0,
+    "pnl_this_week_usdt": 0.0,
+    "last_trade_time": null,
+    "last_win_time": null,
+    "last_loss_time": null,
+    "paused_until": null,
+    "pause_reason": null,
+    "trigger_stats": {
+      "breakout": {"trades": 0, "wins": 0, "pnl": 0.0},
+      "breakdown": {"trades": 0, "wins": 0, "pnl": 0.0},
+      "liquidation_cascade": {"trades": 0, "wins": 0, "pnl": 0.0},
+      "funding_flip": {"trades": 0, "wins": 0, "pnl": 0.0}
+    },
+    "api_usage": {
+      "calls_today": 0,
+      "tokens_in_today": 0,
+      "tokens_out_today": 0,
+      "cost_today_usdt": 0.0,
+      "calls_total": 0,
+      "tokens_in_total": 0,
+      "tokens_out_total": 0,
+      "cost_total_usdt": 0.0
+    },
+    "daily_history": {},
+    "weekly_history": {}
+  },
+  "saved_at": "2026-01-28T00:00:00",
+  "version": "2.0"
+}
