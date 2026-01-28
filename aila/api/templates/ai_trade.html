@@ -427,7 +427,7 @@
     </div>
 
     <!-- Reset API Usage Modal -->
-    <div id="reset-modal" class="modal-overlay hidden">
+    <div id="reset-modal" class="modal-overlay">
         <div class="bg-gray-800 rounded-lg p-6 max-w-md mx-auto mt-20 border border-gray-700">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-bold text-yellow-400">
@@ -1652,7 +1652,7 @@
 
         // Open reset modal
         function openResetModal() {
-            document.getElementById('reset-modal').classList.remove('hidden');
+            document.getElementById('reset-modal').classList.add('show');
             // Pre-fill with current balance
             fetch(API_BASE + '/api-usage')
                 .then(r => r.json())
@@ -1665,7 +1665,7 @@
 
         // Close reset modal
         function closeResetModal() {
-            document.getElementById('reset-modal').classList.add('hidden');
+            document.getElementById('reset-modal').classList.remove('show');
         }
 
         // Confirm reset
