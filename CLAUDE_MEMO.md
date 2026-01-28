@@ -1417,6 +1417,12 @@ async def get_usdt_perpetual_symbols() -> list[str]:
     """Получить все активные USDT perpetual пары с Bybit."""
     # GET /v5/market/instruments-info?category=linear
     # Фильтр: status=Trading, quoteCoin=USDT, contractType=LinearPerpetual
+
+async def set_leverage(leverage: int, symbol: str) -> bool:
+    """Установить плечо для символа (POST /v5/position/set-leverage)."""
+    # Конвертирует symbol из формата BTC/USDT в BTCUSDT
+    # Устанавливает buyLeverage и sellLeverage одинаковыми
+    # Возвращает True если успешно (включая случай когда уже установлено)
 ```
 
 **market_scanner.py:**
@@ -1779,6 +1785,6 @@ async def get_prediction(pair: str):
 
 ---
 
-**Последнее обновление:** 2026-01-27 (fix: UI polling no API when autopilot off)
+**Последнее обновление:** 2026-01-28 (fix: add set_leverage method to BybitExchange)
 **Текущая версия:** v2.3.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
