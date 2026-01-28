@@ -1344,6 +1344,8 @@
 
                 const sonnetCalls = data.today?.calls?.sonnet || 0;
                 const haikuCalls = data.today?.calls?.haiku || 0;
+                const totalInputTokens = (data.session?.input_tokens?.sonnet || 0) + (data.session?.input_tokens?.haiku || 0);
+                const totalOutputTokens = (data.session?.output_tokens?.sonnet || 0) + (data.session?.output_tokens?.haiku || 0);
 
                 // Progress bar colors
                 const getDailyColor = () => {
@@ -1397,6 +1399,13 @@
                             <span class="text-xs">
                                 <span class="text-purple-400">S:${sonnetCalls}</span> /
                                 <span class="text-cyan-400">H:${haikuCalls}</span>
+                            </span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">${t('api_tokens')}</span>
+                            <span class="text-xs">
+                                <span class="text-gray-400">in:</span> <span class="text-white">${formatTokens(totalInputTokens)}</span> /
+                                <span class="text-gray-400">out:</span> <span class="text-white">${formatTokens(totalOutputTokens)}</span>
                             </span>
                         </div>
                         <div class="flex justify-between">
