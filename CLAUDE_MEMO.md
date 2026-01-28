@@ -2110,8 +2110,55 @@ GET  /api/ai-trade/levels/config       — Конфиг уровней
    - Автообновление каждые 30 секунд
    - Локализация RU/EN
 
+4. **Добавлены настройки и управление агентами** (`agent_settings.py`, API endpoints, UI):
+   - Toggle switches для включения/выключения TRADER и SNIPER
+   - Settings modals с полной конфигурацией каждого агента
+   - Валидация параметров с min/max лимитами
+   - Сохранение в `trader_settings.json` / `sniper_settings.json`
+   - Кнопки сброса к дефолтам
+
+### Новые файлы настроек:
+- `aila/ai_trade/agent_settings.py` — AgentSettings class
+- `data/ai_trade/trader_settings.json` — настройки TRADER
+- `data/ai_trade/sniper_settings.json` — настройки SNIPER
+
+### Новые API endpoints для настроек:
+```
+GET  /api/ai-trade/agent/{agent}/settings       — Получить настройки
+PUT  /api/ai-trade/agent/{agent}/settings       — Обновить настройки
+POST /api/ai-trade/agent/{agent}/settings/reset — Сброс к дефолтам
+POST /api/ai-trade/agent/{agent}/enable         — Включить агента
+POST /api/ai-trade/agent/{agent}/disable        — Выключить агента
+```
+
+### Параметры настроек TRADER:
+| Параметр | По умолчанию | Диапазон |
+|----------|--------------|----------|
+| scan_interval_seconds | 60 | 30-600 |
+| min_confidence | 70 | 50-95 |
+| min_rr_ratio | 1.5 | 1.0-5.0 |
+| min_sl_distance_pct | 2.0 | 1.0-10.0 |
+| cooldown_seconds | 300 | 60-1800 |
+| max_trades_per_day | 10 | 1-50 |
+| pause_after_losses | 3 | 2-10 |
+| pause_duration_minutes | 60 | 15-240 |
+| min_confirmations | 2 | 1-3 |
+
+### Параметры настроек SNIPER:
+| Параметр | По умолчанию | Диапазон |
+|----------|--------------|----------|
+| scan_interval_seconds | 10 | 5-60 |
+| pairs_to_scan | 20 | 10-50 |
+| breakout_threshold_pct | 0.1 | 0.05-1.0 |
+| rsi_breakout_min/max | 55/80 | 40-70/60-90 |
+| rsi_breakdown_min/max | 20/45 | 10-40/30-60 |
+| atr_sl_multiplier | 1.5 | 1.0-3.0 |
+| atr_tp_multiplier | 3.0 | 2.0-6.0 |
+| cooldown_seconds | 60 | 30-600 |
+| max_trades_per_day | 20 | 1-100 |
+
 ---
 
-**Последнее обновление:** 2026-01-28 (feat: add TRADER and SNIPER statistics cards to UI)
+**Последнее обновление:** 2026-01-28 (feat: add settings modals and enable/disable toggles for TRADER and SNIPER cards)
 **Текущая версия:** v2.4.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
