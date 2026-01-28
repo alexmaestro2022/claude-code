@@ -2172,8 +2172,14 @@ POST /api/ai-trade/agent/{agent}/disable        — Выключить аген�
      - Ошибке исполнения
    - Файлы: autopilot_mode.py, signal_queue.py
 
+7. **Исправлены confirmations** (fix: apply confirmations setting from trader_settings.json):
+   - Было: захардкожено `confirmations < 2`
+   - Стало: читается из `trader_settings.json` → `min_confirmations`
+   - Также читается `require_confirmations` для полного отключения
+   - Первая успешная сделка после исправления: 1000RATS/USDT LONG
+
 ---
 
-**Последнее обновление:** 2026-01-28 (fix: cooldown should only activate after successful trade execution)
+**Последнее обновление:** 2026-01-28 (fix: apply confirmations setting from trader_settings.json)
 **Текущая версия:** v2.4.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
