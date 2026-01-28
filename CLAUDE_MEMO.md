@@ -2164,8 +2164,16 @@ POST /api/ai-trade/agent/{agent}/disable        — Выключить аген�
    - Toggle checkbox синхронизируется с enabled состоянием
    - Добавлены импорты json и Path в ai_trade.py
 
+6. **Исправлен cooldown** (fix: cooldown should only activate after successful trade execution):
+   - Cooldown активируется ТОЛЬКО после успешного [TRADE_OPENED]
+   - НЕ активируется при:
+     - Отклонении REVIEWER
+     - Отклонении RISK_GUARD
+     - Ошибке исполнения
+   - Файлы: autopilot_mode.py, signal_queue.py
+
 ---
 
-**Последнее обновление:** 2026-01-28 (fix: agent cards API cost display and status toggle)
+**Последнее обновление:** 2026-01-28 (fix: cooldown should only activate after successful trade execution)
 **Текущая версия:** v2.4.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
