@@ -160,6 +160,14 @@ class PositionManager:
         """Get number of open positions."""
         return len(self._open_positions)
 
+    async def get_open_positions(self) -> list[dict[str, Any]]:
+        """Get list of all open positions.
+
+        Returns:
+            List of open position dicts with symbol, direction, entry_price, etc.
+        """
+        return list(self._open_positions.values())
+
     async def _set_sl_tp(
         self, symbol: str, signal: dict[str, Any], direction: str, amount: float
     ) -> None:
