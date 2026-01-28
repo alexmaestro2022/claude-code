@@ -1961,6 +1961,20 @@ cd /opt/aila && /opt/aila/venv/bin/python -m pytest tests/test_bybit_exchange.py
 
 ---
 
-**Последнее обновление:** 2026-01-28 (feat: API usage reset + budget limits)
+## 19. Исправления багов
+
+### fix: API usage reset button (2026-01-28)
+**Проблема:** Модалка сброса истории API не открывалась при нажатии кнопки.
+
+**Причина:** CSS класс `.modal-overlay` по умолчанию имеет `opacity: 0` и `visibility: hidden`. Для показа модалки нужен класс `.show`, но JavaScript использовал удаление класса `hidden` вместо добавления `show`.
+
+**Исправление:**
+- `openResetModal()`: изменено `classList.remove('hidden')` → `classList.add('show')`
+- `closeResetModal()`: изменено `classList.add('hidden')` → `classList.remove('show')`
+- Удалён лишний класс `hidden` из HTML элемента модалки
+
+---
+
+**Последнее обновление:** 2026-01-28 (fix: API usage reset button)
 **Текущая версия:** v2.3.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
