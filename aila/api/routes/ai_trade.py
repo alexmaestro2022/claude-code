@@ -1124,3 +1124,152 @@ async def get_levels_config():
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== POSITIONS ====================
+
+
+@router.get("/positions")
+async def get_positions():
+    """Get open positions from Bybit with enriched data."""
+    try:
+        orch = await get_orchestrator()
+        exchange = orch.exchange
+
+        # Get positions from exchange
+        raw_positions = await exchange.get_positions()
+
+        # Get position pairs tracked by autopilot (to know source agent)
+        queue_status = orch.autopilot.get_queue_status()
+        position_pairs = set(queue_status.get("position_pairs", []))
+
+        positions = []
+        for pos in raw_positions:
+            symbol = pos["symbol"]
+            ccxt_symbol = symbol.replace("USDT", "/USDT") if "/" not in symbol else symbol
+
+            # Calculate PnL percent
+            entry_price = pos.get("entry_price", 0)
+            mark_price = pos.get("mark_price", 0)
+            pnl_usdt = pos.get("pnl", 0)
+
+            if entry_price > 0:
+                if pos["side"] == "Buy":
+                    pnl_percent = ((mark_price - entry_price) / entry_price) * 100
+                else:
+                    pnl_percent = ((entry_price - mark_price) / entry_price) * 100
+            else:
+                pnl_percent = 0
+
+            # Determine source (TRADER or SNIPER) based on tracked pairs
+            source = "TRADER"  # Default
+            if ccxt_symbol in position_pairs or symbol in position_pairs:
+                # Check signal queue for source info
+                source = "TRADER"  # Could be enhanced to track actual source
+
+            # Get SL/TP orders if available
+            sl_price = None
+            tp_price = None
+            try:
+                orders = await exchange.get_open_orders(symbol)
+                for order in orders:
+                    if order.get("stopLoss"):
+                        sl_price = float(order["stopLoss"])
+                    if order.get("takeProfit"):
+                        tp_price = float(order["takeProfit"])
+            except Exception:
+                pass
+
+            positions.append({
+                "symbol": symbol,
+                "ccxt_symbol": ccxt_symbol,
+                "side": "LONG" if pos["side"] == "Buy" else "SHORT",
+                "size": pos["size"],
+                "entry_price": entry_price,
+                "mark_price": mark_price,
+                "pnl_usdt": round(pnl_usdt, 4),
+                "pnl_percent": round(pnl_percent, 2),
+                "leverage": pos.get("leverage", "1"),
+                "liquidation_price": pos.get("liqPrice", None),
+                "sl_price": sl_price,
+                "tp_price": tp_price,
+                "source": source,
+                "opened_at": None,  # Bybit doesn't provide this easily
+            })
+
+        return {
+            "positions": positions,
+            "count": len(positions),
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/positions/{symbol}/close")
+async def close_position(symbol: str):
+    """Close a position manually."""
+    try:
+        orch = await get_orchestrator()
+        exchange = orch.exchange
+
+        # Normalize symbol
+        bybit_symbol = symbol.replace("/", "").replace("USDT", "USDT")
+        if not bybit_symbol.endswith("USDT"):
+            bybit_symbol = bybit_symbol + "USDT"
+
+        # Get current position
+        position = await exchange.get_position(bybit_symbol)
+        if not position:
+            raise HTTPException(status_code=404, detail=f"No open position for {symbol}")
+
+        # Close the position
+        result = await exchange.close_position(
+            symbol=bybit_symbol,
+            side=position["side"],
+            size=position["size"],
+        )
+
+        if result.get("success"):
+            pnl = position.get("pnl", 0)
+
+            # Remove from autopilot tracking
+            ccxt_symbol = bybit_symbol.replace("USDT", "/USDT")
+            orch.autopilot._signal_queue.set_position_closed(ccxt_symbol)
+
+            # Record trade result for agent stats
+            agent = "TRADER"  # Default, could be enhanced
+            if pnl >= 0:
+                await orch.autopilot.record_trade_result(agent, pnl, 0, is_win=True)
+            else:
+                await orch.autopilot.record_trade_result(agent, pnl, 0, is_win=False)
+
+            # Send Telegram notification
+            try:
+                emoji = "✅" if pnl >= 0 else "❌"
+                side = "LONG" if position["side"] == "Buy" else "SHORT"
+                msg = (
+                    f"{emoji} <b>Position Closed (Manual)</b>\n"
+                    f"Pair: {bybit_symbol}\n"
+                    f"Side: {side}\n"
+                    f"Entry: {position['entry_price']}\n"
+                    f"Exit: {position['mark_price']}\n"
+                    f"PnL: ${pnl:.2f}"
+                )
+                await orch.send_notification(msg)
+            except Exception:
+                pass
+
+            return {
+                "success": True,
+                "symbol": bybit_symbol,
+                "pnl_usdt": pnl,
+                "message": f"Position closed with PnL ${pnl:.2f}",
+            }
+        else:
+            raise HTTPException(status_code=500, detail=result.get("error", "Failed to close position"))
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

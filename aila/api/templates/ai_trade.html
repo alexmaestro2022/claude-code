@@ -647,6 +647,17 @@
             </div>
         </div>
 
+        <!-- Open Positions Widget -->
+        <div class="card rounded-lg p-4 mb-8" id="positions-widget">
+            <h2 class="text-xl font-bold mb-4 flex items-center justify-between">
+                <span data-i18n="open_positions">Open Positions</span>
+                <span id="positions-count" class="text-sm px-2 py-1 rounded-full bg-gray-700 text-gray-400">0</span>
+            </h2>
+            <div id="positions-container">
+                <div class="text-gray-500 text-center py-4" data-i18n="no_positions">No open positions</div>
+            </div>
+        </div>
+
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
             <div class="card rounded-lg p-4 lg:col-span-2">
                 <h2 class="text-xl font-bold mb-4" data-i18n="agents">Agents</h2>
@@ -1197,6 +1208,16 @@
                 agent_status_paused: 'Пауза',
                 agent_status_cooldown: 'Кулдаун',
                 agent_status_disabled: 'Выключен',
+                open_positions: 'Открытые позиции',
+                no_positions: 'Нет открытых позиций',
+                position_entry: 'Вход',
+                position_current: 'Текущая',
+                position_pnl: 'PnL',
+                position_leverage: 'Плечо',
+                position_close: 'Закрыть',
+                position_close_confirm: 'Закрыть позицию {symbol}?',
+                position_closed: 'Позиция закрыта',
+                position_close_error: 'Ошибка закрытия позиции',
                 agent_mins_ago: ' мин назад',
                 agent_enabled: 'включён',
                 agent_disabled: 'выключен',
@@ -1394,6 +1415,16 @@
                 agent_status_paused: 'Paused',
                 agent_status_cooldown: 'Cooldown',
                 agent_status_disabled: 'Disabled',
+                open_positions: 'Open Positions',
+                no_positions: 'No open positions',
+                position_entry: 'Entry',
+                position_current: 'Current',
+                position_pnl: 'PnL',
+                position_leverage: 'Leverage',
+                position_close: 'Close',
+                position_close_confirm: 'Close position {symbol}?',
+                position_closed: 'Position closed',
+                position_close_error: 'Failed to close position',
                 agent_mins_ago: 'm ago',
                 agent_enabled: 'enabled',
                 agent_disabled: 'disabled',
@@ -1745,6 +1776,103 @@
             } else {
                 statusEl.textContent = t('agent_status_active');
                 statusEl.className = 'text-sm px-2 py-1 rounded-full bg-green-500/20 text-green-400';
+            }
+        }
+
+        // ==================== POSITIONS ====================
+        async function updatePositions() {
+            try {
+                const data = await fetchData('/positions');
+                if (!data) return;
+
+                const container = document.getElementById('positions-container');
+                const countEl = document.getElementById('positions-count');
+                if (!container) return;
+
+                const positions = data.positions || [];
+                countEl.textContent = positions.length;
+
+                if (positions.length === 0) {
+                    container.innerHTML = `<div class="text-gray-500 text-center py-4">${t('no_positions')}</div>`;
+                    return;
+                }
+
+                let html = '<div class="space-y-3">';
+                for (const pos of positions) {
+                    const isLong = pos.side === 'LONG';
+                    const isProfit = pos.pnl_usdt >= 0;
+                    const sideClass = isLong ? 'text-green-400' : 'text-red-400';
+                    const sideBg = isLong ? 'bg-green-500/20' : 'bg-red-500/20';
+                    const pnlClass = isProfit ? 'text-green-400' : 'text-red-400';
+                    const sourceEmoji = pos.source === 'SNIPER' ? '🎯' : '📈';
+
+                    html += `
+                        <div class="bg-gray-800/50 rounded-lg p-3 border border-gray-700">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-lg">${sourceEmoji}</span>
+                                    <span class="font-bold">${pos.symbol}</span>
+                                    <span class="px-2 py-0.5 rounded text-xs font-bold ${sideBg} ${sideClass}">${pos.side}</span>
+                                    <span class="text-gray-500 text-xs">${pos.leverage}x</span>
+                                </div>
+                                <button onclick="closePosition('${pos.symbol}')"
+                                        class="px-3 py-1 bg-red-500/20 text-red-400 rounded hover:bg-red-500/30 transition-colors text-sm">
+                                    ${t('position_close')}
+                                </button>
+                            </div>
+                            <div class="grid grid-cols-3 gap-4 text-sm">
+                                <div>
+                                    <div class="text-gray-500">${t('position_entry')}</div>
+                                    <div class="font-mono">${pos.entry_price.toFixed(6)}</div>
+                                </div>
+                                <div>
+                                    <div class="text-gray-500">${t('position_current')}</div>
+                                    <div class="font-mono">${pos.mark_price.toFixed(6)}</div>
+                                </div>
+                                <div>
+                                    <div class="text-gray-500">${t('position_pnl')}</div>
+                                    <div class="font-bold ${pnlClass}">
+                                        ${isProfit ? '+' : ''}$${pos.pnl_usdt.toFixed(2)} (${isProfit ? '+' : ''}${pos.pnl_percent.toFixed(2)}%)
+                                    </div>
+                                </div>
+                            </div>
+                            ${pos.sl_price || pos.tp_price ? `
+                            <div class="mt-2 pt-2 border-t border-gray-700 flex gap-4 text-xs">
+                                ${pos.sl_price ? `<span class="text-red-400">SL: ${pos.sl_price}</span>` : ''}
+                                ${pos.tp_price ? `<span class="text-green-400">TP: ${pos.tp_price}</span>` : ''}
+                            </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }
+                html += '</div>';
+                container.innerHTML = html;
+
+            } catch (e) {
+                console.error('Error updating positions:', e);
+            }
+        }
+
+        async function closePosition(symbol) {
+            const confirmMsg = t('position_close_confirm').replace('{symbol}', symbol);
+            if (!confirm(confirmMsg)) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/positions/${encodeURIComponent(symbol)}/close`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    showNotification(`${t('position_closed')}: ${symbol} (PnL: $${result.pnl_usdt.toFixed(2)})`, 'success');
+                    updatePositions();
+                    updateAgentStats();
+                } else {
+                    showNotification(t('position_close_error') + ': ' + (result.detail || 'Unknown error'), 'error');
+                }
+            } catch (e) {
+                console.error('Error closing position:', e);
+                showNotification(t('position_close_error'), 'error');
             }
         }
 
@@ -2824,11 +2952,13 @@
         updateDashboard();
         updateAgentStats();
         updateAgentToggles();
+        updatePositions();
         updateApiCostIndicator();
         updateApiUsageWidget();
         startHeartbeatPolling();
         setInterval(updateDashboard, 30000);
         setInterval(updateAgentStats, 30000);  // Update agent stats every 30 seconds
+        setInterval(updatePositions, 10000);  // Update positions every 10 seconds
         setInterval(updateApiCostIndicator, 60000);  // Update API cost every minute
         setInterval(updateApiUsageWidget, 30000);  // Update API widget every 30 seconds
 
