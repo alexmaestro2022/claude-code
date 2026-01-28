@@ -364,6 +364,110 @@
             </div>
         </div>
 
+        <!-- TRADER & SNIPER Statistics Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            <!-- TRADER Card -->
+            <div class="card rounded-lg p-4" id="trader-stats-card">
+                <h2 class="text-xl font-bold mb-4 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl">📈</span>
+                        <span>TRADER</span>
+                    </div>
+                    <span id="trader-status" class="text-sm px-2 py-1 rounded-full bg-green-500/20 text-green-400">Active</span>
+                </h2>
+                <div class="space-y-3">
+                    <!-- Level & XP -->
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="text-gray-400" data-i18n="agent_level">Level</span>
+                            <span id="trader-level" class="font-bold text-blue-400">1</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-2">
+                            <div id="trader-xp-bar" class="bg-blue-500 h-2 rounded-full transition-all" style="width: 0%"></div>
+                        </div>
+                        <div class="text-xs text-gray-500 mt-1"><span id="trader-xp">0</span>/<span id="trader-xp-next">100</span> XP</div>
+                    </div>
+                    <!-- Stats Grid -->
+                    <div class="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                            <div class="text-gray-400" data-i18n="agent_winrate">Winrate</div>
+                            <div id="trader-winrate" class="font-bold text-lg">0.0%</div>
+                        </div>
+                        <div>
+                            <div class="text-gray-400" data-i18n="agent_pnl">PnL</div>
+                            <div id="trader-pnl" class="font-bold text-lg text-gray-400">$0.00</div>
+                        </div>
+                        <div>
+                            <div class="text-gray-400" data-i18n="agent_total_trades">Total Trades</div>
+                            <div><span id="trader-total-trades" class="font-bold">0</span> <span class="text-xs text-gray-500">(<span id="trader-wins" class="text-green-400">0</span>/<span id="trader-losses" class="text-red-400">0</span>)</span></div>
+                        </div>
+                        <div>
+                            <div class="text-gray-400" data-i18n="agent_today_trades">Today</div>
+                            <div id="trader-today-trades" class="font-bold">0</div>
+                        </div>
+                    </div>
+                    <!-- API Cost -->
+                    <div class="flex justify-between text-sm border-t border-gray-700 pt-2 mt-2">
+                        <span class="text-gray-400" data-i18n="agent_api_cost">API Cost Today</span>
+                        <span id="trader-api-cost" class="text-purple-400">$0.00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SNIPER Card -->
+            <div class="card rounded-lg p-4" id="sniper-stats-card">
+                <h2 class="text-xl font-bold mb-4 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="text-2xl">🎯</span>
+                        <span>SNIPER</span>
+                    </div>
+                    <span id="sniper-status" class="text-sm px-2 py-1 rounded-full bg-green-500/20 text-green-400">Active</span>
+                </h2>
+                <div class="space-y-3">
+                    <!-- Level & XP -->
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span class="text-gray-400" data-i18n="agent_level">Level</span>
+                            <span id="sniper-level" class="font-bold text-orange-400">1</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-2">
+                            <div id="sniper-xp-bar" class="bg-orange-500 h-2 rounded-full transition-all" style="width: 0%"></div>
+                        </div>
+                        <div class="text-xs text-gray-500 mt-1"><span id="sniper-xp">0</span>/<span id="sniper-xp-next">100</span> XP</div>
+                    </div>
+                    <!-- Stats Grid -->
+                    <div class="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                            <div class="text-gray-400" data-i18n="agent_winrate">Winrate</div>
+                            <div id="sniper-winrate" class="font-bold text-lg">0.0%</div>
+                        </div>
+                        <div>
+                            <div class="text-gray-400" data-i18n="agent_pnl">PnL</div>
+                            <div id="sniper-pnl" class="font-bold text-lg text-gray-400">$0.00</div>
+                        </div>
+                        <div>
+                            <div class="text-gray-400" data-i18n="agent_total_trades">Total Trades</div>
+                            <div><span id="sniper-total-trades" class="font-bold">0</span> <span class="text-xs text-gray-500">(<span id="sniper-wins" class="text-green-400">0</span>/<span id="sniper-losses" class="text-red-400">0</span>)</span></div>
+                        </div>
+                        <div>
+                            <div class="text-gray-400" data-i18n="agent_today_trades">Today</div>
+                            <div id="sniper-today-trades" class="font-bold">0</div>
+                        </div>
+                    </div>
+                    <!-- Last Snipe -->
+                    <div class="flex justify-between text-sm border-t border-gray-700 pt-2 mt-2">
+                        <span class="text-gray-400" data-i18n="agent_last_snipe">Last Snipe</span>
+                        <span id="sniper-last-trade" class="text-gray-500">—</span>
+                    </div>
+                    <!-- API Cost -->
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-400" data-i18n="agent_api_cost">API Cost Today</span>
+                        <span id="sniper-api-cost" class="text-purple-400">$0.00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
             <div class="card rounded-lg p-4 lg:col-span-2">
                 <h2 class="text-xl font-bold mb-4" data-i18n="agents">Agents</h2>
@@ -679,7 +783,19 @@
                 autopilot_active: 'AUTOPILOT активен',
                 autopilot_stopped: 'IDLE — ожидание',
                 seconds_ago: ' сек назад',
-                no_scan_yet: 'Ещё не было'
+                no_scan_yet: 'Ещё не было',
+                // Agent cards
+                agent_level: 'Уровень',
+                agent_winrate: 'Winrate',
+                agent_pnl: 'PnL',
+                agent_total_trades: 'Всего сделок',
+                agent_today_trades: 'Сегодня',
+                agent_api_cost: 'API расход сегодня',
+                agent_last_snipe: 'Последний snipe',
+                agent_status_active: 'Активен',
+                agent_status_paused: 'Пауза',
+                agent_status_cooldown: 'Кулдаун',
+                agent_mins_ago: ' мин назад'
             },
             en: {
                 // Main UI
@@ -826,7 +942,19 @@
                 autopilot_active: 'AUTOPILOT active',
                 autopilot_stopped: 'IDLE — waiting',
                 seconds_ago: 's ago',
-                no_scan_yet: 'No scan yet'
+                no_scan_yet: 'No scan yet',
+                // Agent cards
+                agent_level: 'Level',
+                agent_winrate: 'Winrate',
+                agent_pnl: 'PnL',
+                agent_total_trades: 'Total Trades',
+                agent_today_trades: 'Today',
+                agent_api_cost: 'API Cost Today',
+                agent_last_snipe: 'Last Snipe',
+                agent_status_active: 'Active',
+                agent_status_paused: 'Paused',
+                agent_status_cooldown: 'Cooldown',
+                agent_mins_ago: 'm ago'
             }
         };
 
@@ -1034,6 +1162,103 @@
             document.getElementById(elementId).innerHTML =
                 `<div class="text-xl text-gray-500">INACTIVE</div>
                 <div class="text-gray-600 text-sm">Autopilot stopped</div>`;
+        }
+
+        // ==================== TRADER & SNIPER STATS ====================
+        async function updateAgentStats() {
+            try {
+                const data = await fetchData('/agent-stats');
+                if (!data) return;
+
+                // Update TRADER card
+                if (data.trader) {
+                    const trader = data.trader;
+                    document.getElementById('trader-level').textContent = trader.level || 1;
+                    document.getElementById('trader-xp').textContent = trader.xp || 0;
+                    document.getElementById('trader-xp-next').textContent = trader.xp_to_next_level || 100;
+                    const xpPercent = trader.xp_to_next_level > 0 ? (trader.xp / trader.xp_to_next_level * 100) : 0;
+                    document.getElementById('trader-xp-bar').style.width = xpPercent + '%';
+
+                    document.getElementById('trader-winrate').textContent = (trader.winrate || 0).toFixed(1) + '%';
+
+                    const traderPnl = trader.total_pnl_usdt || 0;
+                    const traderPnlEl = document.getElementById('trader-pnl');
+                    traderPnlEl.textContent = (traderPnl >= 0 ? '+' : '') + '$' + traderPnl.toFixed(2);
+                    traderPnlEl.className = 'font-bold text-lg ' + (traderPnl >= 0 ? 'text-green-400' : 'text-red-400');
+                    if (traderPnl === 0) traderPnlEl.className = 'font-bold text-lg text-gray-400';
+
+                    document.getElementById('trader-total-trades').textContent = trader.total_trades || 0;
+                    document.getElementById('trader-wins').textContent = trader.winning_trades || 0;
+                    document.getElementById('trader-losses').textContent = trader.losing_trades || 0;
+                    document.getElementById('trader-today-trades').textContent = trader.trades_today || 0;
+
+                    // API cost
+                    const traderApiCost = trader.api_usage?.cost_today_usdt || 0;
+                    document.getElementById('trader-api-cost').textContent = '$' + traderApiCost.toFixed(2);
+
+                    // Status
+                    updateAgentStatus('trader', trader);
+                }
+
+                // Update SNIPER card
+                if (data.sniper) {
+                    const sniper = data.sniper;
+                    document.getElementById('sniper-level').textContent = sniper.level || 1;
+                    document.getElementById('sniper-xp').textContent = sniper.xp || 0;
+                    document.getElementById('sniper-xp-next').textContent = sniper.xp_to_next_level || 100;
+                    const xpPercent = sniper.xp_to_next_level > 0 ? (sniper.xp / sniper.xp_to_next_level * 100) : 0;
+                    document.getElementById('sniper-xp-bar').style.width = xpPercent + '%';
+
+                    document.getElementById('sniper-winrate').textContent = (sniper.winrate || 0).toFixed(1) + '%';
+
+                    const sniperPnl = sniper.total_pnl_usdt || 0;
+                    const sniperPnlEl = document.getElementById('sniper-pnl');
+                    sniperPnlEl.textContent = (sniperPnl >= 0 ? '+' : '') + '$' + sniperPnl.toFixed(2);
+                    sniperPnlEl.className = 'font-bold text-lg ' + (sniperPnl >= 0 ? 'text-green-400' : 'text-red-400');
+                    if (sniperPnl === 0) sniperPnlEl.className = 'font-bold text-lg text-gray-400';
+
+                    document.getElementById('sniper-total-trades').textContent = sniper.total_trades || 0;
+                    document.getElementById('sniper-wins').textContent = sniper.winning_trades || 0;
+                    document.getElementById('sniper-losses').textContent = sniper.losing_trades || 0;
+                    document.getElementById('sniper-today-trades').textContent = sniper.trades_today || 0;
+
+                    // Last trade time
+                    if (sniper.last_trade_time) {
+                        const lastTrade = new Date(sniper.last_trade_time);
+                        const minsAgo = Math.floor((Date.now() - lastTrade) / 60000);
+                        document.getElementById('sniper-last-trade').textContent = minsAgo + t('agent_mins_ago');
+                        document.getElementById('sniper-last-trade').className = 'text-orange-400';
+                    } else {
+                        document.getElementById('sniper-last-trade').textContent = '—';
+                        document.getElementById('sniper-last-trade').className = 'text-gray-500';
+                    }
+
+                    // API cost
+                    const sniperApiCost = sniper.api_usage?.cost_today_usdt || 0;
+                    document.getElementById('sniper-api-cost').textContent = '$' + sniperApiCost.toFixed(2);
+
+                    // Status
+                    updateAgentStatus('sniper', sniper);
+                }
+            } catch (e) {
+                console.error('Error updating agent stats:', e);
+            }
+        }
+
+        function updateAgentStatus(agent, data) {
+            const statusEl = document.getElementById(agent + '-status');
+            if (!statusEl) return;
+
+            if (data.paused_until) {
+                statusEl.textContent = t('agent_status_paused');
+                statusEl.className = 'text-sm px-2 py-1 rounded-full bg-orange-500/20 text-orange-400';
+            } else if (data.pause_reason) {
+                statusEl.textContent = t('agent_status_cooldown');
+                statusEl.className = 'text-sm px-2 py-1 rounded-full bg-yellow-500/20 text-yellow-400';
+            } else {
+                statusEl.textContent = t('agent_status_active');
+                statusEl.className = 'text-sm px-2 py-1 rounded-full bg-green-500/20 text-green-400';
+            }
         }
 
         async function updateDashboard() {
@@ -1894,10 +2119,12 @@
         // Initialize
         applyLanguage();
         updateDashboard();
+        updateAgentStats();
         updateApiCostIndicator();
         updateApiUsageWidget();
         startHeartbeatPolling();
         setInterval(updateDashboard, 30000);
+        setInterval(updateAgentStats, 30000);  // Update agent stats every 30 seconds
         setInterval(updateApiCostIndicator, 60000);  // Update API cost every minute
         setInterval(updateApiUsageWidget, 30000);  // Update API widget every 30 seconds
 
