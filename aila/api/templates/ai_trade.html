@@ -302,6 +302,167 @@
         .log-trade-failed { color: #dc3545 !important; font-weight: bold; }
         .log-reviewer-approved { color: #FFD700 !important; }
         .log-error { color: #dc3545 !important; }
+        /* Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 20px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #4B5563;
+            transition: 0.3s;
+            border-radius: 20px;
+        }
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+        .toggle-switch input:checked + .toggle-slider {
+            background-color: #10B981;
+        }
+        .toggle-switch input:checked + .toggle-slider:before {
+            transform: translateX(20px);
+        }
+        /* Agent Settings Modal */
+        .agent-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .agent-modal.show {
+            display: flex;
+        }
+        .agent-modal-content {
+            background: #1F2937;
+            border-radius: 12px;
+            max-width: 600px;
+            width: 95%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+        .agent-modal-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #374151;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .agent-modal-body {
+            padding: 20px;
+        }
+        .agent-modal-footer {
+            padding: 16px 20px;
+            border-top: 1px solid #374151;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .setting-group {
+            margin-bottom: 20px;
+        }
+        .setting-group-title {
+            font-weight: 600;
+            color: #9CA3AF;
+            margin-bottom: 12px;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #374151;
+        }
+        .setting-row:last-child {
+            border-bottom: none;
+        }
+        .setting-label {
+            color: #D1D5DB;
+            font-size: 14px;
+        }
+        .setting-input {
+            background: #374151;
+            border: 1px solid #4B5563;
+            border-radius: 6px;
+            padding: 6px 10px;
+            color: white;
+            width: 100px;
+            text-align: right;
+        }
+        .setting-input:focus {
+            outline: none;
+            border-color: #3B82F6;
+        }
+        .setting-readonly {
+            color: #9CA3AF;
+            font-weight: 500;
+        }
+        .btn-save {
+            background: #10B981;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        .btn-save:hover {
+            background: #059669;
+        }
+        .btn-reset {
+            background: #EF4444;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        .btn-reset:hover {
+            background: #DC2626;
+        }
+        .btn-cancel {
+            background: #4B5563;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        .btn-cancel:hover {
+            background: #374151;
+        }
+        .warning-text {
+            color: #F59E0B;
+            font-size: 12px;
+            margin-top: 4px;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-white min-h-screen" style="padding-bottom: 50px;">
@@ -373,7 +534,16 @@
                         <span class="text-2xl">📈</span>
                         <span>TRADER</span>
                     </div>
-                    <span id="trader-status" class="text-sm px-2 py-1 rounded-full bg-green-500/20 text-green-400">Active</span>
+                    <div class="flex items-center gap-3">
+                        <span id="trader-status" class="text-sm px-2 py-1 rounded-full bg-green-500/20 text-green-400">Active</span>
+                        <button onclick="openAgentSettingsModal('trader')" class="text-gray-400 hover:text-blue-400 transition-colors" title="Settings">
+                            <i class="fa-solid fa-cog"></i>
+                        </button>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="trader-toggle" checked onchange="toggleAgent('trader', this.checked)">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
                 </h2>
                 <div class="space-y-3">
                     <!-- Level & XP -->
@@ -421,7 +591,16 @@
                         <span class="text-2xl">🎯</span>
                         <span>SNIPER</span>
                     </div>
-                    <span id="sniper-status" class="text-sm px-2 py-1 rounded-full bg-green-500/20 text-green-400">Active</span>
+                    <div class="flex items-center gap-3">
+                        <span id="sniper-status" class="text-sm px-2 py-1 rounded-full bg-green-500/20 text-green-400">Active</span>
+                        <button onclick="openAgentSettingsModal('sniper')" class="text-gray-400 hover:text-orange-400 transition-colors" title="Settings">
+                            <i class="fa-solid fa-cog"></i>
+                        </button>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="sniper-toggle" checked onchange="toggleAgent('sniper', this.checked)">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
                 </h2>
                 <div class="space-y-3">
                     <!-- Level & XP -->
@@ -616,6 +795,228 @@
         </div>
     </div>
 
+    <!-- TRADER Settings Modal -->
+    <div id="trader-settings-modal" class="agent-modal">
+        <div class="agent-modal-content">
+            <div class="agent-modal-header">
+                <h3 class="text-xl font-bold flex items-center gap-2">
+                    <span>📈</span>
+                    <span data-i18n="trader_settings">TRADER Settings</span>
+                </h3>
+                <button onclick="closeAgentSettingsModal('trader')" class="text-gray-400 hover:text-white">
+                    <i class="fa-solid fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="agent-modal-body">
+                <!-- Main Parameters -->
+                <div class="setting-group">
+                    <div class="setting-group-title" data-i18n="main_params">Main Parameters</div>
+                    <div class="setting-row">
+                        <span class="setting-label" data-i18n="scan_interval">Scan Interval (sec)</span>
+                        <input type="number" id="trader-scan-interval" class="setting-input" min="30" max="600" value="60">
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-label" data-i18n="min_confidence_setting">Min Confidence (%)</span>
+                        <input type="number" id="trader-min-confidence" class="setting-input" min="50" max="95" value="70">
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-label" data-i18n="min_rr_ratio">Min R:R Ratio</span>
+                        <input type="number" id="trader-min-rr" class="setting-input" min="1.0" max="5.0" step="0.1" value="1.5">
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-label" data-i18n="min_sl_distance">Min SL Distance (%)</span>
+                        <input type="number" id="trader-min-sl" class="setting-input" min="1" max="10" step="0.5" value="2">
+                    </div>
+                </div>
+                <!-- Level Limits (readonly) -->
+                <div class="setting-group">
+                    <div class="setting-group-title" data-i18n="level_limits">Level Limits (Level <span id="trader-current-level">1</span>)</div>
+                    <div class="setting-row">
+                        <span class="setting-label" data-i18n="max_leverage">Max Leverage</span>
+                        <span class="setting-readonly" id="trader-max-leverage">3x</span>
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-label" data-i18n="max_positions_setting">Max Positions</span>
+                        <span class="setting-readonly" id="trader-max-positions">1</span>
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-label" data-i18n="max_risk">Max Risk/Trade</span>
+                        <span class="setting-readonly" id="trader-max-risk">1.0%</span>
+                    </div>
+                </div>
+                <!-- Cooldown & Protection -->
+                <div class="setting-group">
+                    <div class="setting-group-title" data-i18n="protection">Cooldown & Protection</div>
+                    <div class="setting-row">
+                        <span class="setting-label" data-i18n="cooldown_between">Cooldown Between Trades (sec)</span>
+                        <input type="number" id="trader-cooldown" class="setting-input" min="60" max="1800" value="300">
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-label" data-i18n="max_trades_day">Max Trades/Day</span>
+                        <input type="number" id="trader-max-trades" class="setting-input" min="1" max="50" value="10">
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-label" data-i18n="pause_after_losses">Pause After X Losses</span>
+                        <input type="number" id="trader-pause-losses" class="setting-input" min="2" max="10" value="3">
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-label" data-i18n="pause_duration">Pause Duration (min)</span>
+                        <input type="number" id="trader-pause-duration" class="setting-input" min="15" max="240" value="60">
+                    </div>
+                </div>
+                <!-- Confirmations -->
+                <div class="setting-group">
+                    <div class="setting-group-title" data-i18n="confirmations">Confirmations</div>
+                    <div class="setting-row">
+                        <span class="setting-label" data-i18n="require_confirmations">Require Confirmations</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="trader-require-confirm" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-label" data-i18n="min_confirmations">Min Confirmations</span>
+                        <input type="number" id="trader-min-confirms" class="setting-input" min="1" max="3" value="2">
+                    </div>
+                </div>
+                <div id="trader-last-modified" class="text-xs text-gray-500 mt-2"></div>
+            </div>
+            <div class="agent-modal-footer">
+                <button onclick="resetAgentSettings('trader')" class="btn-reset" data-i18n="reset_defaults">Reset to Defaults</button>
+                <button onclick="closeAgentSettingsModal('trader')" class="btn-cancel" data-i18n="cancel">Cancel</button>
+                <button onclick="saveAgentSettings('trader')" class="btn-save" data-i18n="save">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SNIPER Settings Modal -->
+    <div id="sniper-settings-modal" class="agent-modal">
+        <div class="agent-modal-content">
+            <div class="agent-modal-header">
+                <h3 class="text-xl font-bold flex items-center gap-2">
+                    <span>🎯</span>
+                    <span data-i18n="sniper_settings">SNIPER Settings</span>
+                </h3>
+                <button onclick="closeAgentSettingsModal('sniper')" class="text-gray-400 hover:text-white">
+                    <i class="fa-solid fa-times text-xl"></i>
+                </button>
+            </div>
+            <div class="agent-modal-body">
+                <!-- Main Parameters -->
+                <div class="setting-group">
+                    <div class="setting-group-title" data-i18n="main_params">Main Parameters</div>
+                    <div class="setting-row">
+                        <span class="setting-label" data-i18n="scan_interval">Scan Interval (sec)</span>
+                        <input type="number" id="sniper-scan-interval" class="setting-input" min="5" max="60" value="10">
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-label" data-i18n="pairs_to_scan">Pairs to Scan</span>
+                        <input type="number" id="sniper-pairs-count" class="setting-input" min="10" max="50" value="20">
+                    </div>
+                </div>
+                <!-- Triggers -->
+                <div class="setting-group">
+                    <div class="setting-group-title" data-i18n="triggers">Triggers</div>
+                    <div class="setting-row">
+                        <span class="setting-label" data-i18n="trigger_breakout">Breakout (High Break)</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="sniper-trigger-breakout" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-label" data-i18n="trigger_breakdown">Breakdown (Low Break)</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="sniper-trigger-breakdown" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-label" data-i18n="trigger_liquidation">Liquidation Cascade</span>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="sniper-trigger-liquidation">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <!-- Trigger Parameters -->
+                <div class="setting-group">
+                    <div class="setting-group-title" data-i18n="trigger_params">Trigger Parameters</div>
+                    <div class="setting-row">
+                        <span class="setting-label" data-i18n="breakout_threshold">Breakout Threshold (%)</span>
+                        <input type="number" id="sniper-breakout-threshold" class="setting-input" min="0.05" max="1.0" step="0.05" value="0.1">
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-label" data-i18n="rsi_breakout">RSI Breakout Range</span>
+                        <div class="flex gap-2">
+                            <input type="number" id="sniper-rsi-breakout-min" class="setting-input" style="width:60px" min="40" max="70" value="55">
+                            <span class="text-gray-400">-</span>
+                            <input type="number" id="sniper-rsi-breakout-max" class="setting-input" style="width:60px" min="60" max="90" value="80">
+                        </div>
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-label" data-i18n="rsi_breakdown">RSI Breakdown Range</span>
+                        <div class="flex gap-2">
+                            <input type="number" id="sniper-rsi-breakdown-min" class="setting-input" style="width:60px" min="10" max="40" value="20">
+                            <span class="text-gray-400">-</span>
+                            <input type="number" id="sniper-rsi-breakdown-max" class="setting-input" style="width:60px" min="30" max="60" value="45">
+                        </div>
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-label" data-i18n="atr_sl_mult">ATR SL Multiplier</span>
+                        <input type="number" id="sniper-atr-sl" class="setting-input" min="1.0" max="3.0" step="0.1" value="1.5">
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-label" data-i18n="atr_tp_mult">ATR TP Multiplier</span>
+                        <input type="number" id="sniper-atr-tp" class="setting-input" min="2.0" max="6.0" step="0.5" value="3.0">
+                    </div>
+                </div>
+                <!-- Level Limits (readonly) -->
+                <div class="setting-group">
+                    <div class="setting-group-title" data-i18n="level_limits">Level Limits (Level <span id="sniper-current-level">1</span>)</div>
+                    <div class="setting-row">
+                        <span class="setting-label" data-i18n="max_leverage">Max Leverage</span>
+                        <span class="setting-readonly" id="sniper-max-leverage">2x</span>
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-label" data-i18n="max_positions_setting">Max Positions</span>
+                        <span class="setting-readonly" id="sniper-max-positions">1</span>
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-label" data-i18n="max_risk">Max Risk/Trade</span>
+                        <span class="setting-readonly" id="sniper-max-risk">0.5%</span>
+                    </div>
+                </div>
+                <!-- Cooldown & Protection -->
+                <div class="setting-group">
+                    <div class="setting-group-title" data-i18n="protection">Cooldown & Protection</div>
+                    <div class="setting-row">
+                        <span class="setting-label" data-i18n="cooldown_between">Cooldown Between Trades (sec)</span>
+                        <input type="number" id="sniper-cooldown" class="setting-input" min="30" max="600" value="60">
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-label" data-i18n="max_trades_day">Max Trades/Day</span>
+                        <input type="number" id="sniper-max-trades" class="setting-input" min="1" max="100" value="20">
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-label" data-i18n="pause_after_losses">Pause After X Losses</span>
+                        <input type="number" id="sniper-pause-losses" class="setting-input" min="2" max="10" value="3">
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-label" data-i18n="pause_duration">Pause Duration (min)</span>
+                        <input type="number" id="sniper-pause-duration" class="setting-input" min="15" max="240" value="60">
+                    </div>
+                </div>
+                <div id="sniper-last-modified" class="text-xs text-gray-500 mt-2"></div>
+            </div>
+            <div class="agent-modal-footer">
+                <button onclick="resetAgentSettings('sniper')" class="btn-reset" data-i18n="reset_defaults">Reset to Defaults</button>
+                <button onclick="closeAgentSettingsModal('sniper')" class="btn-cancel" data-i18n="cancel">Cancel</button>
+                <button onclick="saveAgentSettings('sniper')" class="btn-save" data-i18n="save">Save</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Autopilot Status Bar -->
     <div id="autopilot-status-bar" class="autopilot-status-bar inactive" style="display: none;">
         <div class="status-left">
@@ -795,7 +1196,44 @@
                 agent_status_active: 'Активен',
                 agent_status_paused: 'Пауза',
                 agent_status_cooldown: 'Кулдаун',
-                agent_mins_ago: ' мин назад'
+                agent_mins_ago: ' мин назад',
+                agent_enabled: 'включён',
+                agent_disabled: 'выключен',
+                // Agent Settings
+                trader_settings: 'Настройки TRADER',
+                sniper_settings: 'Настройки SNIPER',
+                main_params: 'Основные параметры',
+                scan_interval: 'Интервал сканирования (сек)',
+                min_confidence_setting: 'Минимальная уверенность (%)',
+                min_rr_ratio: 'Мин. R:R коэфф.',
+                min_sl_distance: 'Мин. дистанция SL (%)',
+                level_limits: 'Лимиты уровня',
+                max_positions_setting: 'Макс. позиций',
+                max_risk: 'Макс. риск/сделка',
+                protection: 'Защита и cooldown',
+                cooldown_between: 'Cooldown между сделками (сек)',
+                max_trades_day: 'Макс. сделок/день',
+                pause_after_losses: 'Пауза после X убытков',
+                pause_duration: 'Длительность паузы (мин)',
+                confirmations: 'Подтверждения',
+                require_confirmations: 'Требовать подтверждения',
+                min_confirmations: 'Мин. подтверждений',
+                triggers: 'Триггеры',
+                trigger_breakout: 'Breakout (пробой максимума)',
+                trigger_breakdown: 'Breakdown (пробой минимума)',
+                trigger_liquidation: 'Liquidation Cascade',
+                trigger_params: 'Параметры триггеров',
+                breakout_threshold: 'Порог breakout (%)',
+                rsi_breakout: 'RSI для breakout',
+                rsi_breakdown: 'RSI для breakdown',
+                atr_sl_mult: 'ATR множитель SL',
+                atr_tp_mult: 'ATR множитель TP',
+                pairs_to_scan: 'Пар для сканирования',
+                reset_defaults: 'Сбросить по умолчанию',
+                settings_saved: 'Настройки сохранены',
+                settings_reset: 'Настройки сброшены',
+                confirm_reset_settings: 'Сбросить настройки по умолчанию?',
+                last_modified: 'Последнее изменение'
             },
             en: {
                 // Main UI
@@ -954,7 +1392,44 @@
                 agent_status_active: 'Active',
                 agent_status_paused: 'Paused',
                 agent_status_cooldown: 'Cooldown',
-                agent_mins_ago: 'm ago'
+                agent_mins_ago: 'm ago',
+                agent_enabled: 'enabled',
+                agent_disabled: 'disabled',
+                // Agent Settings
+                trader_settings: 'TRADER Settings',
+                sniper_settings: 'SNIPER Settings',
+                main_params: 'Main Parameters',
+                scan_interval: 'Scan Interval (sec)',
+                min_confidence_setting: 'Min Confidence (%)',
+                min_rr_ratio: 'Min R:R Ratio',
+                min_sl_distance: 'Min SL Distance (%)',
+                level_limits: 'Level Limits',
+                max_positions_setting: 'Max Positions',
+                max_risk: 'Max Risk/Trade',
+                protection: 'Protection & Cooldown',
+                cooldown_between: 'Cooldown Between Trades (sec)',
+                max_trades_day: 'Max Trades/Day',
+                pause_after_losses: 'Pause After X Losses',
+                pause_duration: 'Pause Duration (min)',
+                confirmations: 'Confirmations',
+                require_confirmations: 'Require Confirmations',
+                min_confirmations: 'Min Confirmations',
+                triggers: 'Triggers',
+                trigger_breakout: 'Breakout (High Break)',
+                trigger_breakdown: 'Breakdown (Low Break)',
+                trigger_liquidation: 'Liquidation Cascade',
+                trigger_params: 'Trigger Parameters',
+                breakout_threshold: 'Breakout Threshold (%)',
+                rsi_breakout: 'RSI for Breakout',
+                rsi_breakdown: 'RSI for Breakdown',
+                atr_sl_mult: 'ATR SL Multiplier',
+                atr_tp_mult: 'ATR TP Multiplier',
+                pairs_to_scan: 'Pairs to Scan',
+                reset_defaults: 'Reset to Defaults',
+                settings_saved: 'Settings saved',
+                settings_reset: 'Settings reset',
+                confirm_reset_settings: 'Reset settings to defaults?',
+                last_modified: 'Last modified'
             }
         };
 
@@ -1260,6 +1735,222 @@
                 statusEl.className = 'text-sm px-2 py-1 rounded-full bg-green-500/20 text-green-400';
             }
         }
+
+        // ==================== AGENT SETTINGS ====================
+        async function toggleAgent(agent, enabled) {
+            try {
+                const endpoint = enabled ? 'enable' : 'disable';
+                const response = await fetch(`${API_BASE}/agent/${agent}/${endpoint}`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                if (result.success) {
+                    showNotification(`${agent.toUpperCase()} ${enabled ? t('agent_enabled') : t('agent_disabled')}`, 'success');
+                    updateAgentStats();
+                } else {
+                    showNotification(result.error || 'Error', 'error');
+                    // Revert toggle
+                    document.getElementById(`${agent}-toggle`).checked = !enabled;
+                }
+            } catch (e) {
+                console.error('Toggle agent error:', e);
+                showNotification('Error toggling agent', 'error');
+                document.getElementById(`${agent}-toggle`).checked = !enabled;
+            }
+        }
+
+        async function openAgentSettingsModal(agent) {
+            try {
+                const response = await fetch(`${API_BASE}/agent/${agent}/settings`);
+                const data = await response.json();
+                if (!data.settings) return;
+
+                const s = data.settings;
+
+                if (agent === 'trader') {
+                    document.getElementById('trader-scan-interval').value = s.scan_interval_seconds || 60;
+                    document.getElementById('trader-min-confidence').value = s.min_confidence || 70;
+                    document.getElementById('trader-min-rr').value = s.min_rr_ratio || 1.5;
+                    document.getElementById('trader-min-sl').value = s.min_sl_distance_pct || 2;
+                    document.getElementById('trader-cooldown').value = s.cooldown_seconds || 300;
+                    document.getElementById('trader-max-trades').value = s.max_trades_per_day || 10;
+                    document.getElementById('trader-pause-losses').value = s.pause_after_losses || 3;
+                    document.getElementById('trader-pause-duration').value = s.pause_duration_minutes || 60;
+                    document.getElementById('trader-require-confirm').checked = s.require_confirmations !== false;
+                    document.getElementById('trader-min-confirms').value = s.min_confirmations || 2;
+
+                    if (s.last_modified) {
+                        document.getElementById('trader-last-modified').textContent =
+                            t('last_modified') + ': ' + new Date(s.last_modified).toLocaleString();
+                    }
+                } else if (agent === 'sniper') {
+                    document.getElementById('sniper-scan-interval').value = s.scan_interval_seconds || 10;
+                    document.getElementById('sniper-pairs-count').value = s.pairs_to_scan || 20;
+                    document.getElementById('sniper-trigger-breakout').checked = s.trigger_breakout !== false;
+                    document.getElementById('sniper-trigger-breakdown').checked = s.trigger_breakdown !== false;
+                    document.getElementById('sniper-trigger-liquidation').checked = s.trigger_liquidation === true;
+                    document.getElementById('sniper-breakout-threshold').value = s.breakout_threshold_pct || 0.1;
+                    document.getElementById('sniper-rsi-breakout-min').value = s.rsi_breakout_min || 55;
+                    document.getElementById('sniper-rsi-breakout-max').value = s.rsi_breakout_max || 80;
+                    document.getElementById('sniper-rsi-breakdown-min').value = s.rsi_breakdown_min || 20;
+                    document.getElementById('sniper-rsi-breakdown-max').value = s.rsi_breakdown_max || 45;
+                    document.getElementById('sniper-atr-sl').value = s.atr_sl_multiplier || 1.5;
+                    document.getElementById('sniper-atr-tp').value = s.atr_tp_multiplier || 3.0;
+                    document.getElementById('sniper-cooldown').value = s.cooldown_seconds || 60;
+                    document.getElementById('sniper-max-trades').value = s.max_trades_per_day || 20;
+                    document.getElementById('sniper-pause-losses').value = s.pause_after_losses || 3;
+                    document.getElementById('sniper-pause-duration').value = s.pause_duration_minutes || 60;
+
+                    if (s.last_modified) {
+                        document.getElementById('sniper-last-modified').textContent =
+                            t('last_modified') + ': ' + new Date(s.last_modified).toLocaleString();
+                    }
+                }
+
+                // Load level limits
+                await loadAgentLevelLimits(agent);
+
+                document.getElementById(`${agent}-settings-modal`).classList.add('show');
+            } catch (e) {
+                console.error('Error loading settings:', e);
+                showNotification('Error loading settings', 'error');
+            }
+        }
+
+        async function loadAgentLevelLimits(agent) {
+            try {
+                const statsData = await fetchData('/agent-stats');
+                if (!statsData) return;
+
+                const stats = statsData[agent];
+                if (!stats) return;
+
+                // Get level info from autopilot status
+                const autopilotStatus = await fetchData('/autopilot/status');
+                if (autopilotStatus && autopilotStatus.agents && autopilotStatus.agents[agent]) {
+                    const limits = autopilotStatus.agents[agent].limits;
+                    const level = autopilotStatus.agents[agent].level;
+
+                    document.getElementById(`${agent}-current-level`).textContent = level;
+                    document.getElementById(`${agent}-max-leverage`).textContent = limits.max_leverage + 'x';
+                    document.getElementById(`${agent}-max-positions`).textContent = limits.max_positions;
+                    document.getElementById(`${agent}-max-risk`).textContent = limits.max_risk_pct + '%';
+                }
+            } catch (e) {
+                console.error('Error loading level limits:', e);
+            }
+        }
+
+        function closeAgentSettingsModal(agent) {
+            document.getElementById(`${agent}-settings-modal`).classList.remove('show');
+        }
+
+        async function saveAgentSettings(agent) {
+            try {
+                let settings = {};
+
+                if (agent === 'trader') {
+                    settings = {
+                        scan_interval_seconds: parseInt(document.getElementById('trader-scan-interval').value),
+                        min_confidence: parseInt(document.getElementById('trader-min-confidence').value),
+                        min_rr_ratio: parseFloat(document.getElementById('trader-min-rr').value),
+                        min_sl_distance_pct: parseFloat(document.getElementById('trader-min-sl').value),
+                        cooldown_seconds: parseInt(document.getElementById('trader-cooldown').value),
+                        max_trades_per_day: parseInt(document.getElementById('trader-max-trades').value),
+                        pause_after_losses: parseInt(document.getElementById('trader-pause-losses').value),
+                        pause_duration_minutes: parseInt(document.getElementById('trader-pause-duration').value),
+                        require_confirmations: document.getElementById('trader-require-confirm').checked,
+                        min_confirmations: parseInt(document.getElementById('trader-min-confirms').value),
+                    };
+                } else if (agent === 'sniper') {
+                    settings = {
+                        scan_interval_seconds: parseInt(document.getElementById('sniper-scan-interval').value),
+                        pairs_to_scan: parseInt(document.getElementById('sniper-pairs-count').value),
+                        trigger_breakout: document.getElementById('sniper-trigger-breakout').checked,
+                        trigger_breakdown: document.getElementById('sniper-trigger-breakdown').checked,
+                        trigger_liquidation: document.getElementById('sniper-trigger-liquidation').checked,
+                        breakout_threshold_pct: parseFloat(document.getElementById('sniper-breakout-threshold').value),
+                        rsi_breakout_min: parseInt(document.getElementById('sniper-rsi-breakout-min').value),
+                        rsi_breakout_max: parseInt(document.getElementById('sniper-rsi-breakout-max').value),
+                        rsi_breakdown_min: parseInt(document.getElementById('sniper-rsi-breakdown-min').value),
+                        rsi_breakdown_max: parseInt(document.getElementById('sniper-rsi-breakdown-max').value),
+                        atr_sl_multiplier: parseFloat(document.getElementById('sniper-atr-sl').value),
+                        atr_tp_multiplier: parseFloat(document.getElementById('sniper-atr-tp').value),
+                        cooldown_seconds: parseInt(document.getElementById('sniper-cooldown').value),
+                        max_trades_per_day: parseInt(document.getElementById('sniper-max-trades').value),
+                        pause_after_losses: parseInt(document.getElementById('sniper-pause-losses').value),
+                        pause_duration_minutes: parseInt(document.getElementById('sniper-pause-duration').value),
+                    };
+                }
+
+                const response = await fetch(`${API_BASE}/agent/${agent}/settings`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(settings)
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    showNotification(t('settings_saved'), 'success');
+                    if (result.warnings) {
+                        result.warnings.forEach(w => showNotification(w, 'warning'));
+                    }
+                    closeAgentSettingsModal(agent);
+                } else {
+                    if (result.errors) {
+                        result.errors.forEach(e => showNotification(e, 'error'));
+                    } else {
+                        showNotification(result.error || 'Error saving settings', 'error');
+                    }
+                }
+            } catch (e) {
+                console.error('Error saving settings:', e);
+                showNotification('Error saving settings', 'error');
+            }
+        }
+
+        async function resetAgentSettings(agent) {
+            if (!confirm(t('confirm_reset_settings'))) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/agent/${agent}/settings/reset`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+                if (result.success) {
+                    showNotification(t('settings_reset'), 'success');
+                    openAgentSettingsModal(agent); // Reload with defaults
+                } else {
+                    showNotification(result.error || 'Error', 'error');
+                }
+            } catch (e) {
+                console.error('Error resetting settings:', e);
+                showNotification('Error resetting settings', 'error');
+            }
+        }
+
+        // Update toggles from autopilot status
+        async function updateAgentToggles() {
+            try {
+                const status = await fetchData('/autopilot/status');
+                if (status && status.agents) {
+                    const traderToggle = document.getElementById('trader-toggle');
+                    const sniperToggle = document.getElementById('sniper-toggle');
+                    if (traderToggle) traderToggle.checked = status.agents.trader?.enabled !== false;
+                    if (sniperToggle) sniperToggle.checked = status.agents.sniper?.enabled !== false;
+                }
+            } catch (e) {
+                console.error('Error updating toggles:', e);
+            }
+        }
+
+        // Close modals on background click
+        document.getElementById('trader-settings-modal')?.addEventListener('click', function(e) {
+            if (e.target === this) closeAgentSettingsModal('trader');
+        });
+        document.getElementById('sniper-settings-modal')?.addEventListener('click', function(e) {
+            if (e.target === this) closeAgentSettingsModal('sniper');
+        });
 
         async function updateDashboard() {
             const status = await fetchData('/status');
@@ -2120,6 +2811,7 @@
         applyLanguage();
         updateDashboard();
         updateAgentStats();
+        updateAgentToggles();
         updateApiCostIndicator();
         updateApiUsageWidget();
         startHeartbeatPolling();

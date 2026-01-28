@@ -939,6 +939,135 @@ async def cancel_snipe(pair: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ==================== AGENT SETTINGS ====================
+
+
+@router.get("/agent/{agent}/settings")
+async def get_agent_settings(agent: str):
+    """Get settings for an agent (TRADER or SNIPER)."""
+    try:
+        from ...ai_trade.agent_settings import get_agent_settings
+        settings_mgr = get_agent_settings()
+        settings = settings_mgr.get_settings(agent)
+        if not settings:
+            raise HTTPException(status_code=404, detail=f"Unknown agent: {agent}")
+        return {
+            "agent": agent.upper(),
+            "settings": settings,
+            "validation": settings_mgr.get_validation_rules(agent),
+            "defaults": settings_mgr.get_defaults(agent),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/agent/{agent}/settings")
+async def update_agent_settings(agent: str, settings: dict):
+    """Update settings for an agent."""
+    try:
+        from ...ai_trade.agent_settings import get_agent_settings
+        settings_mgr = get_agent_settings()
+        result = settings_mgr.update_settings(agent, settings)
+
+        # Apply to autopilot if running
+        orch = await get_orchestrator()
+        if hasattr(orch, 'autopilot') and orch.autopilot._running:
+            agent_upper = agent.upper()
+            if agent_upper == "TRADER":
+                orch.autopilot._config['scan_interval_seconds'] = settings_mgr.get_settings('TRADER').get('scan_interval_seconds', 60)
+                orch.autopilot._config['min_confidence'] = settings_mgr.get_settings('TRADER').get('min_confidence', 70)
+                orch.autopilot._config['trader_enabled'] = settings_mgr.is_enabled('TRADER')
+            elif agent_upper == "SNIPER":
+                orch.autopilot._config['sniper_scan_interval_seconds'] = settings_mgr.get_settings('SNIPER').get('scan_interval_seconds', 10)
+                orch.autopilot._config['sniper_enabled'] = settings_mgr.is_enabled('SNIPER')
+
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/agent/{agent}/settings/reset")
+async def reset_agent_settings(agent: str):
+    """Reset agent settings to defaults."""
+    try:
+        from ...ai_trade.agent_settings import get_agent_settings
+        settings_mgr = get_agent_settings()
+        result = settings_mgr.reset_to_defaults(agent)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/agent/{agent}/enable")
+async def enable_agent(agent: str):
+    """Enable an agent."""
+    try:
+        from ...ai_trade.agent_settings import get_agent_settings
+        settings_mgr = get_agent_settings()
+        result = settings_mgr.set_enabled(agent, True)
+
+        # Apply to autopilot
+        orch = await get_orchestrator()
+        if hasattr(orch, 'autopilot'):
+            agent_upper = agent.upper()
+            if agent_upper == "TRADER":
+                orch.autopilot._config['trader_enabled'] = True
+            elif agent_upper == "SNIPER":
+                orch.autopilot._config['sniper_enabled'] = True
+
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/agent/{agent}/disable")
+async def disable_agent(agent: str):
+    """Disable an agent."""
+    try:
+        from ...ai_trade.agent_settings import get_agent_settings
+        settings_mgr = get_agent_settings()
+        result = settings_mgr.set_enabled(agent, False)
+
+        # Apply to autopilot
+        orch = await get_orchestrator()
+        if hasattr(orch, 'autopilot'):
+            agent_upper = agent.upper()
+            if agent_upper == "TRADER":
+                orch.autopilot._config['trader_enabled'] = False
+            elif agent_upper == "SNIPER":
+                orch.autopilot._config['sniper_enabled'] = False
+
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/agent/{agent}/clear-cooldown")
+async def clear_agent_cooldown(agent: str):
+    """Clear cooldown for an agent (for testing)."""
+    try:
+        orch = await get_orchestrator()
+        agent_upper = agent.upper()
+        orch.autopilot._signal_queue.clear_cooldown(agent_upper)
+        return {"success": True, "agent": agent_upper, "message": "Cooldown cleared"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/agent/{agent}/clear-pause")
+async def clear_agent_pause(agent: str):
+    """Clear pause for an agent."""
+    try:
+        orch = await get_orchestrator()
+        agent_upper = agent.upper()
+        orch.autopilot._agent_stats.clear_pause(agent_upper)
+        return {"success": True, "agent": agent_upper, "message": "Pause cleared"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ==================== AGENT LEVELS CONFIG ====================
 
 

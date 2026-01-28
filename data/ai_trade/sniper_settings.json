@@ -1,0 +1,20 @@
+{
+  "enabled": false,
+  "scan_interval_seconds": 10,
+  "pairs_to_scan": 20,
+  "trigger_breakout": true,
+  "trigger_breakdown": true,
+  "trigger_liquidation": false,
+  "breakout_threshold_pct": 0.1,
+  "rsi_breakout_min": 55,
+  "rsi_breakout_max": 80,
+  "rsi_breakdown_min": 20,
+  "rsi_breakdown_max": 45,
+  "atr_sl_multiplier": 1.5,
+  "atr_tp_multiplier": 3.0,
+  "cooldown_seconds": 60,
+  "max_trades_per_day": 20,
+  "pause_after_losses": 3,
+  "pause_duration_minutes": 60,
+  "last_modified": "2026-01-28T18:35:32.421963"
+}
