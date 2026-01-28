@@ -177,31 +177,42 @@ class AutopilotMode:
         except Exception:
             self._pairs_count = 0
 
+        logger.info("[STAGE 1] Trader scanning for opportunities...")
         opportunity = await self._orchestrator.trader.find_opportunity()
 
         if not opportunity or opportunity.get('decision') not in ['LONG', 'SHORT']:
+            logger.info("[STAGE 1] No valid opportunity found")
             return None
 
-        if opportunity.get('confidence', 0) < self._config['min_confidence']:
+        pair = opportunity.get('pair', 'UNKNOWN')
+        confidence = opportunity.get('confidence', 0)
+        logger.info(f"[STAGE 1] Found: {opportunity.get('decision')} {pair} @ {confidence}%")
+
+        if confidence < self._config['min_confidence']:
+            logger.info(f"[STAGE 1] Confidence {confidence}% < min {self._config['min_confidence']}%")
             return None
 
+        logger.info(f"[STAGE 2] Sending to Reviewer: {pair}")
         review = await self._orchestrator.reviewer.review(opportunity)
+        logger.info(f"[STAGE 2] Reviewer decision: {review.get('decision')}")
+
         if review.get('decision') == 'REJECT':
-            logger.info(f"Reviewer rejected: {review.get('reason')}")
+            logger.info(f"[STAGE 2] Reviewer rejected: {review.get('reason')}")
             return None
 
         if review.get('decision') == 'MODIFY':
             opportunity = review.get('modified_opportunity', opportunity)
-            logger.info(f"Reviewer MODIFY, modified_opportunity exists: {review.get('modified_opportunity') is not None}")
+            logger.info(f"[STAGE 2] Reviewer MODIFY applied")
 
-        logger.info(f"Calling risk_guard.validate_trade for {opportunity['pair']}")
+        logger.info(f"[STAGE 3] Risk guard validating {opportunity['pair']}")
         risk_check = await self._orchestrator.risk_guard.validate_trade(opportunity)
-        logger.info(f"Risk check result: approved={risk_check.get('approved')}")
+        logger.info(f"[STAGE 3] Risk check: approved={risk_check.get('approved')}")
         if not risk_check.get('approved'):
-            logger.info(f"Risk guard blocked: {risk_check.get('reason')}")
+            logger.info(f"[STAGE 3] Risk guard blocked: {risk_check.get('reason')}")
             return None
 
         if self._config['require_multiple_confirmations']:
+            logger.info(f"[STAGE 4] Getting market confirmations for {opportunity['pair']}")
             context = await self._orchestrator.get_market_context(opportunity['pair'])
 
             confirmations = 0
@@ -220,10 +231,16 @@ class AutopilotMode:
             if sentiment not in ['extreme_fear', 'extreme_greed']:
                 confirmations += 1
 
+            logger.info(
+                f"[STAGE 4] Confirmations: {confirmations}/2 "
+                f"(whale={whale_signal}, pred={prediction_dir}, sent={sentiment})"
+            )
+
             if confirmations < 2:
-                logger.info(f"Not enough confirmations: {confirmations}/2")
+                logger.info(f"[STAGE 4] Not enough confirmations: {confirmations}/2")
                 return None
 
+        logger.info(f"[STAGE 5] All validations passed for {opportunity['pair']}")
         return opportunity
 
     async def _execute_trade(self, opportunity: dict[str, Any]) -> Optional[dict[str, Any]]:
@@ -239,16 +256,20 @@ class AutopilotMode:
         )
 
         try:
+            logger.info(f"[EXECUTE] Calculating trade size for {symbol}")
             size = await self._orchestrator.calculate_trade_size(
                 entry_price=opportunity['entry_price'],
                 stop_loss=opportunity['stop_loss'],
                 confidence=opportunity.get('confidence', 50)
             )
+            logger.info(f"[EXECUTE] Size calculated: ${size['position_size_usdt']:.2f}")
 
             # Add calculated size to opportunity for position_manager
             opportunity['position_size_usdt'] = size['position_size_usdt']
 
+            logger.info(f"[EXECUTE] Calling position_manager.open_position for {symbol}")
             result = await self._orchestrator.position_manager.open_position(opportunity)
+            logger.info(f"[EXECUTE] position_manager result: {result is not None}")
 
             if result:
                 # open_position returns position dict on success, None on failure

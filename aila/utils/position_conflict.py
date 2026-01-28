@@ -44,9 +44,12 @@ def check_position_conflict(symbol: str) -> bool:
             logger.warning("No Bybit client available for conflict check")
             return False  # Allow trade if can't check
 
+        # Normalize symbol: JTO/USDT -> JTOUSDT
+        bybit_symbol = symbol.replace("/", "") if "/" in symbol else symbol
+
         result = client.get_positions(
             category="linear",
-            symbol=symbol,
+            symbol=bybit_symbol,
         )
 
         if result["retCode"] == 0:

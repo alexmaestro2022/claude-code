@@ -27,17 +27,23 @@ class PositionManager:
         """Open a new position based on AI signal."""
         symbol = signal.get("pair")
         direction = signal.get("decision")
+        logger.info(f"[POSITION] open_position called: {symbol} {direction}")
+
         if not symbol or not direction or direction == "WAIT":
+            logger.warning(f"[POSITION] Rejected: symbol={symbol}, direction={direction}")
             return None
 
         # Check for position conflict (any existing position on this symbol)
         if check_position_conflict(symbol):
-            logger.warning(f"Position conflict: {symbol} already has open position, skipping signal")
+            logger.warning(f"[POSITION] Conflict: {symbol} already has open position, skipping signal")
             return None
+
+        logger.info(f"[POSITION] No conflict, proceeding with {symbol}")
 
         try:
             leverage = signal.get("leverage", 1)
             position_size_usdt = signal.get("position_size_usdt", 0)
+            logger.info(f"[POSITION] Size: ${position_size_usdt:.2f}, leverage: {leverage}x")
 
             # Enforce minimum order size for Bybit
             # Bybit requires min $10 position size, but margin = position_size / leverage
@@ -51,26 +57,32 @@ class PositionManager:
                 position_size_usdt = MIN_ORDER_SIZE_USDT
                 signal["position_size_usdt"] = position_size_usdt
 
+            logger.info(f"[POSITION] Setting leverage {leverage}x for {symbol}")
             await self._exchange.set_leverage(leverage, symbol)
 
+            logger.info(f"[POSITION] Fetching ticker for {symbol}")
             ticker = await self._exchange.fetch_ticker(symbol)
             if not ticker or "last" not in ticker:
-                logger.error(f"Failed to get ticker for {symbol}")
+                logger.error(f"[POSITION] Failed to get ticker for {symbol}: {ticker}")
                 return None
             price = ticker["last"]
             amount = position_size_usdt / price
+            logger.info(f"[POSITION] Price: {price}, amount: {amount:.6f}")
 
             side = "buy" if direction == "LONG" else "sell"
+            logger.info(f"[POSITION] Creating market order: {side} {amount:.6f} {symbol}")
             order = await self._exchange.create_market_order(symbol, side, amount)
             if not order or "id" not in order:
-                logger.error(f"Failed to create market order for {symbol}")
+                logger.error(f"[POSITION] Failed to create market order for {symbol}: {order}")
                 return None
+            logger.info(f"[POSITION] Order created: {order.get('id')}")
 
             position = self._build_position(signal, order, price, amount)
+            logger.info(f"[POSITION] Setting SL/TP for {symbol}")
             await self._set_sl_tp(symbol, signal, direction, amount)
 
             self._open_positions[symbol] = position
-            logger.info(f"Position opened: {direction} {symbol} @ {price}, lev={leverage}x")
+            logger.info(f"[POSITION] SUCCESS: {direction} {symbol} @ {price}, lev={leverage}x")
 
             # Send Telegram notification
             asyncio.create_task(self._notify_position_opened(position, signal))
@@ -78,7 +90,9 @@ class PositionManager:
             return position
 
         except Exception as e:
-            logger.error(f"Error opening position {symbol}: {e}")
+            import traceback
+            logger.error(f"[POSITION] EXCEPTION opening {symbol}: {e}")
+            logger.error(f"[POSITION] Traceback: {traceback.format_exc()}")
             # Notify about error
             asyncio.create_task(
                 get_telegram_notifier().notify_error("Position Open", str(e))

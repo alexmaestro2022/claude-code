@@ -1785,6 +1785,47 @@ async def get_prediction(pair: str):
 
 ---
 
-**Последнее обновление:** 2026-01-28 (feat: color-coded log text for trade signals)
+## 36. Диагностика Trade Pipeline (2026-01-28)
+
+### Проблема: Сигналы с confidence 85% не открывают сделки
+
+**Расследование показало:**
+1. **TRADER** находит сигналы с 85% confidence (BTR/USDT, PUMPFUN/USDT)
+2. **REVIEWER** отклоняет большинство — причины:
+   - R/R ratio < 1.5:1
+   - Trend = NEUTRAL (не BULLISH)
+   - Price ниже EMA50 (противоречит reasoning)
+   - Слишком большой предыдущий рост (90%+ за 24h)
+3. **JTO/USDT прошёл все проверки** и дошёл до READY_TO_TRADE
+4. **TRADE_FAILED** — position_manager не смог открыть позицию
+
+### Исправления:
+
+**1. position_conflict.py — нормализация символа:**
+```python
+# Было: symbol напрямую (JTO/USDT)
+# Стало: bybit_symbol = symbol.replace("/", "")  # JTOUSDT
+```
+
+**2. position_manager.py — детальное логирование:**
+- Логирование каждого этапа: conflict check, leverage, ticker, order
+- Traceback при исключениях
+
+**3. autopilot_mode.py — stage logging:**
+- [STAGE 1] Trader scanning
+- [STAGE 2] Reviewer decision
+- [STAGE 3] Risk guard validation
+- [STAGE 4] Market confirmations
+- [STAGE 5] All validations passed
+- [EXECUTE] Position opening
+
+### Файлы изменены:
+- `aila/utils/position_conflict.py` — fix: нормализация символа для Bybit API
+- `aila/ai_trade/position_manager.py` — добавлено детальное логирование
+- `aila/ai_trade/autopilot_mode.py` — добавлен stage logging для отладки
+
+---
+
+**Последнее обновление:** 2026-01-28 (fix: add debug trade pipeline + symbol normalization)
 **Текущая версия:** v2.3.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
