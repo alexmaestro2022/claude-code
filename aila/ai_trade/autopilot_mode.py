@@ -334,9 +334,15 @@ class AutopilotMode:
             if result:
                 self._signal_queue.set_position_open(pair)
                 self._stats[f'{agent.lower()}_trades'] += 1
-
-        # Mark as processed (sets cooldown)
-        self._signal_queue.mark_processed(pair, agent, opportunity is not None)
+                # Set cooldown ONLY after successful trade execution
+                self._signal_queue.mark_processed(pair, agent, success=True)
+                logger.info(f"[{agent}] Cooldown activated after successful trade")
+            else:
+                # Trade execution failed - no cooldown
+                logger.info(f"[{agent}] Trade execution failed for {pair} - no cooldown")
+        else:
+            # Validation failed - no cooldown
+            logger.info(f"[{agent}] Signal rejected for {pair} - no cooldown")
 
     async def _validate_signal(self, signal: dict[str, Any], agent: str) -> Optional[dict[str, Any]]:
         """Validate signal through REVIEWER and RISK_GUARD."""

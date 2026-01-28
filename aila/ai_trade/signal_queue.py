@@ -148,19 +148,22 @@ class SignalQueue:
         return None
 
     def mark_processed(self, pair: str, agent: str, success: bool) -> None:
-        """Mark signal as processed and set cooldown."""
+        """Mark signal as processed. Set cooldown ONLY on successful trade."""
         self._processed_pairs.discard(pair)
 
-        # Set cooldown for agent
-        if agent == "TRADER":
-            cooldown = self._config["trader_cooldown_seconds"]
-        elif agent == "SNIPER":
-            cooldown = self._config["sniper_cooldown_seconds"]
-        else:
-            cooldown = 60
+        # Set cooldown ONLY for successful trades
+        if success:
+            if agent == "TRADER":
+                cooldown = self._config["trader_cooldown_seconds"]
+            elif agent == "SNIPER":
+                cooldown = self._config["sniper_cooldown_seconds"]
+            else:
+                cooldown = 60
 
-        self._cooldowns[agent] = datetime.utcnow() + timedelta(seconds=cooldown)
-        logger.info(f"[QUEUE] Processed {pair} from {agent}, cooldown={cooldown}s")
+            self._cooldowns[agent] = datetime.utcnow() + timedelta(seconds=cooldown)
+            logger.info(f"[QUEUE] Trade executed {pair} from {agent}, cooldown={cooldown}s set")
+        else:
+            logger.info(f"[QUEUE] Signal processed {pair} from {agent}, no cooldown (trade not executed)")
 
     def set_position_open(self, pair: str) -> None:
         """Mark pair as having open position."""
