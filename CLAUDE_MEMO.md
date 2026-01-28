@@ -1973,8 +1973,22 @@ cd /opt/aila && /opt/aila/venv/bin/python -m pytest tests/test_bybit_exchange.py
 - `closeResetModal()`: изменено `classList.add('hidden')` → `classList.remove('show')`
 - Удалён лишний класс `hidden` из HTML элемента модалки
 
+### refactor: Claude API settings modal (2026-01-28)
+**Изменение:** Настройки Claude API вынесены из общих настроек в отдельную модалку карточки.
+
+**Что сделано:**
+- Добавлена иконка шестерёнки (fa-cog) в заголовок карточки "Claude API"
+- Удалена кнопка "Установить бюджет" из виджета карточки
+- Создана новая модалка `#api-settings-modal` для настроек Claude API
+- Удалена секция Claude API из общих настроек (settings-modal)
+- Добавлены функции `openApiSettingsModal()` и `closeApiSettingsModal()`
+
+**UI:**
+- Шестерёнка в правом верхнем углу карточки → открывает модалку с настройками
+- Настройки: начальный баланс, toggle лимитов, дневной/общий лимит, прогресс-бары
+
 ---
 
-**Последнее обновление:** 2026-01-28 (fix: API usage reset button)
+**Последнее обновление:** 2026-01-28 (refactor: Claude API settings modal)
 **Текущая версия:** v2.3.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
