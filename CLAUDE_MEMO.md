@@ -1862,6 +1862,50 @@ logger.info(f"[POSITION] Price: {price}, raw_qty: {raw_amount:.8f}, rounded_qty:
 
 ---
 
-**Последнее обновление:** 2026-01-28 (fix: qty precision + debug trade pipeline)
+## 37. Система качества кода AI Trade (2026-01-28)
+
+### Создано:
+
+**CLAUDE.md** — правила качества кода (читается автоматически каждую сессию):
+- Правило 1: Чеклист методов BybitExchange (Market, Account, Orders, Position, Helpers)
+- Правило 2: Округление qty и price перед созданием ордера
+- Правило 3: Нормализация символов (BTC/USDT → BTCUSDT)
+- Правило 4: Логирование Claude API (agent, action, context)
+- Правило 5: Обработка ошибок (try/except для внешних вызовов)
+- Правило 6: Тестирование перед деплоем
+- Правило 7: Stage логирование в Autopilot [STAGE 1-5]
+- Правило 8: Цветные метки логов [READY_TO_TRADE], [TRADE_OPENED], [TRADE_FAILED]
+- Правило 9: Retry декоратор для API (@retry_async)
+- Правило 10: Type hints и docstrings
+
+**docs/AI_TRADE_API.md** — документация API агентов и exchange методов
+**docs/EXCHANGE_CHECKLIST.md** — чеклист методов BybitExchange
+
+**tests/test_bybit_exchange.py** — 16 тестов:
+- test_has_market_data_methods
+- test_has_account_methods
+- test_has_order_methods
+- test_has_position_methods
+- test_has_helper_methods
+- test_normalize_symbol (3 теста)
+- test_round_qty (5 тестов)
+- test_round_price (2 теста)
+- test_cache_is_used
+
+### Проверено:
+- Все методы BybitExchange реализованы и работают
+- round_qty и round_price используются в position_manager
+- Stage логирование [STAGE 1-5] в autopilot_mode.py
+- Цветные метки [READY_TO_TRADE], [TRADE_OPENED], [TRADE_FAILED]
+- Тесты: 16 passed
+
+### Запуск тестов:
+```bash
+cd /opt/aila && /opt/aila/venv/bin/python -m pytest tests/test_bybit_exchange.py -v
+```
+
+---
+
+**Последнее обновление:** 2026-01-28 (feat: code quality system)
 **Текущая версия:** v2.3.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
