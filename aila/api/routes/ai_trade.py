@@ -2,8 +2,10 @@
 API endpoints for AI Trade module.
 """
 
+import json
 import os
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any, Optional
 
 from fastapi import APIRouter, HTTPException
@@ -810,7 +812,46 @@ async def get_agent_stats():
     """Get stats for both TRADER and SNIPER agents."""
     try:
         orch = await get_orchestrator()
-        return orch.autopilot.get_agent_stats()
+        stats = orch.autopilot.get_agent_stats()
+
+        # Enrich with enabled state from agent_settings
+        from ...ai_trade.agent_settings import get_agent_settings
+        settings_mgr = get_agent_settings()
+        trader_settings = settings_mgr.get_settings("TRADER")
+        sniper_settings = settings_mgr.get_settings("SNIPER")
+
+        if "trader" in stats:
+            stats["trader"]["enabled"] = trader_settings.get("enabled", True)
+        if "sniper" in stats:
+            stats["sniper"]["enabled"] = sniper_settings.get("enabled", True)
+
+        # Enrich with cooldown_remaining from signal_queue
+        if "trader" in stats:
+            stats["trader"]["cooldown_remaining"] = orch.autopilot._signal_queue.get_cooldown_remaining("TRADER")
+        if "sniper" in stats:
+            stats["sniper"]["cooldown_remaining"] = orch.autopilot._signal_queue.get_cooldown_remaining("SNIPER")
+
+        # Enrich with real API cost from api_usage.json
+        try:
+            api_usage_path = Path("/opt/aila/data/ai_trade/api_usage.json")
+            if api_usage_path.exists():
+                with open(api_usage_path) as f:
+                    api_data = json.load(f)
+                agents_usage = api_data.get("agents", {})
+
+                # TRADER cost
+                trader_api = agents_usage.get("TRADER", {})
+                if "trader" in stats:
+                    stats["trader"]["api_usage"]["cost_today_usdt"] = trader_api.get("cost", 0.0)
+
+                # SNIPER doesn't have direct API calls, but we can show 0
+                if "sniper" in stats:
+                    sniper_api = agents_usage.get("SNIPER", {})
+                    stats["sniper"]["api_usage"]["cost_today_usdt"] = sniper_api.get("cost", 0.0)
+        except Exception:
+            pass  # Keep original values if api_usage.json read fails
+
+        return stats
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

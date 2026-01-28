@@ -1196,6 +1196,7 @@
                 agent_status_active: 'Активен',
                 agent_status_paused: 'Пауза',
                 agent_status_cooldown: 'Кулдаун',
+                agent_status_disabled: 'Выключен',
                 agent_mins_ago: ' мин назад',
                 agent_enabled: 'включён',
                 agent_disabled: 'выключен',
@@ -1392,6 +1393,7 @@
                 agent_status_active: 'Active',
                 agent_status_paused: 'Paused',
                 agent_status_cooldown: 'Cooldown',
+                agent_status_disabled: 'Disabled',
                 agent_mins_ago: 'm ago',
                 agent_enabled: 'enabled',
                 agent_disabled: 'disabled',
@@ -1722,13 +1724,23 @@
 
         function updateAgentStatus(agent, data) {
             const statusEl = document.getElementById(agent + '-status');
+            const toggleEl = document.getElementById(agent + '-toggle');
             if (!statusEl) return;
 
-            if (data.paused_until) {
+            // Update toggle state
+            if (toggleEl) {
+                toggleEl.checked = data.enabled !== false;
+            }
+
+            // Priority: disabled > paused > cooldown > active
+            if (data.enabled === false) {
+                statusEl.textContent = t('agent_status_disabled');
+                statusEl.className = 'text-sm px-2 py-1 rounded-full bg-gray-500/20 text-gray-400';
+            } else if (data.paused_until) {
                 statusEl.textContent = t('agent_status_paused');
                 statusEl.className = 'text-sm px-2 py-1 rounded-full bg-orange-500/20 text-orange-400';
-            } else if (data.pause_reason) {
-                statusEl.textContent = t('agent_status_cooldown');
+            } else if (data.cooldown_remaining && data.cooldown_remaining > 0) {
+                statusEl.textContent = t('agent_status_cooldown') + ' ' + Math.ceil(data.cooldown_remaining) + 's';
                 statusEl.className = 'text-sm px-2 py-1 rounded-full bg-yellow-500/20 text-yellow-400';
             } else {
                 statusEl.textContent = t('agent_status_active');
