@@ -378,33 +378,42 @@ class AutopilotMode:
 
         # STAGE 4: Market confirmations (only for TRADER)
         if agent == "TRADER" and self._config['require_multiple_confirmations']:
-            logger.info(f"[{agent}][STAGE 4] Getting market confirmations for {pair}")
-            context = await self._orchestrator.get_market_context(pair)
+            # Get min_confirmations from settings
+            from .agent_settings import get_agent_settings
+            settings = get_agent_settings().get_settings("TRADER")
+            min_confirmations = settings.get('min_confirmations', 2)
+            require_confirmations = settings.get('require_confirmations', True)
 
-            confirmations = 0
-            whale_signal = context.get('whale', {}).get('signal', '')
-            prediction_dir = context.get('prediction', {}).get('direction', '')
-            sentiment = context.get('market', {}).get('sentiment', '')
+            if not require_confirmations:
+                logger.info(f"[{agent}][STAGE 4] Confirmations disabled in settings, skipping")
+            else:
+                logger.info(f"[{agent}][STAGE 4] Getting market confirmations for {pair}")
+                context = await self._orchestrator.get_market_context(pair)
 
-            if whale_signal in ['buy', 'strong_buy'] and signal['decision'] == 'LONG':
-                confirmations += 1
-            if whale_signal in ['sell', 'strong_sell'] and signal['decision'] == 'SHORT':
-                confirmations += 1
-            if prediction_dir == 'up' and signal['decision'] == 'LONG':
-                confirmations += 1
-            if prediction_dir == 'down' and signal['decision'] == 'SHORT':
-                confirmations += 1
-            if sentiment not in ['extreme_fear', 'extreme_greed']:
-                confirmations += 1
+                confirmations = 0
+                whale_signal = context.get('whale', {}).get('signal', '')
+                prediction_dir = context.get('prediction', {}).get('direction', '')
+                sentiment = context.get('market', {}).get('sentiment', '')
 
-            logger.info(
-                f"[{agent}][STAGE 4] Confirmations: {confirmations}/2 "
-                f"(whale={whale_signal}, pred={prediction_dir}, sent={sentiment})"
-            )
+                if whale_signal in ['buy', 'strong_buy'] and signal['decision'] == 'LONG':
+                    confirmations += 1
+                if whale_signal in ['sell', 'strong_sell'] and signal['decision'] == 'SHORT':
+                    confirmations += 1
+                if prediction_dir == 'up' and signal['decision'] == 'LONG':
+                    confirmations += 1
+                if prediction_dir == 'down' and signal['decision'] == 'SHORT':
+                    confirmations += 1
+                if sentiment not in ['extreme_fear', 'extreme_greed']:
+                    confirmations += 1
 
-            if confirmations < 2:
-                logger.info(f"[{agent}][STAGE 4] Not enough confirmations: {confirmations}/2")
-                return None
+                logger.info(
+                    f"[{agent}][STAGE 4] Confirmations: {confirmations}/{min_confirmations} "
+                    f"(whale={whale_signal}, pred={prediction_dir}, sent={sentiment})"
+                )
+
+                if confirmations < min_confirmations:
+                    logger.info(f"[{agent}][STAGE 4] Not enough confirmations: {confirmations}/{min_confirmations}")
+                    return None
 
         logger.info(f"[{agent}][STAGE 5] All validations passed for {pair}")
         return signal
