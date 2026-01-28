@@ -1993,11 +1993,12 @@ cd /opt/aila && /opt/aila/venv/bin/python -m pytest tests/test_bybit_exchange.py
   - Остаток баланса
   - Вызовов сегодня
   - По моделям (S:X / H:X)
+  - **Токены** (in: X.XK / out: X.XK)
   - Последний сброс
   - **Топ потребителей** (TRADER, WHALE, PREDICTOR, REVIEWER, NEWS с кол-вом, стоимостью и %)
 
 ---
 
-**Последнее обновление:** 2026-01-28 (refactor: full statistics view in card)
+**Последнее обновление:** 2026-01-28 (feat: add token usage to card)
 **Текущая версия:** v2.3.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
