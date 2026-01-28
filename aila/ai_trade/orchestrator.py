@@ -27,7 +27,7 @@ from .autopilot_mode import AutopilotMode
 from .scaling_manager import ScalingManager
 from .exchanges.multi_exchange import MultiExchangeManager
 from .exchanges.bybit_exchange import BybitExchange
-from .claude_client import ClaudeClient, get_api_usage
+from .claude_client import ClaudeClient, get_api_usage, set_api_usage_orchestrator
 from .knowledge_base import KnowledgeBase
 from .market_scanner import MarketScanner
 from .risk_manager import RiskManager
@@ -92,6 +92,9 @@ class AgentOrchestrator:
         self.scaling_manager = ScalingManager(self.knowledge_base, self.capital_manager)
         self.learning = LearningCycles(self)
         self._persistence = PersistenceManager()
+
+        # Set orchestrator reference for API usage auto-stop
+        set_api_usage_orchestrator(self)
 
         logger.info(f"AgentOrchestrator initialized in {mode} mode (16 agents)")
         if api_key:

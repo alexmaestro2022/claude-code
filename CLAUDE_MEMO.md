@@ -1906,6 +1906,61 @@ cd /opt/aila && /opt/aila/venv/bin/python -m pytest tests/test_bybit_exchange.py
 
 ---
 
-**Последнее обновление:** 2026-01-28 (feat: code quality system)
+## 38. Улучшения блока Claude API (2026-01-28)
+
+### Новые возможности:
+
+**Кнопка сброса истории:**
+- Иконка fa-rotate-right рядом с начальным балансом
+- Модальное окно с полем ввода нового баланса
+- API: `POST /api/ai-trade/api-usage/reset?initial_balance=50`
+
+**Система бюджетных лимитов:**
+- Toggle "Использовать лимит бюджета" (вкл/выкл)
+- Дневной лимит (daily_limit) в USD
+- Общий лимит (total_limit) в USD
+- API: `PUT /api/ai-trade/api-usage/settings?use_budget_limit=true&daily_limit=10&total_limit=50`
+
+**Автоостановка автопилота:**
+- Если лимит достигнут и toggle включен — автопилот останавливается автоматически
+- Telegram уведомление: "API LIMIT REACHED... Autopilot has been stopped automatically."
+- Проверка лимита происходит при каждом вызове Claude API
+
+**Логика при смене дня:**
+- `accumulated_cost` — общий расход с момента последнего сброса (не сбрасывается при новом дне)
+- `daily_cost` — расход за сегодня (сбрасывается при новом дне)
+- `remaining_balance` = initial_balance - accumulated_cost
+
+**Структура api_usage.json:**
+```json
+{
+  "budget": {
+    "initial_balance": 50.0,
+    "accumulated_cost": 17.1,
+    "last_reset_date": "2026-01-28T12:00:00",
+    "daily_reset_date": "2026-01-28"
+  },
+  "settings": {
+    "use_budget_limit": false,
+    "daily_limit": 10.0,
+    "total_limit": 50.0
+  }
+}
+```
+
+**UI компоненты:**
+- Прогресс-бары для дневного и общего лимита
+- Цветовая индикация: зеленый (<80%), желтый (80-99%), красный (>=100%)
+- Отображение остатка баланса
+
+### Файлы изменены:
+- `aila/ai_trade/claude_client.py` — APIUsageTracker с новыми методами
+- `aila/api/routes/ai_trade.py` — новые endpoints
+- `aila/ai_trade/orchestrator.py` — set_api_usage_orchestrator
+- `aila/api/templates/ai_trade.html` — UI + модалка сброса
+
+---
+
+**Последнее обновление:** 2026-01-28 (feat: API usage reset + budget limits)
 **Текущая версия:** v2.3.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`

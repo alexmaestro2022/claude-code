@@ -84,12 +84,40 @@ async def set_api_usage_limits(daily: float = None, monthly: float = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.put("/api-usage/budget")
-async def set_api_budget(budget: float):
-    """Set user's daily API budget."""
+@router.post("/api-usage/reset")
+async def reset_api_usage(initial_balance: float = 50.0):
+    """Reset API usage statistics with new initial balance."""
     try:
-        from ...ai_trade.claude_client import set_daily_budget
-        return set_daily_budget(budget)
+        from ...ai_trade.claude_client import reset_api_usage
+        return reset_api_usage(initial_balance)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/api-usage/settings")
+async def update_api_usage_settings(
+    use_budget_limit: bool = None,
+    daily_limit: float = None,
+    total_limit: float = None,
+):
+    """Update API usage budget limit settings."""
+    try:
+        from ...ai_trade.claude_client import update_budget_settings
+        return update_budget_settings(
+            use_budget_limit=use_budget_limit,
+            daily_limit=daily_limit,
+            total_limit=total_limit,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api-usage/settings")
+async def get_api_usage_settings():
+    """Get API usage budget settings."""
+    try:
+        from ...ai_trade.claude_client import get_budget_settings
+        return get_budget_settings()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

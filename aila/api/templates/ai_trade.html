@@ -426,6 +426,38 @@
         </div>
     </div>
 
+    <!-- Reset API Usage Modal -->
+    <div id="reset-modal" class="modal-overlay hidden">
+        <div class="bg-gray-800 rounded-lg p-6 max-w-md mx-auto mt-20 border border-gray-700">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-yellow-400">
+                    <i class="fa-solid fa-rotate-right mr-2"></i>
+                    <span data-i18n="api_reset_title">Reset API Usage?</span>
+                </h3>
+                <button onclick="closeResetModal()" class="text-gray-400 hover:text-white text-xl">&times;</button>
+            </div>
+            <p class="text-gray-300 text-sm mb-4" data-i18n="api_reset_description">
+                This will reset all usage statistics and set a new initial balance.
+            </p>
+            <div class="mb-4">
+                <label class="block text-sm text-gray-400 mb-1" data-i18n="api_initial_balance">Initial Balance</label>
+                <div class="flex items-center gap-2">
+                    <span class="text-gray-400">$</span>
+                    <input type="number" id="reset-balance-input" value="50" min="0" step="1" class="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded text-white">
+                </div>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="closeResetModal()" class="flex-1 px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded text-white">
+                    <span data-i18n="cancel">Cancel</span>
+                </button>
+                <button onclick="confirmReset()" class="flex-1 px-4 py-2 bg-yellow-600 hover:bg-yellow-500 rounded text-white">
+                    <i class="fa-solid fa-rotate-right mr-1"></i>
+                    <span data-i18n="api_reset_confirm">Reset</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Autopilot Confirmation Modal -->
     <div id="autopilot-modal" class="modal-overlay">
         <div class="modal-content">
@@ -535,9 +567,24 @@
                 api_tokens: 'Токены',
                 api_budget: 'Бюджет',
                 api_budget_remaining: 'Осталось',
-                api_budget_warning: '⚠️ Превышено 80% бюджета!',
-                api_budget_exceeded: '🚨 Бюджет превышен!',
+                api_budget_warning: 'Превышено 80% бюджета!',
+                api_budget_exceeded: 'Бюджет превышен!',
                 api_set_budget: 'Установить бюджет',
+                api_initial_balance: 'Начальный баланс',
+                api_reset_history: 'Сбросить историю',
+                api_reset_title: 'Сбросить историю API?',
+                api_reset_description: 'Это сбросит всю статистику и установит новый начальный баланс.',
+                api_reset_confirm: 'Сбросить',
+                api_reset_success: 'История API сброшена',
+                api_use_budget_limit: 'Использовать лимит',
+                api_daily_limit: 'Дневной лимит',
+                api_total_limit: 'Общий лимит',
+                api_remaining_balance: 'Остаток баланса',
+                api_last_reset: 'Последний сброс',
+                api_limit_reached: 'Лимит достигнут! Автопилот остановлен.',
+                cancel: 'Отмена',
+                save: 'Сохранить',
+                saved: 'Сохранено',
                 // Settings labels
                 min_confidence: 'Мин. уверенность',
                 scan_interval: 'Интервал сканирования',
@@ -666,9 +713,24 @@
                 api_tokens: 'Tokens',
                 api_budget: 'Budget',
                 api_budget_remaining: 'Remaining',
-                api_budget_warning: '⚠️ Over 80% of budget!',
-                api_budget_exceeded: '🚨 Budget exceeded!',
+                api_budget_warning: 'Over 80% of budget!',
+                api_budget_exceeded: 'Budget exceeded!',
                 api_set_budget: 'Set Budget',
+                api_initial_balance: 'Initial Balance',
+                api_reset_history: 'Reset History',
+                api_reset_title: 'Reset API History?',
+                api_reset_description: 'This will reset all usage statistics and set a new initial balance.',
+                api_reset_confirm: 'Reset',
+                api_reset_success: 'API history reset',
+                api_use_budget_limit: 'Use Budget Limit',
+                api_daily_limit: 'Daily Limit',
+                api_total_limit: 'Total Limit',
+                api_remaining_balance: 'Remaining Balance',
+                api_last_reset: 'Last Reset',
+                api_limit_reached: 'Limit reached! Autopilot stopped.',
+                cancel: 'Cancel',
+                save: 'Save',
+                saved: 'Saved',
                 // Settings labels
                 min_confidence: 'Min Confidence',
                 scan_interval: 'Scan Interval',
@@ -1409,30 +1471,112 @@
                 const container = document.getElementById('api-usage-content');
                 if (!container) return;
 
-                const warningClass = data.today?.warning ? 'error' : (data.month?.warning ? 'warning' : '');
-                const warningIcon = data.today?.warning || data.month?.warning ?
-                    '<i class="fa-solid fa-triangle-exclamation text-yellow-400 ml-1"></i>' : '';
+                const budget = data.budget || {};
+                const initialBalance = budget.initial_balance || 50;
+                const accumulatedCost = budget.accumulated_cost || 0;
+                const dailyCost = budget.daily_cost || data.today?.cost_usd || 0;
+                const remainingBalance = budget.remaining_balance || (initialBalance - accumulatedCost);
+                const useBudgetLimit = budget.use_budget_limit || false;
+                const dailyLimit = budget.daily_limit || 10;
+                const totalLimit = budget.total_limit || 50;
+                const dailyPct = budget.daily_pct || 0;
+                const totalPct = budget.total_pct || 0;
+                const limitReached = budget.limit_reached || false;
+                const lastResetDate = budget.last_reset_date ? new Date(budget.last_reset_date).toLocaleDateString() : '-';
+
+                // Progress bar colors
+                const getDailyColor = () => {
+                    if (dailyPct >= 100) return { bar: 'bg-red-500', bg: 'bg-red-900/30', text: 'text-red-400' };
+                    if (dailyPct >= 80) return { bar: 'bg-yellow-500', bg: 'bg-yellow-900/30', text: 'text-yellow-400' };
+                    return { bar: 'bg-green-500', bg: 'bg-green-900/30', text: 'text-green-400' };
+                };
+                const getTotalColor = () => {
+                    if (totalPct >= 100) return { bar: 'bg-red-500', bg: 'bg-red-900/30', text: 'text-red-400' };
+                    if (totalPct >= 80) return { bar: 'bg-yellow-500', bg: 'bg-yellow-900/30', text: 'text-yellow-400' };
+                    return { bar: 'bg-blue-500', bg: 'bg-blue-900/30', text: 'text-blue-400' };
+                };
+                const dailyColors = getDailyColor();
+                const totalColors = getTotalColor();
 
                 container.innerHTML = `
+                    <!-- Initial Balance + Reset Button -->
+                    <div class="setting-row mb-3">
+                        <span class="setting-name">${t('api_initial_balance')}</span>
+                        <div class="flex items-center gap-2">
+                            <span class="setting-value text-blue-400">$${initialBalance.toFixed(2)}</span>
+                            <button onclick="openResetModal()" class="p-1 text-gray-400 hover:text-white hover:bg-gray-700 rounded" title="${t('api_reset_history')}">
+                                <i class="fa-solid fa-rotate-right"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Budget Limit Toggle -->
+                    <div class="setting-row mb-3 pb-3 border-b border-gray-700">
+                        <span class="setting-name">${t('api_use_budget_limit')}</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="use-budget-limit" ${useBudgetLimit ? 'checked' : ''} class="sr-only peer" onchange="toggleBudgetLimit(this.checked)">
+                            <div class="w-9 h-5 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                        </label>
+                    </div>
+
+                    <!-- Budget Limits (shown when toggle is ON) -->
+                    <div id="budget-limits-section" class="${useBudgetLimit ? '' : 'hidden'} mb-3 pb-3 border-b border-gray-700">
+                        <div class="setting-row mb-2">
+                            <span class="setting-name">${t('api_daily_limit')}</span>
+                            <div class="flex items-center gap-2">
+                                <span class="text-gray-400">$</span>
+                                <input type="number" id="daily-limit-input" value="${dailyLimit}" min="0" step="1" class="w-20 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-white text-sm">
+                            </div>
+                        </div>
+                        <div class="setting-row mb-2">
+                            <span class="setting-name">${t('api_total_limit')}</span>
+                            <div class="flex items-center gap-2">
+                                <span class="text-gray-400">$</span>
+                                <input type="number" id="total-limit-input" value="${totalLimit}" min="0" step="1" class="w-20 px-2 py-1 bg-gray-700 border border-gray-600 rounded text-white text-sm">
+                            </div>
+                        </div>
+                        <button onclick="saveBudgetLimits()" class="w-full mt-2 px-3 py-1 bg-purple-600 hover:bg-purple-700 rounded text-white text-sm">
+                            ${t('save')}
+                        </button>
+                        ${limitReached ? `
+                            <div class="mt-2 p-2 bg-red-900/30 rounded text-red-400 text-xs animate-pulse">
+                                <i class="fa-solid fa-ban mr-1"></i> ${t('api_limit_reached')}
+                            </div>
+                        ` : ''}
+                    </div>
+
+                    <!-- Daily Progress Bar -->
+                    <div class="mb-3">
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-gray-400">${t('api_cost_today')}</span>
+                            <span class="${dailyColors.text}">$${dailyCost.toFixed(2)} / $${dailyLimit.toFixed(2)} (${dailyPct.toFixed(1)}%)</span>
+                        </div>
+                        <div class="w-full h-2 ${dailyColors.bg} rounded-full overflow-hidden">
+                            <div class="${dailyColors.bar} h-full rounded-full transition-all duration-500" style="width: ${Math.min(dailyPct, 100)}%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Total Progress Bar -->
+                    <div class="mb-3">
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-gray-400">${t('api_cost_total')}</span>
+                            <span class="${totalColors.text}">$${accumulatedCost.toFixed(2)} / $${totalLimit.toFixed(2)} (${totalPct.toFixed(1)}%)</span>
+                        </div>
+                        <div class="w-full h-2 ${totalColors.bg} rounded-full overflow-hidden">
+                            <div class="${totalColors.bar} h-full rounded-full transition-all duration-500" style="width: ${Math.min(totalPct, 100)}%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Remaining Balance -->
+                    <div class="setting-row mb-3 pb-3 border-b border-gray-700">
+                        <span class="setting-name">${t('api_remaining_balance')}</span>
+                        <span class="setting-value ${remainingBalance > 0 ? 'text-green-400' : 'text-red-400'}">$${remainingBalance.toFixed(2)}</span>
+                    </div>
+
+                    <!-- Stats -->
                     <div class="setting-row">
                         <span class="setting-name">${t('api_calls_today')}</span>
                         <span class="setting-value">${data.today?.total_calls || 0}</span>
-                    </div>
-                    <div class="setting-row">
-                        <span class="setting-name">${t('api_cost_today')}${warningIcon}</span>
-                        <span class="setting-value ${warningClass}">$${(data.today?.cost_usd || 0).toFixed(4)}</span>
-                    </div>
-                    <div class="setting-row">
-                        <span class="setting-name">${t('api_cost_month')}</span>
-                        <span class="setting-value ${data.month?.warning ? 'warning' : ''}">$${(data.month?.cost_usd || 0).toFixed(4)}</span>
-                    </div>
-                    <div class="setting-row">
-                        <span class="setting-name">${t('api_cost_total')}</span>
-                        <span class="setting-value">$${(data.total?.all_time_cost_usd || 0).toFixed(4)}</span>
-                    </div>
-                    <div class="setting-row">
-                        <span class="setting-name">${t('api_cost_per_hour')}</span>
-                        <span class="setting-value">$${(data.session?.cost_per_hour || 0).toFixed(4)}</span>
                     </div>
                     <div class="setting-row">
                         <span class="setting-name">${t('api_model_breakdown')}</span>
@@ -1442,15 +1586,9 @@
                         </span>
                     </div>
                     <div class="setting-row">
-                        <span class="setting-name">${t('api_warning_limit')}</span>
-                        <span class="setting-value">$${data.limits?.daily_warning_usd || 5}/day</span>
+                        <span class="setting-name">${t('api_last_reset')}</span>
+                        <span class="setting-value text-gray-400">${lastResetDate}</span>
                     </div>
-                    ${data.warnings && data.warnings.length > 0 ? `
-                        <div class="mt-2 p-2 bg-yellow-900/30 rounded text-yellow-400 text-xs">
-                            <i class="fa-solid fa-triangle-exclamation mr-1"></i>
-                            ${data.warnings[data.warnings.length - 1]}
-                        </div>
-                    ` : ''}
 
                     ${data.today_top_consumers && data.today_top_consumers.length > 0 ? `
                         <div class="mt-3 pt-2 border-t border-gray-700">
@@ -1472,6 +1610,81 @@
                 `;
             } catch (e) {
                 console.error('API usage load error:', e);
+            }
+        }
+
+        // Toggle budget limit
+        async function toggleBudgetLimit(enabled) {
+            try {
+                const response = await fetch(API_BASE + '/api-usage/settings?use_budget_limit=' + enabled, {
+                    method: 'PUT',
+                });
+                if (response.ok) {
+                    const section = document.getElementById('budget-limits-section');
+                    if (section) {
+                        section.classList.toggle('hidden', !enabled);
+                    }
+                    loadApiUsage();
+                }
+            } catch (e) {
+                console.error('Toggle budget limit error:', e);
+            }
+        }
+
+        // Save budget limits
+        async function saveBudgetLimits() {
+            try {
+                const dailyLimit = parseFloat(document.getElementById('daily-limit-input')?.value) || 10;
+                const totalLimit = parseFloat(document.getElementById('total-limit-input')?.value) || 50;
+
+                const response = await fetch(API_BASE + `/api-usage/settings?daily_limit=${dailyLimit}&total_limit=${totalLimit}`, {
+                    method: 'PUT',
+                });
+                if (response.ok) {
+                    showNotification(t('saved'), 'success');
+                    loadApiUsage();
+                    updateApiUsageWidget();
+                }
+            } catch (e) {
+                console.error('Save budget limits error:', e);
+            }
+        }
+
+        // Open reset modal
+        function openResetModal() {
+            document.getElementById('reset-modal').classList.remove('hidden');
+            // Pre-fill with current balance
+            fetch(API_BASE + '/api-usage')
+                .then(r => r.json())
+                .then(data => {
+                    const balance = data.budget?.initial_balance || 50;
+                    document.getElementById('reset-balance-input').value = balance;
+                })
+                .catch(() => {});
+        }
+
+        // Close reset modal
+        function closeResetModal() {
+            document.getElementById('reset-modal').classList.add('hidden');
+        }
+
+        // Confirm reset
+        async function confirmReset() {
+            try {
+                const balance = parseFloat(document.getElementById('reset-balance-input')?.value) || 50;
+                const response = await fetch(API_BASE + '/api-usage/reset?initial_balance=' + balance, {
+                    method: 'POST',
+                });
+                if (response.ok) {
+                    closeResetModal();
+                    showNotification(t('api_reset_success'), 'success');
+                    loadApiUsage();
+                    updateApiUsageWidget();
+                    updateApiCostIndicator();
+                }
+            } catch (e) {
+                console.error('Reset error:', e);
+                showNotification('Reset failed', 'error');
             }
         }
 

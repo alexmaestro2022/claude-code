@@ -35,7 +35,8 @@ class APIUsageTracker:
 
     __slots__ = (
         "_session_start", "_data_path", "_data",
-        "_daily_cost_warning", "_monthly_cost_warning", "_daily_budget",
+        "_daily_cost_warning", "_monthly_cost_warning",
+        "_orchestrator_ref",
     )
 
     def __init__(self, data_path: str = "/opt/aila/data/ai_trade/api_usage.json") -> None:
@@ -43,10 +44,9 @@ class APIUsageTracker:
         self._data_path = Path(data_path)
         self._daily_cost_warning = 5.0  # Warning if daily cost > $5
         self._monthly_cost_warning = 100.0  # Warning if monthly cost > $100
-        self._daily_budget = 10.0  # User's daily budget limit
+        self._orchestrator_ref = None  # Will be set by orchestrator
         self._data = self._load_data()
-        # Load budget from data if saved
-        self._daily_budget = self._data.get("settings", {}).get("daily_budget", 10.0)
+        self._check_daily_reset()
 
     def _load_data(self) -> dict[str, Any]:
         """Load usage data from file."""
@@ -57,6 +57,17 @@ class APIUsageTracker:
             "total": {"calls": 0, "cost": 0.0, "input_tokens": 0, "output_tokens": 0},
             "agents": {},  # Per-agent statistics
             "warnings": [],
+            "budget": {
+                "initial_balance": 50.0,  # Default initial balance $50
+                "accumulated_cost": 0.0,  # Total cost since last reset
+                "last_reset_date": None,  # Last full reset date
+                "daily_reset_date": date.today().isoformat(),  # Last daily reset
+            },
+            "settings": {
+                "use_budget_limit": False,  # Toggle for budget limit
+                "daily_limit": 10.0,  # Daily limit in USD
+                "total_limit": 50.0,  # Total limit in USD
+            },
         }
         try:
             if self._data_path.exists():
@@ -67,6 +78,26 @@ class APIUsageTracker:
                     # Ensure agents dict exists
                     if "agents" not in data:
                         data["agents"] = {}
+                    # Ensure budget dict exists with all fields
+                    if "budget" not in data:
+                        data["budget"] = default["budget"].copy()
+                        # Migrate: set accumulated_cost from total cost
+                        if data.get("total", {}).get("cost", 0) > 0:
+                            data["budget"]["accumulated_cost"] = data["total"]["cost"]
+                    else:
+                        for key, val in default["budget"].items():
+                            if key not in data["budget"]:
+                                data["budget"][key] = val
+                        # Migrate: if accumulated_cost is 0 but we have total cost
+                        if data["budget"].get("accumulated_cost", 0) == 0 and data.get("total", {}).get("cost", 0) > 0:
+                            data["budget"]["accumulated_cost"] = data["total"]["cost"]
+                    # Ensure settings dict exists with all fields
+                    if "settings" not in data:
+                        data["settings"] = default["settings"]
+                    else:
+                        for key, val in default["settings"].items():
+                            if key not in data["settings"]:
+                                data["settings"][key] = val
                     return data
         except Exception as e:
             logger.error(f"Failed to load API usage data: {e}")
@@ -89,6 +120,155 @@ class APIUsageTracker:
                 json.dump(self._data, f, indent=2, default=str)
         except Exception as e:
             logger.error(f"Failed to save API usage data: {e}")
+
+    def _check_daily_reset(self) -> None:
+        """Check if we need to reset daily cost at start of new day."""
+        today = date.today().isoformat()
+        last_daily_reset = self._data.get("budget", {}).get("daily_reset_date")
+        if last_daily_reset != today:
+            # New day - reset daily cost but keep accumulated_cost
+            logger.info(f"[API_USAGE] New day detected, resetting daily cost. Previous: {last_daily_reset}")
+            self._data["budget"]["daily_reset_date"] = today
+            self._save_data()
+
+    def set_orchestrator(self, orchestrator: Any) -> None:
+        """Set orchestrator reference for auto-stop functionality."""
+        self._orchestrator_ref = orchestrator
+
+    async def _stop_autopilot_on_limit(self, reason: str) -> None:
+        """Stop autopilot when budget limit reached."""
+        if self._orchestrator_ref is None:
+            logger.warning("[API_USAGE] Cannot stop autopilot - no orchestrator reference")
+            return
+        try:
+            # Stop autopilot
+            if hasattr(self._orchestrator_ref, "autopilot"):
+                await self._orchestrator_ref.stop_autopilot()
+                logger.warning(f"[API_USAGE] Autopilot stopped: {reason}")
+
+            # Send Telegram notification
+            if hasattr(self._orchestrator_ref, "telegram") and self._orchestrator_ref.telegram:
+                await self._orchestrator_ref.telegram.send_message(
+                    f"<b>API LIMIT REACHED</b>\n\n{reason}\n\n<i>Autopilot has been stopped automatically.</i>"
+                )
+        except Exception as e:
+            logger.error(f"[API_USAGE] Failed to stop autopilot: {e}")
+
+    def check_budget_limit(self) -> tuple[bool, str]:
+        """
+        Check if budget limit is reached.
+        Returns (is_limit_reached, reason).
+        """
+        settings = self._data.get("settings", {})
+        if not settings.get("use_budget_limit", False):
+            return False, ""
+
+        budget = self._data.get("budget", {})
+        today = date.today().isoformat()
+
+        # Get today's cost
+        today_data = self._data["daily"].get(today, {"cost": {"sonnet": 0.0, "haiku": 0.0}})
+        daily_cost = sum(today_data.get("cost", {}).values())
+
+        # Get accumulated cost
+        accumulated_cost = budget.get("accumulated_cost", 0.0)
+
+        # Check daily limit
+        daily_limit = settings.get("daily_limit", 10.0)
+        if daily_limit > 0 and daily_cost >= daily_limit:
+            return True, f"Daily API limit ${daily_limit:.2f} reached (spent today: ${daily_cost:.2f})"
+
+        # Check total limit
+        total_limit = settings.get("total_limit", 50.0)
+        if total_limit > 0 and accumulated_cost >= total_limit:
+            return True, f"Total API limit ${total_limit:.2f} reached (total spent: ${accumulated_cost:.2f})"
+
+        return False, ""
+
+    def reset(self, initial_balance: float = 50.0) -> dict[str, Any]:
+        """
+        Reset all usage statistics and set new initial balance.
+        Returns reset confirmation.
+        """
+        now = datetime.utcnow()
+        today = date.today().isoformat()
+
+        # Save old stats for return
+        old_accumulated = self._data.get("budget", {}).get("accumulated_cost", 0.0)
+        old_total = self._data.get("total", {}).get("cost", 0.0)
+
+        # Reset all counters
+        self._data["session"] = self._empty_session()
+        self._data["daily"] = {}
+        self._data["monthly"] = {}
+        self._data["total"] = {"calls": 0, "cost": 0.0, "input_tokens": 0, "output_tokens": 0}
+        self._data["agents"] = {}
+        self._data["warnings"] = []
+
+        # Set new budget
+        self._data["budget"] = {
+            "initial_balance": initial_balance,
+            "accumulated_cost": 0.0,
+            "last_reset_date": now.isoformat(),
+            "daily_reset_date": today,
+        }
+
+        self._save_data()
+        logger.info(f"[API_USAGE] Reset completed. New balance: ${initial_balance:.2f}")
+
+        return {
+            "success": True,
+            "initial_balance": initial_balance,
+            "previous_accumulated_cost": round(old_accumulated, 4),
+            "previous_total_cost": round(old_total, 4),
+            "reset_time": now.isoformat(),
+        }
+
+    def get_budget_settings(self) -> dict[str, Any]:
+        """Get current budget settings."""
+        settings = self._data.get("settings", {})
+        budget = self._data.get("budget", {})
+        today = date.today().isoformat()
+
+        # Calculate current costs
+        today_data = self._data["daily"].get(today, {"cost": {"sonnet": 0.0, "haiku": 0.0}})
+        daily_cost = sum(today_data.get("cost", {}).values())
+        accumulated_cost = budget.get("accumulated_cost", 0.0)
+        initial_balance = budget.get("initial_balance", 50.0)
+
+        return {
+            "use_budget_limit": settings.get("use_budget_limit", False),
+            "daily_limit": settings.get("daily_limit", 10.0),
+            "total_limit": settings.get("total_limit", 50.0),
+            "initial_balance": initial_balance,
+            "accumulated_cost": round(accumulated_cost, 4),
+            "daily_cost": round(daily_cost, 4),
+            "remaining_balance": round(max(0, initial_balance - accumulated_cost), 4),
+            "daily_pct": round(daily_cost / max(settings.get("daily_limit", 10.0), 0.01) * 100, 1),
+            "total_pct": round(accumulated_cost / max(settings.get("total_limit", 50.0), 0.01) * 100, 1),
+            "last_reset_date": budget.get("last_reset_date"),
+        }
+
+    def update_settings(
+        self,
+        use_budget_limit: bool = None,
+        daily_limit: float = None,
+        total_limit: float = None,
+    ) -> dict[str, Any]:
+        """Update budget limit settings."""
+        settings = self._data.setdefault("settings", {})
+
+        if use_budget_limit is not None:
+            settings["use_budget_limit"] = use_budget_limit
+        if daily_limit is not None:
+            settings["daily_limit"] = max(0.0, daily_limit)
+        if total_limit is not None:
+            settings["total_limit"] = max(0.0, total_limit)
+
+        self._save_data()
+        logger.info(f"[API_USAGE] Settings updated: {settings}")
+
+        return {"success": True, "settings": settings}
 
     def _calculate_cost(self, model_key: str, input_tokens: int, output_tokens: int) -> float:
         """Calculate cost in USD for given tokens."""
@@ -115,6 +295,9 @@ class APIUsageTracker:
         cost = self._calculate_cost(key, input_tokens, output_tokens)
         today = date.today().isoformat()
         month = today[:7]  # YYYY-MM
+
+        # Check if day changed
+        self._check_daily_reset()
 
         # Log detailed call to api_usage.log
         ctx = f" | {context}" if context else ""
@@ -168,6 +351,10 @@ class APIUsageTracker:
         self._data["total"]["input_tokens"] += input_tokens
         self._data["total"]["output_tokens"] += output_tokens
 
+        # Update accumulated_cost (tracks cost since last reset)
+        self._data.setdefault("budget", {})
+        self._data["budget"]["accumulated_cost"] = self._data["budget"].get("accumulated_cost", 0.0) + cost
+
         # Update global per-agent stats
         if agent not in self._data["agents"]:
             self._data["agents"][agent] = {
@@ -188,15 +375,30 @@ class APIUsageTracker:
         if self._data["total"]["calls"] % 10 == 0:
             self._save_data()
 
+        # Check budget limits and auto-stop if needed
+        limit_reached, limit_reason = self.check_budget_limit()
+        if limit_reached and self._orchestrator_ref:
+            import asyncio
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    asyncio.create_task(self._stop_autopilot_on_limit(limit_reason))
+                else:
+                    loop.run_until_complete(self._stop_autopilot_on_limit(limit_reason))
+            except Exception as e:
+                logger.error(f"[API_USAGE] Failed to trigger auto-stop: {e}")
+
         # Check warnings
         warning = None
         daily_total = sum(self._data["daily"].get(today, {}).get("cost", {}).values())
         monthly_total = sum(self._data["monthly"].get(month, {}).get("cost", {}).values())
 
-        if daily_total >= self._daily_cost_warning:
-            warning = f"⚠️ Daily API cost ${daily_total:.2f} exceeds ${self._daily_cost_warning} limit!"
+        if limit_reached:
+            warning = f"LIMIT_REACHED: {limit_reason}"
+        elif daily_total >= self._daily_cost_warning:
+            warning = f"Daily API cost ${daily_total:.2f} exceeds ${self._daily_cost_warning} limit!"
         elif monthly_total >= self._monthly_cost_warning:
-            warning = f"⚠️ Monthly API cost ${monthly_total:.2f} exceeds ${self._monthly_cost_warning} limit!"
+            warning = f"Monthly API cost ${monthly_total:.2f} exceeds ${self._monthly_cost_warning} limit!"
 
         if warning and warning not in self._data.get("warnings", []):
             self._data.setdefault("warnings", []).append(warning)
@@ -233,6 +435,18 @@ class APIUsageTracker:
         })
         month_calls = sum(month_data.get("calls", {}).values())
         month_cost = sum(month_data.get("cost", {}).values())
+
+        # Budget stats
+        budget_data = self._data.get("budget", {})
+        settings = self._data.get("settings", {})
+        initial_balance = budget_data.get("initial_balance", 50.0)
+        accumulated_cost = budget_data.get("accumulated_cost", 0.0)
+        daily_limit = settings.get("daily_limit", 10.0)
+        total_limit = settings.get("total_limit", 50.0)
+        use_budget_limit = settings.get("use_budget_limit", False)
+
+        # Check if limit reached
+        limit_reached, limit_reason = self.check_budget_limit()
 
         return {
             "session": {
@@ -273,12 +487,22 @@ class APIUsageTracker:
                 "monthly_warning_usd": self._monthly_cost_warning,
             },
             "budget": {
-                "daily_budget_usd": self._daily_budget,
-                "today_spent_usd": round(today_cost, 4),
-                "budget_used_pct": round(today_cost / max(self._daily_budget, 0.01) * 100, 1),
-                "budget_remaining_usd": round(max(0, self._daily_budget - today_cost), 4),
-                "over_budget": today_cost > self._daily_budget,
-                "warning_80pct": today_cost >= self._daily_budget * 0.8,
+                "initial_balance": initial_balance,
+                "accumulated_cost": round(accumulated_cost, 4),
+                "daily_cost": round(today_cost, 4),
+                "remaining_balance": round(max(0, initial_balance - accumulated_cost), 4),
+                "last_reset_date": budget_data.get("last_reset_date"),
+                "daily_reset_date": budget_data.get("daily_reset_date"),
+                # Limit settings
+                "use_budget_limit": use_budget_limit,
+                "daily_limit": daily_limit,
+                "total_limit": total_limit,
+                # Percentages
+                "daily_pct": round(today_cost / max(daily_limit, 0.01) * 100, 1) if daily_limit > 0 else 0,
+                "total_pct": round(accumulated_cost / max(total_limit, 0.01) * 100, 1) if total_limit > 0 else 0,
+                # Limit status
+                "limit_reached": limit_reached,
+                "limit_reason": limit_reason,
             },
             "week": {
                 "cost_usd": self.get_week_cost(),
@@ -338,16 +562,6 @@ class APIUsageTracker:
             self._daily_cost_warning = daily
         if monthly is not None:
             self._monthly_cost_warning = monthly
-
-    def set_daily_budget(self, budget: float) -> None:
-        """Set user's daily budget limit."""
-        self._daily_budget = max(0.0, budget)
-        self._data.setdefault("settings", {})["daily_budget"] = self._daily_budget
-        self._save_data()
-
-    def get_daily_budget(self) -> float:
-        """Get user's daily budget limit."""
-        return self._daily_budget
 
     def get_week_cost(self) -> float:
         """Calculate total cost for the last 7 days."""
@@ -666,15 +880,29 @@ def save_api_usage() -> None:
     api_usage.force_save()
 
 
-def set_daily_budget(budget: float) -> dict[str, Any]:
-    """Set user's daily budget limit."""
-    api_usage.set_daily_budget(budget)
-    return {
-        "success": True,
-        "daily_budget_usd": api_usage.get_daily_budget(),
-    }
+def reset_api_usage(initial_balance: float = 50.0) -> dict[str, Any]:
+    """Reset API usage statistics with new initial balance."""
+    return api_usage.reset(initial_balance)
 
 
-def get_daily_budget() -> float:
-    """Get user's daily budget limit."""
-    return api_usage.get_daily_budget()
+def get_budget_settings() -> dict[str, Any]:
+    """Get current budget settings."""
+    return api_usage.get_budget_settings()
+
+
+def update_budget_settings(
+    use_budget_limit: bool = None,
+    daily_limit: float = None,
+    total_limit: float = None,
+) -> dict[str, Any]:
+    """Update budget limit settings."""
+    return api_usage.update_settings(
+        use_budget_limit=use_budget_limit,
+        daily_limit=daily_limit,
+        total_limit=total_limit,
+    )
+
+
+def set_api_usage_orchestrator(orchestrator: Any) -> None:
+    """Set orchestrator reference for auto-stop functionality."""
+    api_usage.set_orchestrator(orchestrator)
