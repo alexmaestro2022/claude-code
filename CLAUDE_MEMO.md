@@ -2157,8 +2157,15 @@ POST /api/ai-trade/agent/{agent}/disable        — Выключить аген�
 | cooldown_seconds | 60 | 30-600 |
 | max_trades_per_day | 20 | 1-100 |
 
+5. **Исправлены карточки TRADER и SNIPER** (fix: agent cards API cost display and status toggle):
+   - API cost теперь берётся из api_usage.json (реальные данные)
+   - Статус "Disabled" при выключении toggle
+   - Статус "Cooldown Xs" при активном кулдауне
+   - Toggle checkbox синхронизируется с enabled состоянием
+   - Добавлены импорты json и Path в ai_trade.py
+
 ---
 
-**Последнее обновление:** 2026-01-28 (feat: add settings modals and enable/disable toggles for TRADER and SNIPER cards)
+**Последнее обновление:** 2026-01-28 (fix: agent cards API cost display and status toggle)
 **Текущая версия:** v2.4.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
