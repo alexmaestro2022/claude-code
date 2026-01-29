@@ -1396,6 +1396,129 @@ async def delete_knowledge(filename: str, request: Request):
 
 
 # =============================================
+# Claude Code update
+# =============================================
+
+def _get_claude_version() -> str:
+    """Get current Claude Code CLI version."""
+    try:
+        result = subprocess.run(
+            ["claude", "--version"],
+            capture_output=True, text=True, timeout=10,
+            env=_get_claude_env(),
+        )
+        return result.stdout.strip() if result.stdout else "unknown"
+    except Exception:
+        return "unknown"
+
+
+@router.get("/claude-code/check-update")
+async def check_claude_update(request: Request):
+    """Check if Claude Code CLI has an update available."""
+    _require_auth(request)
+
+    current = await asyncio.to_thread(_get_claude_version)
+
+    try:
+        result = await asyncio.to_thread(
+            subprocess.run,
+            ["npm", "outdated", "-g", "@anthropic-ai/claude-code", "--json"],
+            capture_output=True, text=True, timeout=30,
+        )
+        # npm outdated returns exit code 1 when updates exist
+        output = result.stdout.strip()
+        if output:
+            data = json.loads(output)
+            pkg = data.get("@anthropic-ai/claude-code", {})
+            latest = pkg.get("latest", "")
+            current_npm = pkg.get("current", current)
+            if latest and latest != current_npm:
+                return {
+                    "update_available": True,
+                    "current_version": current_npm,
+                    "new_version": latest,
+                    "message": f"Доступно обновление: {latest}",
+                }
+        # No output or package not in outdated list = up to date
+        return {
+            "update_available": False,
+            "current_version": current,
+            "message": "Установлена актуальная версия",
+        }
+    except json.JSONDecodeError:
+        # npm outdated without --json or empty = up to date
+        return {
+            "update_available": False,
+            "current_version": current,
+            "message": "Установлена актуальная версия",
+        }
+    except Exception as e:
+        logger.error(f"[UPDATE] Check failed: {e}")
+        return {
+            "error": True,
+            "current_version": current,
+            "message": str(e),
+        }
+
+
+@router.post("/claude-code/update")
+async def update_claude_code(request: Request):
+    """Update Claude Code CLI to the latest version."""
+    _require_auth(request)
+
+    old_version = await asyncio.to_thread(_get_claude_version)
+    logger.info(f"[UPDATE] Claude Code update started. Current: {old_version}")
+    _audit_log("admin", "UPDATE_START", f"current={old_version}")
+
+    try:
+        result = await asyncio.to_thread(
+            subprocess.run,
+            ["npm", "install", "-g", "@anthropic-ai/claude-code@latest"],
+            capture_output=True, text=True, timeout=120,
+        )
+
+        if result.returncode == 0:
+            new_version = await asyncio.to_thread(_get_claude_version)
+            logger.info(f"[UPDATE] Claude Code updated: {old_version} → {new_version}")
+            _audit_log("admin", "UPDATE_OK", f"{old_version} → {new_version}")
+
+            await _send_telegram(
+                f"✅ <b>Claude Code обновлён</b>\n"
+                f"Версия: {old_version} → {new_version}\n"
+                f"Время: {datetime.now().strftime('%H:%M:%S')}"
+            )
+            return {
+                "success": True,
+                "old_version": old_version,
+                "new_version": new_version,
+                "message": f"Обновлено: {old_version} → {new_version}",
+            }
+        else:
+            error_msg = result.stderr.strip()[:500] if result.stderr else "Unknown error"
+            logger.error(f"[UPDATE] Failed: {error_msg}")
+            _audit_log("admin", "UPDATE_FAIL", error_msg[:200])
+
+            await _send_telegram(
+                f"❌ <b>Ошибка обновления Claude Code</b>\n"
+                f"<pre>{error_msg[:300]}</pre>"
+            )
+            return {
+                "success": False,
+                "error": True,
+                "message": error_msg,
+            }
+    except subprocess.TimeoutExpired:
+        msg = "Timeout (120s)"
+        logger.error(f"[UPDATE] {msg}")
+        _audit_log("admin", "UPDATE_FAIL", msg)
+        return {"success": False, "error": True, "message": msg}
+    except Exception as e:
+        logger.error(f"[UPDATE] Exception: {e}")
+        _audit_log("admin", "UPDATE_FAIL", str(e))
+        return {"success": False, "error": True, "message": str(e)}
+
+
+# =============================================
 # Scheduler background task
 # =============================================
 

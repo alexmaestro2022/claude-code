@@ -2600,6 +2600,16 @@ DELETE /api/admin/knowledge/{fn} — удалить файл
 
 ---
 
-**Последнее обновление:** 2026-01-29 (feat: full knowledge base system)
+### Обновление Claude Code:
+- Кнопка в top-bar с зелёной точкой-индикатором если есть обновление
+- `GET /api/admin/claude-code/check-update` — проверка через `npm outdated -g --json`
+- `POST /api/admin/claude-code/update` — обновление через `npm install -g @anthropic-ai/claude-code@latest`
+- Модалка с состояниями: checking → up-to-date/available → progress → done/error
+- Telegram уведомление при успешном обновлении или ошибке
+- Автопроверка при загрузке панели и каждые 6 часов (silent)
+
+---
+
+**Последнее обновление:** 2026-01-29 (feat: Claude Code update button)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`

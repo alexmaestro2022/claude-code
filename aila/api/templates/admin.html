@@ -678,6 +678,52 @@
         }
         .usage-day-row:last-child { border-bottom: none; }
 
+        /* Update button dot */
+        .update-dot {
+            position: absolute;
+            top: 4px; right: 4px;
+            width: 8px; height: 8px;
+            background: var(--accent);
+            border-radius: 50%;
+            box-shadow: 0 0 6px var(--accent);
+            animation: pulse 2s infinite;
+        }
+        /* Update modal states */
+        .update-state { display: none; text-align: center; padding: 20px 0; }
+        .update-state.active { display: block; }
+        .update-state .update-icon { font-size: 2rem; margin-bottom: 12px; }
+        .update-state h4 { font-size: 1rem; font-weight: 600; margin-bottom: 8px; }
+        .update-state p { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 12px; }
+        .update-version-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .update-version-old { background: rgba(255,255,255,0.1); color: var(--text-secondary); }
+        .update-version-new { background: rgba(0,255,136,0.15); color: var(--accent); }
+        .update-arrow { margin: 0 8px; color: var(--text-secondary); }
+        .update-progress-bar {
+            height: 6px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 16px 0 8px;
+        }
+        .update-progress-fill {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 3px;
+            transition: width 0.5s;
+            animation: progressPulse 1.5s infinite;
+        }
+        @keyframes progressPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .top-bar { flex-wrap: wrap; gap: 8px; padding: 10px; }
@@ -770,6 +816,10 @@
             </button>
             <button class="top-btn" onclick="openModal('knowledgeModal')" data-i18n-title="knowledge_base">
                 <i class="fa-solid fa-book"></i>
+            </button>
+            <button class="top-btn" id="updateClaudeBtn" onclick="checkClaudeUpdate()" data-i18n-title="claude_code_update" style="position:relative;">
+                <i class="fa-solid fa-cloud-arrow-down" id="updateBtnIcon"></i>
+                <span class="update-dot" id="updateDot" style="display:none;"></span>
             </button>
             <button class="top-btn" onclick="openModal('settingsModal')" data-i18n-title="settings">
                 <i class="fa-solid fa-cog"></i>
@@ -1089,6 +1139,81 @@
     </div>
 </div>
 
+<!-- UPDATE CLAUDE CODE MODAL -->
+<div class="modal-overlay" id="updateModal" onclick="closeModalOnOverlay(event)">
+    <div class="modal-content" style="max-width:420px;">
+        <div class="modal-header">
+            <h3 style="font-weight:600;">
+                <i class="fa-solid fa-cloud-arrow-down" style="margin-right:6px;"></i>
+                <span data-i18n="claude_code_update">Claude Code Update</span>
+            </h3>
+            <button class="modal-close" onclick="closeModal('updateModal')"><i class="fa-solid fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <!-- Checking -->
+            <div class="update-state active" id="updateStateCheck">
+                <div class="update-icon"><i class="fa-solid fa-spinner fa-spin" style="color:var(--accent);"></i></div>
+                <h4 data-i18n="checking_updates">Checking for updates...</h4>
+            </div>
+
+            <!-- Up to date -->
+            <div class="update-state" id="updateStateOk">
+                <div class="update-icon"><i class="fa-solid fa-circle-check" style="color:var(--accent);"></i></div>
+                <h4 data-i18n="up_to_date">Up to date</h4>
+                <p><span data-i18n="version">Version</span>: <span id="updateCurrentVer" class="update-version-badge update-version-new"></span></p>
+            </div>
+
+            <!-- Update available -->
+            <div class="update-state" id="updateStateAvail">
+                <div class="update-icon"><i class="fa-solid fa-arrow-up-from-bracket" style="color:var(--accent);"></i></div>
+                <h4 data-i18n="update_available">Update available</h4>
+                <p style="margin:12px 0;">
+                    <span id="updateOldVer" class="update-version-badge update-version-old"></span>
+                    <span class="update-arrow">→</span>
+                    <span id="updateNewVer" class="update-version-badge update-version-new"></span>
+                </p>
+                <button class="btn btn-primary" onclick="performClaudeUpdate()" style="margin-top:8px;">
+                    <i class="fa-solid fa-download"></i> <span data-i18n="install_update">Install Update</span>
+                </button>
+            </div>
+
+            <!-- Updating -->
+            <div class="update-state" id="updateStateProgress">
+                <div class="update-icon"><i class="fa-solid fa-gear fa-spin" style="color:var(--yellow);"></i></div>
+                <h4 data-i18n="updating">Updating...</h4>
+                <div class="update-progress-bar">
+                    <div class="update-progress-fill" id="updateProgressBar" style="width:60%;"></div>
+                </div>
+                <p id="updateProgressText" data-i18n="downloading">Downloading...</p>
+            </div>
+
+            <!-- Completed -->
+            <div class="update-state" id="updateStateDone">
+                <div class="update-icon"><i class="fa-solid fa-circle-check" style="color:var(--accent);"></i></div>
+                <h4 data-i18n="update_completed">Update installed!</h4>
+                <p style="margin:12px 0;">
+                    <span id="updateDoneOld" class="update-version-badge update-version-old"></span>
+                    <span class="update-arrow">→</span>
+                    <span id="updateDoneNew" class="update-version-badge update-version-new"></span>
+                </p>
+                <button class="btn btn-primary" onclick="closeModal('updateModal')">
+                    <i class="fa-solid fa-check"></i> OK
+                </button>
+            </div>
+
+            <!-- Error -->
+            <div class="update-state" id="updateStateError">
+                <div class="update-icon"><i class="fa-solid fa-triangle-exclamation" style="color:var(--red);"></i></div>
+                <h4 data-i18n="update_error">Update error</h4>
+                <p id="updateErrorMsg" style="color:var(--red);font-size:0.8rem;word-break:break-all;"></p>
+                <button class="btn btn-ghost" onclick="checkClaudeUpdate()" style="margin-top:8px;">
+                    <i class="fa-solid fa-rotate"></i> <span data-i18n="retry">Retry</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 // =============================================
 // State
@@ -1199,6 +1324,19 @@ const translations = {
         resume: 'Возобновить',
         pause: 'Пауза',
         run_now: 'Запустить',
+        // Claude Code update
+        claude_code_update: 'Обновление Claude Code',
+        checking_updates: 'Проверка обновлений...',
+        up_to_date: 'Установлена актуальная версия',
+        version: 'Версия',
+        update_available: 'Доступно обновление',
+        install_update: 'Установить обновление',
+        updating: 'Обновление...',
+        downloading: 'Загрузка...',
+        installing: 'Установка...',
+        update_completed: 'Обновление установлено!',
+        update_error: 'Ошибка обновления',
+        retry: 'Повторить',
         // Knowledge base
         learning_knowledge: 'Изучаю базу знаний...',
         knowledge_loaded: 'База знаний загружена',
@@ -1308,6 +1446,9 @@ function showPanel() {
     startScheduledTimer();
     // Refresh usage every 60s
     setInterval(loadUsage, 60000);
+    // Check for Claude Code updates on load and every 6h
+    checkClaudeUpdateSilent();
+    setInterval(checkClaudeUpdateSilent, 6 * 60 * 60 * 1000);
 }
 
 async function requestCode() {
@@ -2138,6 +2279,78 @@ async function initKnowledgeBase() {
     } catch {
         overlay.style.display = 'none';
     }
+}
+
+// =============================================
+// Claude Code update
+// =============================================
+function _showUpdateState(stateId) {
+    document.querySelectorAll('.update-state').forEach(el => el.classList.remove('active'));
+    document.getElementById(stateId).classList.add('active');
+}
+
+async function checkClaudeUpdate() {
+    openModal('updateModal');
+    _showUpdateState('updateStateCheck');
+
+    try {
+        const data = await api('/claude-code/check-update');
+
+        if (data.error) {
+            _showUpdateState('updateStateError');
+            document.getElementById('updateErrorMsg').textContent = data.message;
+            return;
+        }
+
+        if (data.update_available) {
+            _showUpdateState('updateStateAvail');
+            document.getElementById('updateOldVer').textContent = data.current_version;
+            document.getElementById('updateNewVer').textContent = data.new_version;
+            // Show dot on button
+            document.getElementById('updateDot').style.display = '';
+        } else {
+            _showUpdateState('updateStateOk');
+            document.getElementById('updateCurrentVer').textContent = data.current_version;
+            document.getElementById('updateDot').style.display = 'none';
+        }
+    } catch (e) {
+        _showUpdateState('updateStateError');
+        document.getElementById('updateErrorMsg').textContent = e.message;
+    }
+}
+
+async function performClaudeUpdate() {
+    _showUpdateState('updateStateProgress');
+    document.getElementById('updateProgressText').textContent = t('installing');
+
+    try {
+        const data = await api('/claude-code/update', 'POST');
+
+        if (data.success) {
+            _showUpdateState('updateStateDone');
+            document.getElementById('updateDoneOld').textContent = data.old_version;
+            document.getElementById('updateDoneNew').textContent = data.new_version;
+            document.getElementById('updateDot').style.display = 'none';
+            addMessage('system', `✅ Claude Code ${data.old_version} → ${data.new_version}`);
+        } else {
+            _showUpdateState('updateStateError');
+            document.getElementById('updateErrorMsg').textContent = data.message;
+        }
+    } catch (e) {
+        _showUpdateState('updateStateError');
+        document.getElementById('updateErrorMsg').textContent = e.message;
+    }
+}
+
+async function checkClaudeUpdateSilent() {
+    try {
+        const data = await api('/claude-code/check-update');
+        if (data.update_available) {
+            document.getElementById('updateDot').style.display = '';
+        } else {
+            document.getElementById('updateDot').style.display = 'none';
+        }
+    } catch {}
 }
 
 // =============================================
