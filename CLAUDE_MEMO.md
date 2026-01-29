@@ -2417,8 +2417,36 @@ GET /trades/history?agent=trader&limit=50  # История сделок
 - **Autopilot статус:** показывает `paused_reason` (position_limit, daily_loss)
 - **SNIPER mode:** отображается режим работы
 
+### Claude API Tab (feat 2026-01-29):
+Полная вкладка Claude API со всей статистикой и настройками:
+
+**Карточки бюджета:**
+| Показатель | Описание |
+|------------|----------|
+| Сегодня | $X.XX / $X.XX (X.X%) с прогресс-баром |
+| Общий расход | $X.XX / $X.XX (X.X%) с прогресс-баром |
+| Остаток | $X.XX (подсвечено зелёным) |
+| Модели | S:X / H:X (Sonnet/Haiku вызовы) |
+| Токены | in: X.XK / out: X.XK |
+| Последний сброс | DD.MM.YYYY |
+
+**Настройки (модалка по клику на шестерёнку):**
+- Начальный баланс + кнопка сброса
+- Toggle "Использовать лимит"
+- Дневной лимит / Общий лимит
+- Кнопки Сохранить / По умолчанию
+
+**Таблица топ потребителей:**
+| Агент | Вызовов | Стоимость | % |
+
+**API endpoints:**
+- `GET /api-usage` — все данные об использовании
+- `GET /api-usage/settings` — настройки бюджета
+- `PUT /api-usage/settings?use_budget_limit=&daily_limit=&total_limit=` — сохранение
+- `POST /api-usage/reset?initial_balance=` — сброс баланса
+
 ---
 
-**Последнее обновление:** 2026-01-29 (fix: ensure all UI elements display actual data)
+**Последнее обновление:** 2026-01-29 (feat: complete Claude API tab with all stats and settings)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
