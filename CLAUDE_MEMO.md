@@ -2354,6 +2354,62 @@ XP: -5 | PnL сегодня: $-0.98
 
 ---
 
-**Последнее обновление:** 2026-01-29 (feat: track closed positions and implement learning from trades)
+## 33. UI Redesign — табы, компактные карточки, activity feed (2026-01-29)
+
+### Изменения:
+
+**1. Структура интерфейса:**
+- **Верхняя панель:** Баланс (USDT/BTC) + открытые позиции с real-time PnL
+- **3 таба:** TRADER, SNIPER, Claude API
+- **4 мини-карточки на агента:** Status, Level, Stats, Learning
+- **Activity Feed:** Лента событий с иконками по типу
+
+**2. Модальные окна:**
+| Modal | Содержимое |
+|-------|------------|
+| Balance | Детали баланса, маржа |
+| Scan | Параметры сканирования |
+| History | История сделок |
+| Learning | База знаний, ошибки |
+
+**3. Новые API endpoints (`ai_trade.py`):**
+```python
+GET /activity-feed?agent=trader&limit=20  # Лента событий
+GET /cascade/status                        # Статус каскада
+GET /learning/{agent}                      # База знаний агента
+GET /trades/history?agent=trader&limit=50  # История сделок
+```
+
+**4. Компактные карточки:**
+- Клик по карточке → открывает модальное окно с деталями
+- Иконки состояния (running/paused/idle)
+- Прогресс-бары для уровня и XP
+- Мини-статистика сделок
+
+**5. Activity Feed события:**
+| Тип | Иконка | Пример |
+|-----|--------|--------|
+| trade_opened | 📈 | Opened LONG BTCUSDT |
+| trade_closed | 📉 | Closed BTCUSDT +$5.50 |
+| signal_found | 🔍 | Found signal: ETHUSDT 85% |
+| signal_rejected | ❌ | Rejected: low R:R |
+| xp_gained | ⭐ | +10 XP for profitable trade |
+| level_up | 🎖️ | Level up! Now level 5 |
+
+**6. Автообновление:**
+- Каждые 10 секунд обновление данных
+- Оптимизация: проверка autopilot status перед API вызовами
+- Кэширование при неактивном автопилоте
+
+### Файлы:
+- `aila/api/routes/ai_trade.py` — новые endpoints
+- `aila/api/templates/ai_trade.html` — полный редизайн (1125+ строк нового кода)
+
+### Локализация:
+Весь интерфейс на русском языке.
+
+---
+
+**Последнее обновление:** 2026-01-29 (feat: redesign UI with tabs, compact cards and activity feed)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
