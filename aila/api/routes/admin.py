@@ -26,17 +26,21 @@ router = APIRouter(prefix="/api/admin", tags=["Admin"])
 
 
 def _get_claude_env() -> dict[str, str]:
-    """Build environment for claude subprocess with API key."""
+    """Build environment for claude subprocess using Max subscription.
+
+    Claude Code is authorized via OAuth (Max subscription).
+    ANTHROPIC_API_KEY must NOT be passed — it forces paid API billing
+    instead of the included subscription quota.
+    """
     env = os.environ.copy()
-    # Ensure ANTHROPIC_API_KEY is set from .env or current env
-    if not env.get("ANTHROPIC_API_KEY"):
-        from dotenv import dotenv_values
-        dotenv = dotenv_values("/opt/aila/.env")
-        if dotenv.get("ANTHROPIC_API_KEY"):
-            env["ANTHROPIC_API_KEY"] = dotenv["ANTHROPIC_API_KEY"]
+    # Remove API key to force OAuth/subscription auth
+    env.pop("ANTHROPIC_API_KEY", None)
     # Ensure claude is in PATH
     if "/usr/local/bin" not in env.get("PATH", ""):
         env["PATH"] = f"/usr/local/bin:{env.get('PATH', '/usr/bin')}"
+    # Ensure HOME is set for .claude credentials
+    if not env.get("HOME"):
+        env["HOME"] = str(Path.home())
     return env
 
 # Paths
