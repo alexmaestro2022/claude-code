@@ -1273,3 +1273,220 @@ async def close_position(symbol: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ========== NEW ENDPOINTS FOR REDESIGNED UI ==========
+
+
+@router.get("/activity-feed")
+async def get_activity_feed(agent: str = "trader", limit: int = 20):
+    """Get activity feed events for agent."""
+    try:
+        import os
+        from datetime import datetime
+
+        events = []
+        log_file = f"/opt/aila/logs/ai_trade/{agent.lower()}.log"
+
+        if os.path.exists(log_file):
+            with open(log_file, "r") as f:
+                lines = f.readlines()[-200:]  # Last 200 lines
+
+            for line in reversed(lines):
+                if len(events) >= limit:
+                    break
+
+                # Parse log line
+                try:
+                    # Format: 2026-01-29 06:07:06 [INFO] [ai_trade.trader] Message
+                    parts = line.strip().split(" ", 3)
+                    if len(parts) < 4:
+                        continue
+
+                    timestamp = f"{parts[0]} {parts[1]}"
+                    level = parts[2].strip("[]")
+                    message = parts[3] if len(parts) > 3 else ""
+
+                    # Determine event type and icon
+                    event_type = "info"
+                    icon = "fa-info-circle"
+
+                    if "APPROVE" in message:
+                        event_type = "approve"
+                        icon = "fa-check-circle"
+                    elif "REJECT" in message:
+                        event_type = "reject"
+                        icon = "fa-times-circle"
+                    elif "TRADE_OPENED" in message or "Position opened" in message:
+                        event_type = "trade_open"
+                        icon = "fa-arrow-up"
+                    elif "TRADE_CLOSED" in message or "Position closed" in message:
+                        event_type = "trade_close"
+                        icon = "fa-arrow-down"
+                    elif "signal" in message.lower() or "Found" in message:
+                        event_type = "signal"
+                        icon = "fa-bolt"
+                    elif "LEARN" in message or "lesson" in message.lower():
+                        event_type = "learn"
+                        icon = "fa-brain"
+                    elif "CASCADE" in message:
+                        event_type = "cascade"
+                        icon = "fa-layer-group"
+                    elif "ERROR" in level or "error" in message.lower():
+                        event_type = "error"
+                        icon = "fa-exclamation-triangle"
+
+                    # Extract short message
+                    short_msg = message
+                    if "]" in short_msg:
+                        short_msg = short_msg.split("]")[-1].strip()
+                    if len(short_msg) > 100:
+                        short_msg = short_msg[:97] + "..."
+
+                    events.append({
+                        "timestamp": timestamp,
+                        "type": event_type,
+                        "icon": icon,
+                        "message": short_msg,
+                        "level": level,
+                    })
+                except Exception:
+                    continue
+
+        return {
+            "agent": agent,
+            "events": events,
+            "count": len(events),
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/cascade/status")
+async def get_cascade_status():
+    """Get cascade analysis status."""
+    try:
+        orch = await get_orchestrator()
+        autopilot = orch.autopilot
+
+        cascade_stats = getattr(autopilot, "_cascade_stats", {})
+        scanner = orch.scanner
+
+        # Get pair distribution
+        try:
+            pairs_by_priority = await scanner.get_pairs_by_priority()
+            pair_distribution = {
+                "vip": len(pairs_by_priority.get("vip", [])),
+                "p1": len(pairs_by_priority.get("p1", [])),
+                "p2": len(pairs_by_priority.get("p2", [])),
+                "p3": len(pairs_by_priority.get("p3", [])),
+                "filtered": pairs_by_priority.get("filtered_count", 0),
+            }
+        except Exception:
+            pair_distribution = {"vip": 0, "p1": 0, "p2": 0, "p3": 0, "filtered": 0}
+
+        # Calculate token savings (estimate)
+        total_pairs = sum(pair_distribution.values())
+        scanned_pairs = pair_distribution["vip"] + pair_distribution["p1"]
+        if total_pairs > 0:
+            savings_pct = ((total_pairs - scanned_pairs) / total_pairs) * 100
+        else:
+            savings_pct = 0
+
+        return {
+            "status": "active" if autopilot._running else "idle",
+            "current_stage": cascade_stats.get("current_stage"),
+            "paused_reason": cascade_stats.get("paused_reason"),
+            "pair_distribution": pair_distribution,
+            "signals_found": cascade_stats.get("signals_found", {}),
+            "stages_completed": cascade_stats.get("stages_completed", {}),
+            "last_scan_ago_sec": 0,  # TODO: track last scan time
+            "token_savings_pct": round(savings_pct, 1),
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/learning/{agent}")
+async def get_learning_data(agent: str):
+    """Get learning data for agent."""
+    try:
+        orch = await get_orchestrator()
+
+        # Get agent stats
+        stats = orch.autopilot._agent_stats.get_stats(agent.upper())
+        kb = orch.knowledge_base.data
+
+        # Get agent-specific learning data
+        agent_key = f"{agent.lower()}_learning"
+        learning = kb.get(agent_key, {})
+
+        # Get level benefits
+        level = stats.get("level", 1)
+        level_benefits = kb.get("level_benefits", {})
+        current_benefits = level_benefits.get(str(level), {})
+        next_level = level + 1
+        next_benefits = level_benefits.get(str(next_level), {})
+
+        return {
+            "agent": agent.upper(),
+            "level": level,
+            "xp": stats.get("xp", 0),
+            "xp_to_next_level": stats.get("xp_to_next_level", 100),
+            "current_benefits": current_benefits,
+            "next_level_benefits": next_benefits,
+            "best_pairs": learning.get("best_pairs", [])[:5],
+            "worst_pairs": learning.get("worst_pairs", [])[:5],
+            "learned_rules": learning.get("learned_rules", [])[:10],
+            "mistakes_to_avoid": learning.get("mistakes_to_avoid", [])[:10],
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/trades/history")
+async def get_trades_history(agent: str = "trader", limit: int = 50):
+    """Get trade history for agent."""
+    try:
+        orch = await get_orchestrator()
+        exchange = orch.exchange
+
+        # Get closed PnL from exchange
+        closed_trades = await exchange.get_closed_pnl(limit=limit)
+
+        # Get agent stats
+        stats = orch.autopilot._agent_stats.get_stats(agent.upper())
+
+        # Format trades
+        trades = []
+        for t in closed_trades:
+            trades.append({
+                "symbol": t.get("symbol", ""),
+                "side": t.get("side", ""),
+                "pnl_usdt": t.get("pnl_usdt", 0),
+                "entry_price": t.get("entry_price", 0),
+                "exit_price": t.get("exit_price", 0),
+                "close_reason": t.get("close_reason", "unknown"),
+                "leverage": t.get("leverage", "1"),
+                "closed_at": t.get("closed_at", 0),
+                "grade": "B" if t.get("pnl_usdt", 0) > 0 else "D",
+            })
+
+        return {
+            "agent": agent.upper(),
+            "total_trades": stats.get("total_trades", 0),
+            "winning_trades": stats.get("winning_trades", 0),
+            "losing_trades": stats.get("losing_trades", 0),
+            "winrate": stats.get("winrate", 0),
+            "total_pnl_usdt": stats.get("total_pnl_usdt", 0),
+            "best_trade_usdt": stats.get("best_trade_usdt", 0),
+            "worst_trade_usdt": stats.get("worst_trade_usdt", 0),
+            "trades": trades,
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
