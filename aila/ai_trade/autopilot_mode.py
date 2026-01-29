@@ -1048,7 +1048,19 @@ Trades today: {stats['trades_today']}
             f"Reason: {close_reason}"
         )
 
-        # 1. Record trade stats
+        # 1. Evaluate trade grade first
+        grade = await self._evaluate_trade_grade(position_data, closed_pnl, is_win)
+
+        # 2. Record trade stats with full trade data
+        trade_data = {
+            "symbol": symbol,
+            "side": position_data.get("side", "LONG"),
+            "entry_price": entry_price,
+            "exit_price": exit_price,
+            "close_reason": close_reason,
+            "leverage": str(leverage),
+            "grade": grade,
+        }
         result = self._agent_stats.record_trade(
             agent=source,
             pnl_usdt=pnl_usdt,
@@ -1056,14 +1068,12 @@ Trades today: {stats['trades_today']}
             duration_minutes=duration_minutes,
             rr_ratio=rr_ratio,
             trigger_type=close_reason,
+            trade_data=trade_data,
         )
 
-        # 2. Mark position as closed in queue
+        # 3. Mark position as closed in queue
         ccxt_symbol = symbol.replace("USDT", "/USDT") if "/" not in symbol else symbol
         self._signal_queue.set_position_closed(ccxt_symbol)
-
-        # 3. Evaluate trade with ANALYST (simplified)
-        grade = await self._evaluate_trade_grade(position_data, closed_pnl, is_win)
 
         # 4. Update knowledge base
         await self._update_knowledge_base(source, symbol, position_data, closed_pnl, grade)

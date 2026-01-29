@@ -44,8 +44,11 @@
       "cost_total_usdt": 0.0
     },
     "daily_history": {},
-    "weekly_history": {}
+    "weekly_history": {},
+    "enabled": true,
+    "cooldown_remaining": 0.0,
+    "trades_history": []
   },
-  "saved_at": "2026-01-28T00:00:00",
+  "saved_at": "2026-01-29T07:45:00.000000",
   "version": "2.0"
 }

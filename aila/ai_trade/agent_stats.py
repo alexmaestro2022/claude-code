@@ -167,10 +167,31 @@ class AgentStatsManager:
         duration_minutes: int,
         rr_ratio: float,
         trigger_type: Optional[str] = None,
+        trade_data: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
         """Record completed trade and update stats."""
         stats = self._trader_stats if agent == "TRADER" else self._sniper_stats
         is_win = pnl_usdt > 0
+
+        # Store trade in history
+        if trade_data:
+            if "trades_history" not in stats or stats["trades_history"] is None:
+                stats["trades_history"] = []
+            trade_record = {
+                "symbol": trade_data.get("symbol", ""),
+                "side": trade_data.get("side", ""),
+                "pnl_usdt": pnl_usdt,
+                "pnl_pct": round(pnl_pct, 2),
+                "entry_price": trade_data.get("entry_price", 0),
+                "exit_price": trade_data.get("exit_price", 0),
+                "close_reason": trade_data.get("close_reason", "unknown"),
+                "leverage": trade_data.get("leverage", "1"),
+                "grade": trade_data.get("grade", "B" if is_win else "D"),
+                "closed_at": datetime.utcnow().isoformat(),
+            }
+            stats["trades_history"].insert(0, trade_record)  # Latest first
+            # Keep only last 100 trades
+            stats["trades_history"] = stats["trades_history"][:100]
 
         # Update counts
         stats["total_trades"] += 1

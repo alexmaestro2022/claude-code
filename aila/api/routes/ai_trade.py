@@ -1499,28 +1499,13 @@ async def get_trades_history(agent: str = "trader", limit: int = 50):
     """Get trade history for agent."""
     try:
         orch = await get_orchestrator()
-        exchange = orch.exchange
 
-        # Get closed PnL from exchange
-        closed_trades = await exchange.get_closed_pnl(limit=limit)
-
-        # Get agent stats
+        # Get agent stats (includes trades_history)
         stats = orch.autopilot._agent_stats.get_stats(agent.upper())
 
-        # Format trades
-        trades = []
-        for t in closed_trades:
-            trades.append({
-                "symbol": t.get("symbol", ""),
-                "side": t.get("side", ""),
-                "pnl_usdt": t.get("pnl_usdt", 0),
-                "entry_price": t.get("entry_price", 0),
-                "exit_price": t.get("exit_price", 0),
-                "close_reason": t.get("close_reason", "unknown"),
-                "leverage": t.get("leverage", "1"),
-                "closed_at": t.get("closed_at", 0),
-                "grade": "B" if t.get("pnl_usdt", 0) > 0 else "D",
-            })
+        # Get trades from agent's history (properly filtered by agent)
+        trades_history = stats.get("trades_history") or []
+        trades = trades_history[:limit]
 
         return {
             "agent": agent.upper(),

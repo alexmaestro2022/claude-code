@@ -40,8 +40,34 @@
     "daily_history": {},
     "weekly_history": {},
     "enabled": true,
-    "cooldown_remaining": 0.0
+    "cooldown_remaining": 0.0,
+    "trades_history": [
+      {
+        "symbol": "HYPEUSDT",
+        "side": "LONG",
+        "pnl_usdt": -0.4852,
+        "pnl_pct": -4.8,
+        "entry_price": 33.538,
+        "exit_price": 31.927,
+        "close_reason": "stop_loss",
+        "leverage": "2",
+        "grade": "D",
+        "closed_at": "2026-01-29T02:51:52"
+      },
+      {
+        "symbol": "1000RATSUSDT",
+        "side": "LONG",
+        "pnl_usdt": -0.4937,
+        "pnl_pct": -4.8,
+        "entry_price": 0.0613,
+        "exit_price": 0.05834,
+        "close_reason": "stop_loss",
+        "leverage": "2",
+        "grade": "D",
+        "closed_at": "2026-01-29T00:05:25"
+      }
+    ]
   },
-  "saved_at": "2026-01-29T06:05:41.411870",
+  "saved_at": "2026-01-29T07:45:00.000000",
   "version": "2.0"
 }
