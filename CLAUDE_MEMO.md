@@ -2544,9 +2544,10 @@ DELETE /api/admin/knowledge/{fn} — удалить файл
 ---
 
 ### Важно — subprocess env:
-- Claude CLI вызывается через `subprocess.run` с явной передачей `env=_get_claude_env()`
-- Функция `_get_claude_env()` копирует `os.environ`, добавляет `ANTHROPIC_API_KEY` из `.env` и `/usr/local/bin` в PATH
-- Без этого claude не получает API ключ при запуске из systemd сервиса
+- Claude CLI авторизован через **OAuth подписку Max** (не API ключ!)
+- `_get_claude_env()` копирует `os.environ`, **удаляет** `ANTHROPIC_API_KEY` и проверяет PATH + HOME
+- Если передать `ANTHROPIC_API_KEY` → claude использует платное API вместо подписки
+- OAuth credentials: `~/.claude/.credentials.json` (`subscriptionType: "max"`, `rateLimitTier: "default_claude_max_20x"`)
 
 ---
 
