@@ -24,6 +24,21 @@ logger = logging.getLogger("admin")
 
 router = APIRouter(prefix="/api/admin", tags=["Admin"])
 
+
+def _get_claude_env() -> dict[str, str]:
+    """Build environment for claude subprocess with API key."""
+    env = os.environ.copy()
+    # Ensure ANTHROPIC_API_KEY is set from .env or current env
+    if not env.get("ANTHROPIC_API_KEY"):
+        from dotenv import dotenv_values
+        dotenv = dotenv_values("/opt/aila/.env")
+        if dotenv.get("ANTHROPIC_API_KEY"):
+            env["ANTHROPIC_API_KEY"] = dotenv["ANTHROPIC_API_KEY"]
+    # Ensure claude is in PATH
+    if "/usr/local/bin" not in env.get("PATH", ""):
+        env["PATH"] = f"/usr/local/bin:{env.get('PATH', '/usr/bin')}"
+    return env
+
 # Paths
 DATA_DIR = Path("/opt/aila/data/admin")
 CHAT_DIR = Path("/opt/aila/claude_chat")
@@ -333,7 +348,9 @@ async def chat_message(request: Request):
 Отвечай на русском языке. Будь кратким и полезным."""
 
     try:
-        # Run claude CLI for Chat
+        # Run claude CLI for Chat with proper env
+        claude_env = _get_claude_env()
+        logger.info(f"[ADMIN_CHAT] Calling claude CLI, cwd={CHAT_DIR}")
         result = await asyncio.to_thread(
             subprocess.run,
             ["claude", "--print", prompt],
@@ -341,14 +358,28 @@ async def chat_message(request: Request):
             capture_output=True,
             text=True,
             timeout=120,
+            env=claude_env,
         )
-        response = result.stdout.strip() if result.stdout else "Ошибка: нет ответа от Claude"
-        if result.returncode != 0 and not response:
-            response = f"Ошибка Claude: {result.stderr[:500]}"
+        response = result.stdout.strip() if result.stdout else ""
+        stderr = result.stderr.strip() if result.stderr else ""
+
+        if not response and stderr:
+            response = f"Ошибка Claude: {stderr[:500]}"
+            logger.error(f"[ADMIN_CHAT] stderr: {stderr[:300]}")
+        elif not response:
+            response = f"Ошибка: нет ответа от Claude (code={result.returncode})"
+            logger.error(f"[ADMIN_CHAT] Empty output, returncode={result.returncode}")
+        else:
+            logger.info(f"[ADMIN_CHAT] Response received, {len(response)} chars")
     except subprocess.TimeoutExpired:
         response = "Превышено время ожидания ответа (120с)"
+        logger.error("[ADMIN_CHAT] Timeout 120s")
+    except FileNotFoundError:
+        response = "Ошибка: claude CLI не найден. Проверьте установку."
+        logger.error("[ADMIN_CHAT] claude CLI not found in PATH")
     except Exception as e:
         response = f"Ошибка: {str(e)}"
+        logger.error(f"[ADMIN_CHAT] Exception: {e}")
 
     # Check if response contains command for Code
     has_command = "[COMMAND_FOR_CODE]" in response
@@ -422,6 +453,8 @@ async def execute_code(request: Request):
                 cmd.append("--dangerously-skip-permissions")
             cmd.append(command)
 
+            claude_env = _get_claude_env()
+            logger.info(f"[ADMIN_CODE] Executing: {command[:100]}")
             result = await asyncio.to_thread(
                 subprocess.run,
                 cmd,
@@ -429,11 +462,14 @@ async def execute_code(request: Request):
                 capture_output=True,
                 text=True,
                 timeout=300,
+                env=claude_env,
             )
 
             output = result.stdout.strip() if result.stdout else ""
             error = result.stderr.strip() if result.stderr else ""
 
+            if not output and error:
+                logger.error(f"[ADMIN_CODE] stderr: {error[:300]}")
             response = output or error or "Command completed (no output)"
 
             # Save to chat history
@@ -907,6 +943,7 @@ async def _process_queue() -> None:
 
         # Execute via Claude Code
         try:
+            claude_env = _get_claude_env()
             result = await asyncio.to_thread(
                 subprocess.run,
                 ["claude", "--print", "--dangerously-skip-permissions", task["command"]],
@@ -914,8 +951,11 @@ async def _process_queue() -> None:
                 capture_output=True,
                 text=True,
                 timeout=300,
+                env=claude_env,
             )
-            output = result.stdout.strip() if result.stdout else "No output"
+            output = result.stdout.strip() if result.stdout else ""
+            stderr = result.stderr.strip() if result.stderr else ""
+            output = output or stderr or "No output"
             success = result.returncode == 0
         except Exception as e:
             output = f"Error: {e}"
