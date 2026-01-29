@@ -301,14 +301,6 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* PnL flash animation */
-        .pnl-flash {
-            animation: pnlFlash 0.5s ease-out;
-        }
-        @keyframes pnlFlash {
-            0% { background-color: rgba(255, 255, 255, 0.3); }
-            100% { background-color: transparent; }
-        }
 
         /* Value changed animation */
         .value-changed {
@@ -1372,10 +1364,7 @@
                 const pnlClass = pnl >= 0 ? 'pnl-positive' : 'pnl-negative';
                 const pnlSign = pnl >= 0 ? '+' : '';
 
-                // Detect PnL change
-                const prevPnl = prevPnlValues[p.symbol] || 0;
-                const changed = Math.abs(pnl - prevPnl) > 0.0001;
-                const changeClass = changed ? 'pnl-flash' : '';
+                // Track PnL values
                 prevPnlValues[p.symbol] = pnl;
 
                 const ccxtSymbol = p.symbol.replace("USDT", "/USDT");
@@ -1389,7 +1378,7 @@
                             <span class="badge badge-gray">${p.leverage}x</span>
                         </div>
                         <div class="text-right">
-                            <div class="font-bold ${pnlClass} ${changeClass}" data-pnl="${p.symbol}">${pnlSign}$${pnl.toFixed(2)}</div>
+                            <div class="font-bold ${pnlClass}" data-pnl="${p.symbol}">${pnlSign}$${pnl.toFixed(2)}</div>
                             <div class="text-xs text-dim">${pnlSign}${(p.pnl_percent || 0).toFixed(2)}%</div>
                         </div>
                         <button class="btn btn-danger btn-sm ml-3" onclick="closePosition('${p.symbol}')">
