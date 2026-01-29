@@ -2484,6 +2484,65 @@ GET /trades/history?agent=trader&limit=50  # История сделок
 
 ---
 
-**Последнее обновление:** 2026-01-29 (feat: realtime balance and PnL updates from exchange)
+---
+
+## 36. Admin Panel — Claude Chat + Claude Code (2026-01-29)
+
+### Архитектура:
+- **Claude Chat** — интеллектуальный помощник, работает в `/opt/aila/claude_chat/`
+- **Claude Code** — исполнитель, работает в `/opt/aila/`
+- Поток: Пользователь → Chat → формирует команду → Code → результат → Chat → анализ
+
+### Страница /admin:
+- Авторизация через 6-значный код в Telegram
+- Чат-интерфейс с Manual/Auto режимами
+- Быстрые команды: мониторинг, управление, данные
+- Пользовательские команды с CRUD
+- Запланированные задачи (разовые/циклические)
+- База знаний (загрузка .txt, .md, .json, .py)
+- Настройки Auto режима (разрешения)
+
+### Файлы:
+| Файл | Описание |
+|------|----------|
+| `aila/api/routes/admin.py` | Backend API (auth, chat, code, commands, scheduled, knowledge) |
+| `aila/api/templates/admin.html` | Frontend (чат, модалки, quick commands) |
+| `claude_chat/context.md` | Системный контекст для Claude Chat |
+| `data/admin/` | JSON хранилище (commands, scheduled, sessions, codes) |
+
+### API endpoints:
+```
+POST /api/admin/request-code     — запрос кода авторизации
+POST /api/admin/verify-code      — проверка кода
+GET  /api/admin/session          — проверка сессии
+POST /api/admin/chat             — сообщение в Claude Chat
+GET  /api/admin/chat/history     — история чата
+POST /api/admin/chat/clear       — очистка истории
+POST /api/admin/code/execute     — выполнение через Claude Code
+POST /api/admin/code/stop        — остановка выполнения
+GET  /api/admin/commands         — список команд
+POST /api/admin/commands         — создать команду
+PUT  /api/admin/commands/{id}    — редактировать
+DELETE /api/admin/commands/{id}  — удалить
+GET  /api/admin/scheduled        — запланированные задачи
+POST /api/admin/scheduled        — создать задачу
+DELETE /api/admin/scheduled/{id} — удалить задачу
+POST /api/admin/scheduled/{id}/pause — пауза/возобновить
+POST /api/admin/scheduled/{id}/run   — запустить сейчас
+GET  /api/admin/knowledge        — файлы базы знаний
+POST /api/admin/knowledge/upload — загрузить файл
+DELETE /api/admin/knowledge/{fn} — удалить файл
+```
+
+### Безопасность:
+- 6-значный код через Telegram (TTL 5 мин)
+- Сессия 30 мин неактивности
+- 5 попыток → блок на 10 мин
+- Фильтр опасных команд (rm -rf, cat .env, DROP TABLE)
+- Аудит лог: `/opt/aila/logs/admin_audit.log`
+
+---
+
+**Последнее обновление:** 2026-01-29 (feat: Admin panel with Claude Chat + Claude Code)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
