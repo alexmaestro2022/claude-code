@@ -2397,9 +2397,10 @@ GET /trades/history?agent=trader&limit=50  # История сделок
 | level_up | 🎖️ | Level up! Now level 5 |
 
 **6. Автообновление:**
-- Каждые 10 секунд обновление данных
+- Позиции и PnL: каждые 10 секунд
+- Статистика и learning: каждые 30 секунд
+- Activity feed: каждые 10 секунд
 - Оптимизация: проверка autopilot status перед API вызовами
-- Кэширование при неактивном автопилоте
 
 ### Файлы:
 - `aila/api/routes/ai_trade.py` — новые endpoints
@@ -2408,8 +2409,16 @@ GET /trades/history?agent=trader&limit=50  # История сделок
 ### Локализация:
 Весь интерфейс на русском языке.
 
+### Исправления (fix 2026-01-29):
+- **Claude API таб:** данные берутся из `today.cost_usd`, `today.total_calls`
+- **Agent Usage список:** заполняется из `today_top_consumers`
+- **Balance Modal PnL:** берётся из `agent-stats.trader.pnl_today_usdt/week/total`
+- **Learning счётчик:** обновляется при загрузке dashboard
+- **Autopilot статус:** показывает `paused_reason` (position_limit, daily_loss)
+- **SNIPER mode:** отображается режим работы
+
 ---
 
-**Последнее обновление:** 2026-01-29 (feat: redesign UI with tabs, compact cards and activity feed)
+**Последнее обновление:** 2026-01-29 (fix: ensure all UI elements display actual data)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
