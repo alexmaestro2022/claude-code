@@ -17,8 +17,13 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Optional
 
+import re
+import zipfile
+from io import BytesIO
+
 import aiohttp
 from fastapi import APIRouter, HTTPException, Request, UploadFile, File, Form
+from fastapi.responses import Response, StreamingResponse
 
 logger = logging.getLogger("admin")
 
@@ -74,6 +79,24 @@ _process_lock = asyncio.Lock()
 _scheduler_task: Optional[asyncio.Task] = None
 _task_queue: asyncio.Queue = asyncio.Queue()
 _queue_running = False
+
+# Knowledge base state
+_knowledge_loaded = False
+_knowledge_last_loaded: Optional[str] = None
+_knowledge_cache: dict[str, str] = {}  # filename -> content
+
+# File type classification
+_FILE_TYPE_MAP = {
+    "RULES": "rules",
+    "AILA_SESSION_MEMORY": "context",
+    "SESSION_MEMORY": "context",
+    "TRADING_STRATEGY": "strategy",
+    "PROMPTS": "prompts",
+    "FAQ": "faq",
+}
+
+# Priority order for knowledge files in prompt
+_KNOWLEDGE_PRIORITY = ["RULES.md", "AILA_SESSION_MEMORY.md"]
 
 # Constants
 CODE_TTL = 300  # 5 minutes
@@ -351,17 +374,48 @@ async def check_session(request: Request):
 # =============================================
 
 def _load_knowledge_base() -> str:
-    """Load all knowledge base files into context string."""
-    parts = []
+    """Load all knowledge base files into prompt with priority ordering."""
+    global _knowledge_loaded, _knowledge_last_loaded, _knowledge_cache
+
+    files: dict[str, str] = {}
     if KNOWLEDGE_DIR.exists():
         for f in sorted(KNOWLEDGE_DIR.iterdir()):
             if f.is_file() and f.suffix in ALLOWED_EXTENSIONS:
                 try:
                     content = f.read_text(errors="replace")[:50000]
-                    parts.append(f"--- {f.name} ---\n{content}")
+                    files[f.name] = content
                 except Exception:
                     pass
+
+    _knowledge_cache = files
+    _knowledge_loaded = True
+    _knowledge_last_loaded = datetime.now().isoformat()
+
+    # Build ordered output: priority files first, then the rest
+    parts: list[str] = []
+    added: set[str] = set()
+    for name in _KNOWLEDGE_PRIORITY:
+        if name in files:
+            parts.append(f"## {name}\n{files[name]}")
+            added.add(name)
+    for name in sorted(files):
+        if name not in added:
+            parts.append(f"## {name}\n{files[name]}")
     return "\n\n".join(parts)
+
+
+def _get_file_type(filename: str) -> str:
+    """Classify knowledge file by name."""
+    stem = Path(filename).stem.upper()
+    for key, ftype in _FILE_TYPE_MAP.items():
+        if key in stem:
+            return ftype
+    return "reference"
+
+
+def _sanitize_filename(filename: str) -> str:
+    """Sanitize filename for knowledge base."""
+    return "".join(c for c in filename if c.isalnum() or c in "._- ")
 
 
 def _get_chat_history(limit: int = 20) -> list[dict]:
@@ -387,6 +441,53 @@ def _save_chat_message(role: str, content: str, msg_type: str = "text") -> None:
     if len(history) > 200:
         history = history[-200:]
     _save_json(history_file, history)
+
+
+def _process_knowledge_updates(response: str) -> list[str]:
+    """Process [UPDATE_KNOWLEDGE] tags in Claude response.
+
+    Format: [UPDATE_KNOWLEDGE]filename|action|content[/UPDATE_KNOWLEDGE]
+    Actions: append, remove
+    Returns list of updated filenames.
+    """
+    updated: list[str] = []
+    pattern = r"\[UPDATE_KNOWLEDGE\](.*?)\[/UPDATE_KNOWLEDGE\]"
+    matches = re.findall(pattern, response, re.DOTALL)
+
+    for match in matches:
+        parts = match.split("|", 2)
+        if len(parts) < 3:
+            continue
+        filename, action, content = parts[0].strip(), parts[1].strip(), parts[2].strip()
+
+        # Sanitize filename
+        safe_name = _sanitize_filename(filename)
+        filepath = KNOWLEDGE_DIR / safe_name
+        if not filepath.suffix or filepath.suffix not in ALLOWED_EXTENSIONS:
+            continue
+
+        try:
+            if action == "append":
+                existing = filepath.read_text(errors="replace") if filepath.exists() else ""
+                filepath.write_text(existing.rstrip() + f"\n- {content}\n", encoding="utf-8")
+                logger.info(f"[KNOWLEDGE] Appended to {safe_name}: {content[:80]}")
+                updated.append(safe_name)
+            elif action == "remove":
+                if filepath.exists():
+                    lines = filepath.read_text(errors="replace").splitlines()
+                    content_lower = content.lower()
+                    new_lines = [
+                        ln for ln in lines
+                        if content_lower not in ln.lower()
+                    ]
+                    filepath.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+                    logger.info(f"[KNOWLEDGE] Removed from {safe_name}: {content[:80]}")
+                    updated.append(safe_name)
+            _audit_log("admin", "KNOWLEDGE_UPDATE", f"{action} {safe_name}", content[:100])
+        except Exception as e:
+            logger.error(f"[KNOWLEDGE] Update failed {safe_name}: {e}")
+
+    return updated
 
 
 @router.post("/chat")
@@ -417,22 +518,35 @@ async def chat_message(request: Request):
 
     prompt = f"""{system_context}
 
-БАЗА ЗНАНИЙ:
+# БАЗА ЗНАНИЙ
+Ты изучил следующие файлы и ДОЛЖЕН следовать им:
+
 {knowledge}
 
-ИСТОРИЯ ЧАТА:
+# ТВОЯ РОЛЬ
+Ты — Claude Chat, интеллектуальный помощник для управления AILA AI Trade ботом.
+- ВСЕГДА следуй правилам из RULES.md
+- Используй контекст из AILA_SESSION_MEMORY.md
+- Используй остальные файлы как справочную информацию
+
+# УПРАВЛЕНИЕ ПРАВИЛАМИ
+Если пользователь просит создать/добавить/удалить/изменить правило:
+- Ответь что правило добавлено/удалено/изменено
+- Добавь тег для обновления файла:
+  [UPDATE_KNOWLEDGE]RULES.md|append|текст правила[/UPDATE_KNOWLEDGE]
+  [UPDATE_KNOWLEDGE]RULES.md|remove|текст для удаления[/UPDATE_KNOWLEDGE]
+Если пользователь просит показать правила, покажи содержимое RULES.md.
+
+# ИСТОРИЯ ЧАТА
 {history_text}
 
-ТЕКУЩИЙ ЗАПРОС: {message}
+# ТЕКУЩИЙ ЗАПРОС
+{message}
 
-Ты — Claude Chat, интеллектуальный помощник для управления AILA AI Trade ботом.
-Твоя задача — помогать пользователю управлять торговым ботом.
-
-Если нужно выполнить действие на сервере (проверить логи, перезапустить бот, изменить код и т.д.),
-сформируй точную команду для Claude Code в формате:
-[COMMAND_FOR_CODE]команда здесь[/COMMAND_FOR_CODE]
-
-Отвечай на русском языке. Будь кратким и полезным."""
+# ИНСТРУКЦИИ
+- Если нужно выполнить действие на сервере, сформируй команду:
+  [COMMAND_FOR_CODE]команда здесь[/COMMAND_FOR_CODE]
+- Отвечай на русском языке. Будь кратким и полезным."""
 
     try:
         # Run claude CLI for Chat with proper env
@@ -478,6 +592,15 @@ async def chat_message(request: Request):
     # Track request
     _increment_admin_stats("chat")
 
+    # Process knowledge update tags from response
+    knowledge_updated = _process_knowledge_updates(response)
+    # Strip update tags from displayed response
+    clean_response = re.sub(
+        r"\[UPDATE_KNOWLEDGE\].*?\[/UPDATE_KNOWLEDGE\]", "", response
+    ).strip()
+    if clean_response:
+        response = clean_response
+
     # Check if response contains command for Code
     has_command = "[COMMAND_FOR_CODE]" in response
 
@@ -488,6 +611,7 @@ async def chat_message(request: Request):
     return {
         "response": response,
         "has_command": has_command,
+        "knowledge_updated": knowledge_updated,
         "timestamp": datetime.now().isoformat(),
     }
 
@@ -1070,10 +1194,8 @@ async def get_subscription_usage(request: Request):
 # Knowledge base
 # =============================================
 
-@router.get("/knowledge")
-async def get_knowledge(request: Request):
-    """Get list of knowledge base files."""
-    _require_auth(request)
+def _list_knowledge_files() -> list[dict]:
+    """List all knowledge base files with metadata."""
     files = []
     if KNOWLEDGE_DIR.exists():
         for f in sorted(KNOWLEDGE_DIR.iterdir()):
@@ -1083,8 +1205,77 @@ async def get_knowledge(request: Request):
                     "name": f.name,
                     "size": stat.st_size,
                     "modified": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                    "type": _get_file_type(f.name),
                 })
-    return {"files": files}
+    return files
+
+
+@router.get("/knowledge")
+async def get_knowledge(request: Request):
+    """Get list of knowledge base files with metadata."""
+    _require_auth(request)
+    files = _list_knowledge_files()
+    total_size = sum(f["size"] for f in files)
+    return {
+        "files": files,
+        "total_size": total_size,
+        "last_loaded": _knowledge_last_loaded,
+    }
+
+
+@router.get("/knowledge/status")
+async def knowledge_status(request: Request):
+    """Get knowledge base loading status."""
+    _require_auth(request)
+    files = _list_knowledge_files()
+    return {
+        "loaded": _knowledge_loaded,
+        "files_count": len(files),
+        "last_loaded": _knowledge_last_loaded,
+        "total_size": sum(f["size"] for f in files),
+        "files": [f["name"] for f in files],
+    }
+
+
+@router.post("/knowledge/reload")
+async def reload_knowledge(request: Request):
+    """Reload all knowledge base files into cache."""
+    _require_auth(request)
+    _load_knowledge_base()  # updates cache and state
+    files = _list_knowledge_files()
+    _audit_log("admin", "RELOAD_KNOWLEDGE", f"{len(files)} files")
+    return {
+        "success": True,
+        "files_count": len(files),
+        "files": [f["name"] for f in files],
+        "message": f"Knowledge base reloaded ({len(files)} files)",
+    }
+
+
+@router.get("/knowledge/download-all")
+async def download_all_knowledge(request: Request, token: str = ""):
+    """Download all knowledge files as a ZIP archive."""
+    if token and token in _admin_sessions:
+        _admin_sessions[token]["last_active"] = time.time()
+    else:
+        _require_auth(request)
+
+    buf = BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        if KNOWLEDGE_DIR.exists():
+            for f in sorted(KNOWLEDGE_DIR.iterdir()):
+                if f.is_file() and f.suffix in ALLOWED_EXTENSIONS:
+                    zf.write(f, f.name)
+
+    buf.seek(0)
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return StreamingResponse(
+        buf,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="knowledge_{ts}.zip"'
+        },
+    )
 
 
 @router.post("/knowledge/upload")
@@ -1106,12 +1297,83 @@ async def upload_knowledge(request: Request, file: UploadFile = File(...)):
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail="File too large (max 1MB)")
 
-    # Sanitize filename
-    safe_name = "".join(c for c in file.filename if c.isalnum() or c in "._-")
+    safe_name = _sanitize_filename(file.filename)
     dest = KNOWLEDGE_DIR / safe_name
     dest.write_bytes(content)
 
+    # Reload knowledge cache
+    _load_knowledge_base()
+
     _audit_log("admin", "UPLOAD_KNOWLEDGE", safe_name)
+    return {"success": True, "filename": safe_name}
+
+
+# Parameterized routes MUST come after static routes
+@router.get("/knowledge/{filename}/download")
+async def download_knowledge_file(filename: str, request: Request, token: str = ""):
+    """Download a single knowledge file."""
+    # Accept token via query param for direct browser downloads
+    if token and token in _admin_sessions:
+        _admin_sessions[token]["last_active"] = time.time()
+    else:
+        _require_auth(request)
+    safe_name = _sanitize_filename(filename)
+    path = KNOWLEDGE_DIR / safe_name
+
+    if not path.exists() or not path.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    content = path.read_bytes()
+    return Response(
+        content=content,
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{safe_name}"'},
+    )
+
+
+@router.get("/knowledge/{filename}")
+async def get_knowledge_file(filename: str, request: Request):
+    """Get content of a specific knowledge file."""
+    _require_auth(request)
+    safe_name = _sanitize_filename(filename)
+    path = KNOWLEDGE_DIR / safe_name
+
+    if not path.exists() or not path.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    content = path.read_text(errors="replace")
+    stat = path.stat()
+    return {
+        "name": safe_name,
+        "content": content,
+        "size": stat.st_size,
+        "modified": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+        "type": _get_file_type(safe_name),
+    }
+
+
+@router.put("/knowledge/{filename}")
+async def save_knowledge_file(filename: str, request: Request):
+    """Save/update content of a knowledge file."""
+    _require_auth(request)
+    body = await request.json()
+    content = body.get("content", "")
+
+    safe_name = _sanitize_filename(filename)
+    if not safe_name:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+
+    ext = Path(safe_name).suffix.lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="Unsupported format")
+
+    if len(content.encode("utf-8")) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=400, detail="Content too large (max 1MB)")
+
+    path = KNOWLEDGE_DIR / safe_name
+    path.write_text(content, encoding="utf-8")
+
+    _audit_log("admin", "SAVE_KNOWLEDGE", safe_name)
     return {"success": True, "filename": safe_name}
 
 
@@ -1120,14 +1382,15 @@ async def delete_knowledge(filename: str, request: Request):
     """Delete a knowledge base file."""
     _require_auth(request)
 
-    # Sanitize
-    safe_name = "".join(c for c in filename if c.isalnum() or c in "._-")
+    safe_name = _sanitize_filename(filename)
     path = KNOWLEDGE_DIR / safe_name
 
     if not path.exists() or not path.is_file():
         raise HTTPException(status_code=404, detail="File not found")
 
     path.unlink()
+    _knowledge_cache.pop(safe_name, None)
+
     _audit_log("admin", "DELETE_KNOWLEDGE", safe_name)
     return {"success": True}
 

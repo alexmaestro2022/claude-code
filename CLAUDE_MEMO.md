@@ -2577,6 +2577,29 @@ DELETE /api/admin/knowledge/{fn} — удалить файл
 
 ---
 
-**Последнее обновление:** 2026-01-29 (feat: add rate limit detection and notifications)
+### База знаний (Knowledge Base):
+- Файлы: `/opt/aila/claude_chat/knowledge/` (.txt, .md, .json, .py)
+- Приоритет: RULES.md → AILA_SESSION_MEMORY.md → остальные
+- Кэш: `_knowledge_cache` обновляется при загрузке/сохранении/удалении
+- Промпт Chat включает все файлы с приоритетной сортировкой
+- Управление правилами через Chat: `[UPDATE_KNOWLEDGE]file|action|content[/UPDATE_KNOWLEDGE]`
+  - action: `append` (добавить строку), `remove` (удалить строку содержащую текст)
+- Классификация файлов: rules, context, strategy, prompts, faq, reference
+- UI модалка: статус, загрузка/обновление/скачать всё, просмотр/редактирование в модалке
+- Loading overlay при первой загрузке сессии
+- API endpoints:
+  - `GET /api/admin/knowledge` — список файлов с type
+  - `GET /api/admin/knowledge/status` — статус загрузки
+  - `POST /api/admin/knowledge/reload` — перезагрузка кэша
+  - `GET /api/admin/knowledge/{filename}` — содержимое файла
+  - `PUT /api/admin/knowledge/{filename}` — сохранение файла
+  - `GET /api/admin/knowledge/{filename}/download` — скачать файл
+  - `GET /api/admin/knowledge/download-all` — ZIP архив
+  - `POST /api/admin/knowledge/upload` — загрузка
+  - `DELETE /api/admin/knowledge/{filename}` — удаление
+
+---
+
+**Последнее обновление:** 2026-01-29 (feat: full knowledge base system)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
