@@ -1478,7 +1478,7 @@
             realtimeUpdate(); // Initial realtime load
 
             // Realtime refresh every 3 seconds (balance, positions, PnL)
-            setInterval(realtimeUpdate, 3000);
+            setInterval(realtimeUpdate, 1000);
 
             // Medium refresh every 10 seconds (autopilot status, activity feed)
             setInterval(fastUpdate, 10000);
