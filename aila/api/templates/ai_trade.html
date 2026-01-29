@@ -858,6 +858,16 @@
             if (stats) {
                 updateAgentStats('trader', stats.trader);
                 updateAgentStats('sniper', stats.sniper);
+
+                // Update Balance Modal PnL from trader stats
+                const traderStats = stats.trader || {};
+                const todayPnl = traderStats.pnl_today_usdt || 0;
+                const weekPnl = traderStats.pnl_this_week_usdt || 0;
+                const totalPnl = traderStats.total_pnl_usdt || 0;
+
+                updatePnlElement('modalTodayPnl', todayPnl);
+                updatePnlElement('modalWeekPnl', weekPnl);
+                updatePnlElement('modalTotalPnl', totalPnl);
             }
 
             // Autopilot status
@@ -866,10 +876,40 @@
             // API usage
             const apiUsage = await fetchData('/api-usage');
             if (apiUsage) {
-                document.getElementById('apiCostToday').textContent = (apiUsage.cost_today_usdt || 0).toFixed(4);
-                document.getElementById('apiCallsToday').textContent = apiUsage.calls_today || 0;
-                document.getElementById('apiTokensIn').textContent = formatNumber(apiUsage.tokens_in_today || 0);
-                document.getElementById('apiTokensOut').textContent = formatNumber(apiUsage.tokens_out_today || 0);
+                const today = apiUsage.today || {};
+                const todayAgents = today.agents || {};
+
+                document.getElementById('apiCostToday').textContent = (today.cost_usd || 0).toFixed(4);
+                document.getElementById('apiCallsToday').textContent = today.total_calls || 0;
+
+                // Calculate total tokens from agents
+                let tokensIn = 0, tokensOut = 0;
+                for (const agent in todayAgents) {
+                    tokensIn += todayAgents[agent].input_tokens || 0;
+                    tokensOut += todayAgents[agent].output_tokens || 0;
+                }
+                document.getElementById('apiTokensIn').textContent = formatNumber(tokensIn);
+                document.getElementById('apiTokensOut').textContent = formatNumber(tokensOut);
+
+                // Populate agent usage list
+                const agentList = document.getElementById('apiUsageList');
+                const topConsumers = apiUsage.today_top_consumers || [];
+                if (topConsumers.length > 0) {
+                    agentList.innerHTML = topConsumers.map(a => `
+                        <div class="flex justify-between items-center p-2 bg-black/20 rounded">
+                            <div>
+                                <span class="font-semibold">${a.agent}</span>
+                                <span class="text-dim text-xs ml-2">${a.calls} calls</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="font-bold">$${a.cost.toFixed(4)}</span>
+                                <span class="text-dim text-xs ml-1">(${a.pct_of_today.toFixed(1)}%)</span>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    agentList.innerHTML = '<div class="text-dim text-sm text-center py-4">No API calls today</div>';
+                }
             }
 
             // Cascade status for savings
@@ -877,10 +917,24 @@
             if (cascade) {
                 document.getElementById('apiSavings').textContent = (cascade.token_savings_pct || 0) + '%';
             }
+
+            // Load learning data for lessons count
+            await loadLessonsCount('trader');
+            await loadLessonsCount('sniper');
+        }
+
+        async function loadLessonsCount(agent) {
+            const data = await fetchData(`/learning/${agent}`);
+            if (data) {
+                const totalLessons = (data.learned_rules?.length || 0) + (data.mistakes_to_avoid?.length || 0);
+                document.getElementById(`${agent}Lessons`).textContent = totalLessons;
+            }
         }
 
         async function updateAutopilotStatus() {
             const heartbeat = await fetchData('/autopilot/heartbeat');
+            const cascade = await fetchData('/cascade/status');
+
             if (heartbeat) {
                 isAutopilotRunning = heartbeat.running;
                 const dot = document.getElementById('autopilotDot');
@@ -888,20 +942,33 @@
                 const btn = document.getElementById('autopilotBtn');
 
                 if (isAutopilotRunning) {
-                    dot.className = 'status-dot status-active';
-                    statusText.textContent = heartbeat.paused ? t('paused') : t('scanning');
+                    const isPaused = cascade && cascade.paused_reason;
+                    dot.className = isPaused ? 'status-dot status-paused' : 'status-dot status-active';
+
+                    // Show pause reason if paused
+                    let statusLabel = t('scanning');
+                    if (isPaused) {
+                        const reason = cascade.paused_reason;
+                        if (reason === 'position_limit') statusLabel = 'Лимит позиций';
+                        else if (reason === 'daily_loss') statusLabel = 'Дневной лимит';
+                        else statusLabel = t('paused');
+                    }
+                    statusText.textContent = statusLabel;
+
                     btn.className = 'autopilot-btn stop';
                     btn.innerHTML = '<i class="fa-solid fa-stop mr-2"></i>' + t('stop_autopilot');
 
                     // Update TRADER status
-                    document.getElementById('traderStatusDot').className = 'status-dot status-active';
-                    document.getElementById('traderStatusText').textContent = t('scanning');
+                    document.getElementById('traderStatusDot').className = isPaused ? 'status-dot status-paused' : 'status-dot status-active';
+                    document.getElementById('traderStatusText').textContent = statusLabel;
                     document.getElementById('sniperStatusDot').className = 'status-dot status-active';
                     document.getElementById('sniperStatusText').textContent = t('scanning');
+                    document.getElementById('sniperMode').textContent = 'Breakout/Breakdown';
 
-                    if (heartbeat.cascade) {
-                        document.getElementById('traderCascadeStage').textContent =
-                            heartbeat.cascade.current_stage || '-';
+                    // Show cascade stage
+                    if (cascade) {
+                        const stage = cascade.current_stage || (isPaused ? cascade.paused_reason : '-');
+                        document.getElementById('traderCascadeStage').textContent = stage;
                     }
                 } else {
                     dot.className = 'status-dot status-disabled';
@@ -911,8 +978,10 @@
 
                     document.getElementById('traderStatusDot').className = 'status-dot status-disabled';
                     document.getElementById('traderStatusText').textContent = t('idle');
+                    document.getElementById('traderCascadeStage').textContent = '-';
                     document.getElementById('sniperStatusDot').className = 'status-dot status-disabled';
                     document.getElementById('sniperStatusText').textContent = t('idle');
+                    document.getElementById('sniperMode').textContent = '-';
                 }
             }
         }
@@ -1141,19 +1210,40 @@
             return num.toString();
         }
 
+        function updatePnlElement(id, value) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.textContent = (value >= 0 ? '+' : '') + '$' + value.toFixed(2);
+                el.className = value >= 0 ? 'pnl-positive' : 'pnl-negative';
+            }
+        }
+
+        // Fast updates: positions, PnL, autopilot status
+        async function fastUpdate() {
+            // Positions
+            const positions = await fetchData('/positions');
+            updatePositions(positions);
+
+            // Autopilot status
+            await updateAutopilotStatus();
+
+            // Activity feed for current tab
+            if (currentTab === 'trader' || currentTab === 'sniper') {
+                loadActivityFeed(currentTab);
+            }
+        }
+
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             applyLanguage();
             loadDashboardData();
             loadActivityFeed('trader');
 
-            // Refresh every 10 seconds
-            setInterval(() => {
-                loadDashboardData();
-                if (currentTab === 'trader' || currentTab === 'sniper') {
-                    loadActivityFeed(currentTab);
-                }
-            }, 10000);
+            // Fast refresh every 10 seconds (positions, PnL, feed)
+            setInterval(fastUpdate, 10000);
+
+            // Full refresh every 30 seconds (stats, API usage, learning)
+            setInterval(loadDashboardData, 30000);
         });
     </script>
 </body>
