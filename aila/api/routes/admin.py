@@ -388,6 +388,9 @@ async def chat_message(request: Request):
         response = f"Ошибка: {str(e)}"
         logger.error(f"[ADMIN_CHAT] Exception: {e}")
 
+    # Track request
+    _increment_admin_stats("chat")
+
     # Check if response contains command for Code
     has_command = "[COMMAND_FOR_CODE]" in response
 
@@ -479,7 +482,8 @@ async def execute_code(request: Request):
                 logger.error(f"[ADMIN_CODE] stderr: {error[:300]}")
             response = output or error or "Command completed (no output)"
 
-            # Save to chat history
+            # Track and save
+            _increment_admin_stats("code")
             _save_chat_message("code_result", response, "code_result")
             _audit_log("admin", "EXECUTE_RESULT", command[:50], response[:200])
 
@@ -821,6 +825,129 @@ async def get_queue(request: Request):
     """Get current execution queue."""
     _require_auth(request)
     return {"queue_size": _task_queue.qsize(), "running": _queue_running}
+
+
+# =============================================
+# Subscription usage tracking
+# =============================================
+
+STATS_FILE = Path("/opt/aila/.claude/stats-cache.json")
+ADMIN_STATS_FILE = DATA_DIR / "admin_stats.json"
+CREDENTIALS_FILE = Path("/opt/aila/.claude/.credentials.json")
+
+
+def _load_admin_stats() -> dict:
+    """Load local admin request stats."""
+    stats = _load_json(ADMIN_STATS_FILE, {})
+    if not isinstance(stats, dict):
+        stats = {}
+    today = datetime.now().strftime("%Y-%m-%d")
+    if stats.get("date") != today:
+        stats = {"date": today, "chat_requests": 0, "code_requests": 0, "total_requests": 0}
+    return stats
+
+
+def _increment_admin_stats(req_type: str = "chat") -> None:
+    """Increment daily request counter."""
+    stats = _load_admin_stats()
+    if req_type == "chat":
+        stats["chat_requests"] = stats.get("chat_requests", 0) + 1
+    else:
+        stats["code_requests"] = stats.get("code_requests", 0) + 1
+    stats["total_requests"] = stats.get("chat_requests", 0) + stats.get("code_requests", 0)
+    _save_json(ADMIN_STATS_FILE, stats)
+
+
+def _sync_stats_cache() -> None:
+    """Copy stats-cache.json from home dir if accessible.
+
+    Note: ProtectHome=true in systemd blocks /home/aila from service.
+    To update stats, run manually: cp ~/.claude/stats-cache.json /opt/aila/.claude/
+    """
+    for src in [Path("/home/aila/.claude/stats-cache.json")]:
+        try:
+            if src.exists() and src.stat().st_size > 0:
+                import shutil
+                shutil.copy2(str(src), str(STATS_FILE))
+                return
+        except (PermissionError, OSError):
+            pass
+
+
+@router.get("/subscription-usage")
+async def get_subscription_usage(request: Request):
+    """Get subscription info and usage statistics."""
+    _require_auth(request)
+
+    result: dict[str, Any] = {
+        "subscription_type": "unknown",
+        "rate_limit_tier": "unknown",
+        "model": "unknown",
+    }
+
+    # Read credentials for subscription info
+    creds = _load_json(CREDENTIALS_FILE, {})
+    oauth = creds.get("claudeAiOauth", {})
+    if oauth:
+        result["subscription_type"] = oauth.get("subscriptionType", "unknown")
+        result["rate_limit_tier"] = oauth.get("rateLimitTier", "unknown")
+        expires_ms = oauth.get("expiresAt", 0)
+        if expires_ms:
+            result["token_expires"] = datetime.fromtimestamp(
+                expires_ms / 1000
+            ).isoformat()
+
+    # Read stats-cache for usage data
+    stats = _load_json(STATS_FILE, {})
+    if stats:
+        result["model"] = "claude-opus-4-5-20251101"
+        result["total_sessions"] = stats.get("totalSessions", 0)
+        result["total_messages"] = stats.get("totalMessages", 0)
+        result["first_session"] = stats.get("firstSessionDate", "")
+
+        # Model usage totals
+        model_usage = stats.get("modelUsage", {})
+        for model_name, usage in model_usage.items():
+            result["model"] = model_name
+            result["total_input_tokens"] = usage.get("inputTokens", 0)
+            result["total_output_tokens"] = usage.get("outputTokens", 0)
+            result["total_cache_read"] = usage.get("cacheReadInputTokens", 0)
+            result["total_cache_write"] = usage.get("cacheCreationInputTokens", 0)
+
+        # Daily activity (last 7 days)
+        daily = stats.get("dailyActivity", [])
+        result["daily_activity"] = daily[-7:] if daily else []
+
+        # Daily tokens (last 7 days)
+        daily_tokens = stats.get("dailyModelTokens", [])
+        result["daily_tokens"] = daily_tokens[-7:] if daily_tokens else []
+
+        # Today's stats from daily activity
+        today = datetime.now().strftime("%Y-%m-%d")
+        today_activity = next(
+            (d for d in daily if d.get("date") == today), None
+        )
+        if today_activity:
+            result["today_messages"] = today_activity.get("messageCount", 0)
+            result["today_sessions"] = today_activity.get("sessionCount", 0)
+            result["today_tools"] = today_activity.get("toolCallCount", 0)
+
+        today_tokens = next(
+            (d for d in daily_tokens if d.get("date") == today), None
+        )
+        if today_tokens:
+            tokens_by_model = today_tokens.get("tokensByModel", {})
+            result["today_tokens_total"] = sum(tokens_by_model.values())
+
+    # Local admin panel stats
+    admin_stats = _load_admin_stats()
+    result["admin_today"] = {
+        "chat_requests": admin_stats.get("chat_requests", 0),
+        "code_requests": admin_stats.get("code_requests", 0),
+        "total_requests": admin_stats.get("total_requests", 0),
+    }
+
+    return result
 
 
 # =============================================

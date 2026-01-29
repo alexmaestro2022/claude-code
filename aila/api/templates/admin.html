@@ -601,6 +601,57 @@
             width: 16px; height: 16px;
         }
 
+        /* Subscription widget */
+        .sub-widget {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .sub-widget:hover { border-color: rgba(251,191,36,0.3); }
+
+        /* Usage stats grid */
+        .usage-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .usage-card {
+            padding: 14px;
+            border-radius: 10px;
+            background: var(--bg-dark);
+            border: 1px solid var(--border);
+        }
+        .usage-card-label { font-size: 0.7rem; color: var(--text-secondary); margin-bottom: 4px; }
+        .usage-card-value { font-size: 1.2rem; font-weight: 700; }
+        .usage-card-sub { font-size: 0.7rem; color: var(--text-secondary); margin-top: 2px; }
+        .usage-bar-wrap {
+            height: 6px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        .usage-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+        .usage-day-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.8rem;
+        }
+        .usage-day-row:last-child { border-bottom: none; }
+
         /* Responsive */
         @media (max-width: 768px) {
             .top-bar { flex-wrap: wrap; gap: 8px; padding: 10px; }
@@ -662,6 +713,13 @@
             <div class="status-indicator status-ready" id="statusIndicator">
                 <span class="status-dot"></span>
                 <span id="statusText">Ready</span>
+            </div>
+            <div class="sub-widget" onclick="openModal('usageModal')" title="Subscription usage">
+                <i class="fa-solid fa-crown" style="color:#fbbf24;font-size:0.7rem;"></i>
+                <span id="subType" style="font-size:0.75rem;font-weight:600;color:#fbbf24;">Max</span>
+                <span style="color:var(--border);margin:0 2px;">|</span>
+                <span style="font-size:0.75rem;color:var(--text-secondary);">Today:</span>
+                <span id="subTodayCount" style="font-size:0.75rem;font-weight:600;">0</span>
             </div>
         </div>
         <div class="top-bar-right">
@@ -867,6 +925,54 @@
     </div>
 </div>
 
+<!-- USAGE MODAL -->
+<div class="modal-overlay" id="usageModal" onclick="closeModalOnOverlay(event)">
+    <div class="modal-content" style="max-width:480px;">
+        <div class="modal-header">
+            <h3 style="font-weight:600;"><i class="fa-solid fa-crown mr-2" style="color:#fbbf24;"></i> Subscription Usage</h3>
+            <button class="modal-close" onclick="closeModal('usageModal')"><i class="fa-solid fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <!-- Subscription info -->
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:12px;background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.2);border-radius:10px;">
+                <i class="fa-solid fa-crown" style="color:#fbbf24;font-size:1.3rem;"></i>
+                <div>
+                    <div style="font-weight:700;font-size:0.95rem;">Claude <span id="usageSubType" style="color:#fbbf24;">Max</span></div>
+                    <div style="font-size:0.75rem;color:var(--text-secondary);">Model: <span id="usageModel">-</span></div>
+                </div>
+            </div>
+
+            <!-- Today stats -->
+            <div class="usage-grid">
+                <div class="usage-card">
+                    <div class="usage-card-label">Admin requests today</div>
+                    <div class="usage-card-value accent" id="usageTodayAdmin">0</div>
+                    <div class="usage-card-sub">Chat: <span id="usageTodayChat">0</span> | Code: <span id="usageTodayCode">0</span></div>
+                </div>
+                <div class="usage-card">
+                    <div class="usage-card-label">Total messages today</div>
+                    <div class="usage-card-value" id="usageTodayMessages">0</div>
+                    <div class="usage-card-sub">Sessions: <span id="usageTodaySessions">0</span></div>
+                </div>
+                <div class="usage-card">
+                    <div class="usage-card-label">Tokens today</div>
+                    <div class="usage-card-value" id="usageTodayTokens">0</div>
+                    <div class="usage-card-sub">Tools: <span id="usageTodayTools">0</span></div>
+                </div>
+                <div class="usage-card">
+                    <div class="usage-card-label">All time</div>
+                    <div class="usage-card-value" id="usageTotalMsgs">0</div>
+                    <div class="usage-card-sub">Sessions: <span id="usageTotalSessions">0</span></div>
+                </div>
+            </div>
+
+            <!-- Daily activity (last 7 days) -->
+            <div style="font-size:0.8rem;font-weight:600;margin-bottom:8px;">Last 7 days</div>
+            <div id="usageDailyList"></div>
+        </div>
+    </div>
+</div>
+
 <script>
 // =============================================
 // State
@@ -1019,7 +1125,10 @@ function showPanel() {
     loadCommands();
     loadScheduled();
     loadChatHistory();
+    loadUsage();
     startScheduledTimer();
+    // Refresh usage every 60s
+    setInterval(loadUsage, 60000);
 }
 
 async function requestCode() {
@@ -1721,6 +1830,76 @@ function escapeHtml(text) {
 
 function escapeAttr(text) {
     return text.replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// =============================================
+// Init
+// =============================================
+// =============================================
+// Subscription usage
+// =============================================
+async function loadUsage() {
+    try {
+        const data = await api('/subscription-usage');
+
+        // Top bar widget
+        const subType = data.subscription_type || 'unknown';
+        document.getElementById('subType').textContent = subType.charAt(0).toUpperCase() + subType.slice(1);
+        const todayAdmin = data.admin_today ? data.admin_today.total_requests : 0;
+        document.getElementById('subTodayCount').textContent = todayAdmin;
+
+        // Modal details
+        document.getElementById('usageSubType').textContent = subType.charAt(0).toUpperCase() + subType.slice(1);
+        document.getElementById('usageModel').textContent = data.model || '-';
+
+        // Admin requests
+        document.getElementById('usageTodayAdmin').textContent = todayAdmin;
+        document.getElementById('usageTodayChat').textContent = data.admin_today ? data.admin_today.chat_requests : 0;
+        document.getElementById('usageTodayCode').textContent = data.admin_today ? data.admin_today.code_requests : 0;
+
+        // Today from stats-cache
+        document.getElementById('usageTodayMessages').textContent = data.today_messages || 0;
+        document.getElementById('usageTodaySessions').textContent = data.today_sessions || 0;
+        document.getElementById('usageTodayTokens').textContent = formatTokens(data.today_tokens_total || 0);
+        document.getElementById('usageTodayTools').textContent = data.today_tools || 0;
+
+        // Totals
+        document.getElementById('usageTotalMsgs').textContent = formatNumber(data.total_messages || 0);
+        document.getElementById('usageTotalSessions').textContent = data.total_sessions || 0;
+
+        // Daily activity list
+        const daily = data.daily_activity || [];
+        const list = document.getElementById('usageDailyList');
+        if (daily.length > 0) {
+            list.innerHTML = daily.reverse().map(d => {
+                const date = d.date || '';
+                const msgs = d.messageCount || 0;
+                const tools = d.toolCallCount || 0;
+                const sessions = d.sessionCount || 0;
+                return `<div class="usage-day-row">
+                    <span>${date}</span>
+                    <span style="color:var(--text-secondary);">${sessions} sess</span>
+                    <span>${msgs} msgs</span>
+                    <span style="color:var(--text-secondary);">${tools} tools</span>
+                </div>`;
+            }).join('');
+        } else {
+            list.innerHTML = '<div style="text-align:center;color:var(--text-secondary);padding:12px;">No data</div>';
+        }
+    } catch (e) {
+        console.error('Usage load error:', e);
+    }
+}
+
+function formatTokens(n) {
+    if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+    if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+    return String(n);
+}
+
+function formatNumber(n) {
+    if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+    return String(n);
 }
 
 // =============================================
