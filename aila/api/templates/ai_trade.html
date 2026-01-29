@@ -301,6 +301,24 @@
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
+        /* PnL flash animation */
+        .pnl-flash {
+            animation: pnlFlash 0.5s ease-out;
+        }
+        @keyframes pnlFlash {
+            0% { background-color: rgba(255, 255, 255, 0.3); }
+            100% { background-color: transparent; }
+        }
+
+        /* Value changed animation */
+        .value-changed {
+            animation: valueChange 0.5s ease-out;
+        }
+        @keyframes valueChange {
+            0% { transform: scale(1.1); color: var(--accent); }
+            100% { transform: scale(1); }
+        }
+
         /* Trade history table */
         .trade-row {
             display: grid;
@@ -973,16 +991,7 @@
 
         // Data loading functions
         async function loadDashboardData() {
-            // Balance
-            const status = await fetchData('/status');
-            if (status) {
-                document.getElementById('balanceValue').textContent = (status.balance || 0).toFixed(2);
-                document.getElementById('modalBalance').textContent = (status.balance || 0).toFixed(2);
-            }
-
-            // Positions
-            const positions = await fetchData('/positions');
-            updatePositions(positions);
+            // Note: Balance and positions are updated by realtimeUpdate() every 3 sec
 
             // Agent stats
             const stats = await fetchData('/agent-stats');
@@ -1136,58 +1145,6 @@
                     document.getElementById('sniperMode').textContent = '-';
                 }
             }
-        }
-
-        function updatePositions(data) {
-            const list = document.getElementById('positionsList');
-            const count = document.getElementById('positionsCount');
-            const totalPnl = document.getElementById('totalPnl');
-
-            if (!data || !data.positions || data.positions.length === 0) {
-                list.innerHTML = `<div class="text-dim text-sm text-center py-4">${t('no_positions')}</div>`;
-                count.textContent = '0';
-                totalPnl.textContent = '$0.00';
-                return;
-            }
-
-            count.textContent = data.positions.length;
-            let total = 0;
-
-            list.innerHTML = data.positions.map(p => {
-                total += p.pnl_usdt || 0;
-                const pnlClass = p.pnl_usdt >= 0 ? 'pnl-positive' : 'pnl-negative';
-                const pnlSign = p.pnl_usdt >= 0 ? '+' : '';
-                const sourceIcon = p.source === 'SNIPER' ? 'fa-crosshairs' : 'fa-chart-line';
-
-                return `
-                    <div class="position-row" onclick="this.classList.toggle('expanded')">
-                        <div class="flex-1 flex items-center gap-3">
-                            <i class="fa-solid ${sourceIcon} text-dim text-sm"></i>
-                            <span class="font-semibold">${p.ccxt_symbol || p.symbol}</span>
-                            <span class="badge ${p.side === 'LONG' ? 'badge-green' : 'badge-red'}">${p.side}</span>
-                            <span class="badge badge-gray">${p.leverage}x</span>
-                        </div>
-                        <div class="text-right">
-                            <div class="font-bold ${pnlClass}">${pnlSign}$${(p.pnl_usdt || 0).toFixed(2)}</div>
-                            <div class="text-xs text-dim">${pnlSign}${(p.pnl_percent || 0).toFixed(2)}%</div>
-                        </div>
-                        <button class="btn btn-danger btn-sm ml-3" onclick="event.stopPropagation(); closePosition('${p.symbol}')">
-                            <i class="fa-solid fa-times"></i>
-                        </button>
-                        <div class="position-details w-full mt-2">
-                            <div class="grid grid-cols-2 gap-2 text-sm">
-                                <div><span class="text-dim">Entry:</span> $${p.entry_price}</div>
-                                <div><span class="text-dim">Mark:</span> $${p.mark_price}</div>
-                                <div><span class="text-dim">SL:</span> ${p.sl_price || '-'}</div>
-                                <div><span class="text-dim">TP:</span> ${p.tp_price || '-'}</div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-
-            totalPnl.textContent = (total >= 0 ? '+' : '') + '$' + total.toFixed(2);
-            totalPnl.className = total >= 0 ? 'font-bold pnl-positive' : 'font-bold pnl-negative';
         }
 
         function updateAgentStats(agent, stats) {
@@ -1370,12 +1327,86 @@
             }
         }
 
-        // Fast updates: positions, PnL, autopilot status
-        async function fastUpdate() {
-            // Positions
-            const positions = await fetchData('/positions');
-            updatePositions(positions);
+        // Store previous PnL values for change detection
+        let prevPnlValues = {};
+        let prevBalance = 0;
 
+        // Realtime updates: balance and positions every 3 seconds
+        async function realtimeUpdate() {
+            const data = await fetchData('/realtime');
+            if (!data) return;
+
+            // Update balance with change animation
+            const balanceEl = document.getElementById('balanceValue');
+            const newBalance = data.balance || 0;
+            if (prevBalance !== newBalance && prevBalance !== 0) {
+                balanceEl.classList.add('value-changed');
+                setTimeout(() => balanceEl.classList.remove('value-changed'), 500);
+            }
+            balanceEl.textContent = newBalance.toFixed(2);
+            document.getElementById('modalBalance').textContent = newBalance.toFixed(2);
+            prevBalance = newBalance;
+
+            // Update positions with PnL change detection
+            updateRealtimePositions(data);
+        }
+
+        function updateRealtimePositions(data) {
+            const list = document.getElementById('positionsList');
+            const count = document.getElementById('positionsCount');
+            const totalPnlEl = document.getElementById('totalPnl');
+
+            if (!data || !data.positions || data.positions.length === 0) {
+                list.innerHTML = `<div class="text-dim text-sm text-center py-4">${t('no_positions')}</div>`;
+                count.textContent = '0';
+                totalPnlEl.textContent = '$0.00';
+                totalPnlEl.className = 'font-bold';
+                prevPnlValues = {};
+                return;
+            }
+
+            count.textContent = data.positions.length;
+
+            list.innerHTML = data.positions.map(p => {
+                const pnl = p.pnl_usdt || 0;
+                const pnlClass = pnl >= 0 ? 'pnl-positive' : 'pnl-negative';
+                const pnlSign = pnl >= 0 ? '+' : '';
+
+                // Detect PnL change
+                const prevPnl = prevPnlValues[p.symbol] || 0;
+                const changed = Math.abs(pnl - prevPnl) > 0.0001;
+                const changeClass = changed ? 'pnl-flash' : '';
+                prevPnlValues[p.symbol] = pnl;
+
+                const ccxtSymbol = p.symbol.replace("USDT", "/USDT");
+
+                return `
+                    <div class="position-row">
+                        <div class="flex-1 flex items-center gap-3">
+                            <i class="fa-solid fa-chart-line text-dim text-sm"></i>
+                            <span class="font-semibold">${ccxtSymbol}</span>
+                            <span class="badge ${p.side === 'LONG' ? 'badge-green' : 'badge-red'}">${p.side}</span>
+                            <span class="badge badge-gray">${p.leverage}x</span>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-bold ${pnlClass} ${changeClass}" data-pnl="${p.symbol}">${pnlSign}$${pnl.toFixed(4)}</div>
+                            <div class="text-xs text-dim">${pnlSign}${(p.pnl_percent || 0).toFixed(2)}%</div>
+                        </div>
+                        <button class="btn btn-danger btn-sm ml-3" onclick="closePosition('${p.symbol}')">
+                            <i class="fa-solid fa-times"></i>
+                        </button>
+                    </div>
+                `;
+            }).join('');
+
+            // Update total PnL
+            const total = data.total_pnl || 0;
+            totalPnlEl.textContent = (total >= 0 ? '+' : '') + '$' + total.toFixed(4);
+            totalPnlEl.className = total >= 0 ? 'font-bold pnl-positive' : 'font-bold pnl-negative';
+        }
+
+        // Medium updates: autopilot status, activity feed every 10 seconds
+        async function fastUpdate() {
             // Autopilot status
             await updateAutopilotStatus();
 
@@ -1455,8 +1486,12 @@
             applyLanguage();
             loadDashboardData();
             loadActivityFeed('trader');
+            realtimeUpdate(); // Initial realtime load
 
-            // Fast refresh every 10 seconds (positions, PnL, feed)
+            // Realtime refresh every 3 seconds (balance, positions, PnL)
+            setInterval(realtimeUpdate, 3000);
+
+            // Medium refresh every 10 seconds (autopilot status, activity feed)
             setInterval(fastUpdate, 10000);
 
             // Full refresh every 30 seconds (stats, API usage, learning)

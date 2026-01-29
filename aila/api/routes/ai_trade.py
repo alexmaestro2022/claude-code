@@ -1206,6 +1206,66 @@ async def get_positions():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/realtime")
+async def get_realtime_data():
+    """Get realtime balance and positions from exchange.
+
+    Lightweight endpoint for frequent polling (2-3 sec).
+    Returns only essential data: balance and positions with PnL.
+    """
+    try:
+        orch = await get_orchestrator()
+        exchange = orch.exchange
+
+        # Get balance directly from exchange
+        balance = await exchange.get_balance("USDT")
+
+        # Get positions from exchange (fast, no extra queries)
+        raw_positions = await exchange.get_positions()
+
+        positions = []
+        total_pnl = 0.0
+
+        for pos in raw_positions:
+            symbol = pos["symbol"]
+            entry_price = pos.get("entry_price", 0)
+            mark_price = pos.get("mark_price", 0)
+            pnl_usdt = pos.get("pnl", 0)
+            size = pos.get("size", 0)
+
+            # Calculate PnL percent
+            if entry_price > 0:
+                if pos["side"] == "Buy":
+                    pnl_percent = ((mark_price - entry_price) / entry_price) * 100
+                else:
+                    pnl_percent = ((entry_price - mark_price) / entry_price) * 100
+            else:
+                pnl_percent = 0
+
+            total_pnl += pnl_usdt
+
+            positions.append({
+                "symbol": symbol,
+                "side": "LONG" if pos["side"] == "Buy" else "SHORT",
+                "size": size,
+                "entry_price": entry_price,
+                "mark_price": mark_price,
+                "pnl_usdt": round(pnl_usdt, 4),
+                "pnl_percent": round(pnl_percent, 2),
+                "leverage": pos.get("leverage", "1"),
+            })
+
+        return {
+            "balance": round(balance, 4),
+            "positions": positions,
+            "total_pnl": round(total_pnl, 4),
+            "position_count": len(positions),
+            "timestamp": datetime.utcnow().isoformat(),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/positions/{symbol}/close")
 async def close_position(symbol: str):
     """Close a position manually."""
