@@ -2545,9 +2545,11 @@ DELETE /api/admin/knowledge/{fn} — удалить файл
 
 ### Важно — subprocess env:
 - Claude CLI авторизован через **OAuth подписку Max** (не API ключ!)
-- `_get_claude_env()` копирует `os.environ`, **удаляет** `ANTHROPIC_API_KEY` и проверяет PATH + HOME
+- `_get_claude_env()`: удаляет `ANTHROPIC_API_KEY`, ставит `HOME=/opt/aila`, добавляет `/usr/local/bin` в PATH
 - Если передать `ANTHROPIC_API_KEY` → claude использует платное API вместо подписки
-- OAuth credentials: `~/.claude/.credentials.json` (`subscriptionType: "max"`, `rateLimitTier: "default_claude_max_20x"`)
+- OAuth credentials: `/opt/aila/.claude/.credentials.json` (скопированы из `/home/aila/.claude/`)
+- **Причина:** systemd `ProtectHome=true` блокирует `/home/aila/` для сервиса, поэтому credentials в `/opt/aila/.claude/`
+- При обновлении credentials надо копировать: `cp ~/.claude/.credentials.json /opt/aila/.claude/`
 
 ---
 
