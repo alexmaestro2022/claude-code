@@ -2552,6 +2552,8 @@ DELETE /api/admin/knowledge/{fn} — удалить файл
 - При обновлении credentials надо копировать: `cp ~/.claude/.credentials.json /opt/aila/.claude/`
 - **Разделение историй:** Chat сохраняет сессии (`cwd=claude_chat/`), Code использует `--no-session-persistence`
 - Claude CLI автоматически разделяет проекты: `.claude/projects/-opt-aila-claude-chat/` и `.claude/projects/-opt-aila/`
+- **Subscription usage:** `GET /api/admin/subscription-usage` — тип подписки, статистика, локальный счётчик
+- Stats sync: cron `*/5 * * * *` копирует `~/.claude/stats-cache.json` → `/opt/aila/.claude/`
 
 ---
 
