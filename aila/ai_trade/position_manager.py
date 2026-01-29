@@ -95,7 +95,8 @@ class PositionManager:
             self._open_positions[symbol] = position
 
             # Track in bot positions for sync monitoring
-            source = signal.get("source", "TRADER")
+            # Check both "source_agent" (from autopilot) and "source" (legacy)
+            source = signal.get("source_agent") or signal.get("source", "TRADER")
             self._add_bot_position(symbol, {
                 "symbol": symbol,
                 "side": direction,
