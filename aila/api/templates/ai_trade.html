@@ -499,34 +499,95 @@
 
         <!-- CLAUDE API TAB CONTENT -->
         <div class="tab-content" id="tab-api">
-            <div class="mini-cards mb-4">
-                <div class="mini-card">
-                    <div class="mini-card-title"><i class="fa-solid fa-coins mr-1"></i> <span data-i18n="today_cost">Today</span></div>
-                    <div class="mini-card-value">$<span id="apiCostToday">0.00</span></div>
-                    <div class="mini-card-sub"><span id="apiCallsToday">0</span> calls</div>
+            <!-- Header with settings icon -->
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold"><i class="fa-solid fa-robot mr-2 text-dim"></i> Claude API</h2>
+                <button class="btn btn-ghost btn-sm" onclick="openModal('apiSettingsModal')">
+                    <i class="fa-solid fa-cog"></i>
+                </button>
+            </div>
+
+            <!-- Budget Cards with Progress Bars -->
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <!-- Daily Usage -->
+                <div class="card p-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-dim text-sm">Сегодня</span>
+                        <span class="text-xs text-dim" id="apiDailyPct">0%</span>
+                    </div>
+                    <div class="text-xl font-bold mb-1">
+                        $<span id="apiCostToday">0.00</span>
+                        <span class="text-dim text-sm">/ $<span id="apiDailyLimit">0</span></span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="apiDailyBar" style="width: 0%"></div>
+                    </div>
+                    <div class="text-xs text-dim mt-2">
+                        <span id="apiCallsToday">0</span> вызовов &bull;
+                        S:<span id="apiSonnetToday">0</span> / H:<span id="apiHaikuToday">0</span>
+                    </div>
                 </div>
-                <div class="mini-card">
-                    <div class="mini-card-title"><i class="fa-solid fa-database mr-1"></i> Tokens In</div>
-                    <div class="mini-card-value" id="apiTokensIn">0</div>
-                    <div class="mini-card-sub" data-i18n="input_tokens">input tokens</div>
-                </div>
-                <div class="mini-card">
-                    <div class="mini-card-title"><i class="fa-solid fa-file-export mr-1"></i> Tokens Out</div>
-                    <div class="mini-card-value" id="apiTokensOut">0</div>
-                    <div class="mini-card-sub" data-i18n="output_tokens">output tokens</div>
-                </div>
-                <div class="mini-card">
-                    <div class="mini-card-title"><i class="fa-solid fa-piggy-bank mr-1"></i> <span data-i18n="savings">Savings</span></div>
-                    <div class="mini-card-value accent" id="apiSavings">0%</div>
-                    <div class="mini-card-sub" data-i18n="cascade_savings">cascade savings</div>
+
+                <!-- Total Usage -->
+                <div class="card p-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-dim text-sm">Общий расход</span>
+                        <span class="text-xs text-dim" id="apiTotalPct">0%</span>
+                    </div>
+                    <div class="text-xl font-bold mb-1">
+                        $<span id="apiCostTotal">0.00</span>
+                        <span class="text-dim text-sm">/ $<span id="apiTotalLimit">0</span></span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="apiTotalBar" style="width: 0%"></div>
+                    </div>
+                    <div class="text-xs text-dim mt-2">
+                        Остаток: <span class="accent">$<span id="apiRemaining">0.00</span></span>
+                    </div>
                 </div>
             </div>
 
-            <!-- API Usage Details -->
+            <!-- Token Stats -->
+            <div class="mini-cards mb-4">
+                <div class="mini-card">
+                    <div class="mini-card-title"><i class="fa-solid fa-download mr-1"></i> Tokens In</div>
+                    <div class="mini-card-value" id="apiTokensIn">0</div>
+                    <div class="mini-card-sub">входных</div>
+                </div>
+                <div class="mini-card">
+                    <div class="mini-card-title"><i class="fa-solid fa-upload mr-1"></i> Tokens Out</div>
+                    <div class="mini-card-value" id="apiTokensOut">0</div>
+                    <div class="mini-card-sub">выходных</div>
+                </div>
+                <div class="mini-card">
+                    <div class="mini-card-title"><i class="fa-solid fa-piggy-bank mr-1"></i> Экономия</div>
+                    <div class="mini-card-value accent" id="apiSavings">0%</div>
+                    <div class="mini-card-sub">каскад</div>
+                </div>
+                <div class="mini-card">
+                    <div class="mini-card-title"><i class="fa-solid fa-calendar mr-1"></i> Сброс</div>
+                    <div class="mini-card-value text-base" id="apiLastReset">-</div>
+                    <div class="mini-card-sub">последний</div>
+                </div>
+            </div>
+
+            <!-- API Usage by Agent -->
             <div class="card p-4">
-                <h3 class="font-semibold mb-4"><i class="fa-solid fa-chart-bar mr-2 text-dim"></i> <span data-i18n="usage_by_agent">Usage by Agent</span></h3>
-                <div id="apiUsageList" class="space-y-3">
-                    <div class="text-dim text-sm text-center py-4">Loading...</div>
+                <h3 class="font-semibold mb-3"><i class="fa-solid fa-chart-bar mr-2 text-dim"></i> Топ потребителей</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-dim text-left">
+                                <th class="pb-2">Агент</th>
+                                <th class="pb-2 text-center">Вызовов</th>
+                                <th class="pb-2 text-right">Стоимость</th>
+                                <th class="pb-2 text-right">%</th>
+                            </tr>
+                        </thead>
+                        <tbody id="apiUsageList">
+                            <tr><td colspan="4" class="text-dim text-center py-4">Loading...</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -688,6 +749,75 @@
         </div>
     </div>
 
+    <!-- API Settings Modal -->
+    <div class="modal-overlay" id="apiSettingsModal" onclick="closeModalOnOverlay(event)">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="font-semibold"><i class="fa-solid fa-cog mr-2"></i> Настройки API</h3>
+                <button class="modal-close" onclick="closeModal('apiSettingsModal')"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <!-- Initial Balance -->
+                <div class="mb-4">
+                    <label class="text-dim text-sm block mb-1">Начальный баланс</label>
+                    <div class="flex gap-2">
+                        <input type="number" id="apiInitialBalance" step="0.01"
+                            class="flex-1 bg-black/30 border border-white/10 rounded px-3 py-2 text-white"
+                            placeholder="17.07">
+                        <button class="btn btn-ghost btn-sm" onclick="resetApiBalance()">
+                            <i class="fa-solid fa-rotate"></i> Сброс
+                        </button>
+                    </div>
+                    <div class="text-xs text-dim mt-1">Текущий накопленный расход: $<span id="apiAccumulatedCost">0.00</span></div>
+                </div>
+
+                <!-- Use Budget Limit Toggle -->
+                <div class="flex items-center justify-between p-3 bg-black/30 rounded mb-4">
+                    <div>
+                        <div class="font-semibold">Использовать лимит</div>
+                        <div class="text-xs text-dim">Остановить вызовы при достижении лимита</div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="apiUseBudgetLimit" class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                    </label>
+                </div>
+
+                <!-- Limits -->
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="text-dim text-sm block mb-1">Дневной лимит ($)</label>
+                        <input type="number" id="apiDailyLimitInput" step="0.5" min="0.5"
+                            class="w-full bg-black/30 border border-white/10 rounded px-3 py-2 text-white"
+                            placeholder="6.00">
+                    </div>
+                    <div>
+                        <label class="text-dim text-sm block mb-1">Общий лимит ($)</label>
+                        <input type="number" id="apiTotalLimitInput" step="1" min="1"
+                            class="w-full bg-black/30 border border-white/10 rounded px-3 py-2 text-white"
+                            placeholder="17.07">
+                    </div>
+                </div>
+
+                <!-- Info -->
+                <div class="p-3 bg-blue-500/10 border border-blue-500/30 rounded mb-4 text-sm">
+                    <i class="fa-solid fa-info-circle mr-1"></i>
+                    При сбросе баланса накопленный расход обнуляется
+                </div>
+
+                <!-- Buttons -->
+                <div class="flex gap-2">
+                    <button class="btn btn-primary flex-1" onclick="saveApiSettings()">
+                        <i class="fa-solid fa-save mr-1"></i> Сохранить
+                    </button>
+                    <button class="btn btn-ghost" onclick="resetApiSettingsToDefault()">
+                        <i class="fa-solid fa-undo mr-1"></i> По умолчанию
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API_BASE = '/api/ai-trade';
         let currentTab = 'trader';
@@ -810,6 +940,7 @@
             if (modalId === 'scanModal') loadScanData();
             if (modalId === 'historyModal') loadHistoryData(currentModalAgent);
             if (modalId === 'learningModal') loadLearningData(currentModalAgent);
+            if (modalId === 'apiSettingsModal') loadApiSettings();
         }
 
         function closeModal(modalId) {
@@ -877,10 +1008,27 @@
             const apiUsage = await fetchData('/api-usage');
             if (apiUsage) {
                 const today = apiUsage.today || {};
+                const budget = apiUsage.budget || {};
                 const todayAgents = today.agents || {};
 
-                document.getElementById('apiCostToday').textContent = (today.cost_usd || 0).toFixed(4);
+                // Daily cost and limits
+                document.getElementById('apiCostToday').textContent = (today.cost_usd || 0).toFixed(2);
+                document.getElementById('apiDailyLimit').textContent = (budget.daily_limit || 0).toFixed(0);
+                document.getElementById('apiDailyPct').textContent = (budget.daily_pct || 0).toFixed(1) + '%';
+                document.getElementById('apiDailyBar').style.width = Math.min(budget.daily_pct || 0, 100) + '%';
                 document.getElementById('apiCallsToday').textContent = today.total_calls || 0;
+
+                // Model breakdown
+                const todayCalls = today.calls || {};
+                document.getElementById('apiSonnetToday').textContent = todayCalls.sonnet || 0;
+                document.getElementById('apiHaikuToday').textContent = todayCalls.haiku || 0;
+
+                // Total cost and limits
+                document.getElementById('apiCostTotal').textContent = (budget.accumulated_cost || 0).toFixed(2);
+                document.getElementById('apiTotalLimit').textContent = (budget.total_limit || 0).toFixed(0);
+                document.getElementById('apiTotalPct').textContent = (budget.total_pct || 0).toFixed(1) + '%';
+                document.getElementById('apiTotalBar').style.width = Math.min(budget.total_pct || 0, 100) + '%';
+                document.getElementById('apiRemaining').textContent = (budget.remaining_balance || 0).toFixed(2);
 
                 // Calculate total tokens from agents
                 let tokensIn = 0, tokensOut = 0;
@@ -891,24 +1039,28 @@
                 document.getElementById('apiTokensIn').textContent = formatNumber(tokensIn);
                 document.getElementById('apiTokensOut').textContent = formatNumber(tokensOut);
 
-                // Populate agent usage list
+                // Last reset date
+                if (budget.last_reset_date) {
+                    const resetDate = new Date(budget.last_reset_date);
+                    document.getElementById('apiLastReset').textContent = resetDate.toLocaleDateString('ru-RU', {
+                        day: '2-digit', month: '2-digit', year: 'numeric'
+                    });
+                }
+
+                // Populate agent usage table
                 const agentList = document.getElementById('apiUsageList');
                 const topConsumers = apiUsage.today_top_consumers || [];
                 if (topConsumers.length > 0) {
                     agentList.innerHTML = topConsumers.map(a => `
-                        <div class="flex justify-between items-center p-2 bg-black/20 rounded">
-                            <div>
-                                <span class="font-semibold">${a.agent}</span>
-                                <span class="text-dim text-xs ml-2">${a.calls} calls</span>
-                            </div>
-                            <div class="text-right">
-                                <span class="font-bold">$${a.cost.toFixed(4)}</span>
-                                <span class="text-dim text-xs ml-1">(${a.pct_of_today.toFixed(1)}%)</span>
-                            </div>
-                        </div>
+                        <tr class="border-t border-white/5">
+                            <td class="py-2 font-semibold">${a.agent}</td>
+                            <td class="py-2 text-center">${a.calls}</td>
+                            <td class="py-2 text-right">$${a.cost.toFixed(4)}</td>
+                            <td class="py-2 text-right text-dim">${a.pct_of_today.toFixed(1)}%</td>
+                        </tr>
                     `).join('');
                 } else {
-                    agentList.innerHTML = '<div class="text-dim text-sm text-center py-4">No API calls today</div>';
+                    agentList.innerHTML = '<tr><td colspan="4" class="text-dim text-center py-4">Нет вызовов сегодня</td></tr>';
                 }
             }
 
@@ -1231,6 +1383,71 @@
             if (currentTab === 'trader' || currentTab === 'sniper') {
                 loadActivityFeed(currentTab);
             }
+        }
+
+        // API Settings functions
+        async function loadApiSettings() {
+            const data = await fetchData('/api-usage/settings');
+            if (!data) return;
+
+            document.getElementById('apiInitialBalance').value = data.initial_balance || 17.07;
+            document.getElementById('apiAccumulatedCost').textContent = (data.accumulated_cost || 0).toFixed(2);
+            document.getElementById('apiUseBudgetLimit').checked = data.use_budget_limit !== false;
+            document.getElementById('apiDailyLimitInput').value = data.daily_limit || 6.0;
+            document.getElementById('apiTotalLimitInput').value = data.total_limit || 17.07;
+        }
+
+        async function saveApiSettings() {
+            const useBudgetLimit = document.getElementById('apiUseBudgetLimit').checked;
+            const dailyLimit = parseFloat(document.getElementById('apiDailyLimitInput').value) || 6.0;
+            const totalLimit = parseFloat(document.getElementById('apiTotalLimitInput').value) || 17.07;
+
+            // Use PUT with query params
+            const params = new URLSearchParams({
+                use_budget_limit: useBudgetLimit,
+                daily_limit: dailyLimit,
+                total_limit: totalLimit
+            });
+
+            try {
+                const res = await fetch(`${API_BASE}/api-usage/settings?${params}`, { method: 'PUT' });
+                const result = await res.json();
+                if (result && result.success) {
+                    closeModal('apiSettingsModal');
+                    loadDashboardData();
+                    alert('Настройки сохранены');
+                } else {
+                    alert('Ошибка сохранения: ' + (result?.error || 'Unknown error'));
+                }
+            } catch (e) {
+                alert('Ошибка: ' + e.message);
+            }
+        }
+
+        async function resetApiBalance() {
+            if (!confirm('Сбросить накопленный расход? Это обнулит историю затрат.')) return;
+
+            const initialBalance = parseFloat(document.getElementById('apiInitialBalance').value) || 17.07;
+            try {
+                const res = await fetch(`${API_BASE}/api-usage/reset?initial_balance=${initialBalance}`, { method: 'POST' });
+                const result = await res.json();
+                if (result && result.success) {
+                    loadApiSettings();
+                    loadDashboardData();
+                    alert('Баланс сброшен');
+                } else {
+                    alert('Ошибка сброса: ' + (result?.error || 'Unknown error'));
+                }
+            } catch (e) {
+                alert('Ошибка: ' + e.message);
+            }
+        }
+
+        async function resetApiSettingsToDefault() {
+            document.getElementById('apiInitialBalance').value = 17.07;
+            document.getElementById('apiUseBudgetLimit').checked = true;
+            document.getElementById('apiDailyLimitInput').value = 6.0;
+            document.getElementById('apiTotalLimitInput').value = 17.07;
         }
 
         // Initialize
