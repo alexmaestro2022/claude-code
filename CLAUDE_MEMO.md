@@ -2550,6 +2550,8 @@ DELETE /api/admin/knowledge/{fn} — удалить файл
 - OAuth credentials: `/opt/aila/.claude/.credentials.json` (скопированы из `/home/aila/.claude/`)
 - **Причина:** systemd `ProtectHome=true` блокирует `/home/aila/` для сервиса, поэтому credentials в `/opt/aila/.claude/`
 - При обновлении credentials надо копировать: `cp ~/.claude/.credentials.json /opt/aila/.claude/`
+- **Разделение историй:** Chat сохраняет сессии (`cwd=claude_chat/`), Code использует `--no-session-persistence`
+- Claude CLI автоматически разделяет проекты: `.claude/projects/-opt-aila-claude-chat/` и `.claude/projects/-opt-aila/`
 
 ---
 
