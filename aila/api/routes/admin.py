@@ -455,7 +455,7 @@ async def execute_code(request: Request):
         _audit_log("admin", "EXECUTE", command)
 
         try:
-            cmd = ["claude", "--print"]
+            cmd = ["claude", "--print", "--no-session-persistence"]
             if auto_mode:
                 cmd.append("--dangerously-skip-permissions")
             cmd.append(command)
@@ -953,7 +953,7 @@ async def _process_queue() -> None:
             claude_env = _get_claude_env()
             result = await asyncio.to_thread(
                 subprocess.run,
-                ["claude", "--print", "--dangerously-skip-permissions", task["command"]],
+                ["claude", "--print", "--no-session-persistence", "--dangerously-skip-permissions", task["command"]],
                 cwd="/opt/aila",
                 capture_output=True,
                 text=True,
