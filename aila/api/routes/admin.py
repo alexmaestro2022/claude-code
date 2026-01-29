@@ -82,6 +82,20 @@ MAX_ATTEMPTS = 5
 BLOCK_DURATION = 600  # 10 minutes
 ALLOWED_EXTENSIONS = {".txt", ".md", ".json", ".py"}
 MAX_FILE_SIZE = 1_000_000  # 1MB
+RATE_LIMIT_COOLDOWN = 120  # 2 min pause for scheduled tasks on rate limit
+
+# Rate limit detection patterns
+RATE_LIMIT_PATTERNS = [
+    "rate limit",
+    "rate_limit",
+    "too many requests",
+    "429",
+    "quota exceeded",
+    "limit exceeded",
+    "try again later",
+    "overloaded",
+    "capacity",
+]
 
 
 # =============================================
@@ -168,6 +182,72 @@ def _get_client_ip(request: Request) -> str:
     if forwarded:
         return forwarded.split(",")[0].strip()
     return request.client.host if request.client else "unknown"
+
+
+# =============================================
+# Rate limit detection
+# =============================================
+
+def _is_rate_limit_error(output: str) -> bool:
+    """Check if Claude output indicates a rate limit error."""
+    if not output:
+        return False
+    output_lower = output.lower()
+    return any(p in output_lower for p in RATE_LIMIT_PATTERNS)
+
+
+def _extract_retry_after(output: str) -> int:
+    """Try to extract retry-after seconds from error message."""
+    import re
+    # Match patterns like "try again in 60 seconds" or "retry after 30s"
+    match = re.search(r"(?:in|after)\s+(\d+)\s*(?:s|sec|seconds)", output.lower())
+    if match:
+        return int(match.group(1))
+    return 60  # default cooldown
+
+
+async def _handle_rate_limit(source: str, error_msg: str) -> dict:
+    """Handle rate limit: log, notify, update stats, return error dict."""
+    now = datetime.now()
+    retry_after = _extract_retry_after(error_msg)
+
+    logger.warning(f"[ADMIN] Rate limit reached from {source}: {error_msg[:200]}")
+    _audit_log("admin", "RATE_LIMIT", source, error_msg[:200])
+
+    # Update rate limit stats in admin_stats.json
+    stats = _load_admin_stats()
+    rl = stats.get("rate_limits", {
+        "last_hit": None,
+        "last_hit_time": None,
+        "hits_today": 0,
+        "hits_total": 0,
+    })
+    rl["last_hit"] = now.isoformat()
+    rl["last_hit_time"] = now.strftime("%H:%M:%S")
+    rl["hits_today"] = rl.get("hits_today", 0) + 1
+    rl["hits_total"] = rl.get("hits_total", 0) + 1
+    stats["rate_limits"] = rl
+    _save_json(ADMIN_STATS_FILE, stats)
+
+    # Send Telegram notification
+    admin_stats = _load_admin_stats()
+    total_today = admin_stats.get("total_requests", 0)
+    await _send_telegram(
+        f"⚠️ <b>Достигнут лимит скорости!</b>\n"
+        f"⏱ Время: {now.strftime('%H:%M:%S')}\n"
+        f"📊 Запросов сегодня: {total_today}\n"
+        f"💬 Сообщение: «{error_msg[:150]}»\n"
+        f"💡 Рекомендация: подождите {retry_after} сек перед следующим запросом."
+    )
+
+    return {
+        "error": True,
+        "error_type": "rate_limit",
+        "message": f"Достигнут лимит запросов. Подождите {retry_after} сек.",
+        "message_en": f"Rate limit reached. Wait {retry_after}s.",
+        "retry_after": retry_after,
+        "timestamp": now.isoformat(),
+    }
 
 
 # =============================================
@@ -370,6 +450,13 @@ async def chat_message(request: Request):
         response = result.stdout.strip() if result.stdout else ""
         stderr = result.stderr.strip() if result.stderr else ""
 
+        # Check for rate limit in stdout or stderr
+        combined = f"{response} {stderr}"
+        if _is_rate_limit_error(combined):
+            rl_result = await _handle_rate_limit("chat", combined[:300])
+            _increment_admin_stats("chat")
+            return rl_result
+
         if not response and stderr:
             response = f"Ошибка Claude: {stderr[:500]}"
             logger.error(f"[ADMIN_CHAT] stderr: {stderr[:300]}")
@@ -477,6 +564,13 @@ async def execute_code(request: Request):
 
             output = result.stdout.strip() if result.stdout else ""
             error = result.stderr.strip() if result.stderr else ""
+
+            # Check for rate limit
+            combined = f"{output} {error}"
+            if _is_rate_limit_error(combined):
+                rl_result = await _handle_rate_limit("code", combined[:300])
+                _increment_admin_stats("code")
+                return rl_result
 
             if not output and error:
                 logger.error(f"[ADMIN_CODE] stderr: {error[:300]}")
@@ -843,7 +937,20 @@ def _load_admin_stats() -> dict:
         stats = {}
     today = datetime.now().strftime("%Y-%m-%d")
     if stats.get("date") != today:
-        stats = {"date": today, "chat_requests": 0, "code_requests": 0, "total_requests": 0}
+        # Preserve total rate limit hits across days
+        old_total_rl = stats.get("rate_limits", {}).get("hits_total", 0)
+        stats = {
+            "date": today,
+            "chat_requests": 0,
+            "code_requests": 0,
+            "total_requests": 0,
+            "rate_limits": {
+                "last_hit": stats.get("rate_limits", {}).get("last_hit"),
+                "last_hit_time": None,
+                "hits_today": 0,
+                "hits_total": old_total_rl,
+            },
+        }
     return stats
 
 
@@ -945,6 +1052,15 @@ async def get_subscription_usage(request: Request):
         "chat_requests": admin_stats.get("chat_requests", 0),
         "code_requests": admin_stats.get("code_requests", 0),
         "total_requests": admin_stats.get("total_requests", 0),
+    }
+
+    # Rate limit stats
+    rl = admin_stats.get("rate_limits", {})
+    result["rate_limits"] = {
+        "last_hit": rl.get("last_hit"),
+        "last_hit_time": rl.get("last_hit_time"),
+        "hits_today": rl.get("hits_today", 0),
+        "hits_total": rl.get("hits_total", 0),
     }
 
     return result
@@ -1089,6 +1205,31 @@ async def _process_queue() -> None:
             )
             output = result.stdout.strip() if result.stdout else ""
             stderr = result.stderr.strip() if result.stderr else ""
+            combined = f"{output} {stderr}"
+
+            # Check for rate limit in scheduled task output
+            if _is_rate_limit_error(combined):
+                await _handle_rate_limit("scheduled", combined[:300])
+                # Postpone task by RATE_LIMIT_COOLDOWN seconds
+                scheduled = _load_json(DATA_DIR / "scheduled.json", [])
+                if isinstance(scheduled, list):
+                    for t in scheduled:
+                        if t["id"] == task["id"]:
+                            t["next_run"] = time.time() + RATE_LIMIT_COOLDOWN
+                            t["last_run"] = datetime.now().isoformat()
+                            t["last_result"] = "rate_limited"
+                            break
+                    _save_json(DATA_DIR / "scheduled.json", scheduled)
+                logger.warning(
+                    f"[SCHEDULER] Rate limit for task '{task['name']}', "
+                    f"postponed {RATE_LIMIT_COOLDOWN}s"
+                )
+                _audit_log(
+                    "scheduler", "RATE_LIMIT_PAUSE",
+                    task["name"], f"postponed {RATE_LIMIT_COOLDOWN}s"
+                )
+                return
+
             output = output or stderr or "No output"
             success = result.returncode == 0
         except Exception as e:

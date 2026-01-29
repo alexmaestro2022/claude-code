@@ -2552,8 +2552,18 @@ DELETE /api/admin/knowledge/{fn} — удалить файл
 - При обновлении credentials надо копировать: `cp ~/.claude/.credentials.json /opt/aila/.claude/`
 - **Разделение историй:** Chat сохраняет сессии (`cwd=claude_chat/`), Code использует `--no-session-persistence`
 - Claude CLI автоматически разделяет проекты: `.claude/projects/-opt-aila-claude-chat/` и `.claude/projects/-opt-aila/`
-- **Subscription usage:** `GET /api/admin/subscription-usage` — тип подписки, статистика, локальный счётчик
+- **Subscription usage:** `GET /api/admin/subscription-usage` — тип подписки, статистика, локальный счётчик, rate limit stats
 - Stats sync: cron `*/5 * * * *` копирует `~/.claude/stats-cache.json` → `/opt/aila/.claude/`
+
+### Rate limit обработка:
+- `RATE_LIMIT_PATTERNS` — паттерны для обнаружения rate limit в stdout/stderr Claude CLI
+- `_is_rate_limit_error(output)` — проверка наличия паттерна
+- `_handle_rate_limit(source, error_msg)` — логирование + telegram + обновление stats + возврат error dict
+- При rate limit в Chat/Code — возвращает `{"error": true, "error_type": "rate_limit", "retry_after": N}`
+- При rate limit в Scheduled tasks — задача откладывается на 120 сек, статус `rate_limited`
+- UI: блокировка кнопки отправки с обратным отсчётом, предупреждение в виджете подписки
+- Stats: `admin_stats.json` → `rate_limits.hits_today`, `rate_limits.hits_total`, `rate_limits.last_hit`
+- Модалка Usage: секция Rate Limits (сегодня, всё время, последний, статус OK/Warning)
 
 ---
 
@@ -2567,6 +2577,6 @@ DELETE /api/admin/knowledge/{fn} — удалить файл
 
 ---
 
-**Последнее обновление:** 2026-01-29 (feat: add localization to admin panel)
+**Последнее обновление:** 2026-01-29 (feat: add rate limit detection and notifications)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`

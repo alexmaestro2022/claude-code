@@ -966,6 +966,32 @@
                 </div>
             </div>
 
+            <!-- Rate limit section -->
+            <div id="rateLimitSection" style="margin-bottom:16px;padding:12px;border-radius:10px;border:1px solid var(--border);display:none;">
+                <div style="font-size:0.8rem;font-weight:600;margin-bottom:8px;">
+                    <i class="fa-solid fa-gauge-high" style="margin-right:4px;"></i>
+                    <span data-i18n="rate_limit_section">Rate Limits</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:4px;font-size:0.8rem;">
+                    <div style="display:flex;justify-content:space-between;">
+                        <span data-i18n="rate_limit_today">Today</span>
+                        <span id="rlTodayCount" style="font-weight:600;">0</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;">
+                        <span data-i18n="rate_limit_total">All time</span>
+                        <span id="rlTotalCount" style="font-weight:600;">0</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;">
+                        <span data-i18n="rate_limit_last">Last hit</span>
+                        <span id="rlLastHit" style="color:var(--text-secondary);">-</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;margin-top:4px;">
+                        <span data-i18n="rate_limit_status">Status</span>
+                        <span id="rlStatus"></span>
+                    </div>
+                </div>
+            </div>
+
             <!-- Daily activity (last 7 days) -->
             <div style="font-size:0.8rem;font-weight:600;margin-bottom:8px;" data-i18n="last_7_days">Last 7 days</div>
             <div id="usageDailyList"></div>
@@ -985,6 +1011,8 @@ let commands = [];
 let scheduledTasks = [];
 let autoSettings = JSON.parse(localStorage.getItem('admin_auto_settings') || '{}');
 let scheduledTimer = null;
+let rateLimitCooldown = 0;  // seconds remaining
+let rateLimitTimer = null;
 
 // i18n — synced with ai_trade.html via localStorage('language')
 const translations = {
@@ -1081,6 +1109,19 @@ const translations = {
         resume: 'Возобновить',
         pause: 'Пауза',
         run_now: 'Запустить',
+        // Rate limit
+        rate_limit_title: 'Лимит запросов',
+        rate_limit_wait: 'Лимит запросов. Подождите',
+        rate_limit_sec: 'сек',
+        rate_limit_section: 'Лимит запросов',
+        rate_limit_today: 'Сегодня',
+        rate_limit_total: 'За всё время',
+        rate_limit_last: 'Последний',
+        rate_limit_status: 'Статус',
+        rate_limit_ok: 'В порядке',
+        rate_limit_warning: 'Были ограничения',
+        rate_limit_times: 'раз',
+        rate_limit_at: 'в',
     },
     en: {}  // Falls back to HTML defaults (English)
 };
@@ -1581,10 +1622,46 @@ function formatResponse(text) {
     return { html, hasCommand, command };
 }
 
+function handleRateLimitResponse(data) {
+    const retryAfter = data.retry_after || 60;
+    const msg = (localStorage.getItem('language') || 'ru') === 'ru'
+        ? data.message
+        : (data.message_en || data.message);
+
+    setWorking(false);
+    setStatus('error', t('rate_limit_title'));
+    addMessage('system', `⚠️ ${msg}`);
+    startRateLimitCooldown(retryAfter);
+    loadUsage();  // refresh rate limit stats in widget
+}
+
+function startRateLimitCooldown(seconds) {
+    rateLimitCooldown = seconds;
+    const sendBtn = document.getElementById('sendBtn');
+    const input = document.getElementById('chatInput');
+    sendBtn.disabled = true;
+    input.disabled = true;
+
+    // Show countdown on button
+    if (rateLimitTimer) clearInterval(rateLimitTimer);
+    rateLimitTimer = setInterval(() => {
+        rateLimitCooldown--;
+        sendBtn.innerHTML = `<span style="font-size:0.7rem;">${rateLimitCooldown}</span>`;
+        if (rateLimitCooldown <= 0) {
+            clearInterval(rateLimitTimer);
+            rateLimitTimer = null;
+            sendBtn.disabled = false;
+            input.disabled = false;
+            sendBtn.innerHTML = '<i class="fa-solid fa-arrow-up"></i>';
+            setStatus('ready', t('ready'));
+        }
+    }, 1000);
+}
+
 async function sendMessage() {
     const input = document.getElementById('chatInput');
     const message = input.value.trim();
-    if (!message || isWorking) return;
+    if (!message || isWorking || rateLimitCooldown > 0) return;
 
     input.value = '';
     autoResize(input);
@@ -1594,6 +1671,13 @@ async function sendMessage() {
 
     try {
         const data = await api('/chat', 'POST', { message });
+
+        // Check for rate limit response
+        if (data.error && data.error_type === 'rate_limit') {
+            handleRateLimitResponse(data);
+            return;
+        }
+
         setWorking(false);
 
         addMessage('assistant', data.response, data.has_command ? 'command' : 'text');
@@ -1628,19 +1712,25 @@ function editBeforeSend(btn) {
 }
 
 async function executeInCode(command, autoMode) {
+    if (rateLimitCooldown > 0) return;
     setWorking(true, t('executing'));
 
     try {
         const data = await api('/code/execute', 'POST', { command, auto_mode: autoMode });
+
+        // Check for rate limit response
+        if (data.error && data.error_type === 'rate_limit') {
+            handleRateLimitResponse(data);
+            return;
+        }
+
         setWorking(false);
 
         addMessage('code_result', data.output, 'code_result');
 
         if (autoMode) {
-            // In auto mode, send result back to Chat for analysis
             await analyzeResult(data.output, command);
         } else {
-            // In manual mode, offer to analyze
             addResultActions(data.output);
         }
     } catch (e) {
@@ -1893,6 +1983,44 @@ async function loadUsage() {
         // Totals
         document.getElementById('usageTotalMsgs').textContent = formatNumber(data.total_messages || 0);
         document.getElementById('usageTotalSessions').textContent = data.total_sessions || 0;
+
+        // Rate limit section
+        const rl = data.rate_limits || {};
+        const rlSection = document.getElementById('rateLimitSection');
+        const hitsToday = rl.hits_today || 0;
+        const hitsTotal = rl.hits_total || 0;
+
+        // Always show rate limit section
+        rlSection.style.display = 'block';
+        document.getElementById('rlTodayCount').textContent = `${hitsToday} ${t('rate_limit_times')}`;
+        document.getElementById('rlTotalCount').textContent = `${hitsTotal} ${t('rate_limit_times')}`;
+        document.getElementById('rlLastHit').textContent = rl.last_hit_time
+            ? `${t('rate_limit_at')} ${rl.last_hit_time}`
+            : '-';
+
+        const rlStatusEl = document.getElementById('rlStatus');
+        if (hitsToday > 0) {
+            rlStatusEl.innerHTML = `<span style="color:var(--yellow);">⚠️ ${t('rate_limit_warning')}</span>`;
+            rlSection.style.borderColor = 'rgba(251,191,36,0.3)';
+            rlSection.style.background = 'rgba(251,191,36,0.05)';
+        } else {
+            rlStatusEl.innerHTML = `<span style="color:var(--accent);">✅ ${t('rate_limit_ok')}</span>`;
+            rlSection.style.borderColor = 'var(--border)';
+            rlSection.style.background = 'transparent';
+        }
+
+        // Sub widget warning badge
+        const subWidget = document.querySelector('.sub-widget');
+        const existingBadge = document.getElementById('rlBadge');
+        if (existingBadge) existingBadge.remove();
+        if (hitsToday > 0) {
+            const badge = document.createElement('span');
+            badge.id = 'rlBadge';
+            badge.style.cssText = 'font-size:0.65rem;color:var(--yellow);margin-left:4px;';
+            badge.textContent = `⚠️ ${hitsToday}`;
+            badge.title = `Rate limit: ${hitsToday}x ${t('rate_limit_at')} ${rl.last_hit_time || ''}`;
+            subWidget.appendChild(badge);
+        }
 
         // Daily activity list
         const daily = data.daily_activity || [];
