@@ -2447,6 +2447,43 @@ GET /trades/history?agent=trader&limit=50  # История сделок
 
 ---
 
-**Последнее обновление:** 2026-01-29 (feat: complete Claude API tab with all stats and settings)
+## 34. Realtime Balance и PnL (2026-01-29)
+
+### Новый endpoint:
+`GET /realtime` — легковесный endpoint для частого polling:
+```json
+{
+  "balance": 9.0406,
+  "positions": [{
+    "symbol": "XAUTUSDT",
+    "side": "LONG",
+    "size": 0.001,
+    "entry_price": 5538.0,
+    "mark_price": 5570.8,
+    "pnl_usdt": 0.0328,
+    "pnl_percent": 0.59,
+    "leverage": "2"
+  }],
+  "total_pnl": 0.0328,
+  "position_count": 1,
+  "timestamp": "2026-01-29T07:22:06"
+}
+```
+
+### Интервалы обновления UI:
+| Интервал | Данные | Функция |
+|----------|--------|---------|
+| **3 сек** | Баланс, позиции, PnL | `realtimeUpdate()` |
+| **10 сек** | Autopilot статус, activity feed | `fastUpdate()` |
+| **30 сек** | Статистика, API usage, learning | `loadDashboardData()` |
+
+### Визуальная индикация:
+- **pnl-flash** — мигание при изменении PnL
+- **value-changed** — анимация при изменении баланса
+- PnL показывается с 4 знаками после запятой для точности
+
+---
+
+**Последнее обновление:** 2026-01-29 (feat: realtime balance and PnL updates from exchange)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
