@@ -22,6 +22,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from .routes.ai_trade import router as ai_trade_router
+from .routes.admin import router as admin_router
 from dotenv import load_dotenv
 
 import structlog
@@ -102,6 +103,9 @@ templates = Jinja2Templates(directory="/opt/aila/aila/api/templates")
 # AI Trade router
 app.include_router(ai_trade_router)
 
+# Admin router
+app.include_router(admin_router)
+
 # Clear logs on startup
 @app.on_event("startup")
 async def startup_event():
@@ -116,6 +120,14 @@ async def startup_event():
         log_buffer.append(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | AI Trade orchestrator initialized with persistence")
     except Exception as e:
         log_buffer.append(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | AI Trade init error: {e}")
+
+    # Start admin scheduler
+    from .routes.admin import start_scheduler
+    try:
+        await start_scheduler()
+        log_buffer.append(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Admin scheduler started")
+    except Exception as e:
+        log_buffer.append(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | Admin scheduler init error: {e}")
 
 
 # =============================================
@@ -8371,6 +8383,14 @@ DASHBOARD_HTML = r"""
 </body>
 </html>
 """
+
+
+@app.get("/admin", response_class=HTMLResponse)
+async def admin_page(request: Request, aila_session: Optional[str] = Cookie(None)):
+    """Serve the Admin panel page."""
+    if not verify_session(aila_session):
+        return RedirectResponse(url="/login", status_code=302)
+    return templates.TemplateResponse("admin.html", {"request": request})
 
 
 @app.get("/ai-trade", response_class=HTMLResponse)
