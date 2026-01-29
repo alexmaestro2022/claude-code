@@ -29,8 +29,11 @@ def _get_claude_env() -> dict[str, str]:
     """Build environment for claude subprocess using Max subscription.
 
     Claude Code is authorized via OAuth (Max subscription).
-    ANTHROPIC_API_KEY must NOT be passed — it forces paid API billing
-    instead of the included subscription quota.
+    ANTHROPIC_API_KEY must NOT be passed — it forces paid API billing.
+
+    systemd uses ProtectHome=true so /home/aila/.claude/ is inaccessible.
+    Credentials are copied to /opt/aila/.claude/.credentials.json,
+    and HOME is set to /opt/aila so claude finds them there.
     """
     env = os.environ.copy()
     # Remove API key to force OAuth/subscription auth
@@ -38,9 +41,9 @@ def _get_claude_env() -> dict[str, str]:
     # Ensure claude is in PATH
     if "/usr/local/bin" not in env.get("PATH", ""):
         env["PATH"] = f"/usr/local/bin:{env.get('PATH', '/usr/bin')}"
-    # Ensure HOME is set for .claude credentials
-    if not env.get("HOME"):
-        env["HOME"] = str(Path.home())
+    # Set HOME to /opt/aila where .claude/.credentials.json lives
+    # (ProtectHome=true blocks /home/aila from systemd service)
+    env["HOME"] = "/opt/aila"
     return env
 
 # Paths
