@@ -20,13 +20,41 @@
     "experience_points": 0,
     "next_level_xp": 100,
     "skills": {
-      "trend_detection": {"level": 1, "xp": 0, "max_xp": 100},
-      "entry_timing": {"level": 1, "xp": 0, "max_xp": 100},
-      "exit_timing": {"level": 1, "xp": 0, "max_xp": 100},
-      "risk_management": {"level": 1, "xp": 0, "max_xp": 100},
-      "position_sizing": {"level": 1, "xp": 0, "max_xp": 100},
-      "patience": {"level": 1, "xp": 0, "max_xp": 100},
-      "adaptability": {"level": 1, "xp": 0, "max_xp": 100}
+      "trend_detection": {
+        "level": 1,
+        "xp": 0,
+        "max_xp": 100
+      },
+      "entry_timing": {
+        "level": 1,
+        "xp": 0,
+        "max_xp": 100
+      },
+      "exit_timing": {
+        "level": 1,
+        "xp": 0,
+        "max_xp": 100
+      },
+      "risk_management": {
+        "level": 1,
+        "xp": 0,
+        "max_xp": 100
+      },
+      "position_sizing": {
+        "level": 1,
+        "xp": 0,
+        "max_xp": 100
+      },
+      "patience": {
+        "level": 1,
+        "xp": 0,
+        "max_xp": 100
+      },
+      "adaptability": {
+        "level": 1,
+        "xp": 0,
+        "max_xp": 100
+      }
     },
     "learned_rules": [],
     "mistakes_history": [],
@@ -52,10 +80,66 @@
     }
   },
   "level_benefits": {
-    "1": {"max_leverage": 5, "max_positions": 1, "max_risk_pct": 1},
-    "5": {"max_leverage": 10, "max_positions": 2, "max_risk_pct": 1.5},
-    "10": {"max_leverage": 15, "max_positions": 3, "max_risk_pct": 2},
-    "20": {"max_leverage": 20, "max_positions": 4, "max_risk_pct": 2.5},
-    "50": {"max_leverage": 25, "max_positions": 5, "max_risk_pct": 3}
+    "1": {
+      "max_leverage": 5,
+      "max_positions": 1,
+      "max_risk_pct": 1
+    },
+    "5": {
+      "max_leverage": 10,
+      "max_positions": 2,
+      "max_risk_pct": 1.5
+    },
+    "10": {
+      "max_leverage": 15,
+      "max_positions": 3,
+      "max_risk_pct": 2
+    },
+    "20": {
+      "max_leverage": 20,
+      "max_positions": 4,
+      "max_risk_pct": 2.5
+    },
+    "50": {
+      "max_leverage": 25,
+      "max_positions": 5,
+      "max_risk_pct": 3
+    }
+  },
+  "trader_learning": {
+    "best_pairs": [],
+    "worst_pairs": [
+      {
+        "symbol": "HYPEUSDT",
+        "pnl_usdt": -0.4852,
+        "grade": "D",
+        "close_reason": "stop_loss",
+        "added_at": "2026-01-29T02:51:52"
+      },
+      {
+        "symbol": "1000RATSUSDT",
+        "pnl_usdt": -0.4937,
+        "grade": "D",
+        "close_reason": "stop_loss",
+        "added_at": "2026-01-29T00:05:25"
+      }
+    ],
+    "learned_rules": [],
+    "mistakes_to_avoid": [
+      {
+        "symbol": "HYPEUSDT",
+        "strategy": "momentum_breakout",
+        "grade": "D",
+        "lesson": "SL hit on HYPEUSDT - avoid chasing momentum on volatile meme coins",
+        "added_at": "2026-01-29T02:51:52"
+      },
+      {
+        "symbol": "1000RATSUSDT",
+        "strategy": "momentum_breakout",
+        "grade": "D",
+        "lesson": "SL hit on 1000RATSUSDT - avoid chasing after large pumps",
+        "added_at": "2026-01-29T00:05:25"
+      }
+    ]
   }
 }
