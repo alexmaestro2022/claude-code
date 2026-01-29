@@ -1148,18 +1148,11 @@ async def get_positions():
             symbol = pos["symbol"]
             ccxt_symbol = symbol.replace("USDT", "/USDT") if "/" not in symbol else symbol
 
-            # Calculate PnL percent
             entry_price = pos.get("entry_price", 0)
             mark_price = pos.get("mark_price", 0)
             pnl_usdt = pos.get("pnl", 0)
-
-            if entry_price > 0:
-                if pos["side"] == "Buy":
-                    pnl_percent = ((mark_price - entry_price) / entry_price) * 100
-                else:
-                    pnl_percent = ((entry_price - mark_price) / entry_price) * 100
-            else:
-                pnl_percent = 0
+            # Use ROE% directly from Bybit (matches exchange display)
+            pnl_percent = pos.get("pnl_roe", 0)
 
             # Determine source (TRADER or SNIPER) based on tracked pairs
             source = "TRADER"  # Default
@@ -1232,15 +1225,8 @@ async def get_realtime_data():
             mark_price = pos.get("mark_price", 0)
             pnl_usdt = pos.get("pnl", 0)
             size = pos.get("size", 0)
-
-            # Calculate PnL percent
-            if entry_price > 0:
-                if pos["side"] == "Buy":
-                    pnl_percent = ((mark_price - entry_price) / entry_price) * 100
-                else:
-                    pnl_percent = ((entry_price - mark_price) / entry_price) * 100
-            else:
-                pnl_percent = 0
+            # Use ROE% directly from Bybit (matches exchange display)
+            pnl_percent = pos.get("pnl_roe", 0)
 
             total_pnl += pnl_usdt
 
@@ -1251,7 +1237,7 @@ async def get_realtime_data():
                 "entry_price": entry_price,
                 "mark_price": mark_price,
                 "pnl_usdt": round(pnl_usdt, 4),
-                "pnl_percent": round(pnl_percent, 2),
+                "pnl_percent": pnl_percent,  # ROE% from exchange
                 "leverage": pos.get("leverage", "1"),
             })
 

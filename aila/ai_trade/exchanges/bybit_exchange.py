@@ -340,13 +340,26 @@ class BybitExchange(BaseExchange):
         if result["retCode"] == 0:
             for pos in result["result"]["list"]:
                 if float(pos["size"]) > 0:
+                    # Calculate ROE%: PnL / Initial Margin * 100
+                    # Initial Margin = Position Value / Leverage
+                    pnl = float(pos["unrealisedPnl"])
+                    position_value = float(pos.get("positionValue", 0))
+                    leverage = float(pos.get("leverage", 1))
+
+                    if position_value > 0 and leverage > 0:
+                        initial_margin = position_value / leverage
+                        pnl_roe = (pnl / initial_margin) * 100 if initial_margin > 0 else 0
+                    else:
+                        pnl_roe = 0
+
                     positions.append({
                         "symbol": pos["symbol"],
                         "side": pos["side"],
                         "size": float(pos["size"]),
                         "entry_price": float(pos["avgPrice"]),
                         "mark_price": float(pos["markPrice"]),
-                        "pnl": float(pos["unrealisedPnl"]),
+                        "pnl": pnl,
+                        "pnl_roe": round(pnl_roe, 2),  # ROE% calculated
                         "leverage": pos["leverage"],
                     })
         return positions
