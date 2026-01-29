@@ -2603,7 +2603,8 @@ DELETE /api/admin/knowledge/{fn} — удалить файл
 ### Обновление Claude Code:
 - Кнопка в top-bar с зелёной точкой-индикатором если есть обновление
 - `GET /api/admin/claude-code/check-update` — проверка через `npm outdated -g --json`
-- `POST /api/admin/claude-code/update` — обновление через `npm install -g @anthropic-ai/claude-code@latest`
+- `POST /api/admin/claude-code/update` — обновление через `sudo npm install -g @anthropic-ai/claude-code@latest`
+- **Требуется sudoers:** `aila ALL=(ALL) NOPASSWD: /usr/bin/npm install -g @anthropic-ai/claude-code*`
 - Модалка с состояниями: checking → up-to-date/available → progress → done/error
 - Telegram уведомление при успешном обновлении или ошибке
 - Автопроверка при загрузке панели и каждые 6 часов (silent)

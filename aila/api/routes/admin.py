@@ -1471,9 +1471,11 @@ async def update_claude_code(request: Request):
     _audit_log("admin", "UPDATE_START", f"current={old_version}")
 
     try:
+        # Requires sudo permission for npm install -g
+        # Add to sudoers: aila ALL=(ALL) NOPASSWD: /usr/bin/npm install -g @anthropic-ai/claude-code*
         result = await asyncio.to_thread(
             subprocess.run,
-            ["npm", "install", "-g", "@anthropic-ai/claude-code@latest"],
+            ["sudo", "npm", "install", "-g", "@anthropic-ai/claude-code@latest"],
             capture_output=True, text=True, timeout=120,
         )
 
