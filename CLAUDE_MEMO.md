@@ -2543,6 +2543,13 @@ DELETE /api/admin/knowledge/{fn} — удалить файл
 
 ---
 
-**Последнее обновление:** 2026-01-29 (feat: Admin panel with Claude Chat + Claude Code)
+### Важно — subprocess env:
+- Claude CLI вызывается через `subprocess.run` с явной передачей `env=_get_claude_env()`
+- Функция `_get_claude_env()` копирует `os.environ`, добавляет `ANTHROPIC_API_KEY` из `.env` и `/usr/local/bin` в PATH
+- Без этого claude не получает API ключ при запуске из systemd сервиса
+
+---
+
+**Последнее обновление:** 2026-01-29 (fix: Claude Code integration in admin panel)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
