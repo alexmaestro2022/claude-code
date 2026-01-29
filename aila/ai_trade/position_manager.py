@@ -1,8 +1,10 @@
 """Position manager - handles order execution and tracking."""
 
 import asyncio
+import json
 import logging
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Optional
 
 from ..utils.common import retry_async
@@ -12,15 +14,21 @@ from .telegram_notifier import get_telegram_notifier
 
 logger = logging.getLogger("ai_trade")
 
+# Path for persisting bot positions
+BOT_POSITIONS_PATH = Path("/opt/aila/data/ai_trade/bot_positions.json")
+
 
 class PositionManager:
     """Manages open positions and order execution."""
 
-    __slots__ = ("_exchange", "_open_positions")
+    __slots__ = ("_exchange", "_open_positions", "_bot_positions")
 
     def __init__(self, exchange: Any) -> None:
         self._exchange = exchange
         self._open_positions: dict[str, dict[str, Any]] = {}
+        # Track positions opened by bot (persisted to file)
+        self._bot_positions: dict[str, dict[str, Any]] = {}
+        self._load_bot_positions()
 
     @retry_async(max_attempts=2, base_delay=1.0)
     async def open_position(self, signal: dict[str, Any]) -> Optional[dict[str, Any]]:
@@ -85,7 +93,26 @@ class PositionManager:
             await self._set_sl_tp(symbol, signal, direction, amount)
 
             self._open_positions[symbol] = position
-            logger.info(f"[POSITION] SUCCESS: {direction} {symbol} @ {price}, lev={leverage}x")
+
+            # Track in bot positions for sync monitoring
+            source = signal.get("source", "TRADER")
+            self._add_bot_position(symbol, {
+                "symbol": symbol,
+                "side": direction,
+                "entry_price": price,
+                "amount": amount,
+                "leverage": leverage,
+                "stop_loss": signal.get("stop_loss"),
+                "take_profit": signal.get("take_profit"),
+                "position_size_usdt": position_size_usdt,
+                "source": source,
+                "strategy": signal.get("strategy"),
+                "confidence": signal.get("confidence"),
+                "opened_at": datetime.now().isoformat(),
+                "opened_at_ts": int(datetime.now().timestamp() * 1000),
+            })
+
+            logger.info(f"[POSITION] SUCCESS: {direction} {symbol} @ {price}, lev={leverage}x (source={source})")
 
             # Send Telegram notification
             asyncio.create_task(self._notify_position_opened(position, signal))
@@ -324,3 +351,61 @@ class PositionManager:
                 )
         except Exception as e:
             logger.error(f"Telegram notification failed: {e}")
+
+    # ========== Bot Positions Tracking ==========
+
+    def _load_bot_positions(self) -> None:
+        """Load bot positions from file."""
+        try:
+            if BOT_POSITIONS_PATH.exists():
+                with open(BOT_POSITIONS_PATH) as f:
+                    data = json.load(f)
+                    self._bot_positions = data.get("positions", {})
+                    logger.info(f"Loaded {len(self._bot_positions)} bot positions from file")
+        except Exception as e:
+            logger.error(f"Failed to load bot positions: {e}")
+            self._bot_positions = {}
+
+    def _save_bot_positions(self) -> None:
+        """Save bot positions to file."""
+        try:
+            BOT_POSITIONS_PATH.parent.mkdir(parents=True, exist_ok=True)
+            with open(BOT_POSITIONS_PATH, "w") as f:
+                json.dump({
+                    "positions": self._bot_positions,
+                    "updated_at": datetime.now().isoformat(),
+                }, f, indent=2)
+        except Exception as e:
+            logger.error(f"Failed to save bot positions: {e}")
+
+    def _add_bot_position(self, symbol: str, data: dict[str, Any]) -> None:
+        """Add position to bot tracking."""
+        # Normalize symbol (remove /USDT -> USDT format)
+        normalized = symbol.replace("/", "")
+        self._bot_positions[normalized] = data
+        self._save_bot_positions()
+        logger.info(f"[POSITION] Tracking bot position: {normalized}")
+
+    def get_bot_positions(self) -> dict[str, dict[str, Any]]:
+        """Get all positions opened by bot."""
+        return self._bot_positions.copy()
+
+    def get_bot_position(self, symbol: str) -> Optional[dict[str, Any]]:
+        """Get specific bot position by symbol."""
+        normalized = symbol.replace("/", "")
+        return self._bot_positions.get(normalized)
+
+    def remove_bot_position(self, symbol: str) -> bool:
+        """Remove position from bot tracking."""
+        normalized = symbol.replace("/", "")
+        if normalized in self._bot_positions:
+            del self._bot_positions[normalized]
+            self._save_bot_positions()
+            logger.info(f"[POSITION] Removed bot position: {normalized}")
+            return True
+        return False
+
+    def has_bot_position(self, symbol: str) -> bool:
+        """Check if symbol has bot-tracked position."""
+        normalized = symbol.replace("/", "")
+        return normalized in self._bot_positions

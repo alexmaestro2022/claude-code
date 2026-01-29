@@ -577,3 +577,81 @@ class BybitExchange(BaseExchange):
             "cancelled": cancelled,
             "errors": errors,
         }
+
+    @retry_async(max_attempts=2)
+    async def get_closed_pnl(
+        self, symbol: Optional[str] = None, limit: int = 50
+    ) -> list[dict]:
+        """Get closed PnL history from Bybit.
+
+        Args:
+            symbol: Optional symbol to filter (Bybit format, e.g. BTCUSDT)
+            limit: Max records to return (default 50)
+
+        Returns:
+            List of closed trades with pnl, side, entry/exit prices, etc.
+        """
+        params: dict = {"category": "linear", "limit": limit}
+        if symbol:
+            bybit_symbol = self.normalize_symbol(symbol)
+            params["symbol"] = bybit_symbol
+
+        result = self._client.get_closed_pnl(**params)
+        trades: list[dict] = []
+
+        if result["retCode"] == 0:
+            for item in result["result"].get("list", []):
+                # Determine close reason from order type
+                order_type = item.get("orderType", "")
+                close_reason = "manual"
+                if "stop" in order_type.lower():
+                    close_reason = "stop_loss"
+                elif "take" in order_type.lower() or "profit" in order_type.lower():
+                    close_reason = "take_profit"
+                elif item.get("execType") == "Trade":
+                    # Check if it was a stop trigger
+                    if float(item.get("closedPnl", 0)) < 0:
+                        close_reason = "stop_loss"
+                    else:
+                        close_reason = "take_profit"
+
+                # Side in closed PnL: Buy = closed SHORT, Sell = closed LONG
+                original_side = "LONG" if item.get("side") == "Sell" else "SHORT"
+
+                trades.append({
+                    "symbol": item["symbol"],
+                    "side": original_side,
+                    "entry_price": float(item.get("avgEntryPrice", 0)),
+                    "exit_price": float(item.get("avgExitPrice", 0)),
+                    "pnl_usdt": float(item.get("closedPnl", 0)),
+                    "size": float(item.get("qty", 0)),
+                    "leverage": item.get("leverage", "1"),
+                    "close_reason": close_reason,
+                    "closed_at": int(item.get("updatedTime", 0)),
+                    "order_id": item.get("orderId", ""),
+                    "exec_type": item.get("execType", ""),
+                })
+
+        return trades
+
+    @retry_async(max_attempts=2)
+    async def get_closed_pnl_for_symbol(
+        self, symbol: str, since_timestamp: int
+    ) -> Optional[dict]:
+        """Get closed PnL for specific symbol since timestamp.
+
+        Args:
+            symbol: Symbol to check
+            since_timestamp: Unix timestamp in ms to search from
+
+        Returns:
+            Closed trade dict if found, None otherwise
+        """
+        bybit_symbol = self.normalize_symbol(symbol)
+        trades = await self.get_closed_pnl(bybit_symbol, limit=20)
+
+        for trade in trades:
+            if trade["closed_at"] >= since_timestamp:
+                return trade
+
+        return None

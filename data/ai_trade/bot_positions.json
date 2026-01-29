@@ -1,0 +1,20 @@
+{
+  "positions": {
+    "XAUTUSDT": {
+      "symbol": "XAUTUSDT",
+      "side": "LONG",
+      "entry_price": 5538.0,
+      "amount": 0.001,
+      "leverage": 2,
+      "stop_loss": null,
+      "take_profit": null,
+      "position_size_usdt": 5.538,
+      "source": "TRADER",
+      "strategy": "unknown",
+      "confidence": 0,
+      "opened_at": "2026-01-29T06:06:16.130581",
+      "opened_at_ts": 1769666776130
+    }
+  },
+  "updated_at": "2026-01-29T06:06:16.130612"
+}

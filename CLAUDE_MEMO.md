@@ -2271,6 +2271,89 @@ POST /api/ai-trade/agent/{agent}/disable        — Выключить аген�
 
 ---
 
-**Последнее обновление:** 2026-01-28 (feat: implement cascade analysis with position limit pause)
-**Текущая версия:** v2.4.0 (см. файл `/opt/aila/VERSION`)
+## 32. Отслеживание закрытых позиций и обучение
+
+### Проблема (решена):
+Ранее бот НЕ отслеживал автоматическое закрытие позиций по SL/TP на бирже. Когда Bybit закрывал позицию, статистика не обновлялась, база знаний не пополнялась, XP не начислялся.
+
+### Решение:
+Реализована система sync loop для отслеживания закрытых позиций.
+
+### Архитектура:
+
+#### 1. Трекинг позиций бота (`position_manager.py`):
+```python
+_bot_positions: dict[str, dict]  # {symbol: position_data}
+# Персистентность в /opt/aila/data/ai_trade/bot_positions.json
+```
+
+#### 2. Получение истории закрытых позиций (`bybit_exchange.py`):
+```python
+async def get_closed_pnl(symbol=None, limit=50) -> list[dict]
+async def get_closed_pnl_for_symbol(symbol, since_timestamp) -> dict | None
+```
+
+#### 3. Position Sync Loop (`autopilot_mode.py`):
+```python
+async def _sync_closed_positions():
+    """Каждые 30 сек проверяет закрытые позиции на бирже."""
+    bot_positions = position_manager.get_bot_positions()
+    exchange_positions = await exchange.get_positions()
+
+    for symbol in bot_positions:
+        if symbol not in exchange_positions:
+            # Позиция закрылась!
+            closed_pnl = await exchange.get_closed_pnl_for_symbol(symbol)
+            await _on_position_closed(symbol, closed_pnl)
+```
+
+#### 4. Обработка закрытия (`_on_position_closed`):
+1. `record_trade()` — обновить статистику агента
+2. `set_position_closed()` — убрать из очереди сигналов
+3. `_evaluate_trade_grade()` — оценка A/B/C/D/F
+4. `_update_knowledge_base()` — best_pairs, worst_pairs, mistakes_to_avoid
+5. `_send_trade_closed_notification()` — Telegram уведомление
+6. `remove_bot_position()` — удалить из трекинга
+
+### Оценка сделок (Grade):
+| Grade | Условие |
+|-------|---------|
+| A | Win + TP hit + PnL > 5% |
+| B | Win |
+| C | Loss + SL hit + PnL > -3% |
+| D | Loss + SL hit + PnL < -3% |
+| F | Bad loss (не SL) |
+
+### Telegram уведомление:
+```
+📉 TRADER: Позиция закрыта
+
+Пара: HYPE/USDT
+Сторона: LONG
+Результат: LOSS ❌
+PnL: $-0.49 (-4.9%)
+Причина: Stop-Loss
+Оценка: D
+
+📊 Статистика TRADER:
+Сделок: 2 | Win: 0%
+XP: -5 | PnL сегодня: $-0.98
+```
+
+### Файлы:
+- `/opt/aila/data/ai_trade/bot_positions.json` — трекинг открытых позиций
+- `/opt/aila/data/ai_trade/trader_stats.json` — статистика агента
+- `/opt/aila/data/ai_trade/knowledge_base.json` — база знаний (trader_learning)
+
+### Логирование:
+```
+[SYNC] Detected closed position: HYPEUSDT
+[TRADER][TRADE_CLOSED] HYPEUSDT PnL: $-0.49 (-4.9%) Reason: stop_loss
+[TRADER][LEARN] Added to worst_pairs: HYPEUSDT
+```
+
+---
+
+**Последнее обновление:** 2026-01-29 (feat: track closed positions and implement learning from trades)
+**Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`

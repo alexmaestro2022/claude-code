@@ -32,7 +32,8 @@ class AutopilotMode:
         '_orchestrator', '_running', '_config', '_stats', '_last_trade_time',
         '_last_scan_time', '_currently_scanning', '_current_pair', '_pairs_count',
         '_signal_queue', '_agent_stats', '_sniper_scan_counter',
-        '_last_sniper_scan', '_current_agent', '_cascade_stats'
+        '_last_sniper_scan', '_current_agent', '_cascade_stats',
+        '_last_position_sync'
     ]
 
     def __init__(self, orchestrator: Any) -> None:
@@ -60,6 +61,9 @@ class AutopilotMode:
             'stages_completed': {'vip_p1': 0, 'p2': 0, 'p3': 0},
             'signals_found': {'vip': 0, 'p1': 0, 'p2': 0, 'p3': 0},
         }
+
+        # Position sync tracking
+        self._last_position_sync: Optional[datetime] = None
 
         self._config = {
             'scan_interval_seconds': 60,       # TRADER scan interval
@@ -190,6 +194,9 @@ class AutopilotMode:
 
                 # Process signal queue
                 await self._process_queue()
+
+                # Sync closed positions (every 30 seconds)
+                await self._sync_closed_positions()
 
                 await asyncio.sleep(10)  # Base loop interval
 
@@ -939,3 +946,311 @@ Trades today: {stats['trades_today']}
 
         except Exception as e:
             logger.error(f"Level up notification error: {e}")
+
+    # ========== Position Sync and Learning ==========
+
+    async def _sync_closed_positions(self) -> None:
+        """Check for positions closed by exchange (SL/TP hit) every 30 seconds."""
+        now = datetime.utcnow()
+
+        # Only run every 30 seconds
+        if self._last_position_sync:
+            elapsed = (now - self._last_position_sync).total_seconds()
+            if elapsed < 30:
+                return
+
+        self._last_position_sync = now
+
+        try:
+            # Get bot positions we're tracking
+            position_manager = self._orchestrator.position_manager
+            bot_positions = position_manager.get_bot_positions()
+
+            if not bot_positions:
+                return
+
+            # Get current positions from exchange
+            exchange = self._orchestrator.exchanges.primary
+            exchange_positions = await exchange.get_positions()
+            exchange_symbols = {p["symbol"] for p in exchange_positions}
+
+            # Check which bot positions are no longer on exchange
+            for symbol, pos_data in list(bot_positions.items()):
+                if symbol not in exchange_symbols:
+                    # Position closed on exchange!
+                    logger.info(f"[SYNC] Detected closed position: {symbol}")
+
+                    # Get closed PnL from exchange history
+                    opened_at_ts = pos_data.get("opened_at_ts", 0)
+                    closed_pnl = await exchange.get_closed_pnl_for_symbol(
+                        symbol, opened_at_ts
+                    )
+
+                    if closed_pnl:
+                        await self._on_position_closed(symbol, pos_data, closed_pnl)
+                    else:
+                        # Fallback: position closed but no PnL found
+                        logger.warning(f"[SYNC] No closed PnL found for {symbol}, removing from tracking")
+                        position_manager.remove_bot_position(symbol)
+
+        except Exception as e:
+            logger.error(f"Position sync error: {e}")
+
+    async def _on_position_closed(
+        self,
+        symbol: str,
+        position_data: dict[str, Any],
+        closed_pnl: dict[str, Any],
+    ) -> None:
+        """Handle position closed by exchange (SL/TP hit)."""
+        source = position_data.get("source", "TRADER")
+        pnl_usdt = closed_pnl.get("pnl_usdt", 0)
+        pnl_pct = 0
+
+        # Calculate PnL percentage
+        entry_price = position_data.get("entry_price", 0)
+        exit_price = closed_pnl.get("exit_price", 0)
+        leverage = int(position_data.get("leverage", 1))
+
+        if entry_price > 0 and exit_price > 0:
+            side = position_data.get("side", "LONG")
+            if side == "LONG":
+                pnl_pct = ((exit_price - entry_price) / entry_price) * 100 * leverage
+            else:
+                pnl_pct = ((entry_price - exit_price) / entry_price) * 100 * leverage
+
+        is_win = pnl_usdt > 0
+        close_reason = closed_pnl.get("close_reason", "unknown")
+
+        # Calculate duration
+        opened_at = position_data.get("opened_at", "")
+        duration_minutes = 0
+        if opened_at:
+            try:
+                start = datetime.fromisoformat(opened_at)
+                duration_minutes = int((datetime.now() - start).total_seconds() / 60)
+            except Exception:
+                pass
+
+        # Calculate R:R ratio
+        rr_ratio = 0.0
+        if position_data.get("stop_loss") and position_data.get("take_profit"):
+            sl = position_data["stop_loss"]
+            tp = position_data["take_profit"]
+            risk = abs(entry_price - sl)
+            reward = abs(tp - entry_price)
+            if risk > 0:
+                rr_ratio = reward / risk
+
+        logger.info(
+            f"[{source}][TRADE_CLOSED] {symbol} "
+            f"PnL: ${pnl_usdt:.2f} ({pnl_pct:.1f}%) "
+            f"Reason: {close_reason}"
+        )
+
+        # 1. Record trade stats
+        result = self._agent_stats.record_trade(
+            agent=source,
+            pnl_usdt=pnl_usdt,
+            pnl_pct=pnl_pct,
+            duration_minutes=duration_minutes,
+            rr_ratio=rr_ratio,
+            trigger_type=close_reason,
+        )
+
+        # 2. Mark position as closed in queue
+        ccxt_symbol = symbol.replace("USDT", "/USDT") if "/" not in symbol else symbol
+        self._signal_queue.set_position_closed(ccxt_symbol)
+
+        # 3. Evaluate trade with ANALYST (simplified)
+        grade = await self._evaluate_trade_grade(position_data, closed_pnl, is_win)
+
+        # 4. Update knowledge base
+        await self._update_knowledge_base(source, symbol, position_data, closed_pnl, grade)
+
+        # 5. Send Telegram notification
+        await self._send_trade_closed_notification(
+            source, symbol, position_data, closed_pnl, grade, result
+        )
+
+        # 6. Remove from bot positions
+        self._orchestrator.position_manager.remove_bot_position(symbol)
+
+        # 7. Check for level up
+        if result.get("xp_result", {}).get("leveled_up"):
+            await self._send_level_up_notification(source, result["xp_result"])
+
+    async def _evaluate_trade_grade(
+        self,
+        position_data: dict[str, Any],
+        closed_pnl: dict[str, Any],
+        is_win: bool,
+    ) -> str:
+        """Evaluate trade and assign grade A/B/C/D/F."""
+        pnl_pct = 0
+        entry_price = position_data.get("entry_price", 0)
+        exit_price = closed_pnl.get("exit_price", 0)
+        leverage = int(position_data.get("leverage", 1))
+
+        if entry_price > 0 and exit_price > 0:
+            side = position_data.get("side", "LONG")
+            if side == "LONG":
+                pnl_pct = ((exit_price - entry_price) / entry_price) * 100 * leverage
+            else:
+                pnl_pct = ((entry_price - exit_price) / entry_price) * 100 * leverage
+
+        close_reason = closed_pnl.get("close_reason", "")
+
+        if is_win:
+            if close_reason == "take_profit":
+                return "A" if pnl_pct > 5 else "B"
+            return "B"  # Win but not via TP
+        else:
+            if close_reason == "stop_loss":
+                if pnl_pct > -3:
+                    return "C"  # Small loss, acceptable
+                return "D"  # Larger loss
+            return "F"  # Bad loss
+
+    async def _update_knowledge_base(
+        self,
+        agent: str,
+        symbol: str,
+        position_data: dict[str, Any],
+        closed_pnl: dict[str, Any],
+        grade: str,
+    ) -> None:
+        """Update agent knowledge base with trade results."""
+        try:
+            kb = self._orchestrator.knowledge_base
+            pnl_usdt = closed_pnl.get("pnl_usdt", 0)
+            is_win = pnl_usdt > 0
+            close_reason = closed_pnl.get("close_reason", "unknown")
+
+            # Get or create agent-specific data
+            agent_key = f"{agent.lower()}_learning"
+            if agent_key not in kb.data:
+                kb.data[agent_key] = {
+                    "best_pairs": [],
+                    "worst_pairs": [],
+                    "learned_rules": [],
+                    "mistakes_to_avoid": [],
+                }
+
+            agent_data = kb.data[agent_key]
+
+            # Update best/worst pairs
+            pair_entry = {
+                "symbol": symbol,
+                "pnl_usdt": pnl_usdt,
+                "grade": grade,
+                "close_reason": close_reason,
+                "added_at": datetime.now().isoformat(),
+            }
+
+            if is_win:
+                # Add to best pairs (keep top 10)
+                agent_data["best_pairs"].append(pair_entry)
+                agent_data["best_pairs"] = sorted(
+                    agent_data["best_pairs"],
+                    key=lambda x: x.get("pnl_usdt", 0),
+                    reverse=True,
+                )[:10]
+                logger.info(f"[{agent}][LEARN] Added to best_pairs: {symbol}")
+            else:
+                # Add to worst pairs (keep top 10)
+                agent_data["worst_pairs"].append(pair_entry)
+                agent_data["worst_pairs"] = sorted(
+                    agent_data["worst_pairs"],
+                    key=lambda x: x.get("pnl_usdt", 0),
+                )[:10]
+                logger.info(f"[{agent}][LEARN] Added to worst_pairs: {symbol}")
+
+                # Add mistake to avoid for bad trades
+                if grade in ["D", "F"]:
+                    strategy = position_data.get("strategy", "unknown")
+                    confidence = position_data.get("confidence", 0)
+                    mistake = {
+                        "symbol": symbol,
+                        "strategy": strategy,
+                        "confidence": confidence,
+                        "grade": grade,
+                        "lesson": f"Avoid {strategy} on {symbol} with conf={confidence}%",
+                        "added_at": datetime.now().isoformat(),
+                    }
+                    agent_data["mistakes_to_avoid"].append(mistake)
+                    agent_data["mistakes_to_avoid"] = agent_data["mistakes_to_avoid"][-20:]
+                    logger.info(f"[{agent}][LEARN] Added mistake: {mistake['lesson']}")
+
+            kb.save()
+
+        except Exception as e:
+            logger.error(f"Knowledge base update error: {e}")
+
+    async def _send_trade_closed_notification(
+        self,
+        agent: str,
+        symbol: str,
+        position_data: dict[str, Any],
+        closed_pnl: dict[str, Any],
+        grade: str,
+        stats_result: dict[str, Any],
+    ) -> None:
+        """Send Telegram notification for closed trade."""
+        try:
+            telegram = self._orchestrator.telegram
+            if not telegram:
+                return
+
+            pnl_usdt = closed_pnl.get("pnl_usdt", 0)
+            is_win = pnl_usdt > 0
+            emoji = "✅" if is_win else "❌"
+            result_text = "WIN" if is_win else "LOSS"
+            close_reason = closed_pnl.get("close_reason", "unknown")
+
+            # Calculate pnl percent
+            entry_price = position_data.get("entry_price", 0)
+            exit_price = closed_pnl.get("exit_price", 0)
+            leverage = int(position_data.get("leverage", 1))
+            pnl_pct = 0
+            if entry_price > 0 and exit_price > 0:
+                side = position_data.get("side", "LONG")
+                if side == "LONG":
+                    pnl_pct = ((exit_price - entry_price) / entry_price) * 100 * leverage
+                else:
+                    pnl_pct = ((entry_price - exit_price) / entry_price) * 100 * leverage
+
+            # Get updated stats
+            stats = stats_result.get("stats_snapshot", {})
+            xp_result = stats_result.get("xp_result", {})
+            xp_change = xp_result.get("xp_added", 0)
+
+            # Format close reason
+            reason_display = {
+                "stop_loss": "Stop-Loss",
+                "take_profit": "Take-Profit",
+                "manual": "Manual",
+            }.get(close_reason, close_reason.title())
+
+            # Format message
+            ccxt_symbol = symbol.replace("USDT", "/USDT") if "/" not in symbol else symbol
+            side = position_data.get("side", "LONG")
+
+            message = f"""
+📉 <b>{agent}: Позиция закрыта</b>
+
+Пара: <b>{ccxt_symbol}</b>
+Сторона: {side}
+Результат: {result_text} {emoji}
+PnL: <b>${pnl_usdt:.2f}</b> ({pnl_pct:+.1f}%)
+Причина: {reason_display}
+Оценка: <b>{grade}</b>
+
+📊 <b>Статистика {agent}:</b>
+Сделок: {stats.get('trades_today', 0)} | Win: {stats.get('winrate', 0):.0f}%
+XP: {xp_change:+d} | PnL сегодня: ${stats.get('pnl_today_usdt', 0):.2f}
+"""
+            await telegram.send_message(message.strip())
+
+        except Exception as e:
+            logger.error(f"Trade closed notification error: {e}")
