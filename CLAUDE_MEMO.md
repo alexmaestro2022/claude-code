@@ -2557,6 +2557,16 @@ DELETE /api/admin/knowledge/{fn} — удалить файл
 
 ---
 
-**Последнее обновление:** 2026-01-29 (fix: Claude Code integration in admin panel)
+### Локализация (i18n):
+- Синхронизирована с `ai_trade.html` через `localStorage.getItem('language')` (ключ `language`, значения `ru`/`en`)
+- Объект `translations` с русскими переводами, EN = fallback к HTML-тексту
+- `applyLanguage()` обрабатывает `data-i18n`, `data-i18n-html`, `data-i18n-placeholder`, `data-i18n-title`
+- `t(key)` — функция перевода для динамического контента
+- `window.addEventListener('storage')` — автоматическое переключение при смене языка на ai_trade
+- Вызывается при DOMContentLoaded и при showPanel()
+
+---
+
+**Последнее обновление:** 2026-01-29 (feat: add localization to admin panel)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`

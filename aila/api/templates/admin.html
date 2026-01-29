@@ -667,11 +667,11 @@
     <div class="auth-box">
         <div style="font-size: 2.5rem; margin-bottom: 16px;"><i class="fa-solid fa-shield-halved accent"></i></div>
         <h2><span class="accent">AILA</span> Admin</h2>
-        <p class="subtitle">Enter the code sent to Telegram</p>
+        <p class="subtitle" data-i18n="auth_subtitle">Enter the code sent to Telegram</p>
 
         <div id="authStep1">
             <button class="auth-btn auth-btn-primary" onclick="requestCode()">
-                <i class="fa-solid fa-paper-plane"></i> Request Code
+                <i class="fa-solid fa-paper-plane"></i> <span data-i18n="request_code">Request Code</span>
             </button>
         </div>
 
@@ -680,10 +680,10 @@
                    placeholder="______" inputmode="numeric" pattern="[0-9]*"
                    onkeydown="if(event.key==='Enter')verifyCode()">
             <button class="auth-btn auth-btn-primary" onclick="verifyCode()">
-                <i class="fa-solid fa-check"></i> Verify
+                <i class="fa-solid fa-check"></i> <span data-i18n="verify">Verify</span>
             </button>
             <button class="auth-btn auth-btn-ghost" onclick="requestCode()">
-                <i class="fa-solid fa-rotate"></i> Resend Code
+                <i class="fa-solid fa-rotate"></i> <span data-i18n="resend_code">Resend Code</span>
             </button>
             <div class="auth-timer" id="authTimer"></div>
         </div>
@@ -700,42 +700,42 @@
         <div class="top-bar-left">
             <div style="font-size: 1.1rem; font-weight: 700;">
                 <i class="fa-solid fa-comments accent"></i>
-                <span class="accent">Claude</span> Chat
+                <span class="accent">Claude</span> <span data-i18n="chat_title">Chat</span>
             </div>
             <div class="mode-toggle">
                 <button class="mode-btn active" id="modeManual" onclick="setMode('manual')">
-                    <i class="fa-solid fa-lock"></i> Manual
+                    <i class="fa-solid fa-lock"></i> <span data-i18n="manual">Manual</span>
                 </button>
                 <button class="mode-btn" id="modeAuto" onclick="setMode('auto')">
-                    <i class="fa-solid fa-lock-open"></i> Auto
+                    <i class="fa-solid fa-lock-open"></i> <span data-i18n="auto">Auto</span>
                 </button>
             </div>
             <div class="status-indicator status-ready" id="statusIndicator">
                 <span class="status-dot"></span>
-                <span id="statusText">Ready</span>
+                <span id="statusText" data-i18n="ready">Ready</span>
             </div>
             <div class="sub-widget" onclick="openModal('usageModal')" title="Subscription usage">
                 <i class="fa-solid fa-crown" style="color:#fbbf24;font-size:0.7rem;"></i>
                 <span id="subType" style="font-size:0.75rem;font-weight:600;color:#fbbf24;">Max</span>
                 <span style="color:var(--border);margin:0 2px;">|</span>
-                <span style="font-size:0.75rem;color:var(--text-secondary);">Today:</span>
+                <span style="font-size:0.75rem;color:var(--text-secondary);" data-i18n="today_label">Today:</span>
                 <span id="subTodayCount" style="font-size:0.75rem;font-weight:600;">0</span>
             </div>
         </div>
         <div class="top-bar-right">
-            <button class="top-btn danger" onclick="stopExecution()" title="Stop">
+            <button class="top-btn danger" onclick="stopExecution()" data-i18n-title="stop">
                 <i class="fa-solid fa-stop"></i>
             </button>
-            <button class="top-btn" onclick="clearChat()" title="Clear Chat">
+            <button class="top-btn" onclick="clearChat()" data-i18n-title="clear_chat">
                 <i class="fa-solid fa-trash"></i>
             </button>
-            <button class="top-btn" onclick="openModal('knowledgeModal')" title="Knowledge Base">
+            <button class="top-btn" onclick="openModal('knowledgeModal')" data-i18n-title="knowledge_base">
                 <i class="fa-solid fa-book"></i>
             </button>
-            <button class="top-btn" onclick="openModal('settingsModal')" title="Settings">
+            <button class="top-btn" onclick="openModal('settingsModal')" data-i18n-title="settings">
                 <i class="fa-solid fa-cog"></i>
             </button>
-            <a href="/ai-trade" class="top-btn" title="AI Trade" style="text-decoration:none;">
+            <a href="/ai-trade" class="top-btn" style="text-decoration:none;" data-i18n-title="ai_trade">
                 <i class="fa-solid fa-arrow-left"></i> AI Trade
             </a>
         </div>
@@ -748,7 +748,7 @@
             <div class="commands-header" onclick="toggleCommands()">
                 <div style="display:flex;align-items:center;gap:8px;">
                     <i class="fa-solid fa-bolt text-dim"></i>
-                    <span style="font-size:0.85rem;font-weight:600;">Quick Commands</span>
+                    <span style="font-size:0.85rem;font-weight:600;" data-i18n="quick_commands">Quick Commands</span>
                 </div>
                 <i class="fa-solid fa-chevron-down text-dim" id="cmdChevron" style="font-size:0.7rem;transition:transform 0.2s;"></i>
             </div>
@@ -759,7 +759,7 @@
         <div class="scheduled-section" id="scheduledSection">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
                 <span style="font-size:0.75rem;color:var(--text-secondary);text-transform:uppercase;letter-spacing:1px;">
-                    <i class="fa-solid fa-clock"></i> Scheduled Tasks
+                    <i class="fa-solid fa-clock"></i> <span data-i18n="scheduled_tasks">Scheduled Tasks</span>
                 </span>
             </div>
             <div id="scheduledList"></div>
@@ -768,7 +768,7 @@
         <!-- CHAT MESSAGES -->
         <div class="chat-area" id="chatArea">
             <div class="msg msg-assistant">
-                <div>Welcome! I'm <b>Claude Chat</b> — your AILA assistant.<br>
+                <div data-i18n-html="welcome_msg">Welcome! I'm <b>Claude Chat</b> — your AILA assistant.<br>
                 Use quick commands or write a request below.</div>
                 <div class="msg-time">System</div>
             </div>
@@ -777,14 +777,14 @@
         <!-- WORKING INDICATOR -->
         <div class="working-indicator" id="workingIndicator">
             <div class="typing-dots"><span></span><span></span><span></span></div>
-            <span id="workingText">Claude is thinking...</span>
+            <span id="workingText" data-i18n="thinking">Claude is thinking...</span>
         </div>
 
         <!-- INPUT AREA -->
         <div class="input-area">
             <div class="input-wrapper">
                 <textarea class="input-field" id="chatInput"
-                    placeholder="Write a request..."
+                    placeholder="Write a request..." data-i18n-placeholder="placeholder"
                     rows="1"
                     onkeydown="handleInputKey(event)"
                     oninput="autoResize(this)"></textarea>
@@ -800,14 +800,14 @@
 <div class="modal-overlay" id="knowledgeModal" onclick="closeModalOnOverlay(event)">
     <div class="modal-content">
         <div class="modal-header">
-            <h3 style="font-weight:600;"><i class="fa-solid fa-book mr-2"></i> Knowledge Base</h3>
+            <h3 style="font-weight:600;"><i class="fa-solid fa-book mr-2"></i> <span data-i18n="knowledge_base">Knowledge Base</span></h3>
             <button class="modal-close" onclick="closeModal('knowledgeModal')"><i class="fa-solid fa-times"></i></button>
         </div>
         <div class="modal-body">
             <div id="knowledgeList"></div>
             <div style="margin-top:16px;">
                 <label class="btn btn-primary" style="cursor:pointer;">
-                    <i class="fa-solid fa-upload"></i> Upload File
+                    <i class="fa-solid fa-upload"></i> <span data-i18n="upload_file">Upload File</span>
                     <input type="file" id="kbFileInput" accept=".txt,.md,.json,.py" style="display:none;" onchange="uploadKnowledge(this)">
                 </label>
                 <span style="font-size:0.75rem;color:var(--text-secondary);margin-left:10px;">.txt, .md, .json, .py (max 1MB)</span>
@@ -820,34 +820,34 @@
 <div class="modal-overlay" id="settingsModal" onclick="closeModalOnOverlay(event)">
     <div class="modal-content">
         <div class="modal-header">
-            <h3 style="font-weight:600;"><i class="fa-solid fa-cog mr-2"></i> Auto Mode Settings</h3>
+            <h3 style="font-weight:600;"><i class="fa-solid fa-cog mr-2"></i> <span data-i18n="auto_settings">Auto Mode Settings</span></h3>
             <button class="modal-close" onclick="closeModal('settingsModal')"><i class="fa-solid fa-times"></i></button>
         </div>
         <div class="modal-body">
             <div class="setting-check">
                 <input type="checkbox" id="setEditFiles" checked>
-                <label for="setEditFiles">Allow file editing</label>
+                <label for="setEditFiles" data-i18n="allow_edit">Allow file editing</label>
             </div>
             <div class="setting-check">
                 <input type="checkbox" id="setRestart" checked>
-                <label for="setRestart">Allow bot restart</label>
+                <label for="setRestart" data-i18n="allow_restart">Allow bot restart</label>
             </div>
             <div class="setting-check">
                 <input type="checkbox" id="setDelete">
-                <label for="setDelete">Allow file deletion</label>
+                <label for="setDelete" data-i18n="allow_delete">Allow file deletion</label>
             </div>
             <div class="setting-check">
                 <input type="checkbox" id="setEnv">
-                <label for="setEnv">Allow .env changes</label>
+                <label for="setEnv" data-i18n="allow_env">Allow .env changes</label>
             </div>
             <div class="form-group" style="margin-top:16px;">
-                <label class="form-label">Max auto iterations</label>
+                <label class="form-label" data-i18n="max_iterations">Max auto iterations</label>
                 <input type="number" class="form-input" id="setMaxIter" value="10" min="1" max="50" style="width:100px;">
             </div>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-ghost" onclick="closeModal('settingsModal')">Close</button>
-            <button class="btn btn-primary" onclick="saveSettings()"><i class="fa-solid fa-check"></i> Save</button>
+            <button class="btn btn-ghost" onclick="closeModal('settingsModal')" data-i18n="close">Close</button>
+            <button class="btn btn-primary" onclick="saveSettings()"><i class="fa-solid fa-check"></i> <span data-i18n="save">Save</span></button>
         </div>
     </div>
 </div>
@@ -862,11 +862,11 @@
         <div class="modal-body">
             <input type="hidden" id="cmdEditId">
             <div class="form-group">
-                <label class="form-label">Name</label>
-                <input type="text" class="form-input" id="cmdName" placeholder="Command name">
+                <label class="form-label" data-i18n="name">Name</label>
+                <input type="text" class="form-input" id="cmdName" data-i18n-placeholder="cmd_name_placeholder">
             </div>
             <div class="form-group">
-                <label class="form-label">Icon</label>
+                <label class="form-label" data-i18n="icon">Icon</label>
                 <select class="form-select" id="cmdIcon">
                     <option value="fa-terminal">Terminal</option>
                     <option value="fa-code">Code</option>
@@ -883,29 +883,29 @@
                 </select>
             </div>
             <div class="form-group">
-                <label class="form-label">Command text</label>
-                <textarea class="form-textarea" id="cmdText" placeholder="Command for Claude Chat..."></textarea>
+                <label class="form-label" data-i18n="command_text">Command text</label>
+                <textarea class="form-textarea" id="cmdText" data-i18n-placeholder="cmd_text_placeholder"></textarea>
             </div>
             <div class="form-group">
-                <label class="form-label">Category</label>
+                <label class="form-label" data-i18n="category">Category</label>
                 <select class="form-select" id="cmdCategory">
-                    <option value="monitoring">Monitoring</option>
-                    <option value="management">Management</option>
-                    <option value="data">Data</option>
-                    <option value="custom" selected>My Commands</option>
+                    <option value="monitoring" data-i18n="monitoring">Monitoring</option>
+                    <option value="management" data-i18n="management">Management</option>
+                    <option value="data" data-i18n="data_cat">Data</option>
+                    <option value="custom" selected data-i18n="my_commands">My Commands</option>
                 </select>
             </div>
             <div class="form-group">
-                <label class="form-label">Schedule</label>
+                <label class="form-label" data-i18n="schedule">Schedule</label>
                 <div class="form-radio-group">
                     <label class="form-radio">
-                        <input type="radio" name="cmdSchedule" value="none" checked onchange="toggleScheduleInput()"> No schedule
+                        <input type="radio" name="cmdSchedule" value="none" checked onchange="toggleScheduleInput()"> <span data-i18n="no_schedule">No schedule</span>
                     </label>
                     <label class="form-radio">
-                        <input type="radio" name="cmdSchedule" value="once" onchange="toggleScheduleInput()"> One-time after:
+                        <input type="radio" name="cmdSchedule" value="once" onchange="toggleScheduleInput()"> <span data-i18n="once_after">One-time after:</span>
                     </label>
                     <label class="form-radio">
-                        <input type="radio" name="cmdSchedule" value="recurring" onchange="toggleScheduleInput()"> Recurring every:
+                        <input type="radio" name="cmdSchedule" value="recurring" onchange="toggleScheduleInput()"> <span data-i18n="recurring_every">Recurring every:</span>
                     </label>
                 </div>
                 <div class="form-row" id="scheduleInputRow" style="display:none;margin-top:8px;">
@@ -919,8 +919,8 @@
             </div>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-ghost" onclick="closeModal('commandModal')">Cancel</button>
-            <button class="btn btn-primary" onclick="saveCommand()"><i class="fa-solid fa-check"></i> Save</button>
+            <button class="btn btn-ghost" onclick="closeModal('commandModal')" data-i18n="cancel">Cancel</button>
+            <button class="btn btn-primary" onclick="saveCommand()"><i class="fa-solid fa-check"></i> <span data-i18n="save">Save</span></button>
         </div>
     </div>
 </div>
@@ -929,7 +929,7 @@
 <div class="modal-overlay" id="usageModal" onclick="closeModalOnOverlay(event)">
     <div class="modal-content" style="max-width:480px;">
         <div class="modal-header">
-            <h3 style="font-weight:600;"><i class="fa-solid fa-crown mr-2" style="color:#fbbf24;"></i> Subscription Usage</h3>
+            <h3 style="font-weight:600;"><i class="fa-solid fa-crown mr-2" style="color:#fbbf24;"></i> <span data-i18n="subscription_usage">Subscription Usage</span></h3>
             <button class="modal-close" onclick="closeModal('usageModal')"><i class="fa-solid fa-times"></i></button>
         </div>
         <div class="modal-body">
@@ -945,29 +945,29 @@
             <!-- Today stats -->
             <div class="usage-grid">
                 <div class="usage-card">
-                    <div class="usage-card-label">Admin requests today</div>
+                    <div class="usage-card-label" data-i18n="admin_requests_today">Admin requests today</div>
                     <div class="usage-card-value accent" id="usageTodayAdmin">0</div>
                     <div class="usage-card-sub">Chat: <span id="usageTodayChat">0</span> | Code: <span id="usageTodayCode">0</span></div>
                 </div>
                 <div class="usage-card">
-                    <div class="usage-card-label">Total messages today</div>
+                    <div class="usage-card-label" data-i18n="total_messages_today">Total messages today</div>
                     <div class="usage-card-value" id="usageTodayMessages">0</div>
-                    <div class="usage-card-sub">Sessions: <span id="usageTodaySessions">0</span></div>
+                    <div class="usage-card-sub"><span data-i18n="sessions">Sessions</span>: <span id="usageTodaySessions">0</span></div>
                 </div>
                 <div class="usage-card">
-                    <div class="usage-card-label">Tokens today</div>
+                    <div class="usage-card-label" data-i18n="tokens_today">Tokens today</div>
                     <div class="usage-card-value" id="usageTodayTokens">0</div>
-                    <div class="usage-card-sub">Tools: <span id="usageTodayTools">0</span></div>
+                    <div class="usage-card-sub"><span data-i18n="tools">Tools</span>: <span id="usageTodayTools">0</span></div>
                 </div>
                 <div class="usage-card">
-                    <div class="usage-card-label">All time</div>
+                    <div class="usage-card-label" data-i18n="all_time">All time</div>
                     <div class="usage-card-value" id="usageTotalMsgs">0</div>
-                    <div class="usage-card-sub">Sessions: <span id="usageTotalSessions">0</span></div>
+                    <div class="usage-card-sub"><span data-i18n="sessions">Sessions</span>: <span id="usageTotalSessions">0</span></div>
                 </div>
             </div>
 
             <!-- Daily activity (last 7 days) -->
-            <div style="font-size:0.8rem;font-weight:600;margin-bottom:8px;">Last 7 days</div>
+            <div style="font-size:0.8rem;font-weight:600;margin-bottom:8px;" data-i18n="last_7_days">Last 7 days</div>
             <div id="usageDailyList"></div>
         </div>
     </div>
@@ -986,115 +986,141 @@ let scheduledTasks = [];
 let autoSettings = JSON.parse(localStorage.getItem('admin_auto_settings') || '{}');
 let scheduledTimer = null;
 
-// i18n
-const LANG = {
+// i18n — synced with ai_trade.html via localStorage('language')
+const translations = {
     ru: {
+        // Auth
+        auth_subtitle: 'Введите код, отправленный в Telegram',
         request_code: 'Запросить код',
-        enter_code: 'Введите код из Telegram',
         verify: 'Подтвердить',
-        resend: 'Отправить повторно',
+        resend_code: 'Отправить повторно',
         code_sent: 'Код отправлен в Telegram',
         invalid_code: 'Неверный код',
-        welcome: 'Добро пожаловать! Я <b>Claude Chat</b> — ваш ассистент AILA.<br>Используйте быстрые команды или напишите запрос.',
-        placeholder: 'Напишите запрос...',
-        thinking: 'Claude думает...',
-        executing: 'Claude Code выполняет...',
+        code_expired: 'Код истёк',
+        code_expires_in: 'Код истекает через',
+        enter_6_digit: 'Введите 6-значный код',
+        connection_error: 'Ошибка соединения',
+        // Top bar
+        chat_title: 'Чат',
+        manual: 'Ручной',
+        auto: 'Авто',
         ready: 'Готов',
         working: 'Работает',
         error: 'Ошибка',
-        manual: 'Ручной',
-        auto: 'Авто',
+        today_label: 'Сегодня:',
+        stop: 'Стоп',
+        clear_chat: 'Очистить чат',
+        knowledge_base: 'База знаний',
+        settings: 'Настройки',
+        ai_trade: 'AI Trade',
+        // Commands
+        quick_commands: 'Быстрые команды',
+        scheduled_tasks: 'Запланированные задачи',
+        monitoring: 'Мониторинг',
+        management: 'Управление',
+        data_cat: 'Данные',
+        my_commands: 'Мои команды',
+        // Chat
+        welcome_msg: 'Добро пожаловать! Я <b>Claude Chat</b> — ваш ассистент AILA.<br>Используйте быстрые команды или напишите запрос.',
+        placeholder: 'Напишите запрос...',
+        thinking: 'Claude думает...',
+        executing: 'Claude Code выполняет...',
         send_to_code: 'Отправить в Claude Code',
         edit_cmd: 'Редактировать',
         analyze_result: 'Отправить в Chat для анализа',
         skip: 'Пропустить',
-        quick_commands: 'Быстрые команды',
-        monitoring: 'Мониторинг',
-        management: 'Управление',
-        data: 'Данные',
-        custom: 'Мои команды',
-        scheduled: 'Запланированные задачи',
-        knowledge_base: 'База знаний',
-        settings: 'Настройки',
-        new_command: 'Новая команда',
-        edit_command: 'Редактировать команду',
+        result_received: 'Результат получен.',
+        code_result_label: 'Результат Claude Code:',
+        clear_confirm: 'Очистить историю чата?',
+        execution_stopped: 'Выполнение остановлено.',
+        scheduled_queued: 'Задача добавлена в очередь.',
+        // Knowledge modal
+        upload_file: 'Загрузить файл',
+        no_files: 'Нет загруженных файлов',
+        upload_failed: 'Ошибка загрузки',
+        // Settings modal
+        auto_settings: 'Настройки авто-режима',
+        allow_edit: 'Разрешить редактирование файлов',
+        allow_restart: 'Разрешить перезапуск бота',
+        allow_delete: 'Разрешить удаление файлов',
+        allow_env: 'Разрешить изменение .env',
+        max_iterations: 'Максимум итераций',
+        close: 'Закрыть',
+        save: 'Сохранить',
+        // Command modal
         name: 'Название',
         icon: 'Иконка',
-        command: 'Команда',
+        command_text: 'Текст команды',
         category: 'Категория',
         schedule: 'Планирование',
         no_schedule: 'Без планирования',
         once_after: 'Разово через:',
         recurring_every: 'Циклично каждые:',
         cancel: 'Отмена',
-        save: 'Сохранить',
-        close: 'Закрыть',
-        upload: 'Загрузить файл',
-        allow_edit: 'Разрешить редактирование файлов',
-        allow_restart: 'Разрешить перезапуск бота',
-        allow_delete: 'Разрешить удаление файлов',
-        allow_env: 'Разрешить изменение .env',
-        max_iter: 'Максимум итераций',
-        result_received: 'Результат получен.',
-        stop: 'Стоп',
-        clear: 'Очистить',
-        admin: 'Админ',
+        new_command: 'Новая команда',
+        edit_command: 'Редактировать команду',
+        cmd_name_placeholder: 'Название команды',
+        cmd_text_placeholder: 'Что должен сделать Claude...',
+        delete_confirm: 'Удалить эту команду?',
+        // Usage modal
+        subscription_usage: 'Использование подписки',
+        admin_requests_today: 'Запросы админа сегодня',
+        total_messages_today: 'Всего сообщений сегодня',
+        tokens_today: 'Токены сегодня',
+        all_time: 'Всё время',
+        sessions: 'Сессии',
+        tools: 'Инструменты',
+        last_7_days: 'Последние 7 дней',
+        no_data: 'Нет данных',
+        // Scheduled
+        paused: 'Пауза',
+        recurring: 'Циклично',
+        once: 'Разово',
+        next: 'След:',
+        done: 'Готово',
+        resume: 'Возобновить',
+        pause: 'Пауза',
+        run_now: 'Запустить',
     },
-    en: {
-        request_code: 'Request Code',
-        enter_code: 'Enter the code from Telegram',
-        verify: 'Verify',
-        resend: 'Resend Code',
-        code_sent: 'Code sent to Telegram',
-        invalid_code: 'Invalid code',
-        welcome: 'Welcome! I\'m <b>Claude Chat</b> — your AILA assistant.<br>Use quick commands or write a request below.',
-        placeholder: 'Write a request...',
-        thinking: 'Claude is thinking...',
-        executing: 'Claude Code executing...',
-        ready: 'Ready',
-        working: 'Working',
-        error: 'Error',
-        manual: 'Manual',
-        auto: 'Auto',
-        send_to_code: 'Send to Claude Code',
-        edit_cmd: 'Edit',
-        analyze_result: 'Send to Chat for analysis',
-        skip: 'Skip',
-        quick_commands: 'Quick Commands',
-        monitoring: 'Monitoring',
-        management: 'Management',
-        data: 'Data',
-        custom: 'My Commands',
-        scheduled: 'Scheduled Tasks',
-        knowledge_base: 'Knowledge Base',
-        settings: 'Settings',
-        new_command: 'New Command',
-        edit_command: 'Edit Command',
-        name: 'Name',
-        icon: 'Icon',
-        command: 'Command',
-        category: 'Category',
-        schedule: 'Schedule',
-        no_schedule: 'No schedule',
-        once_after: 'One-time after:',
-        recurring_every: 'Recurring every:',
-        cancel: 'Cancel',
-        save: 'Save',
-        close: 'Close',
-        upload: 'Upload File',
-        allow_edit: 'Allow file editing',
-        allow_restart: 'Allow bot restart',
-        allow_delete: 'Allow file deletion',
-        allow_env: 'Allow .env changes',
-        max_iter: 'Max iterations',
-        result_received: 'Result received.',
-        stop: 'Stop',
-        clear: 'Clear',
-        admin: 'Admin',
-    }
+    en: {}  // Falls back to HTML defaults (English)
 };
-let lang = localStorage.getItem('admin_lang') || 'ru';
-function t(key) { return (LANG[lang] || LANG.en)[key] || key; }
+
+function t(key) {
+    const lang = localStorage.getItem('language') || 'ru';
+    return translations[lang]?.[key] || translations.ru?.[key] || key;
+}
+
+function applyLanguage() {
+    // Text content
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.dataset.i18n;
+        const val = t(key);
+        if (val !== key) el.textContent = val;
+    });
+    // HTML content (for bold/br tags)
+    document.querySelectorAll('[data-i18n-html]').forEach(el => {
+        const key = el.dataset.i18nHtml;
+        const val = t(key);
+        if (val !== key) el.innerHTML = val;
+    });
+    // Placeholders
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.dataset.i18nPlaceholder;
+        const val = t(key);
+        if (val !== key) el.placeholder = val;
+    });
+    // Titles
+    document.querySelectorAll('[data-i18n-title]').forEach(el => {
+        const key = el.dataset.i18nTitle;
+        const val = t(key);
+        if (val !== key) el.title = val;
+    });
+}
+
+// Listen for language changes from ai_trade page
+window.addEventListener('storage', (e) => {
+    if (e.key === 'language') applyLanguage();
+});
 
 // =============================================
 // Auth
@@ -1122,6 +1148,7 @@ function showAuth() {
 function showPanel() {
     document.getElementById('authScreen').style.display = 'none';
     document.getElementById('adminPanel').style.display = 'flex';
+    applyLanguage();
     loadCommands();
     loadScheduled();
     loadChatHistory();
@@ -1146,8 +1173,8 @@ async function requestCode() {
             timerEl.style.display = 'block';
             const iv = setInterval(() => {
                 sec--;
-                timerEl.textContent = `Code expires in ${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')}`;
-                if (sec <= 0) { clearInterval(iv); timerEl.textContent = 'Code expired'; }
+                timerEl.textContent = `${t('code_expires_in')} ${Math.floor(sec/60)}:${String(sec%60).padStart(2,'0')}`;
+                if (sec <= 0) { clearInterval(iv); timerEl.textContent = t('code_expired'); }
             }, 1000);
             setTimeout(() => document.getElementById('codeInput').focus(), 100);
         } else {
@@ -1155,7 +1182,7 @@ async function requestCode() {
             errEl.style.display = 'block';
         }
     } catch (e) {
-        errEl.textContent = 'Connection error';
+        errEl.textContent = t('connection_error');
         errEl.style.display = 'block';
     }
 }
@@ -1165,7 +1192,7 @@ async function verifyCode() {
     const errEl = document.getElementById('authError');
     errEl.style.display = 'none';
     if (!code || code.length !== 6) {
-        errEl.textContent = 'Enter 6-digit code';
+        errEl.textContent = t('enter_6_digit');
         errEl.style.display = 'block';
         return;
     }
@@ -1185,7 +1212,7 @@ async function verifyCode() {
             errEl.style.display = 'block';
         }
     } catch (e) {
-        errEl.textContent = 'Connection error';
+        errEl.textContent = t('connection_error');
         errEl.style.display = 'block';
     }
 }
@@ -1246,8 +1273,8 @@ function renderCommands() {
     const categories = {
         monitoring: { label: t('monitoring'), cmds: [] },
         management: { label: t('management'), cmds: [] },
-        data: { label: t('data'), cmds: [] },
-        custom: { label: t('custom'), cmds: [] },
+        data: { label: t('data_cat'), cmds: [] },
+        custom: { label: t('my_commands'), cmds: [] },
     };
 
     commands.forEach(c => {
@@ -1301,8 +1328,8 @@ function runCommand(id) {
 function openCommandModal(editId = null) {
     document.getElementById('cmdEditId').value = editId || '';
     document.getElementById('commandModalTitle').innerHTML = editId
-        ? '<i class="fa-solid fa-pen mr-2"></i> ' + t('edit_command')
-        : '<i class="fa-solid fa-plus mr-2"></i> ' + t('new_command');
+        ? `<i class="fa-solid fa-pen mr-2"></i> ${t('edit_command')}`
+        : `<i class="fa-solid fa-plus mr-2"></i> ${t('new_command')}`;
 
     if (editId) {
         const cmd = commands.find(c => c.id === editId);
@@ -1324,7 +1351,7 @@ function openCommandModal(editId = null) {
 function editCommand(id) { openCommandModal(id); }
 
 async function deleteCommand(id) {
-    if (!confirm('Delete this command?')) return;
+    if (!confirm(t('delete_confirm'))) return;
     try {
         await api(`/commands/${id}`, 'DELETE');
         loadCommands();
@@ -1395,23 +1422,23 @@ function renderScheduled() {
         const isPaused = task.status === 'paused';
         const isCompleted = task.status === 'completed';
         const badgeClass = isPaused ? 'paused' : (task.type === 'recurring' ? 'recurring' : 'once');
-        const badgeText = isPaused ? 'Paused' : (task.type === 'recurring' ? 'Recurring' : 'Once');
+        const badgeText = isPaused ? t('paused') : (task.type === 'recurring' ? t('recurring') : t('once'));
         const nextRun = task.next_run ? new Date(task.next_run * 1000).toLocaleTimeString() : '-';
 
         html += `<div class="sched-item">
             <div class="sched-left">
                 <span class="sched-badge ${badgeClass}">${badgeText}</span>
                 <span>${task.name}</span>
-                <span style="font-size:0.7rem;color:var(--text-secondary);">Next: ${isCompleted ? 'Done' : nextRun}</span>
+                <span style="font-size:0.7rem;color:var(--text-secondary);">${t('next')} ${isCompleted ? t('done') : nextRun}</span>
             </div>
             <div class="sched-right">
-                <button class="sched-btn" onclick="togglePauseScheduled('${task.id}')" title="${isPaused ? 'Resume' : 'Pause'}">
+                <button class="sched-btn" onclick="togglePauseScheduled('${task.id}')" title="${isPaused ? t('resume') : t('pause')}">
                     <i class="fa-solid fa-${isPaused ? 'play' : 'pause'}"></i>
                 </button>
-                <button class="sched-btn" onclick="runScheduledNow('${task.id}')" title="Run Now">
+                <button class="sched-btn" onclick="runScheduledNow('${task.id}')" title="${t('run_now')}">
                     <i class="fa-solid fa-forward"></i>
                 </button>
-                <button class="sched-btn danger" onclick="deleteScheduled('${task.id}')" title="Delete">
+                <button class="sched-btn danger" onclick="deleteScheduled('${task.id}')" title="${t('cancel')}">
                     <i class="fa-solid fa-trash"></i>
                 </button>
             </div>
@@ -1430,7 +1457,7 @@ async function togglePauseScheduled(id) {
 async function runScheduledNow(id) {
     try {
         await api(`/scheduled/${id}/run`, 'POST');
-        addMessage('system', 'Scheduled task added to queue.');
+        addMessage('system', t('scheduled_queued'));
     } catch {}
 }
 
@@ -1480,7 +1507,7 @@ function addMessage(role, content, type = 'text', scroll = true) {
         div.innerHTML = `<div>${content}</div>`;
     } else if (type === 'code_result') {
         div.className = 'msg msg-code-result';
-        div.innerHTML = `<div><i class="fa-solid fa-terminal" style="margin-right:6px;"></i>Claude Code Result:</div>
+        div.innerHTML = `<div><i class="fa-solid fa-terminal" style="margin-right:6px;"></i>${t('code_result_label')}</div>
             <pre><code>${escapeHtml(content)}</code></pre>
             <div class="msg-time">${now}</div>`;
     } else {
@@ -1672,12 +1699,12 @@ async function analyzeResult(output, originalCommand = '') {
 }
 
 async function clearChat() {
-    if (!confirm('Clear chat history?')) return;
+    if (!confirm(t('clear_confirm'))) return;
     try {
         await api('/chat/clear', 'POST');
         const area = document.getElementById('chatArea');
         area.innerHTML = `<div class="msg msg-assistant">
-            <div>${t('welcome')}</div>
+            <div>${t('welcome_msg')}</div>
             <div class="msg-time">System</div>
         </div>`;
     } catch {}
@@ -1687,7 +1714,7 @@ async function stopExecution() {
     try {
         await api('/code/stop', 'POST');
         setWorking(false);
-        addMessage('system', 'Execution stopped.');
+        addMessage('system', t('execution_stopped'));
     } catch {}
 }
 
@@ -1699,7 +1726,7 @@ async function loadKnowledge() {
         const data = await api('/knowledge');
         const list = document.getElementById('knowledgeList');
         if (!data.files || data.files.length === 0) {
-            list.innerHTML = '<div style="text-align:center;color:var(--text-secondary);padding:20px;">No files uploaded</div>';
+            list.innerHTML = `<div style="text-align:center;color:var(--text-secondary);padding:20px;">${t('no_files')}</div>`;
             return;
         }
         list.innerHTML = data.files.map(f => {
@@ -1738,7 +1765,7 @@ async function uploadKnowledge(input) {
         if (res.ok) {
             loadKnowledge();
         } else {
-            alert(data.detail || 'Upload failed');
+            alert(data.detail || t('upload_failed'));
         }
     } catch (e) {
         alert('Upload error: ' + e.message);
@@ -1884,7 +1911,7 @@ async function loadUsage() {
                 </div>`;
             }).join('');
         } else {
-            list.innerHTML = '<div style="text-align:center;color:var(--text-secondary);padding:12px;">No data</div>';
+            list.innerHTML = `<div style="text-align:center;color:var(--text-secondary);padding:12px;">${t('no_data')}</div>`;
         }
     } catch (e) {
         console.error('Usage load error:', e);
@@ -1905,7 +1932,10 @@ function formatNumber(n) {
 // =============================================
 // Init
 // =============================================
-document.addEventListener('DOMContentLoaded', checkSession);
+document.addEventListener('DOMContentLoaded', () => {
+    applyLanguage();
+    checkSession();
+});
 </script>
 </body>
 </html>
