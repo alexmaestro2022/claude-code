@@ -2797,6 +2797,27 @@ logger.info(f"[POSITION] Calculated raw_amount: {raw_amount:.8f} = (${position_s
 
 ---
 
-**Последнее обновление:** 2026-01-30 (refactor: move chat session state to _admin_sessions)
+## Исправление: единая сессия для desktop и mobile (2026-01-30)
+
+### Проблема:
+- `initialize_session()`, `session_status()`, `clear_session()` читали токен из **cookie** (`request.cookies.get("admin_token")`)
+- Клиент отправляет токен через **header** (`X-Admin-Token`)
+- Cookie никогда не устанавливался — все три endpoint всегда возвращали 401/`{"active": False}`
+- Из-за этого session_id и session_started не привязывались к токену
+
+### Исправление:
+- Добавлена функция `_get_session_token(request)` — единый способ извлечения токена из header
+- Все три endpoint заменены с `request.cookies.get("admin_token")` на `_get_session_token(request)`
+- `check_session` endpoint теперь возвращает `history_count` для синхронизации
+- Устройства (device/mobile/desktop) НЕ трекаются — одна сессия на пользователя
+
+### Результат:
+- Одна сессия работает на всех устройствах
+- История чата общая (один файл `claude_chat/history/current.json`)
+- При входе с другого устройства — подтягивается та же история
+
+---
+
+**Последнее обновление:** 2026-01-30 (fix: single session for all devices)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`

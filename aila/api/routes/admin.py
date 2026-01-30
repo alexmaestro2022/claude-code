@@ -242,6 +242,11 @@ def _require_auth(request: Request) -> None:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
 
+def _get_session_token(request: Request) -> str:
+    """Extract admin session token from request header."""
+    return request.headers.get("X-Admin-Token", "")
+
+
 def _get_client_ip(request: Request) -> str:
     """Get client IP address."""
     forwarded = request.headers.get("X-Forwarded-For", "")
@@ -396,9 +401,13 @@ async def verify_code(request: Request):
 
 @router.get("/session")
 async def check_session(request: Request):
-    """Check if current session is valid."""
+    """Check if current session is valid and return history count."""
     valid = _verify_admin_session(request)
-    return {"valid": valid}
+    result: dict[str, Any] = {"valid": valid}
+    if valid:
+        history = _get_chat_history(200)
+        result["history_count"] = len(history)
+    return result
 
 
 @router.post("/session/initialize")
@@ -406,7 +415,7 @@ async def initialize_session(request: Request):
     """Initialize chat session: load knowledge base, return session info."""
     _require_auth(request)
 
-    token = request.cookies.get("admin_token")
+    token = _get_session_token(request)
     if not token or token not in _admin_sessions:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
@@ -446,7 +455,7 @@ async def session_status(request: Request):
     """Get current chat session status."""
     _require_auth(request)
 
-    token = request.cookies.get("admin_token")
+    token = _get_session_token(request)
     if not token or token not in _admin_sessions:
         return {"active": False}
 
@@ -487,7 +496,7 @@ async def clear_session(request: Request):
     _require_auth(request)
     global _knowledge_loaded, _knowledge_last_loaded, _knowledge_cache
 
-    token = request.cookies.get("admin_token")
+    token = _get_session_token(request)
     if not token or token not in _admin_sessions:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
