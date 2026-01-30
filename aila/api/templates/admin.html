@@ -1226,8 +1226,7 @@ let commands = [];
 let scheduledTasks = [];
 let autoSettings = JSON.parse(localStorage.getItem('admin_auto_settings') || '{}');
 let scheduledTimer = null;
-let rateLimitCooldown = 0;  // seconds remaining
-let rateLimitTimer = null;
+// Rate limit tracking (stats only, no blocking)
 
 // i18n — synced with ai_trade.html via localStorage('language')
 const translations = {
@@ -1875,7 +1874,6 @@ function formatResponse(text) {
 }
 
 function handleRateLimitResponse(data) {
-    const retryAfter = data.retry_after || 60;
     const msg = (localStorage.getItem('language') || 'ru') === 'ru'
         ? data.message
         : (data.message_en || data.message);
@@ -1883,37 +1881,14 @@ function handleRateLimitResponse(data) {
     setWorking(false);
     setStatus('error', t('rate_limit_title'));
     addMessage('system', `⚠️ ${msg}`);
-    startRateLimitCooldown(retryAfter);
     loadUsage();  // refresh rate limit stats in widget
-}
-
-function startRateLimitCooldown(seconds) {
-    rateLimitCooldown = seconds;
-    const sendBtn = document.getElementById('sendBtn');
-    const input = document.getElementById('chatInput');
-    sendBtn.disabled = true;
-    input.disabled = true;
-
-    // Show countdown on button
-    if (rateLimitTimer) clearInterval(rateLimitTimer);
-    rateLimitTimer = setInterval(() => {
-        rateLimitCooldown--;
-        sendBtn.innerHTML = `<span style="font-size:0.7rem;">${rateLimitCooldown}</span>`;
-        if (rateLimitCooldown <= 0) {
-            clearInterval(rateLimitTimer);
-            rateLimitTimer = null;
-            sendBtn.disabled = false;
-            input.disabled = false;
-            sendBtn.innerHTML = '<i class="fa-solid fa-arrow-up"></i>';
-            setStatus('ready', t('ready'));
-        }
-    }, 1000);
+    // No cooldown — Max subscription, user can retry immediately
 }
 
 async function sendMessage() {
     const input = document.getElementById('chatInput');
     const message = input.value.trim();
-    if (!message || isWorking || rateLimitCooldown > 0) return;
+    if (!message || isWorking) return;
 
     input.value = '';
     autoResize(input);
@@ -1925,7 +1900,7 @@ async function sendMessage() {
         const data = await api('/chat', 'POST', { message });
 
         // Check for rate limit response
-        if (data.error && data.error_type === 'rate_limit') {
+        if (data.error && data.error_type === 'rate_limit_info') {
             handleRateLimitResponse(data);
             return;
         }
@@ -1969,14 +1944,13 @@ function editBeforeSend(btn) {
 }
 
 async function executeInCode(command, autoMode) {
-    if (rateLimitCooldown > 0) return;
     setWorking(true, t('executing'));
 
     try {
         const data = await api('/code/execute', 'POST', { command, auto_mode: autoMode });
 
         // Check for rate limit response
-        if (data.error && data.error_type === 'rate_limit') {
+        if (data.error && data.error_type === 'rate_limit_info') {
             handleRateLimitResponse(data);
             return;
         }

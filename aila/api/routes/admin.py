@@ -219,22 +219,12 @@ def _is_rate_limit_error(output: str) -> bool:
     return any(p in output_lower for p in RATE_LIMIT_PATTERNS)
 
 
-def _extract_retry_after(output: str) -> int:
-    """Try to extract retry-after seconds from error message."""
-    import re
-    # Match patterns like "try again in 60 seconds" or "retry after 30s"
-    match = re.search(r"(?:in|after)\s+(\d+)\s*(?:s|sec|seconds)", output.lower())
-    if match:
-        return int(match.group(1))
-    return 60  # default cooldown
-
 
 async def _handle_rate_limit(source: str, error_msg: str) -> dict:
-    """Handle rate limit: log, notify, update stats, return error dict."""
+    """Handle rate limit: log, notify, update stats. No blocking."""
     now = datetime.now()
-    retry_after = _extract_retry_after(error_msg)
 
-    logger.warning(f"[ADMIN] Rate limit reached from {source}: {error_msg[:200]}")
+    logger.warning(f"[ADMIN] Rate limit detected from {source}: {error_msg[:200]}")
     _audit_log("admin", "RATE_LIMIT", source, error_msg[:200])
 
     # Update rate limit stats in admin_stats.json
@@ -252,23 +242,22 @@ async def _handle_rate_limit(source: str, error_msg: str) -> dict:
     stats["rate_limits"] = rl
     _save_json(ADMIN_STATS_FILE, stats)
 
-    # Send Telegram notification
+    # Send Telegram notification (info only, no blocking)
     admin_stats = _load_admin_stats()
     total_today = admin_stats.get("total_requests", 0)
     await _send_telegram(
-        f"⚠️ <b>Достигнут лимит скорости!</b>\n"
+        f"⚠️ <b>Rate limit от Anthropic</b>\n"
         f"⏱ Время: {now.strftime('%H:%M:%S')}\n"
         f"📊 Запросов сегодня: {total_today}\n"
         f"💬 Сообщение: «{error_msg[:150]}»\n"
-        f"💡 Рекомендация: подождите {retry_after} сек перед следующим запросом."
+        f"ℹ️ Подписка Max — можно повторить запрос сразу."
     )
 
     return {
         "error": True,
-        "error_type": "rate_limit",
-        "message": f"Достигнут лимит запросов. Подождите {retry_after} сек.",
-        "message_en": f"Rate limit reached. Wait {retry_after}s.",
-        "retry_after": retry_after,
+        "error_type": "rate_limit_info",
+        "message": "Anthropic вернул ошибку rate limit. Можно повторить запрос.",
+        "message_en": "Anthropic returned rate limit error. You can retry immediately.",
         "timestamp": now.isoformat(),
     }
 
