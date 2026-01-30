@@ -2851,17 +2851,52 @@ logger.info(f"[POSITION] Calculated raw_amount: {raw_amount:.8f} = (${position_s
 
 ### Реализация:
 - **Frontend**: кнопка `#chatModeBtn` с toggle состоянием, CSS `.chat-mode-btn` / `.active`
-- **Backend**: параметр `chat_only` в POST `/chat`, отдельный промпт `_build_chat_only_prompt()`
+- **Backend**: параметр `chat_only` в POST `/chat`, отдельный промпт `_build_first_chat_only()`
 - Промпт для chat-only включает базу знаний и историю, но запрещает формировать команды
-- Существующий промпт вынесен в `_build_full_prompt()` для чистоты кода
 - Ответ содержит `chat_only: true` — фронтенд пропускает парсинг команд
 
 ### Файлы:
-- `aila/api/routes/admin.py` — `_build_chat_only_prompt()`, `_build_full_prompt()`, `chat_only` в `/chat`
+- `aila/api/routes/admin.py` — prompt builders, `chat_only` в `/chat`
 - `aila/api/templates/admin.html` — CSS chat-mode-btn, HTML кнопка, JS toggleChatMode, sendMessage обновлён
 
 ---
 
-**Последнее обновление:** 2026-01-30 (feat: chat-only mode)
+## Оптимизация промптов — кэширование контекста (2026-01-30)
+
+### Проблема:
+- База знаний (10-20k токенов) отправлялась В КАЖДОМ запросе к Claude
+- Быстро расходовался rate limit
+
+### Решение — умное кэширование:
+- **Первый запрос** в сессии — полный промпт с базой знаний (~15-20k токенов)
+- **Последующие запросы** — минимальный промпт: только история (5 последних, обрезанных до 200 символов) + запрос (~1-2k токенов)
+- Экономия за 10 запросов: ~80%
+
+### Механика:
+- `_admin_sessions[token]["session_context_sent"]` — флаг, отправлен ли контекст
+- При `session_context_sent=False` или `force_context=True` — отправляется полный промпт
+- После первого запроса `session_context_sent=True`
+- При очистке сессии (`/session/clear`) — сбрасывается на `False`
+- Кнопка 🔄 "Обновить контекст" в шапке — принудительно пересылает базу знаний
+
+### Промпт-билдеры:
+| Функция | Когда | Токены |
+|---------|-------|--------|
+| `_build_first_full()` | 1-й запрос Chat+Code | ~15-20k |
+| `_build_first_chat_only()` | 1-й запрос Chat-only | ~15-20k |
+| `_build_followup_full()` | Последующие Chat+Code | ~1-2k |
+| `_build_followup_chat_only()` | Последующие Chat-only | ~1-2k |
+
+### Логирование:
+- `[ADMIN_CHAT] first (full context) | 15000 chars (~3750 tokens)`
+- `[ADMIN_CHAT] follow-up (minimal) | 800 chars (~200 tokens)`
+
+### Файлы:
+- `aila/api/routes/admin.py` — 4 prompt builder'а, `force_context`, `session_context_sent`
+- `aila/api/templates/admin.html` — кнопка refreshContext, `_forceContextNext` флаг
+
+---
+
+**Последнее обновление:** 2026-01-30 (perf: optimize chat prompts)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`

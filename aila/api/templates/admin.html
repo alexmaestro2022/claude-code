@@ -1044,6 +1044,9 @@
             <button class="top-btn" onclick="clearChat()" data-i18n-title="clear_chat">
                 <i class="fa-solid fa-trash"></i>
             </button>
+            <button class="top-btn" onclick="refreshContext()" data-i18n-title="refresh_context" title="Refresh context">
+                <i class="fa-solid fa-arrows-rotate"></i>
+            </button>
             <button class="top-btn" onclick="openModal('knowledgeModal')" data-i18n-title="knowledge_base">
                 <i class="fa-solid fa-book"></i>
             </button>
@@ -1678,6 +1681,8 @@ const translations = {
         chat_mode_off: 'Обычный режим (Chat + Code)',
         chat_mode_placeholder: '💬 Режим чата — спрашивайте что угодно...',
         chat_only_label: '💬 Только чат',
+        refresh_context: 'Обновить контекст',
+        context_refreshed: 'Контекст будет обновлён в следующем сообщении',
         thinking: 'Claude думает...',
         executing: 'Claude Code выполняет...',
         status_thinking: 'Claude думает...',
@@ -2422,11 +2427,16 @@ async function sendMessage() {
     showWorkingState('thinking');
 
     try {
-        const data = await api('/chat', 'POST', {
+        const payload = {
             message,
             mode: currentMode,
             chat_only: chatModeActive,
-        });
+        };
+        if (_forceContextNext) {
+            payload.force_context = true;
+            _forceContextNext = false;
+        }
+        const data = await api('/chat', 'POST', payload);
 
         // Check for rate limit response
         if (data.error && data.error_type === 'rate_limit_info') {
@@ -2761,6 +2771,13 @@ async function newSession() {
     } catch (e) {
         addMessage('system', 'Error: ' + e.message);
     }
+}
+
+let _forceContextNext = false;
+
+async function refreshContext() {
+    _forceContextNext = true;
+    addMessage('system', '🔄 ' + t('context_refreshed'));
 }
 
 async function stopExecution() {

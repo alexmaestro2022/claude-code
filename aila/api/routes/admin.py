@@ -524,6 +524,7 @@ async def clear_session(request: Request):
 
     _admin_sessions[token]["session_id"] = new_session_id
     _admin_sessions[token]["session_started"] = new_session_started
+    _admin_sessions[token]["session_context_sent"] = False
 
     _audit_log("admin", "SESSION_CLEAR", f"old={old_id}, new={new_session_id}")
 
@@ -923,120 +924,122 @@ def _process_knowledge_updates(response: str) -> list[str]:
     return updated
 
 
-def _build_chat_only_prompt(
-    message: str,
-    knowledge: str,
-    history_text: str,
-    system_context: str,
+def _format_history_compact(
+    history: list[dict], max_messages: int = 5
 ) -> str:
-    """Build prompt for chat-only mode — direct dialog, no Code commands."""
+    """Format chat history compactly — only recent messages, truncated."""
+    recent = history[-max_messages:] if history else []
+    lines: list[str] = []
+    for msg in recent:
+        role = "U" if msg.get("role") == "user" else "A"
+        content = msg.get("content", "")[:200]
+        lines.append(f"{role}: {content}")
+    return "\n".join(lines)
+
+
+def _get_mode_instructions(mode: str) -> str:
+    """Get mode-specific instructions for Chat+Code mode."""
+    if mode == "manual":
+        return (
+            "- Сначала опиши план и спроси подтверждение: \"Верно? Выполняю?\"\n"
+            "- Только после подтверждения формируй [COMMAND_FOR_CODE]."
+        )
+    return (
+        "- При первом сообщении кратко опиши план и спроси подтверждение.\n"
+        "- После подтверждения выполняй автоматически, формируй [COMMAND_FOR_CODE]."
+    )
+
+
+# --- First message prompts (full context) ---
+
+def _build_first_chat_only(
+    message: str, knowledge: str, system_context: str,
+) -> str:
+    """First message in chat-only mode — full knowledge, no Code commands."""
     return f"""{system_context}
 
-# БАЗА ЗНАНИЙ
+# ИНИЦИАЛИЗАЦИЯ СЕССИИ — ЗАПОМНИ НА ВСЮ СЕССИЮ
+
+## БАЗА ЗНАНИЙ:
 {knowledge}
 
-# РЕЖИМ: ТОЛЬКО ЧАТ
-Ты — Claude Chat, интеллектуальный помощник для управления AILA AI Trade ботом.
-Ты общаешься с пользователем напрямую.
-НЕ формируй команды для Claude Code.
-НЕ используй [COMMAND_FOR_CODE].
-Просто отвечай на вопросы, рассуждай, помогай.
+## РОЛЬ:
+Ты — Claude Chat, помощник AILA AI Trade бота.
+НЕ формируй [COMMAND_FOR_CODE]. Просто отвечай на вопросы.
+Следуй правилам из RULES.md. Отвечай на русском.
 
-- ВСЕГДА следуй правилам из RULES.md
-- Используй контекст из AILA_SESSION_MEMORY.md
-- Отвечай на русском языке
+## УПРАВЛЕНИЕ ПРАВИЛАМИ:
+Для изменения правил используй теги:
+[UPDATE_KNOWLEDGE]RULES.md|append|текст[/UPDATE_KNOWLEDGE]
+[UPDATE_KNOWLEDGE]RULES.md|remove|текст[/UPDATE_KNOWLEDGE]
 
-# УПРАВЛЕНИЕ ПРАВИЛАМИ
-Если пользователь просит создать/добавить/удалить/изменить правило:
-- Ответь что правило добавлено/удалено/изменено
-- Добавь тег для обновления файла:
-  [UPDATE_KNOWLEDGE]RULES.md|append|текст правила[/UPDATE_KNOWLEDGE]
-  [UPDATE_KNOWLEDGE]RULES.md|remove|текст для удаления[/UPDATE_KNOWLEDGE]
-
-# ИСТОРИЯ ЧАТА
-{history_text}
-
-# ВОПРОС
-{message}
-
-# ФОРМАТ ОТВЕТА
-Отвечай структурированно, используй ## заголовки, списки, таблицы где уместно.
-Будь кратким и полезным."""
+## ЗАПРОС:
+{message}"""
 
 
-def _build_full_prompt(
-    message: str,
-    knowledge: str,
-    history_text: str,
-    system_context: str,
-    mode: str,
+def _build_first_full(
+    message: str, knowledge: str, system_context: str, mode: str,
 ) -> str:
-    """Build prompt for full Chat + Code mode."""
+    """First message in Chat+Code mode — full knowledge + instructions."""
     return f"""{system_context}
 
-# БАЗА ЗНАНИЙ
-Ты изучил следующие файлы и ДОЛЖЕН следовать им:
+# ИНИЦИАЛИЗАЦИЯ СЕССИИ — ЗАПОМНИ НА ВСЮ СЕССИЮ
 
+## БАЗА ЗНАНИЙ:
 {knowledge}
 
-# ТВОЯ РОЛЬ
-Ты — Claude Chat, интеллектуальный помощник для управления AILA AI Trade ботом.
-- ВСЕГДА следуй правилам из RULES.md
-- Используй контекст из AILA_SESSION_MEMORY.md
-- Используй остальные файлы как справочную информацию
+## РОЛЬ:
+Ты — Claude Chat, помощник AILA AI Trade бота.
+Следуй правилам из RULES.md. Отвечай на русском.
 
-# УПРАВЛЕНИЕ ПРАВИЛАМИ
-Если пользователь просит создать/добавить/удалить/изменить правило:
-- Ответь что правило добавлено/удалено/изменено
-- Добавь тег для обновления файла:
-  [UPDATE_KNOWLEDGE]RULES.md|append|текст правила[/UPDATE_KNOWLEDGE]
-  [UPDATE_KNOWLEDGE]RULES.md|remove|текст для удаления[/UPDATE_KNOWLEDGE]
-Если пользователь просит показать правила, покажи содержимое RULES.md.
+## УПРАВЛЕНИЕ ПРАВИЛАМИ:
+Для изменения правил:
+[UPDATE_KNOWLEDGE]RULES.md|append|текст[/UPDATE_KNOWLEDGE]
+[UPDATE_KNOWLEDGE]RULES.md|remove|текст[/UPDATE_KNOWLEDGE]
 
-# ИСТОРИЯ ЧАТА
+## РЕЖИМ: {'РУЧНОЙ' if mode == 'manual' else 'АВТО'}
+{_get_mode_instructions(mode)}
+
+## КОМАНДЫ ДЛЯ CODE:
+Для действий на сервере формируй:
+[COMMAND_FOR_CODE]конкретная команда с абсолютными путями /opt/aila/...[/COMMAND_FOR_CODE]
+Сервер — реальный VPS, полные права, sudo без пароля.
+
+## ЗАПРОС:
+{message}"""
+
+
+# --- Follow-up prompts (minimal context) ---
+
+def _build_followup_chat_only(
+    message: str, history_text: str,
+) -> str:
+    """Follow-up in chat-only mode — minimal prompt."""
+    return f"""# ПРОДОЛЖЕНИЕ СЕССИИ (chat-only)
+
+## ИСТОРИЯ:
 {history_text}
 
-# ТЕКУЩИЙ ЗАПРОС
+## ЗАПРОС:
 {message}
 
-# РЕЖИМ РАБОТЫ: {'РУЧНОЙ (Manual)' if mode == 'manual' else 'АВТОМАТИЧЕСКИЙ (Auto)'}
-{(
-    '- Сначала опиши как ты понял задачу пользователя и какие действия планируешь.\n'
-    '- Спроси подтверждение: "Верно? Выполняю?"\n'
-    '- Только после явного подтверждения ("да", "верно", "выполняй") формируй [COMMAND_FOR_CODE].\n'
-    '- Если пользователь уточняет или поправляет — скорректируй план и снова спроси подтверждение.'
-) if mode == 'manual' else (
-    '- При первом сообщении кратко опиши план и спроси подтверждение.\n'
-    '- После подтверждения выполняй все последующие задачи автоматически, без дополнительных вопросов.\n'
-    '- Сразу формируй [COMMAND_FOR_CODE] для каждого действия.'
-)}
+Отвечай кратко на русском. НЕ формируй [COMMAND_FOR_CODE]. База знаний загружена."""
 
-# ИНСТРУКЦИИ
-- Отвечай на русском языке. Будь кратким и полезным.
-- Если нужно выполнить действие на сервере, сформируй КОНКРЕТНУЮ команду:
-  [COMMAND_FOR_CODE]конкретная bash команда или задача[/COMMAND_FOR_CODE]
 
-# ПРАВИЛА ДЛЯ COMMAND_FOR_CODE
-Claude Code работает на РЕАЛЬНОМ VPS сервере Vultr Tokyo (НЕ контейнер, НЕ Docker, НЕ sandbox).
-У тебя ПОЛНЫЕ ПРАВА:
-- Читать/редактировать любые файлы в /opt/aila/
-- Выполнять любые bash команды
-- sudo РАБОТАЕТ без пароля: sudo systemctl restart aila
-- Git: commit, push, pull
-- Устанавливать пакеты: pip, npm
-НЕ ПИШИ что "нет доступа" или "контейнер" — это неправда.
+def _build_followup_full(
+    message: str, history_text: str, mode: str,
+) -> str:
+    """Follow-up in Chat+Code mode — minimal prompt."""
+    return f"""# ПРОДОЛЖЕНИЕ СЕССИИ
 
-ПРАВИЛЬНЫЕ примеры команд:
-[COMMAND_FOR_CODE]cat /opt/aila/logs/ai_trade/trader.log | tail -50[/COMMAND_FOR_CODE]
-[COMMAND_FOR_CODE]grep -n "error" /opt/aila/logs/ai_trade/engine.log | tail -20[/COMMAND_FOR_CODE]
-[COMMAND_FOR_CODE]cat /opt/aila/data/ai_trade/trader_settings.json[/COMMAND_FOR_CODE]
-[COMMAND_FOR_CODE]Прочитай файл /opt/aila/aila/trading/engine.py и найди функцию _execute_entry[/COMMAND_FOR_CODE]
+## ИСТОРИЯ:
+{history_text}
 
-НЕПРАВИЛЬНО (абстрактно):
-[COMMAND_FOR_CODE]проверь логи[/COMMAND_FOR_CODE]
-[COMMAND_FOR_CODE]посмотри настройки[/COMMAND_FOR_CODE]
+## ЗАПРОС:
+{message}
 
-Используй АБСОЛЮТНЫЕ пути от /opt/aila/."""
+Режим: {'ручной' if mode == 'manual' else 'авто'}. {_get_mode_instructions(mode)}
+Отвечай кратко на русском. База знаний загружена."""
 
 
 @router.post("/chat")
@@ -1047,41 +1050,59 @@ async def chat_message(request: Request):
     message = body.get("message", "").strip()
     mode = body.get("mode", "manual")  # manual | auto
     chat_only = body.get("chat_only", False)
+    force_context = body.get("force_context", False)
     if not message:
         raise HTTPException(status_code=400, detail="Message required")
 
     # Save user message
     _save_chat_message("user", message)
 
-    # Build context
+    # Determine if this is a first message (needs full context)
+    token = _get_session_token(request)
+    session = _admin_sessions.get(token, {})
+    context_sent = session.get("session_context_sent", False)
+    is_first = not context_sent or force_context
+
     _chat_start = time.time()
-    knowledge = _load_knowledge_base()
-    history = _get_chat_history(10, for_prompt=True)
-    history_text = "\n".join(
-        f"{'User' if m['role'] == 'user' else 'Assistant'}: {m['content']}"
-        for m in history[:-1]  # exclude current message
-    )
 
-    # Read context.md if exists
-    context_file = CHAT_DIR / "context.md"
-    system_context = ""
-    if context_file.exists():
-        system_context = context_file.read_text(errors="replace")[:10000]
+    if is_first:
+        # FIRST message — full prompt with knowledge base
+        knowledge = _load_knowledge_base()
+        context_file = CHAT_DIR / "context.md"
+        system_context = ""
+        if context_file.exists():
+            system_context = context_file.read_text(errors="replace")[:10000]
 
-    if chat_only:
-        prompt = _build_chat_only_prompt(
-            message, knowledge, history_text, system_context
-        )
+        if chat_only:
+            prompt = _build_first_chat_only(message, knowledge, system_context)
+        else:
+            prompt = _build_first_full(message, knowledge, system_context, mode)
+
+        # Mark context as sent
+        if token in _admin_sessions:
+            _admin_sessions[token]["session_context_sent"] = True
+
+        prompt_type = "first (full context)"
     else:
-        prompt = _build_full_prompt(
-            message, knowledge, history_text, system_context, mode
-        )
+        # FOLLOW-UP — minimal prompt, no knowledge
+        history = _get_chat_history(5, for_prompt=True)
+        history_text = _format_history_compact(history, 5)
+
+        if chat_only:
+            prompt = _build_followup_chat_only(message, history_text)
+        else:
+            prompt = _build_followup_full(message, history_text, mode)
+
+        prompt_type = "follow-up (minimal)"
 
     try:
         # Run claude CLI for Chat with Sonnet (faster than default Opus)
         claude_env = _get_claude_env()
         prompt_len = len(prompt)
-        logger.info(f"[ADMIN_CHAT] Calling claude CLI, prompt={prompt_len} chars")
+        est_tokens = prompt_len // 4
+        logger.info(
+            f"[ADMIN_CHAT] {prompt_type} | {prompt_len} chars (~{est_tokens} tokens)"
+        )
         result = await asyncio.to_thread(
             subprocess.run,
             ["claude", "--print", "--model", "sonnet", prompt],
