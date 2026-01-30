@@ -533,18 +533,37 @@ async def chat_message(request: Request):
 {message}
 
 # ИНСТРУКЦИИ
-- Если нужно выполнить действие на сервере, сформируй команду:
-  [COMMAND_FOR_CODE]команда здесь[/COMMAND_FOR_CODE]
-- Отвечай на русском языке. Будь кратким и полезным."""
+- Отвечай на русском языке. Будь кратким и полезным.
+- Если нужно выполнить действие на сервере, сформируй КОНКРЕТНУЮ команду:
+  [COMMAND_FOR_CODE]конкретная bash команда или задача[/COMMAND_FOR_CODE]
+
+# ПРАВИЛА ДЛЯ COMMAND_FOR_CODE
+Claude Code имеет ПОЛНЫЙ доступ к /opt/aila/ и может:
+- Читать/редактировать любые файлы проекта
+- Выполнять bash команды (cat, grep, tail, ls и т.д.)
+- Перезапускать сервисы (sudo systemctl restart aila)
+- Читать логи, конфиги, код
+
+ПРАВИЛЬНЫЕ примеры команд:
+[COMMAND_FOR_CODE]cat /opt/aila/logs/ai_trade/trader.log | tail -50[/COMMAND_FOR_CODE]
+[COMMAND_FOR_CODE]grep -n "error" /opt/aila/logs/ai_trade/engine.log | tail -20[/COMMAND_FOR_CODE]
+[COMMAND_FOR_CODE]cat /opt/aila/data/ai_trade/trader_settings.json[/COMMAND_FOR_CODE]
+[COMMAND_FOR_CODE]Прочитай файл /opt/aila/aila/trading/engine.py и найди функцию _execute_entry[/COMMAND_FOR_CODE]
+
+НЕПРАВИЛЬНО (абстрактно):
+[COMMAND_FOR_CODE]проверь логи[/COMMAND_FOR_CODE]
+[COMMAND_FOR_CODE]посмотри настройки[/COMMAND_FOR_CODE]
+
+Используй АБСОЛЮТНЫЕ пути от /opt/aila/."""
 
     try:
         # Run claude CLI for Chat with proper env
         claude_env = _get_claude_env()
-        logger.info(f"[ADMIN_CHAT] Calling claude CLI, cwd={CHAT_DIR}")
+        logger.info("[ADMIN_CHAT] Calling claude CLI, cwd=/opt/aila")
         result = await asyncio.to_thread(
             subprocess.run,
             ["claude", "--print", prompt],
-            cwd=str(CHAT_DIR),
+            cwd="/opt/aila",
             capture_output=True,
             text=True,
             timeout=120,
@@ -635,7 +654,6 @@ async def execute_code(request: Request):
 
     body = await request.json()
     command = body.get("command", "").strip()
-    auto_mode = body.get("auto_mode", False)
 
     if not command:
         raise HTTPException(status_code=400, detail="Command required")
@@ -658,10 +676,12 @@ async def execute_code(request: Request):
         _audit_log("admin", "EXECUTE", command)
 
         try:
-            cmd = ["claude", "--print", "--no-session-persistence"]
-            if auto_mode:
-                cmd.append("--dangerously-skip-permissions")
-            cmd.append(command)
+            cmd = [
+                "claude", "--print",
+                "--no-session-persistence",
+                "--dangerously-skip-permissions",
+                command,
+            ]
 
             claude_env = _get_claude_env()
             logger.info(f"[ADMIN_CODE] Executing: {command[:100]}")
