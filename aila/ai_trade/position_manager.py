@@ -12,7 +12,17 @@ from ..utils.position_conflict import check_position_conflict
 from .config import MIN_ORDER_SIZE_USDT
 from .telegram_notifier import get_telegram_notifier
 
-logger = logging.getLogger("ai_trade")
+logger = logging.getLogger("ai_trade.position_manager")
+logger.setLevel(logging.INFO)
+
+# Add file handler if not exists
+if not logger.handlers:
+    _handler = logging.FileHandler("/opt/aila/logs/ai_trade/position_manager.log")
+    _handler.setFormatter(logging.Formatter(
+        "%(asctime)s [%(levelname)s] [%(name)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S"
+    ))
+    logger.addHandler(_handler)
 
 # Path for persisting bot positions
 BOT_POSITIONS_PATH = Path("/opt/aila/data/ai_trade/bot_positions.json")
@@ -52,6 +62,8 @@ class PositionManager:
             leverage = signal.get("leverage", 1)
             position_size_usdt = signal.get("position_size_usdt", 0)
             logger.info(f"[POSITION] Size: ${position_size_usdt:.2f}, leverage: {leverage}x")
+            logger.info(f"[POSITION] Signal keys: {list(signal.keys())}")
+            logger.info(f"[POSITION] Full signal: {signal}")
 
             # Enforce minimum order size for Bybit
             # Bybit requires min $10 position size, but margin = position_size / leverage
@@ -70,19 +82,28 @@ class PositionManager:
 
             logger.info(f"[POSITION] Fetching ticker for {symbol}")
             ticker = await self._exchange.fetch_ticker(symbol)
+            logger.info(f"[POSITION] Ticker response: {ticker}")
             if not ticker or "last" not in ticker:
                 logger.error(f"[POSITION] Failed to get ticker for {symbol}: {ticker}")
                 return None
             price = ticker["last"]
             raw_amount = position_size_usdt / price
+            logger.info(f"[POSITION] Calculated raw_amount: {raw_amount:.8f} = ${position_size_usdt} / {price}")
 
             # Round quantity to valid precision for Bybit
+            logger.info(f"[POSITION] Calling round_qty for {symbol}, raw_amount={raw_amount:.8f}")
             amount = await self._exchange.round_qty(symbol, raw_amount)
             logger.info(f"[POSITION] Price: {price}, raw_qty: {raw_amount:.8f}, rounded_qty: {amount}")
 
+            if amount <= 0:
+                logger.error(f"[POSITION] Invalid amount after rounding: {amount} (raw: {raw_amount:.8f})")
+                return None
+
             side = "buy" if direction == "LONG" else "sell"
             logger.info(f"[POSITION] Creating market order: {side} {amount} {symbol}")
+            logger.info(f"[POSITION] Exchange type: {type(self._exchange).__name__}")
             order = await self._exchange.create_market_order(symbol, side, amount)
+            logger.info(f"[POSITION] Order response: {order}")
             if not order or "id" not in order:
                 logger.error(f"[POSITION] Failed to create market order for {symbol}: {order}")
                 return None
