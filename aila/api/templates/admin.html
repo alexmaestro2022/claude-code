@@ -867,6 +867,7 @@
         <div class="working-indicator" id="workingIndicator">
             <div class="typing-dots"><span></span><span></span><span></span></div>
             <span id="workingText" data-i18n="thinking">Claude is thinking...</span>
+            <span id="workingTimer" style="opacity:0.6;font-size:0.75rem;margin-left:4px;"></span>
         </div>
 
         <!-- INPUT AREA -->
@@ -2345,15 +2346,39 @@ function saveSettings() {
 // =============================================
 // UI helpers
 // =============================================
+let _workingTimerInterval = null;
+let _workingStartTime = null;
+
+function _formatElapsed(ms) {
+    const sec = Math.floor(ms / 1000);
+    if (sec < 60) return `${sec} сек`;
+    const min = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${min} мин ${s < 10 ? '0' : ''}${s} сек`;
+}
+
 function setWorking(working, text) {
     isWorking = working;
     const indicator = document.getElementById('workingIndicator');
     const sendBtn = document.getElementById('sendBtn');
+    const timerEl = document.getElementById('workingTimer');
     indicator.classList.toggle('active', working);
     document.getElementById('workingText').textContent = text || '';
     sendBtn.disabled = working;
     setStatus(working ? 'working' : 'ready', working ? (text || t('working')) : t('ready'));
-    if (working) scrollToBottom();
+
+    if (working) {
+        _workingStartTime = Date.now();
+        timerEl.textContent = '0 сек';
+        if (_workingTimerInterval) clearInterval(_workingTimerInterval);
+        _workingTimerInterval = setInterval(() => {
+            timerEl.textContent = _formatElapsed(Date.now() - _workingStartTime);
+        }, 1000);
+        scrollToBottom();
+    } else {
+        if (_workingTimerInterval) { clearInterval(_workingTimerInterval); _workingTimerInterval = null; }
+        timerEl.textContent = '';
+    }
 }
 
 function scrollToBottom() {

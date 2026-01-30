@@ -566,7 +566,6 @@ Claude Code имеет ПОЛНЫЙ доступ к /opt/aila/ и может:
             cwd="/opt/aila",
             capture_output=True,
             text=True,
-            timeout=120,
             env=claude_env,
         )
         response = result.stdout.strip() if result.stdout else ""
@@ -587,9 +586,6 @@ Claude Code имеет ПОЛНЫЙ доступ к /opt/aila/ и может:
             logger.error(f"[ADMIN_CHAT] Empty output, returncode={result.returncode}")
         else:
             logger.info(f"[ADMIN_CHAT] Response received, {len(response)} chars")
-    except subprocess.TimeoutExpired:
-        response = "Превышено время ожидания ответа (120с)"
-        logger.error("[ADMIN_CHAT] Timeout 120s")
     except FileNotFoundError:
         response = "Ошибка: claude CLI не найден. Проверьте установку."
         logger.error("[ADMIN_CHAT] claude CLI not found in PATH")
@@ -691,7 +687,6 @@ async def execute_code(request: Request):
                 cwd="/opt/aila",
                 capture_output=True,
                 text=True,
-                timeout=300,
                 env=claude_env,
             )
 
@@ -721,13 +716,6 @@ async def execute_code(request: Request):
                 "timestamp": datetime.now().isoformat(),
             }
 
-        except subprocess.TimeoutExpired:
-            return {
-                "success": False,
-                "output": "Command timed out (300s)",
-                "return_code": -1,
-                "timestamp": datetime.now().isoformat(),
-            }
         except Exception as e:
             return {
                 "success": False,
