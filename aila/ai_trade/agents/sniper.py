@@ -205,6 +205,25 @@ Respond in JSON only:
         if cached is not None:
             return cached
 
+        # Filter using knowledge base
+        sniper_knowledge = self.knowledge_base.data.get("sniper_learning", {})
+        worst_pairs = [p["symbol"] for p in sniper_knowledge.get("worst_pairs", [])]
+        mistakes = sniper_knowledge.get("mistakes_to_avoid", [])
+
+        # Skip worst pairs
+        if pair in worst_pairs:
+            self.log(f"⛔ Skipping {pair} - in worst_pairs", "warning")
+            return {"snipe_ready": False}
+
+        # Check for repeated mistakes with same strategy
+        for mistake in mistakes:
+            if mistake["symbol"] == pair:
+                self.log(
+                    f"⛔ Skipping {pair} - learned lesson: {mistake['lesson']}",
+                    "warning"
+                )
+                return {"snipe_ready": False}
+
         for trigger_name, trigger_func in self._triggers.items():
             try:
                 result = await trigger_func(pair)
@@ -315,7 +334,8 @@ Respond in JSON only:
             price = data.get("price", 0)
 
             # Sharp move (>5%) + extreme RSI = potential liquidation cascade
-            if change > 5 and (rsi < 20 or rsi > 80) and atr > 0:
+            if (change is not None and rsi is not None and atr is not None and
+                change > 5 and (rsi < 20 or rsi > 80) and atr > 0):
                 direction = "LONG" if rsi < 20 else "SHORT"
                 confidence = self._calc_liquidation_confidence(change, rsi)
                 sl, tp = self._calc_sl_tp(price, atr, direction)
