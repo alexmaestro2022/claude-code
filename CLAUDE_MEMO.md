@@ -2776,6 +2776,27 @@ logger.info(f"[POSITION] Calculated raw_amount: {raw_amount:.8f} = (${position_s
 
 ---
 
-**Последнее обновление:** 2026-01-30 (fix: position size calculation with leverage for SNIPER)
+## 52. Admin Panel — Session State Refactoring (2026-01-30)
+
+### Что изменено:
+- Удалены глобальные переменные `_chat_session_id` и `_chat_session_started`
+- Session state теперь хранится в `_admin_sessions[token]`:
+  - `session_id` — идентификатор сессии чата
+  - `session_started` — timestamp начала сессии
+
+### Файлы:
+- `aila/api/routes/admin.py`:
+  - `initialize_session()` — сохраняет session_id и session_started в _admin_sessions[token]
+  - `session_status()` — читает из _admin_sessions[token], возвращает `{"active": False}` если токен не найден
+  - `clear_session()` — обнуляет session_id и session_started в _admin_sessions[token]
+
+### Влияние:
+- Каждый admin token теперь имеет изолированное состояние сессии
+- Убраны race conditions при параллельных сессиях
+- Подготовка к поддержке множественных одновременных админов
+
+---
+
+**Последнее обновление:** 2026-01-30 (refactor: move chat session state to _admin_sessions)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
