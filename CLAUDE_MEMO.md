@@ -2555,13 +2555,13 @@ DELETE /api/admin/knowledge/{fn} — удалить файл
 - **Subscription usage:** `GET /api/admin/subscription-usage` — тип подписки, статистика, локальный счётчик, rate limit stats
 - Stats sync: cron `*/5 * * * *` копирует `~/.claude/stats-cache.json` → `/opt/aila/.claude/`
 
-### Rate limit обработка:
+### Rate limit обработка (без блокировки — Max подписка):
 - `RATE_LIMIT_PATTERNS` — паттерны для обнаружения rate limit в stdout/stderr Claude CLI
 - `_is_rate_limit_error(output)` — проверка наличия паттерна
-- `_handle_rate_limit(source, error_msg)` — логирование + telegram + обновление stats + возврат error dict
-- При rate limit в Chat/Code — возвращает `{"error": true, "error_type": "rate_limit", "retry_after": N}`
+- `_handle_rate_limit(source, error_msg)` — логирование + telegram + обновление stats (без блокировки UI)
+- При rate limit в Chat/Code — показывает предупреждение, пользователь может сразу повторить запрос
 - При rate limit в Scheduled tasks — задача откладывается на 120 сек, статус `rate_limited`
-- UI: блокировка кнопки отправки с обратным отсчётом, предупреждение в виджете подписки
+- **Нет cooldown/блокировки UI** — подписка Max не имеет искусственных ограничений
 - Stats: `admin_stats.json` → `rate_limits.hits_today`, `rate_limits.hits_total`, `rate_limits.last_hit`
 - Модалка Usage: секция Rate Limits (сегодня, всё время, последний, статус OK/Warning)
 
