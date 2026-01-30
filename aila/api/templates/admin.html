@@ -740,6 +740,137 @@
             .content-area { padding: 0 12px; }
             .msg { max-width: 95%; }
         }
+
+        /* Command preview block */
+        .command-block {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            margin: 10px 16px;
+            overflow: hidden;
+            animation: slideIn 0.2s ease;
+        }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        .command-block .cmd-header {
+            display: flex; align-items: center; gap: 8px;
+            padding: 10px 14px; background: rgba(0,0,0,0.3);
+            border-bottom: 1px solid var(--border); font-weight: 600; font-size: 0.85rem;
+        }
+        .command-block .cmd-header .badge {
+            margin-left: auto; padding: 2px 10px; border-radius: 4px; font-size: 0.7rem; font-weight: 700;
+        }
+        .command-block .badge.manual { background: #f59e0b; color: #000; }
+        .command-block .badge.auto { background: var(--accent); color: #000; }
+        .command-block .cmd-preview {
+            margin: 0; padding: 14px; background: rgba(0,0,0,0.2); color: var(--accent);
+            font-family: 'JetBrains Mono','Fira Code',monospace; font-size: 0.82rem;
+            white-space: pre-wrap; word-break: break-all; max-height: 250px; overflow-y: auto;
+        }
+        .command-block .cmd-editor {
+            width: 100%; padding: 14px; background: rgba(0,0,0,0.2); color: var(--accent);
+            border: none; border-top: 1px dashed var(--border);
+            font-family: 'JetBrains Mono','Fira Code',monospace; font-size: 0.82rem;
+            resize: vertical; min-height: 80px; display: none;
+        }
+        .command-block .cmd-editor:focus { outline: none; background: rgba(0,0,0,0.3); }
+        .command-block .cmd-editor.modified { border-color: #f59e0b; box-shadow: inset 0 0 0 1px rgba(245,158,11,0.3); }
+        .command-block.editing .cmd-preview { display: none; }
+        .command-block.editing .cmd-editor { display: block; }
+        .command-block .cmd-actions {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 14px; background: rgba(0,0,0,0.3); border-top: 1px solid var(--border);
+        }
+        .command-block .cmd-actions .act-group { display: flex; gap: 8px; }
+        .command-block .act-btn {
+            padding: 7px 16px; border-radius: 6px; border: none; cursor: pointer;
+            font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; gap: 6px;
+            transition: all 0.2s;
+        }
+        .act-btn.primary { background: var(--accent); color: #000; }
+        .act-btn.primary:hover { filter: brightness(1.1); }
+        .act-btn.secondary { background: transparent; border: 1px solid var(--border); color: var(--text-secondary); }
+        .act-btn.secondary:hover { border-color: var(--accent-dim); color: var(--text-primary); }
+        .act-btn.warn { background: rgba(245,158,11,0.2); border: 1px solid #f59e0b; color: #f59e0b; }
+
+        /* Risk indicator */
+        .risk-indicator { display: flex; align-items: center; gap: 8px; padding: 8px 14px; font-size: 0.8rem; }
+        .risk-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .risk-dot.low { background: var(--accent); }
+        .risk-dot.medium { background: #fbbf24; }
+        .risk-dot.high { background: #f97316; }
+        .risk-dot.critical { background: var(--red); }
+
+        /* Code result block */
+        .result-block {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-left: 3px solid var(--accent); border-radius: 10px;
+            margin: 10px 16px; overflow: hidden;
+        }
+        .result-block .res-header {
+            display: flex; align-items: center; gap: 8px;
+            padding: 10px 14px; background: rgba(0,0,0,0.3);
+            border-bottom: 1px solid var(--border); font-weight: 600; font-size: 0.85rem;
+        }
+        .result-block .res-content {
+            margin: 0; padding: 14px; background: rgba(0,0,0,0.2); color: var(--text-primary);
+            font-family: 'JetBrains Mono','Fira Code',monospace; font-size: 0.82rem;
+            white-space: pre-wrap; max-height: 300px; overflow-y: auto;
+        }
+        .result-block .res-actions {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 14px; background: rgba(0,0,0,0.3); border-top: 1px solid var(--border);
+        }
+
+        /* Auto-send countdown */
+        .auto-countdown {
+            display: flex; align-items: center; gap: 6px;
+            color: var(--accent); font-size: 0.8rem; font-weight: 600;
+        }
+
+        /* Security settings modal tabs */
+        .sec-tabs { display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; }
+        .sec-tabs .tab-btn {
+            padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border);
+            background: transparent; color: var(--text-secondary); cursor: pointer;
+            font-size: 0.78rem; font-weight: 600; transition: all 0.2s;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .sec-tabs .tab-btn.active { background: var(--accent); color: #000; border-color: var(--accent); }
+        .sec-tab-content { display: none; }
+        .sec-tab-content.active { display: block; }
+        .sec-section { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+        .sec-section:last-child { border-bottom: none; }
+        .sec-section h4 { font-size: 0.85rem; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+        .sec-item {
+            display: flex; align-items: flex-start; gap: 10px;
+            padding: 10px 12px; margin: 6px 0; background: var(--bg-dark);
+            border-radius: 8px; cursor: pointer; transition: background 0.2s;
+        }
+        .sec-item:hover { background: rgba(255,255,255,0.05); }
+        .sec-item input[type="checkbox"] { margin-top: 3px; flex-shrink: 0; }
+        .sec-item .sec-text { flex: 1; }
+        .sec-item .sec-text span { font-weight: 500; font-size: 0.85rem; display: block; }
+        .sec-item .sec-text small { color: var(--text-secondary); font-size: 0.75rem; display: block; margin-top: 2px; }
+        .sec-item.danger { border-left: 3px solid var(--red); }
+        .sec-item.critical { border-left: 3px solid #f97316; }
+        .sec-item.disabled { opacity: 0.6; }
+        .sec-input { margin: 10px 0; }
+        .sec-input label { display: block; font-size: 0.82rem; font-weight: 500; margin-bottom: 6px; }
+        .sec-input input[type="number"] {
+            padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border);
+            background: var(--bg-dark); color: var(--text-primary); width: 100px; font-size: 0.85rem;
+        }
+        .sec-input small { display: block; margin-top: 4px; color: var(--text-secondary); font-size: 0.72rem; }
+
+        /* Command history mini */
+        .cmd-history { margin-top: 8px; }
+        .cmd-history .hist-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 6px 10px; margin: 3px 0; background: var(--bg-dark); border-radius: 6px;
+            font-size: 0.75rem; cursor: pointer; transition: background 0.2s;
+        }
+        .cmd-history .hist-item:hover { background: rgba(255,255,255,0.05); }
+        .cmd-history .hist-time { color: var(--text-secondary); font-size: 0.7rem; }
     </style>
 </head>
 <body>
@@ -831,6 +962,9 @@
                 <i class="fa-solid fa-cloud-arrow-down" id="updateBtnIcon"></i>
                 <span class="update-dot" id="updateDot" style="display:none;"></span>
             </button>
+            <button class="top-btn" onclick="openModal('securityModal'); loadSecuritySettings();" data-i18n-title="security_settings" title="Security">
+                <i class="fa-solid fa-shield-halved"></i>
+            </button>
             <button class="top-btn" onclick="openModal('settingsModal')" data-i18n-title="settings">
                 <i class="fa-solid fa-cog"></i>
             </button>
@@ -870,6 +1004,59 @@
                 <div data-i18n-html="welcome_msg">Welcome! I'm <b>Claude Chat</b> — your AILA assistant.<br>
                 Use quick commands or write a request below.</div>
                 <div class="msg-time">System</div>
+            </div>
+        </div>
+
+        <!-- COMMAND PREVIEW BLOCK -->
+        <div class="command-block" id="commandBlock" style="display:none;">
+            <div class="cmd-header">
+                <i class="fa-solid fa-terminal"></i>
+                <span data-i18n="command_for_code">Command for Claude Code:</span>
+                <span class="badge" id="cmdBlockMode">Manual</span>
+            </div>
+            <pre class="cmd-preview" id="cmdPreviewText"></pre>
+            <textarea class="cmd-editor" id="cmdEditorText" rows="5"></textarea>
+            <div class="risk-indicator" id="riskIndicator" style="display:none;">
+                <span class="risk-dot" id="riskDot"></span>
+                <span id="riskText"></span>
+            </div>
+            <div class="cmd-actions">
+                <button class="act-btn secondary" id="editCmdBtn" onclick="toggleEditCommand()">
+                    <i class="fa-solid fa-pen"></i> <span data-i18n="edit">Edit</span>
+                </button>
+                <div class="act-group">
+                    <div class="auto-countdown" id="autoCountdown" style="display:none;">
+                        <i class="fa-solid fa-clock"></i> <span id="countdownText"></span>
+                    </div>
+                    <button class="act-btn primary" onclick="confirmSendToCode()">
+                        <i class="fa-solid fa-paper-plane"></i> <span data-i18n="send_to_code">Send to Code</span>
+                    </button>
+                    <button class="act-btn secondary" onclick="cancelCommand()">
+                        <i class="fa-solid fa-times"></i> <span data-i18n="cancel">Cancel</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- CODE RESULT BLOCK -->
+        <div class="result-block" id="resultBlock" style="display:none;">
+            <div class="res-header">
+                <i class="fa-solid fa-terminal"></i>
+                <span data-i18n="code_result_label">Claude Code Result:</span>
+            </div>
+            <pre class="res-content" id="resultContent"></pre>
+            <div class="res-actions">
+                <button class="act-btn secondary" onclick="copyResultBlock()">
+                    <i class="fa-solid fa-copy"></i> <span data-i18n="copy">Copy</span>
+                </button>
+                <div class="act-group">
+                    <button class="act-btn primary" onclick="confirmSendToChat()">
+                        <i class="fa-solid fa-paper-plane"></i> <span data-i18n="send_to_chat_analysis">Send to Chat</span>
+                    </button>
+                    <button class="act-btn secondary" onclick="skipSendToChat()">
+                        <i class="fa-solid fa-forward"></i> <span data-i18n="skip">Skip</span>
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -1016,6 +1203,73 @@
         <div class="modal-footer">
             <button class="btn btn-ghost" onclick="closeModal('settingsModal')" data-i18n="close">Close</button>
             <button class="btn btn-primary" onclick="saveSettings()"><i class="fa-solid fa-check"></i> <span data-i18n="save">Save</span></button>
+        </div>
+    </div>
+</div>
+
+<!-- SECURITY SETTINGS MODAL -->
+<div class="modal-overlay" id="securityModal" onclick="closeModalOnOverlay(event)">
+    <div class="modal-content" style="max-width:560px;">
+        <div class="modal-header">
+            <h3 style="font-weight:600;"><i class="fa-solid fa-shield-halved mr-2"></i> <span data-i18n="security_settings">Security Settings</span></h3>
+            <button class="modal-close" onclick="closeModal('securityModal')"><i class="fa-solid fa-times"></i></button>
+        </div>
+        <div class="modal-body" style="max-height:65vh;overflow-y:auto;">
+            <div class="sec-tabs">
+                <button class="tab-btn active" onclick="showSecTab('protection')"><i class="fa-solid fa-lock"></i> <span data-i18n="ai_trade_protection">AI Trade</span></button>
+                <button class="tab-btn" onclick="showSecTab('permissions')"><i class="fa-solid fa-check"></i> <span data-i18n="permissions_tab">Permissions</span></button>
+                <button class="tab-btn" onclick="showSecTab('critical')"><i class="fa-solid fa-exclamation-triangle"></i> <span data-i18n="critical_tab">Critical</span></button>
+                <button class="tab-btn" onclick="showSecTab('limits')"><i class="fa-solid fa-gauge"></i> <span data-i18n="limits_tab">Limits</span></button>
+            </div>
+
+            <!-- Protection tab -->
+            <div class="sec-tab-content active" id="secTab-protection">
+                <p style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:12px;" data-i18n="protection_desc">In Auto mode, confirmation will be requested:</p>
+                <label class="sec-item"><input type="checkbox" id="secProtectLogic" checked><div class="sec-text"><span data-i18n="protect_ai_trade_logic">AI Trade Logic</span><small data-i18n="protect_logic_desc">Agents, autopilot, position manager</small></div></label>
+                <label class="sec-item"><input type="checkbox" id="secProtectStrategy" checked><div class="sec-text"><span data-i18n="protect_trading_strategy">Trading Strategy</span><small data-i18n="protect_strategy_desc">Confidence, indicators, entry/exit</small></div></label>
+                <label class="sec-item"><input type="checkbox" id="secProtectRisk" checked><div class="sec-text"><span data-i18n="protect_risk">Risk Management</span><small data-i18n="protect_risk_desc">Leverage, position size, SL/TP</small></div></label>
+                <label class="sec-item"><input type="checkbox" id="secProtectLearning" checked><div class="sec-text"><span data-i18n="protect_learning">Learning System</span><small data-i18n="protect_learning_desc">Knowledge, XP, levels, stats</small></div></label>
+                <label class="sec-item"><input type="checkbox" id="secProtectPositions" checked><div class="sec-text"><span data-i18n="protect_positions">Position Management</span><small data-i18n="protect_positions_desc">Open/close positions, orders</small></div></label>
+                <label class="sec-item"><input type="checkbox" id="secProtectCapital" checked><div class="sec-text"><span data-i18n="protect_capital">Capital Settings</span><small data-i18n="protect_capital_desc">Balance, reserve, allocation</small></div></label>
+                <label class="sec-item"><input type="checkbox" id="secProtectAgents" checked><div class="sec-text"><span data-i18n="protect_agents">Agent Settings</span><small data-i18n="protect_agents_desc">TRADER/SNIPER parameters</small></div></label>
+                <label class="sec-item"><input type="checkbox" id="secProtectCascade" checked><div class="sec-text"><span data-i18n="protect_cascade">Cascade Logic</span><small data-i18n="protect_cascade_desc">Priorities, VIP pairs, filters</small></div></label>
+                <label class="sec-item"><input type="checkbox" id="secProtectPairs" checked><div class="sec-text"><span data-i18n="protect_pairs">Trading Pairs</span><small data-i18n="protect_pairs_desc">Pair list, whitelist/blacklist</small></div></label>
+                <label class="sec-item"><input type="checkbox" id="secProtectApiKeys" checked><div class="sec-text"><span data-i18n="protect_api_keys">API Keys</span><small data-i18n="protect_api_desc">Bybit API, access keys</small></div></label>
+            </div>
+
+            <!-- Permissions tab -->
+            <div class="sec-tab-content" id="secTab-permissions">
+                <p style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:12px;" data-i18n="permissions_desc">If disabled — action is fully blocked:</p>
+                <label class="sec-item"><input type="checkbox" id="secAllowEdit" checked><div class="sec-text"><span data-i18n="allow_file_edit">File editing</span></div></label>
+                <label class="sec-item"><input type="checkbox" id="secAllowRestart" checked><div class="sec-text"><span data-i18n="allow_bot_restart">Bot restart</span></div></label>
+                <label class="sec-item"><input type="checkbox" id="secAllowGitPush" checked><div class="sec-text"><span data-i18n="allow_git_push">Git push</span></div></label>
+                <label class="sec-item"><input type="checkbox" id="secAllowLogClear" checked><div class="sec-text"><span data-i18n="allow_log_clear">Log clearing</span></div></label>
+                <label class="sec-item danger"><input type="checkbox" id="secAllowDelete"><div class="sec-text"><span data-i18n="allow_file_delete">File deletion</span><small style="color:var(--red);" data-i18n="danger_setting">Dangerous</small></div></label>
+                <label class="sec-item danger"><input type="checkbox" id="secAllowEnv"><div class="sec-text"><span data-i18n="allow_env_edit">.env editing</span><small style="color:var(--red);" data-i18n="danger_setting">Dangerous</small></div></label>
+                <label class="sec-item danger"><input type="checkbox" id="secAllowDb"><div class="sec-text"><span data-i18n="allow_db_edit">Direct data editing</span><small style="color:var(--red);" data-i18n="danger_setting_db">stats, knowledge JSON</small></div></label>
+            </div>
+
+            <!-- Critical tab -->
+            <div class="sec-tab-content" id="secTab-critical">
+                <p style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:12px;" data-i18n="critical_desc">Always require confirmation even in Auto mode:</p>
+                <label class="sec-item critical disabled"><input type="checkbox" id="secConfirmTradeOpen" checked disabled><div class="sec-text"><span data-i18n="confirm_trade_open">Open position</span><small data-i18n="cannot_disable">Cannot be disabled</small></div></label>
+                <label class="sec-item critical disabled"><input type="checkbox" id="secConfirmTradeClose" checked disabled><div class="sec-text"><span data-i18n="confirm_trade_close">Close position</span><small data-i18n="cannot_disable">Cannot be disabled</small></div></label>
+                <label class="sec-item critical"><input type="checkbox" id="secConfirmAutopilot" checked><div class="sec-text"><span data-i18n="confirm_autopilot">Autopilot toggle</span></div></label>
+                <label class="sec-item critical"><input type="checkbox" id="secConfirmLeverage" checked><div class="sec-text"><span data-i18n="confirm_leverage">Leverage change</span></div></label>
+                <label class="sec-item critical disabled"><input type="checkbox" id="secConfirmApiKey" checked disabled><div class="sec-text"><span data-i18n="confirm_api_key">API key change</span><small data-i18n="cannot_disable">Cannot be disabled</small></div></label>
+            </div>
+
+            <!-- Limits tab -->
+            <div class="sec-tab-content" id="secTab-limits">
+                <p style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:12px;" data-i18n="limits_desc">Auto mode limits:</p>
+                <div class="sec-input"><label data-i18n="max_auto_iter">Max auto iterations:</label><input type="number" id="secMaxIter" value="10" min="1" max="50"><small data-i18n="max_iter_desc">Cycle stops after this many iterations</small></div>
+                <div class="sec-input"><label data-i18n="auto_timeout">Auto task timeout (min):</label><input type="number" id="secTimeout" value="30" min="5" max="120"><small data-i18n="timeout_desc">Maximum execution time per task</small></div>
+                <div class="sec-input"><label data-i18n="human_every_n">Require human every N actions:</label><input type="number" id="secHumanEvery" value="5" min="1" max="20"><small data-i18n="human_desc">Pause for confirmation in Auto mode</small></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="resetSecuritySettings()" data-i18n="reset_defaults">Reset</button>
+            <button class="btn btn-primary" onclick="saveSecuritySettings()"><i class="fa-solid fa-check"></i> <span data-i18n="save">Save</span></button>
         </div>
     </div>
 </div>
@@ -1402,6 +1656,73 @@ const translations = {
         rate_limit_warning: 'Были ограничения',
         rate_limit_times: 'раз',
         rate_limit_at: 'в',
+        // Command preview
+        command_for_code: 'Команда для Claude Code:',
+        send_to_code: 'Отправить в Code',
+        send_to_chat_analysis: 'Отправить в Chat',
+        command_modified: 'Команда изменена пользователем',
+        command_cancelled: 'Команда отменена',
+        action_cancelled: 'Действие отменено',
+        copied: 'Скопировано!',
+        copy: 'Копировать',
+        edit: 'Редактировать',
+        // Risk levels
+        risk_medium: 'Средний риск',
+        risk_high: 'Высокий риск',
+        risk_critical: 'Критический',
+        // Security settings
+        security_settings: 'Настройки безопасности',
+        ai_trade_protection: 'Защита AI Trade',
+        permissions_tab: 'Разрешения',
+        critical_tab: 'Критические',
+        limits_tab: 'Лимиты',
+        protection_desc: 'В Auto режиме будет запрошено подтверждение:',
+        permissions_desc: 'Если выключено — действие полностью запрещено:',
+        critical_desc: 'Всегда требуют подтверждения даже в Auto:',
+        limits_desc: 'Ограничения для Auto режима:',
+        protect_ai_trade_logic: 'Логика AI Trade',
+        protect_logic_desc: 'Агенты, автопилот, position manager',
+        protect_trading_strategy: 'Торговая стратегия',
+        protect_strategy_desc: 'Confidence, индикаторы, точки входа/выхода',
+        protect_risk: 'Риск-менеджмент',
+        protect_risk_desc: 'Leverage, размер позиции, SL/TP',
+        protect_learning: 'Система обучения',
+        protect_learning_desc: 'Knowledge, XP, уровни, статистика',
+        protect_positions: 'Управление позициями',
+        protect_positions_desc: 'Открытие/закрытие, ордера',
+        protect_capital: 'Настройки капитала',
+        protect_capital_desc: 'Баланс, резерв, распределение',
+        protect_agents: 'Настройки агентов',
+        protect_agents_desc: 'Параметры TRADER/SNIPER',
+        protect_cascade: 'Каскадный анализ',
+        protect_cascade_desc: 'Приоритеты, VIP пары, фильтры',
+        protect_pairs: 'Торговые пары',
+        protect_pairs_desc: 'Список пар, whitelist/blacklist',
+        protect_api_keys: 'API ключи',
+        protect_api_desc: 'Bybit API, ключи доступа',
+        allow_file_edit: 'Редактирование файлов',
+        allow_bot_restart: 'Рестарт бота',
+        allow_git_push: 'Git push',
+        allow_log_clear: 'Очистка логов',
+        allow_file_delete: 'Удаление файлов',
+        allow_env_edit: 'Изменение .env',
+        allow_db_edit: 'Прямое редактирование данных',
+        danger_setting: 'Опасно',
+        danger_setting_db: 'stats, knowledge JSON',
+        confirm_trade_open: 'Открытие позиции',
+        confirm_trade_close: 'Закрытие позиции',
+        confirm_autopilot: 'Вкл/выкл автопилота',
+        confirm_leverage: 'Изменение leverage',
+        confirm_api_key: 'Изменение API ключей',
+        cannot_disable: 'Нельзя отключить',
+        max_auto_iter: 'Макс итераций в auto цикле:',
+        auto_timeout: 'Таймаут auto задачи (мин):',
+        human_every_n: 'Подтверждение каждые N действий:',
+        max_iter_desc: 'Цикл остановится после этого числа итераций',
+        timeout_desc: 'Максимальное время выполнения задачи',
+        human_desc: 'Пауза для подтверждения в Auto режиме',
+        reset_defaults: 'Сбросить',
+        settings_saved: 'Настройки сохранены',
     },
     en: {}  // Falls back to HTML defaults (English)
 };
@@ -1949,11 +2270,27 @@ async function sendMessage() {
             loadKnowledge();
         }
 
-        // Auto mode: automatically send command to Code
-        if (data.has_command && currentMode === 'auto') {
+        // Command detected — show preview block
+        if (data.has_command) {
             const cmdMatch = data.response.match(/\[COMMAND_FOR_CODE\]([\s\S]*?)\[\/COMMAND_FOR_CODE\]/);
             if (cmdMatch) {
-                await executeInCode(cmdMatch[1].trim(), true);
+                const command = cmdMatch[1].trim();
+                if (currentMode === 'auto') {
+                    // Auto: check security first
+                    const secCheck = await api('/check-command', 'POST', { command, mode: 'auto' });
+                    if (!secCheck.allowed) {
+                        addMessage('system', `Blocked: ${secCheck.block_reason}`);
+                    } else if (secCheck.needs_confirmation) {
+                        // Security requires confirmation even in auto
+                        showCommandBlock(command, 'manual');
+                    } else {
+                        // Safe to auto-execute with countdown
+                        showCommandBlock(command, 'auto');
+                    }
+                } else {
+                    // Manual: always show preview
+                    showCommandBlock(command, 'manual');
+                }
             }
         }
     } catch (e) {
@@ -2001,7 +2338,7 @@ async function executeInCode(command, autoMode) {
                 'Content-Type': 'application/json',
                 'X-Admin-Token': adminToken,
             },
-            body: JSON.stringify({ command, auto_mode: autoMode }),
+            body: JSON.stringify({ command, auto_mode: autoMode, mode: currentMode }),
         });
 
         if (resp.status === 401) {
@@ -2066,7 +2403,8 @@ async function executeInCode(command, autoMode) {
         if (autoMode) {
             await analyzeResult(output, command);
         } else {
-            addResultActions(output);
+            // Manual mode: show result block with confirm buttons
+            showResultBlock(output);
         }
     } catch (e) {
         if (_workingTimerInterval) { clearInterval(_workingTimerInterval); _workingTimerInterval = null; }
@@ -2443,6 +2781,278 @@ async function checkClaudeUpdateSilent() {
 }
 
 // =============================================
+// Command preview / confirmation flow
+// =============================================
+let originalCommand = '';
+let currentCommand = '';
+let isEditingCommand = false;
+let pendingCodeResult = '';
+let autoSendTimer = null;
+let autoSendCountdown = 3;
+let commandHistory = [];
+
+function showCommandBlock(command, mode) {
+    originalCommand = command;
+    currentCommand = command;
+    isEditingCommand = false;
+
+    const block = document.getElementById('commandBlock');
+    const preview = document.getElementById('cmdPreviewText');
+    const editor = document.getElementById('cmdEditorText');
+    const modeLabel = document.getElementById('cmdBlockMode');
+    const editBtn = document.getElementById('editCmdBtn');
+
+    preview.textContent = command;
+    editor.value = command;
+    modeLabel.textContent = mode === 'manual' ? 'Manual' : 'Auto';
+    modeLabel.className = 'badge ' + mode;
+    editBtn.style.display = mode === 'manual' ? 'inline-flex' : 'none';
+    block.classList.remove('editing');
+    block.style.display = '';
+    scrollToBottom();
+
+    // Check command security
+    checkCommandRisk(command);
+
+    // Auto mode: countdown
+    if (mode === 'auto') {
+        startAutoCountdown();
+    } else {
+        document.getElementById('autoCountdown').style.display = 'none';
+    }
+}
+
+async function checkCommandRisk(command) {
+    try {
+        const data = await api('/check-command', 'POST', { command, mode: currentMode });
+        const indicator = document.getElementById('riskIndicator');
+        const dot = document.getElementById('riskDot');
+        const text = document.getElementById('riskText');
+
+        if (data.risk_level && data.risk_level !== 'low') {
+            dot.className = 'risk-dot ' + data.risk_level;
+            const labels = { medium: t('risk_medium'), high: t('risk_high'), critical: t('risk_critical') };
+            let riskMsg = labels[data.risk_level] || data.risk_level;
+            if (data.affected_areas && data.affected_areas.length > 0) {
+                riskMsg += ' — ' + data.affected_areas.slice(0, 2).join(', ');
+            }
+            text.textContent = riskMsg;
+            indicator.style.display = 'flex';
+        } else {
+            indicator.style.display = 'none';
+        }
+    } catch {
+        document.getElementById('riskIndicator').style.display = 'none';
+    }
+}
+
+function toggleEditCommand() {
+    const block = document.getElementById('commandBlock');
+    const editor = document.getElementById('cmdEditorText');
+    const editBtn = document.getElementById('editCmdBtn');
+
+    isEditingCommand = !isEditingCommand;
+    if (isEditingCommand) {
+        block.classList.add('editing');
+        editBtn.innerHTML = '<i class="fa-solid fa-eye"></i> <span>' + t('view_file') + '</span>';
+        editor.focus();
+    } else {
+        block.classList.remove('editing');
+        editBtn.innerHTML = '<i class="fa-solid fa-pen"></i> <span>' + t('edit') + '</span>';
+        currentCommand = editor.value;
+        document.getElementById('cmdPreviewText').textContent = currentCommand;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const editor = document.getElementById('cmdEditorText');
+    if (editor) {
+        editor.addEventListener('input', function() {
+            currentCommand = this.value;
+            this.classList.toggle('modified', currentCommand !== originalCommand);
+        });
+    }
+});
+
+async function confirmSendToCode() {
+    cancelAutoCountdown();
+    const command = currentCommand || originalCommand;
+    document.getElementById('commandBlock').style.display = 'none';
+
+    if (command !== originalCommand) {
+        addMessage('system', t('command_modified'));
+    }
+
+    // Save to history
+    commandHistory.unshift({ command, timestamp: new Date().toLocaleTimeString() });
+    if (commandHistory.length > 20) commandHistory.pop();
+
+    await executeInCode(command, false);
+}
+
+function cancelCommand() {
+    cancelAutoCountdown();
+    document.getElementById('commandBlock').style.display = 'none';
+    addMessage('system', t('command_cancelled'));
+}
+
+function startAutoCountdown() {
+    autoSendCountdown = 3;
+    const el = document.getElementById('autoCountdown');
+    const text = document.getElementById('countdownText');
+    el.style.display = 'flex';
+    text.textContent = `${autoSendCountdown}s...`;
+
+    autoSendTimer = setInterval(() => {
+        autoSendCountdown--;
+        if (autoSendCountdown <= 0) {
+            cancelAutoCountdown();
+            confirmSendToCode();
+        } else {
+            text.textContent = `${autoSendCountdown}s...`;
+        }
+    }, 1000);
+}
+
+function cancelAutoCountdown() {
+    if (autoSendTimer) { clearInterval(autoSendTimer); autoSendTimer = null; }
+    document.getElementById('autoCountdown').style.display = 'none';
+}
+
+function showResultBlock(output) {
+    pendingCodeResult = output;
+    const block = document.getElementById('resultBlock');
+    document.getElementById('resultContent').textContent = output;
+    block.style.display = '';
+    scrollToBottom();
+}
+
+async function confirmSendToChat() {
+    document.getElementById('resultBlock').style.display = 'none';
+    await analyzeResult(pendingCodeResult);
+}
+
+function skipSendToChat() {
+    document.getElementById('resultBlock').style.display = 'none';
+    addMessage('system', t('action_cancelled'));
+}
+
+function copyResultBlock() {
+    navigator.clipboard.writeText(pendingCodeResult);
+    addMessage('system', t('copied'));
+}
+
+// =============================================
+// Security settings
+// =============================================
+function showSecTab(tabName) {
+    document.querySelectorAll('.sec-tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.sec-tabs .tab-btn').forEach(el => el.classList.remove('active'));
+    document.getElementById('secTab-' + tabName).classList.add('active');
+    event.target.closest('.tab-btn').classList.add('active');
+}
+
+async function loadSecuritySettings() {
+    try {
+        const data = await api('/settings');
+        const r = data.restrictions || {};
+
+        // Protection tab
+        document.getElementById('secProtectLogic').checked = r.protect_ai_trade_logic !== false;
+        document.getElementById('secProtectStrategy').checked = r.protect_trading_strategy !== false;
+        document.getElementById('secProtectRisk').checked = r.protect_risk_management !== false;
+        document.getElementById('secProtectLearning').checked = r.protect_learning_system !== false;
+        document.getElementById('secProtectPositions').checked = r.protect_position_management !== false;
+        document.getElementById('secProtectCapital').checked = r.protect_capital_settings !== false;
+        document.getElementById('secProtectAgents').checked = r.protect_agent_settings !== false;
+        document.getElementById('secProtectCascade').checked = r.protect_cascade_logic !== false;
+        document.getElementById('secProtectPairs').checked = r.protect_trading_pairs !== false;
+        document.getElementById('secProtectApiKeys').checked = r.protect_api_keys !== false;
+
+        // Permissions tab
+        document.getElementById('secAllowEdit').checked = r.allow_file_edit !== false;
+        document.getElementById('secAllowRestart').checked = r.allow_bot_restart !== false;
+        document.getElementById('secAllowGitPush').checked = r.allow_git_push !== false;
+        document.getElementById('secAllowLogClear').checked = r.allow_log_clear !== false;
+        document.getElementById('secAllowDelete').checked = r.allow_file_delete === true;
+        document.getElementById('secAllowEnv').checked = r.allow_env_edit === true;
+        document.getElementById('secAllowDb').checked = r.allow_database_edit === true;
+
+        // Critical tab
+        document.getElementById('secConfirmAutopilot').checked = r.always_confirm_autopilot_toggle !== false;
+        document.getElementById('secConfirmLeverage').checked = r.always_confirm_leverage_change !== false;
+
+        // Limits tab
+        document.getElementById('secMaxIter').value = r.max_auto_iterations || 10;
+        document.getElementById('secTimeout').value = r.auto_timeout_minutes || 30;
+        document.getElementById('secHumanEvery').value = r.require_human_every_n_actions || 5;
+    } catch {}
+}
+
+async function saveSecuritySettings() {
+    const settings = {
+        restrictions: {
+            protect_ai_trade_logic: document.getElementById('secProtectLogic').checked,
+            protect_trading_strategy: document.getElementById('secProtectStrategy').checked,
+            protect_risk_management: document.getElementById('secProtectRisk').checked,
+            protect_learning_system: document.getElementById('secProtectLearning').checked,
+            protect_position_management: document.getElementById('secProtectPositions').checked,
+            protect_capital_settings: document.getElementById('secProtectCapital').checked,
+            protect_agent_settings: document.getElementById('secProtectAgents').checked,
+            protect_cascade_logic: document.getElementById('secProtectCascade').checked,
+            protect_trading_pairs: document.getElementById('secProtectPairs').checked,
+            protect_api_keys: document.getElementById('secProtectApiKeys').checked,
+            allow_file_edit: document.getElementById('secAllowEdit').checked,
+            allow_bot_restart: document.getElementById('secAllowRestart').checked,
+            allow_git_push: document.getElementById('secAllowGitPush').checked,
+            allow_log_clear: document.getElementById('secAllowLogClear').checked,
+            allow_file_delete: document.getElementById('secAllowDelete').checked,
+            allow_env_edit: document.getElementById('secAllowEnv').checked,
+            allow_database_edit: document.getElementById('secAllowDb').checked,
+            always_confirm_trade_open: true,
+            always_confirm_trade_close: true,
+            always_confirm_autopilot_toggle: document.getElementById('secConfirmAutopilot').checked,
+            always_confirm_leverage_change: document.getElementById('secConfirmLeverage').checked,
+            always_confirm_api_key_change: true,
+            max_auto_iterations: parseInt(document.getElementById('secMaxIter').value) || 10,
+            auto_timeout_minutes: parseInt(document.getElementById('secTimeout').value) || 30,
+            require_human_every_n_actions: parseInt(document.getElementById('secHumanEvery').value) || 5,
+        }
+    };
+
+    try {
+        await api('/settings', 'PUT', settings);
+        addMessage('system', t('settings_saved'));
+        closeModal('securityModal');
+    } catch {}
+}
+
+function resetSecuritySettings() {
+    // Reset all checkboxes to defaults
+    ['secProtectLogic','secProtectStrategy','secProtectRisk','secProtectLearning',
+     'secProtectPositions','secProtectCapital','secProtectAgents','secProtectCascade',
+     'secProtectPairs','secProtectApiKeys','secAllowEdit','secAllowRestart',
+     'secAllowGitPush','secAllowLogClear','secConfirmAutopilot','secConfirmLeverage'
+    ].forEach(id => document.getElementById(id).checked = true);
+
+    ['secAllowDelete','secAllowEnv','secAllowDb'].forEach(id => document.getElementById(id).checked = false);
+
+    document.getElementById('secMaxIter').value = 10;
+    document.getElementById('secTimeout').value = 30;
+    document.getElementById('secHumanEvery').value = 5;
+}
+
+// Hotkeys
+document.addEventListener('keydown', (e) => {
+    const cmdBlock = document.getElementById('commandBlock');
+    if (cmdBlock && cmdBlock.style.display !== 'none') {
+        if (e.ctrlKey && e.key === 'Enter') { e.preventDefault(); confirmSendToCode(); }
+        if (e.key === 'Escape') { e.preventDefault(); cancelCommand(); }
+        if (e.ctrlKey && e.key === 'e') { e.preventDefault(); toggleEditCommand(); }
+    }
+});
+
+// =============================================
 // Settings
 // =============================================
 function saveSettings() {
@@ -2455,6 +3065,7 @@ function saveSettings() {
     };
     localStorage.setItem('admin_auto_settings', JSON.stringify(autoSettings));
     closeModal('settingsModal');
+    addMessage('system', t('settings_saved'));
 }
 
 // =============================================

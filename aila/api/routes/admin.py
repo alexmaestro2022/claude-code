@@ -57,6 +57,7 @@ CHAT_DIR = Path("/opt/aila/claude_chat")
 KNOWLEDGE_DIR = CHAT_DIR / "knowledge"
 HISTORY_DIR = CHAT_DIR / "history"
 LOGS_DIR = Path("/opt/aila/logs")
+SETTINGS_FILE = DATA_DIR / "settings.json"
 
 # Ensure directories exist
 for d in [DATA_DIR, KNOWLEDGE_DIR, HISTORY_DIR]:
@@ -356,6 +357,256 @@ async def check_session(request: Request):
     """Check if current session is valid."""
     valid = _verify_admin_session(request)
     return {"valid": valid}
+
+
+# =============================================
+# Security settings
+# =============================================
+
+_DEFAULT_SETTINGS: dict[str, Any] = {
+    "restrictions": {
+        "protect_ai_trade_logic": True,
+        "protect_trading_strategy": True,
+        "protect_learning_system": True,
+        "protect_risk_management": True,
+        "protect_trading_pairs": True,
+        "protect_api_keys": True,
+        "protect_position_management": True,
+        "protect_capital_settings": True,
+        "protect_agent_settings": True,
+        "protect_cascade_logic": True,
+        "allow_file_edit": True,
+        "allow_bot_restart": True,
+        "allow_git_push": True,
+        "allow_file_delete": False,
+        "allow_env_edit": False,
+        "allow_database_edit": False,
+        "allow_log_clear": True,
+        "always_confirm_trade_open": True,
+        "always_confirm_trade_close": True,
+        "always_confirm_autopilot_toggle": True,
+        "always_confirm_leverage_change": True,
+        "always_confirm_api_key_change": True,
+        "max_auto_iterations": 10,
+        "auto_timeout_minutes": 30,
+        "require_human_every_n_actions": 5,
+    },
+    "protected_paths": [
+        "/opt/aila/aila/ai_trade/agents/",
+        "/opt/aila/aila/ai_trade/autopilot_mode.py",
+        "/opt/aila/aila/ai_trade/position_manager.py",
+        "/opt/aila/aila/ai_trade/signal_queue.py",
+        "/opt/aila/aila/ai_trade/strategies/",
+        "/opt/aila/data/ai_trade/*_knowledge.json",
+        "/opt/aila/data/ai_trade/*_stats.json",
+        "/opt/aila/data/ai_trade/*_settings.json",
+        "/opt/aila/data/ai_trade/bot_positions.json",
+        "/opt/aila/data/ai_trade/trading_state.json",
+        "/opt/aila/data/ai_trade/capital.json",
+        "/opt/aila/.env",
+    ],
+    "dangerous_commands": [
+        "rm -rf /", "rm -rf /*", "rm -rf .",
+        "shutdown", "reboot", "halt",
+        "DROP DATABASE", "DROP TABLE", "DELETE FROM", "TRUNCATE",
+        "iptables -F", "ufw disable",
+        "cat .env", "echo $BYBIT", "echo $API", "printenv | grep KEY",
+        "chmod 777 /", "mkfs", "dd if=",
+    ],
+}
+
+# Keyword categories for protection checks
+_PROTECTION_KEYWORDS: dict[str, list[str]] = {
+    "protect_trading_strategy": [
+        "confidence", "strategy", "signal", "indicator",
+        "ema", "supertrend", "entry", "exit",
+    ],
+    "protect_risk_management": [
+        "leverage", "risk", "margin", "stop_loss", "take_profit",
+        "set_leverage", "max_leverage",
+    ],
+    "protect_learning_system": [
+        "knowledge_base", "learning", "xp", "level",
+        "stats", "winrate", "best_pairs",
+    ],
+    "protect_position_management": [
+        "open_position", "close_position", "close_all",
+        "create_order", "cancel_order",
+    ],
+    "protect_capital_settings": [
+        "balance", "capital", "reserve", "equity",
+    ],
+    "protect_agent_settings": [
+        "trader_settings", "sniper_settings",
+    ],
+    "protect_cascade_logic": [
+        "cascade", "priority", "vip_pairs",
+    ],
+    "protect_api_keys": [
+        "api_key", "api_secret", "bybit",
+    ],
+    "protect_trading_pairs": [
+        "trading_pairs", "whitelist", "blacklist",
+    ],
+}
+
+
+def _load_security_settings() -> dict[str, Any]:
+    """Load security settings with defaults."""
+    saved = _load_json(SETTINGS_FILE, {})
+    if not isinstance(saved, dict):
+        saved = {}
+    # Merge defaults
+    result = dict(_DEFAULT_SETTINGS)
+    if "restrictions" in saved:
+        result["restrictions"] = {**_DEFAULT_SETTINGS["restrictions"], **saved["restrictions"]}
+    if "protected_paths" in saved:
+        result["protected_paths"] = saved["protected_paths"]
+    if "dangerous_commands" in saved:
+        result["dangerous_commands"] = saved["dangerous_commands"]
+    return result
+
+
+def _check_command_security(command: str, mode: str) -> dict[str, Any]:
+    """Check command against security restrictions.
+
+    Returns:
+        {
+            "allowed": bool,
+            "needs_confirmation": bool,
+            "block_reason": str or None,
+            "warnings": list[str],
+            "affected_areas": list[str],
+            "risk_level": "low" | "medium" | "high" | "critical"
+        }
+    """
+    settings = _load_security_settings()
+    restrictions = settings.get("restrictions", {})
+    protected_paths = settings.get("protected_paths", [])
+    dangerous_cmds = settings.get("dangerous_commands", [])
+
+    result: dict[str, Any] = {
+        "allowed": True,
+        "needs_confirmation": False,
+        "block_reason": None,
+        "warnings": [],
+        "affected_areas": [],
+        "risk_level": "low",
+    }
+
+    cmd_lower = command.lower()
+
+    # 1. Dangerous commands — always block
+    for dc in dangerous_cmds:
+        if dc.lower() in cmd_lower:
+            result["allowed"] = False
+            result["block_reason"] = f"Dangerous command: {dc}"
+            result["risk_level"] = "critical"
+            return result
+
+    # 2. Permission checks — full block if disabled
+    perm_checks = [
+        ("allow_file_delete", ["rm ", "unlink", "remove"]),
+        ("allow_env_edit", [".env", "dotenv"]),
+        ("allow_database_edit", ["_stats.json", "_knowledge.json", "trading_state.json"]),
+    ]
+    for perm, patterns in perm_checks:
+        if not restrictions.get(perm, False):
+            for pat in patterns:
+                if pat in cmd_lower:
+                    result["allowed"] = False
+                    result["block_reason"] = f"Blocked by setting: {perm}"
+                    result["risk_level"] = "high"
+                    return result
+
+    if not restrictions.get("allow_bot_restart", True):
+        if any(x in cmd_lower for x in ["restart", "systemctl"]):
+            result["allowed"] = False
+            result["block_reason"] = "Bot restart is disabled"
+            result["risk_level"] = "high"
+            return result
+
+    if not restrictions.get("allow_git_push", True):
+        if "git push" in cmd_lower:
+            result["allowed"] = False
+            result["block_reason"] = "Git push is disabled"
+            result["risk_level"] = "high"
+            return result
+
+    # 3. Protected paths
+    for path in protected_paths:
+        pattern = path.replace("*", ".*")
+        if re.search(pattern, command, re.IGNORECASE):
+            result["needs_confirmation"] = True
+            result["affected_areas"].append(f"Protected path: {path}")
+            result["risk_level"] = "high"
+
+    # 4. Keyword-based protection
+    for protection, keywords in _PROTECTION_KEYWORDS.items():
+        if restrictions.get(protection, True):
+            for kw in keywords:
+                if kw in cmd_lower:
+                    result["needs_confirmation"] = True
+                    result["affected_areas"].append(f"{protection}: {kw}")
+                    if result["risk_level"] == "low":
+                        result["risk_level"] = "medium"
+
+    # 5. Always-confirm operations
+    always_checks = [
+        ("always_confirm_trade_open", ["open_position", "create_order"]),
+        ("always_confirm_trade_close", ["close_position", "close_all", "cancel_order"]),
+        ("always_confirm_autopilot_toggle", ["start_autopilot", "stop_autopilot", "autopilot"]),
+        ("always_confirm_leverage_change", ["set_leverage"]),
+    ]
+    for setting, patterns in always_checks:
+        if restrictions.get(setting, True):
+            for pat in patterns:
+                if pat in cmd_lower:
+                    result["needs_confirmation"] = True
+                    result["warnings"].append(f"Critical: {pat}")
+                    result["risk_level"] = "high"
+
+    # 6. Risky patterns — warnings
+    risky = [
+        (r"rm\s+-", "File deletion"),
+        (r"git\s+push\s+.*-f", "Force push"),
+        (r"systemctl\s+(stop|restart)", "Service management"),
+    ]
+    for pat, warn in risky:
+        if re.search(pat, cmd_lower):
+            result["warnings"].append(warn)
+            if result["risk_level"] == "low":
+                result["risk_level"] = "medium"
+
+    return result
+
+
+@router.get("/settings")
+async def get_settings(request: Request):
+    """Get admin security settings."""
+    _require_auth(request)
+    return _load_security_settings()
+
+
+@router.put("/settings")
+async def save_settings_api(request: Request):
+    """Save admin security settings."""
+    _require_auth(request)
+    body = await request.json()
+    _save_json(SETTINGS_FILE, body)
+    _audit_log("admin", "SAVE_SETTINGS")
+    return {"success": True}
+
+
+@router.post("/check-command")
+async def check_command_api(request: Request):
+    """Check command security before execution."""
+    _require_auth(request)
+    body = await request.json()
+    command = body.get("command", "")
+    mode = body.get("mode", "manual")
+    result = _check_command_security(command, mode)
+    return result
 
 
 # =============================================
@@ -675,16 +926,11 @@ async def execute_code(request: Request):
     if not command:
         raise HTTPException(status_code=400, detail="Command required")
 
-    # Security: filter dangerous commands
-    dangerous = ["rm -rf /", "cat .env", "echo $API_KEY", "DROP TABLE", "DELETE FROM"]
-    for d in dangerous:
-        if d.lower() in command.lower():
-            _audit_log("admin", "BLOCKED_COMMAND", command)
-            raise HTTPException(status_code=403, detail=f"Dangerous command blocked: {d}")
-
-    # Check path restrictions
-    if ".." in command and ("/etc/" in command or "/root/" in command):
-        raise HTTPException(status_code=403, detail="Path restriction violated")
+    # Security check via settings-based checker
+    sec_check = _check_command_security(command, "manual")
+    if not sec_check["allowed"]:
+        _audit_log("admin", "BLOCKED_COMMAND", command, sec_check["block_reason"] or "")
+        raise HTTPException(status_code=403, detail=sec_check["block_reason"])
 
     async with _process_lock:
         if _running_process and _running_process.returncode is None:
@@ -779,15 +1025,23 @@ async def execute_code_stream(request: Request):
     if not command:
         raise HTTPException(status_code=400, detail="Command required")
 
-    # Security: filter dangerous commands
-    dangerous = ["rm -rf /", "cat .env", "echo $API_KEY", "DROP TABLE", "DELETE FROM"]
-    for d in dangerous:
-        if d.lower() in command.lower():
-            _audit_log("admin", "BLOCKED_COMMAND", command)
-            raise HTTPException(status_code=403, detail=f"Dangerous command blocked: {d}")
+    mode = body.get("mode", "manual")
 
-    if ".." in command and ("/etc/" in command or "/root/" in command):
-        raise HTTPException(status_code=403, detail="Path restriction violated")
+    # Security check via settings-based checker
+    sec_check = _check_command_security(command, mode)
+    if not sec_check["allowed"]:
+        _audit_log("admin", "BLOCKED_COMMAND", command, sec_check["block_reason"] or "")
+        raise HTTPException(status_code=403, detail=sec_check["block_reason"])
+
+    # In auto mode, if needs confirmation — return JSON instead of stream
+    if mode == "auto" and sec_check["needs_confirmation"]:
+        return {
+            "needs_confirmation": True,
+            "command": command,
+            "risk_level": sec_check["risk_level"],
+            "affected_areas": sec_check["affected_areas"],
+            "warnings": sec_check["warnings"],
+        }
 
     _audit_log("admin", "EXECUTE_STREAM", command)
 
@@ -921,6 +1175,205 @@ async def code_status(request: Request):
     _require_auth(request)
     running = _running_process is not None and _running_process.returncode is None
     return {"running": running}
+
+
+@router.post("/confirm-code")
+async def confirm_send_to_code(request: Request):
+    """Execute confirmed command in Code with streaming."""
+    _require_auth(request)
+    body = await request.json()
+    command = body.get("command", "").strip()
+
+    if not command:
+        raise HTTPException(status_code=400, detail="Command required")
+
+    _audit_log("admin", "CONFIRM_CODE", command[:100])
+
+    # Reuse streaming execution
+    async def confirmed_stream():
+        """Stream confirmed command execution."""
+        global _running_process
+
+        # Security check (final)
+        check = _check_command_security(command, "manual")
+        if not check["allowed"]:
+            yield f"data: {json.dumps({'status': 'error', 'message': check['block_reason']})}\n\n"
+            return
+
+        async with _process_lock:
+            if _running_process and _running_process.returncode is None:
+                yield f"data: {json.dumps({'status': 'error', 'message': 'Another command is running'})}\n\n"
+                return
+
+            try:
+                claude_env = _get_claude_env()
+                proc = await asyncio.create_subprocess_exec(
+                    "claude", "--print", "--model", "sonnet",
+                    "--no-session-persistence", "--dangerously-skip-permissions",
+                    command, cwd="/opt/aila",
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    env=claude_env,
+                )
+                _running_process = proc
+            except Exception as e:
+                yield f"data: {json.dumps({'status': 'error', 'message': str(e)})}\n\n"
+                return
+
+        yield f"data: {json.dumps({'status': 'thinking', 'message': 'Claude Code thinking...'})}\n\n"
+
+        output_lines: list[str] = []
+        error_lines: list[str] = []
+
+        async def read_stderr():
+            assert proc.stderr is not None
+            async for raw_line in proc.stderr:
+                line = raw_line.decode("utf-8", errors="replace").rstrip()
+                if line:
+                    error_lines.append(line)
+
+        stderr_task = asyncio.create_task(read_stderr())
+        try:
+            assert proc.stdout is not None
+            async for raw_line in proc.stdout:
+                line = raw_line.decode("utf-8", errors="replace").rstrip()
+                if not line:
+                    continue
+                output_lines.append(line)
+                state = _detect_claude_state(line)
+                yield f"data: {json.dumps({'status': state, 'output': line})}\n\n"
+        except asyncio.CancelledError:
+            if proc.returncode is None:
+                proc.terminate()
+                try:
+                    await asyncio.wait_for(proc.wait(), timeout=3)
+                except asyncio.TimeoutError:
+                    proc.kill()
+            raise
+
+        await stderr_task
+        await proc.wait()
+        _running_process = None
+
+        full_output = "\n".join(output_lines)
+        full_error = "\n".join(error_lines)
+        combined = f"{full_output} {full_error}"
+
+        if _is_rate_limit_error(combined):
+            await _handle_rate_limit("confirm_code", combined[:300])
+            _increment_admin_stats("code")
+            yield f"data: {json.dumps({'status': 'error', 'message': 'Rate limit', 'rate_limit': True})}\n\n"
+            return
+
+        response = full_output or full_error or "Command completed (no output)"
+        success = proc.returncode == 0
+        _increment_admin_stats("code")
+        _save_chat_message("code_result", response, "code_result")
+        _audit_log("admin", "CONFIRM_CODE_RESULT", command[:50], response[:200])
+
+        yield f"data: {json.dumps({'status': 'done' if success else 'error', 'message': 'Done' if success else 'Error', 'output': response[-500:] if len(response) > 500 else '', 'return_code': proc.returncode})}\n\n"
+
+    return StreamingResponse(
+        confirmed_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@router.post("/confirm-chat")
+async def confirm_send_to_chat(request: Request):
+    """Send Code result to Chat for analysis."""
+    _require_auth(request)
+    body = await request.json()
+    code_result = body.get("code_result", "").strip()
+
+    if not code_result:
+        raise HTTPException(status_code=400, detail="Code result required")
+
+    _audit_log("admin", "CONFIRM_CHAT", code_result[:100])
+
+    # Send to Chat for analysis (reuses chat endpoint logic)
+    msg = (
+        f"Результат выполнения команды:\n\n"
+        f"{code_result[:3000]}\n\n"
+        f"Проанализируй результат и сообщи пользователю."
+    )
+
+    # Save internal message
+    _save_chat_message("user", msg, "internal")
+
+    knowledge = _load_knowledge_base()
+    history = _get_chat_history(10, for_prompt=True)
+    history_text = "\n".join(
+        f"{'User' if m['role'] == 'user' else 'Assistant'}: {m['content']}"
+        for m in history[:-1]
+    )
+
+    context_file = CHAT_DIR / "context.md"
+    system_context = ""
+    if context_file.exists():
+        system_context = context_file.read_text(errors="replace")[:10000]
+
+    prompt = f"""{system_context}
+
+# БАЗА ЗНАНИЙ
+{knowledge}
+
+# ТВОЯ РОЛЬ
+Ты — Claude Chat, интеллектуальный помощник AILA AI Trade бота.
+Проанализируй результат выполнения команды Claude Code.
+
+# ИСТОРИЯ ЧАТА
+{history_text}
+
+# РЕЗУЛЬТАТ КОМАНДЫ
+{msg}
+
+# ИНСТРУКЦИИ
+- Отвечай на русском.
+- Если нужны дополнительные действия: [COMMAND_FOR_CODE]команда[/COMMAND_FOR_CODE]
+- Используй АБСОЛЮТНЫЕ пути от /opt/aila/."""
+
+    try:
+        claude_env = _get_claude_env()
+        result = await asyncio.to_thread(
+            subprocess.run,
+            ["claude", "--print", "--model", "sonnet", prompt],
+            cwd="/opt/aila", capture_output=True, text=True, env=claude_env,
+        )
+        response = result.stdout.strip() if result.stdout else ""
+        stderr = result.stderr.strip() if result.stderr else ""
+
+        combined = f"{response} {stderr}"
+        if _is_rate_limit_error(combined):
+            rl_result = await _handle_rate_limit("confirm_chat", combined[:300])
+            _increment_admin_stats("chat")
+            return rl_result
+
+        if not response:
+            response = f"Ошибка: {stderr[:500]}" if stderr else "No response"
+    except Exception as e:
+        response = f"Error: {str(e)}"
+
+    _increment_admin_stats("chat")
+
+    # Process knowledge updates
+    knowledge_updated = _process_knowledge_updates(response)
+    clean_response = re.sub(
+        r"\[UPDATE_KNOWLEDGE\].*?\[/UPDATE_KNOWLEDGE\]", "", response
+    ).strip()
+    if clean_response:
+        response = clean_response
+
+    has_command = "[COMMAND_FOR_CODE]" in response
+    _save_chat_message("assistant", response, "command" if has_command else "text")
+
+    return {
+        "response": response,
+        "has_command": has_command,
+        "knowledge_updated": knowledge_updated,
+        "timestamp": datetime.now().isoformat(),
+    }
 
 
 # =============================================

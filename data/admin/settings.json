@@ -1,0 +1,29 @@
+{
+  "restrictions": {
+    "protect_ai_trade_logic": true,
+    "protect_trading_strategy": true,
+    "protect_learning_system": true,
+    "protect_risk_management": true,
+    "protect_trading_pairs": true,
+    "protect_api_keys": true,
+    "protect_position_management": true,
+    "protect_capital_settings": true,
+    "protect_agent_settings": true,
+    "protect_cascade_logic": true,
+    "allow_file_edit": true,
+    "allow_bot_restart": true,
+    "allow_git_push": true,
+    "allow_file_delete": false,
+    "allow_env_edit": false,
+    "allow_database_edit": false,
+    "allow_log_clear": true,
+    "always_confirm_trade_open": true,
+    "always_confirm_trade_close": true,
+    "always_confirm_autopilot_toggle": true,
+    "always_confirm_leverage_change": true,
+    "always_confirm_api_key_change": true,
+    "max_auto_iterations": 10,
+    "auto_timeout_minutes": 30,
+    "require_human_every_n_actions": 5
+  }
+}
