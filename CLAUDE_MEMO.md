@@ -1851,9 +1851,11 @@ async def round_qty(symbol, qty) -> float:
 
 **position_manager.py — использование round_qty:**
 ```python
-raw_amount = position_size_usdt / price
+# ОБНОВЛЕНО (2026-01-30): добавлен расчёт с leverage
+position_value = position_size_usdt * leverage
+raw_amount = position_value / price
 amount = await self._exchange.round_qty(symbol, raw_amount)
-logger.info(f"[POSITION] Price: {price}, raw_qty: {raw_amount:.8f}, rounded_qty: {amount}")
+logger.info(f"[POSITION] Calculated raw_amount: {raw_amount:.8f} = (${position_size_usdt} * {leverage}x) / {price}")
 ```
 
 ### Файлы изменены:
@@ -2725,6 +2727,55 @@ DELETE /api/admin/knowledge/{fn} — удалить файл
 
 ---
 
-**Последнее обновление:** 2026-01-30 (feat: session management with init, status, clear + archive)
+## 54. Исправление расчёта размера позиции с leverage (2026-01-30)
+
+### Проблема:
+**SNIPER агент открывал позиции без учёта leverage.**
+
+**Старая логика (НЕПРАВИЛЬНАЯ):**
+```python
+# position_size_usdt = margin (сумма риска, например $5)
+# leverage = 5x
+raw_amount = position_size_usdt / price  # $5 / $100 = 0.05 BTC
+# Результат: позиция на $5 вместо $25!
+```
+
+**Новая логика (ПРАВИЛЬНАЯ):**
+```python
+# position_size_usdt = margin (сумма риска, например $5)
+# leverage = 5x
+# position_value = margin * leverage
+position_value = position_size_usdt * leverage  # $5 * 5 = $25
+raw_amount = position_value / price  # $25 / $100 = 0.25 BTC
+# Результат: позиция на $25 как и должно быть!
+```
+
+### Причина проблемы:
+1. **SNIPER** передаёт `leverage` в сигнале (sniper.py: 240, 279, 314, 350)
+2. **position_manager.py** принимает `leverage` (строка 62)
+3. **НО** при расчёте qty НЕ учитывался leverage (строка 90)
+
+### Исправление:
+**position_manager.py:90-95** — добавлен расчёт position_value:
+```python
+# Calculate position value with leverage
+# position_size_usdt is the margin (risk amount)
+# position_value = margin * leverage
+position_value = position_size_usdt * leverage
+raw_amount = position_value / price
+logger.info(f"[POSITION] Calculated raw_amount: {raw_amount:.8f} = (${position_size_usdt} * {leverage}x) / {price} = ${position_value:.2f} / {price}")
+```
+
+### Файлы изменены:
+- `aila/ai_trade/position_manager.py` — строка 90-95, добавлен расчёт position_value с leverage
+
+### Влияние:
+- **SNIPER** теперь открывает позиции с правильным размером
+- **TRADER** не затронут (использует leverage из bot settings через engine.py)
+- Все leverage агентов (SNIPER: 2-5x, TRADER: 1-10x) теперь работают корректно
+
+---
+
+**Последнее обновление:** 2026-01-30 (fix: position size calculation with leverage for SNIPER)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`

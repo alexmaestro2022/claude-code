@@ -1,0 +1,22 @@
+[
+  {
+    "content": "Добавить прямое выполнение системных команд в execute_code",
+    "status": "in_progress",
+    "activeForm": "Добавляю прямое выполнение системных команд"
+  },
+  {
+    "content": "Обновить промпт Claude Chat про прямые команды",
+    "status": "pending",
+    "activeForm": "Обновляю промпт Claude Chat"
+  },
+  {
+    "content": "Обновить CLAUDE_MEMO.md",
+    "status": "pending",
+    "activeForm": "Обновляю CLAUDE_MEMO.md"
+  },
+  {
+    "content": "Закоммитить и запушить изменения",
+    "status": "pending",
+    "activeForm": "Коммичу и пушу"
+  }
+]

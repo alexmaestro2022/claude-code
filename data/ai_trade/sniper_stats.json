@@ -2,36 +2,61 @@
   "data": {
     "agent": "SNIPER",
     "level": 1,
-    "xp": 0,
-    "xp_to_next_level": 100,
-    "total_trades": 0,
-    "winning_trades": 0,
-    "losing_trades": 0,
-    "winrate": 0.0,
-    "total_pnl_usdt": 0.0,
+    "xp": 25,
+    "xp_to_next_level": 75,
+    "total_trades": 4,
+    "winning_trades": 1,
+    "losing_trades": 3,
+    "winrate": 25.0,
+    "total_pnl_usdt": -0.19732599999999997,
     "total_pnl_percent": 0.0,
-    "best_trade_usdt": 0.0,
-    "worst_trade_usdt": 0.0,
+    "best_trade_usdt": 0.128189,
+    "worst_trade_usdt": -0.191943,
     "avg_trade_duration_minutes": 0,
     "avg_rr_ratio": 0.0,
     "consecutive_wins": 0,
-    "consecutive_losses": 0,
-    "max_consecutive_wins": 0,
-    "max_consecutive_losses": 0,
-    "trades_today": 0,
-    "pnl_today_usdt": 0.0,
-    "trades_this_week": 0,
-    "pnl_this_week_usdt": 0.0,
-    "last_trade_time": null,
-    "last_win_time": null,
-    "last_loss_time": null,
+    "consecutive_losses": 1,
+    "max_consecutive_wins": 1,
+    "max_consecutive_losses": 2,
+    "trades_today": 4,
+    "pnl_today_usdt": -0.19732599999999997,
+    "trades_this_week": 4,
+    "pnl_this_week_usdt": -0.19732599999999997,
+    "last_trade_time": "2026-01-30T07:21:08.522701",
+    "last_win_time": "2026-01-30T06:34:06.798295",
+    "last_loss_time": "2026-01-30T07:21:08.522687",
     "paused_until": null,
     "pause_reason": null,
     "trigger_stats": {
-      "breakout": {"trades": 0, "wins": 0, "pnl": 0.0},
-      "breakdown": {"trades": 0, "wins": 0, "pnl": 0.0},
-      "liquidation_cascade": {"trades": 0, "wins": 0, "pnl": 0.0},
-      "funding_flip": {"trades": 0, "wins": 0, "pnl": 0.0}
+      "breakout": {
+        "trades": 0,
+        "wins": 0,
+        "pnl": 0.0
+      },
+      "breakdown": {
+        "trades": 0,
+        "wins": 0,
+        "pnl": 0.0
+      },
+      "liquidation_cascade": {
+        "trades": 0,
+        "wins": 0,
+        "pnl": 0.0
+      },
+      "funding_flip": {
+        "trades": 0,
+        "wins": 0,
+        "pnl": 0.0
+      },
+      "stop_loss": {
+        "trades": 3,
+        "pnl": -0.325515
+      },
+      "take_profit": {
+        "trades": 1,
+        "wins": 1,
+        "pnl": 0.128189
+      }
     },
     "api_usage": {
       "calls_today": 0,
@@ -47,8 +72,57 @@
     "weekly_history": {},
     "enabled": true,
     "cooldown_remaining": 0.0,
-    "trades_history": []
+    "trades_history": [
+      {
+        "symbol": "BNBUSDT",
+        "side": "LONG",
+        "pnl_usdt": -0.014792,
+        "pnl_pct": 0.05,
+        "entry_price": 839.5,
+        "exit_price": 839.7,
+        "close_reason": "stop_loss",
+        "leverage": "2",
+        "grade": "C",
+        "closed_at": "2026-01-30T07:21:08.522669"
+      },
+      {
+        "symbol": "BCHUSDT",
+        "side": "LONG",
+        "pnl_usdt": 0.128189,
+        "pnl_pct": 5.21,
+        "entry_price": 533.6,
+        "exit_price": 547.5,
+        "close_reason": "take_profit",
+        "leverage": "2",
+        "grade": "A",
+        "closed_at": "2026-01-30T06:34:06.798269"
+      },
+      {
+        "symbol": "BCHUSDT",
+        "side": "LONG",
+        "pnl_usdt": -0.11878,
+        "pnl_pct": -3.93,
+        "entry_price": 544.3,
+        "exit_price": 533.6,
+        "close_reason": "stop_loss",
+        "leverage": "2",
+        "grade": "D",
+        "closed_at": "2026-01-30T02:31:59.723251"
+      },
+      {
+        "symbol": "BNBUSDT",
+        "side": "LONG",
+        "pnl_usdt": -0.191943,
+        "pnl_pct": -4.0,
+        "entry_price": 855.5,
+        "exit_price": 838.4,
+        "close_reason": "stop_loss",
+        "leverage": "2",
+        "grade": "D",
+        "closed_at": "2026-01-30T01:43:20.598972"
+      }
+    ]
   },
-  "saved_at": "2026-01-29T07:45:00.000000",
+  "saved_at": "2026-01-30T07:21:08.523246",
   "version": "2.0"
 }

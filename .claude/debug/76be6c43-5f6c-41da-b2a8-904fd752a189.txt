@@ -1,0 +1,1 @@
+2026-01-30T05:31:38.829Z [DEBUG] Failed to check enabledPlatforms: TypeError: EK is not a function

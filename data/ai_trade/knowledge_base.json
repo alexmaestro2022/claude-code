@@ -106,8 +106,149 @@
         "max_positions": 5,
         "max_risk_pct": 3
       }
+    },
+    "trader_learning": {
+      "best_pairs": [
+        {
+          "symbol": "PTBUSDT",
+          "pnl_usdt": 0.15709507,
+          "grade": "B",
+          "close_reason": "take_profit",
+          "added_at": "2026-01-30T01:01:21.054983"
+        }
+      ],
+      "worst_pairs": [
+        {
+          "symbol": "PIPPINUSDT",
+          "pnl_usdt": -0.53769056,
+          "grade": "D",
+          "close_reason": "stop_loss",
+          "added_at": "2026-01-29T17:59:40.442411"
+        },
+        {
+          "symbol": "1000RATSUSDT",
+          "pnl_usdt": -0.4937,
+          "grade": "D",
+          "close_reason": "stop_loss",
+          "added_at": "2026-01-29T00:05:25"
+        },
+        {
+          "symbol": "HYPEUSDT",
+          "pnl_usdt": -0.4852,
+          "grade": "D",
+          "close_reason": "stop_loss",
+          "added_at": "2026-01-29T02:51:52"
+        },
+        {
+          "symbol": "XAUTUSDT",
+          "pnl_usdt": -0.11934666,
+          "grade": "D",
+          "close_reason": "stop_loss",
+          "added_at": "2026-01-29T15:09:14.252829"
+        },
+        {
+          "symbol": "RIVERUSDT",
+          "pnl_usdt": -0.0041134,
+          "grade": "C",
+          "close_reason": "stop_loss",
+          "added_at": "2026-01-30T01:10:54.502931"
+        },
+        {
+          "symbol": "FARTCOINUSDT",
+          "pnl_usdt": -0.0039624,
+          "grade": "C",
+          "close_reason": "stop_loss",
+          "added_at": "2026-01-30T07:30:54.965738"
+        }
+      ],
+      "learned_rules": [],
+      "mistakes_to_avoid": [
+        {
+          "symbol": "HYPEUSDT",
+          "strategy": "momentum_breakout",
+          "grade": "D",
+          "lesson": "SL hit on HYPEUSDT - avoid chasing momentum on volatile meme coins",
+          "added_at": "2026-01-29T02:51:52"
+        },
+        {
+          "symbol": "1000RATSUSDT",
+          "strategy": "momentum_breakout",
+          "grade": "D",
+          "lesson": "SL hit on 1000RATSUSDT - avoid chasing after large pumps",
+          "added_at": "2026-01-29T00:05:25"
+        },
+        {
+          "symbol": "XAUTUSDT",
+          "strategy": "unknown",
+          "confidence": 0,
+          "grade": "D",
+          "lesson": "Avoid unknown on XAUTUSDT with conf=0%",
+          "added_at": "2026-01-29T15:09:14.252953"
+        },
+        {
+          "symbol": "PIPPINUSDT",
+          "strategy": "Bearish Trend Following",
+          "confidence": 75,
+          "grade": "D",
+          "lesson": "Avoid Bearish Trend Following on PIPPINUSDT with conf=75%",
+          "added_at": "2026-01-29T17:59:40.442491"
+        }
+      ]
+    },
+    "sniper_learning": {
+      "best_pairs": [
+        {
+          "symbol": "BCHUSDT",
+          "pnl_usdt": 0.128189,
+          "grade": "A",
+          "close_reason": "take_profit",
+          "added_at": "2026-01-30T06:34:06.802317"
+        }
+      ],
+      "worst_pairs": [
+        {
+          "symbol": "BNBUSDT",
+          "pnl_usdt": -0.191943,
+          "grade": "D",
+          "close_reason": "stop_loss",
+          "added_at": "2026-01-30T01:43:20.600814"
+        },
+        {
+          "symbol": "BCHUSDT",
+          "pnl_usdt": -0.11878,
+          "grade": "D",
+          "close_reason": "stop_loss",
+          "added_at": "2026-01-30T02:31:59.724040"
+        },
+        {
+          "symbol": "BNBUSDT",
+          "pnl_usdt": -0.014792,
+          "grade": "C",
+          "close_reason": "stop_loss",
+          "added_at": "2026-01-30T07:21:08.525843"
+        }
+      ],
+      "learned_rules": [],
+      "mistakes_to_avoid": [
+        {
+          "symbol": "BNBUSDT",
+          "strategy": "sniper_liquidation_cascade",
+          "confidence": 75,
+          "grade": "D",
+          "lesson": "Avoid sniper_liquidation_cascade on BNBUSDT with conf=75%",
+          "added_at": "2026-01-30T01:43:20.601014"
+        },
+        {
+          "symbol": "BCHUSDT",
+          "strategy": "sniper_liquidation_cascade",
+          "confidence": 80,
+          "grade": "D",
+          "lesson": "Avoid sniper_liquidation_cascade on BCHUSDT with conf=80%",
+          "added_at": "2026-01-30T02:31:59.724162"
+        }
+      ]
     }
   },
-  "saved_at": "2026-01-29T06:07:08.615446",
+  "saved_at": "2026-01-30T09:34:41.423260",
   "version": "2.0"
 }

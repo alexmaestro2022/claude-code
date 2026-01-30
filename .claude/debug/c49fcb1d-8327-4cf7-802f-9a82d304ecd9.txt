@@ -1,0 +1,170 @@
+2026-01-29T23:54:35.753Z [DEBUG] Failed to check enabledPlatforms: TypeError: EK is not a function
+2026-01-29T23:54:35.819Z [DEBUG] [init] configureGlobalMTLS starting
+2026-01-29T23:54:35.819Z [DEBUG] [init] configureGlobalMTLS complete
+2026-01-29T23:54:35.819Z [DEBUG] [init] configureGlobalAgents starting
+2026-01-29T23:54:35.819Z [DEBUG] [init] configureGlobalAgents complete
+2026-01-29T23:54:35.833Z [DEBUG] [STARTUP] Loading MCP configs...
+2026-01-29T23:54:35.835Z [DEBUG] Found 0 plugins (0 enabled, 0 disabled)
+2026-01-29T23:54:35.835Z [DEBUG] [claudeai-mcp] Checking gate (cached)...
+2026-01-29T23:54:35.835Z [DEBUG] [claudeai-mcp] Gate returned: false
+2026-01-29T23:54:35.835Z [DEBUG] [claudeai-mcp] Disabled via gate
+2026-01-29T23:54:35.866Z [DEBUG] [ToolSearch:optimistic] mode=tst-auto, ENABLE_TOOL_SEARCH=undefined, result=true
+2026-01-29T23:54:35.867Z [DEBUG] [STARTUP] Running setup()...
+2026-01-29T23:54:35.883Z [DEBUG] Loading skills from: managed=/etc/claude-code/.claude/skills, user=/opt/aila/.claude/skills, project=[]
+2026-01-29T23:54:35.885Z [DEBUG] Passes: Using fresh cached eligibility data
+2026-01-29T23:54:35.886Z [ERROR] Error: Error: ENOENT: no such file or directory, scandir '/etc/claude-code/.claude/skills'
+    at Module.readdirSync (node:fs:1525:3)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:9:1909
+    at hX (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:35183)
+    at Object.readdirSync (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:9:1879)
+    at sZ1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1827:369)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1827:4509
+    at q (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:6814)
+    at Un2 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:4881:4362)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:4881:6995
+    at q (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:6814)
+2026-01-29T23:54:35.886Z [ERROR] Error: Error: ENOENT: no such file or directory, scandir '/opt/aila/.claude/skills'
+    at Module.readdirSync (node:fs:1525:3)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:9:1909
+    at hX (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:35183)
+    at Object.readdirSync (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:9:1879)
+    at sZ1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1827:369)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1827:4552
+    at q (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:6814)
+    at Un2 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:4881:4362)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:4881:6995
+    at q (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:6814)
+2026-01-29T23:54:35.886Z [DEBUG] Error log sink initialized
+2026-01-29T23:54:35.888Z [DEBUG] getPluginSkills: Processing 0 enabled plugins
+2026-01-29T23:54:35.888Z [DEBUG] Total plugin skills loaded: 0
+2026-01-29T23:54:35.888Z [DEBUG] Total plugin commands loaded: 0
+2026-01-29T23:54:35.888Z [DEBUG] Registered 0 hooks from 0 plugins
+2026-01-29T23:54:35.912Z [DEBUG] [STARTUP] setup() completed in 45ms
+2026-01-29T23:54:35.912Z [DEBUG] [STARTUP] Loading commands and agents...
+2026-01-29T23:54:35.919Z [DEBUG] Total plugin agents loaded: 0
+2026-01-29T23:54:35.919Z [DEBUG] Loaded 0 unique skills (managed: 0, user: 0, project: 0, legacy commands: 0)
+2026-01-29T23:54:35.920Z [DEBUG] getSkills returning: 0 skill dir commands, 0 plugin skills, 1 bundled skills
+2026-01-29T23:54:35.921Z [DEBUG] [STARTUP] Commands and agents loaded in 9ms
+2026-01-29T23:54:35.921Z [DEBUG] [LSP MANAGER] initializeLspServerManager() called
+2026-01-29T23:54:35.921Z [DEBUG] [LSP MANAGER] Created manager instance, state=pending
+2026-01-29T23:54:35.921Z [DEBUG] [LSP MANAGER] Starting async initialization (generation 1)
+2026-01-29T23:54:35.922Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-29T23:54:35.923Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-29T23:54:35.923Z [DEBUG] Passes: Using fresh cached eligibility data
+2026-01-29T23:54:35.923Z [DEBUG] Total LSP servers loaded: 0
+2026-01-29T23:54:35.923Z [DEBUG] [STARTUP] MCP configs loaded in 90ms
+2026-01-29T23:54:35.924Z [DEBUG] [LSP SERVER MANAGER] getAllLspServers returned 0 server(s)
+2026-01-29T23:54:35.924Z [DEBUG] LSP manager initialized with 0 servers
+2026-01-29T23:54:35.924Z [DEBUG] LSP server manager initialized successfully
+2026-01-29T23:54:35.924Z [DEBUG] LSP notification handlers registered successfully for all 0 server(s)
+2026-01-29T23:54:35.924Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-29T23:54:35.964Z [DEBUG] installed_plugins.json doesn't exist, returning empty V2 object
+2026-01-29T23:54:35.964Z [DEBUG] Initialized versioned plugins system with 0 plugins
+2026-01-29T23:54:35.965Z [DEBUG] [Perfetto] initializePerfettoTracing called, env value: undefined
+2026-01-29T23:54:35.993Z [DEBUG] Writing to temp file: /opt/aila/.claude/todos/c49fcb1d-8327-4cf7-802f-9a82d304ecd9-agent-c49fcb1d-8327-4cf7-802f-9a82d304ecd9.json.tmp.494342.1769730875993
+2026-01-29T23:54:35.994Z [DEBUG] Temp file written successfully, size: 2 bytes
+2026-01-29T23:54:35.994Z [DEBUG] Renaming /opt/aila/.claude/todos/c49fcb1d-8327-4cf7-802f-9a82d304ecd9-agent-c49fcb1d-8327-4cf7-802f-9a82d304ecd9.json.tmp.494342.1769730875993 to /opt/aila/.claude/todos/c49fcb1d-8327-4cf7-802f-9a82d304ecd9-agent-c49fcb1d-8327-4cf7-802f-9a82d304ecd9.json
+2026-01-29T23:54:35.994Z [DEBUG] File /opt/aila/.claude/todos/c49fcb1d-8327-4cf7-802f-9a82d304ecd9-agent-c49fcb1d-8327-4cf7-802f-9a82d304ecd9.json written atomically
+2026-01-29T23:54:35.994Z [DEBUG] Grove: Using fresh cached config
+2026-01-29T23:54:36.078Z [DEBUG] Ripgrep first use test: PASSED (mode=builtin, path=/usr/local/lib/node_modules/@anthropic-ai/claude-code/vendor/ripgrep/x64-linux/rg)
+2026-01-29T23:54:37.070Z [DEBUG] Skills and commands included in Skill tool: keybindings-help
+2026-01-29T23:54:37.071Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-29T23:54:37.071Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-29T23:54:37.071Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-29T23:54:37.081Z [DEBUG] Stats cache is up to date
+2026-01-29T23:54:37.156Z [DEBUG] Session index: added 1, updated 0, removed 0, summaries generated 0 (total: 2)
+2026-01-29T23:54:37.190Z [DEBUG] Getting matching hook commands for SessionStart with query: startup
+2026-01-29T23:54:37.190Z [DEBUG] Found 0 hook matchers in settings
+2026-01-29T23:54:37.190Z [DEBUG] Matched 0 unique hooks for query "startup" (0 before deduplication)
+2026-01-29T23:54:37.206Z [DEBUG] Total plugin output styles loaded: 0
+2026-01-29T23:54:37.271Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-29T23:54:37.271Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-29T23:54:37.271Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-29T23:54:37.271Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-29T23:54:37.294Z [DEBUG] Getting matching hook commands for UserPromptSubmit with query: undefined
+2026-01-29T23:54:37.294Z [DEBUG] Found 0 hook matchers in settings
+2026-01-29T23:54:37.294Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2026-01-29T23:54:37.303Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-29T23:54:37.311Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-29T23:54:37.312Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-29T23:54:37.312Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-29T23:54:37.314Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-29T23:54:38.502Z [DEBUG] Stream started - received first chunk
+2026-01-29T23:54:41.327Z [DEBUG] executePreToolHooks called for tool: Bash
+2026-01-29T23:54:41.327Z [DEBUG] executePreToolHooks called for tool: Bash
+2026-01-29T23:54:41.327Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2026-01-29T23:54:41.327Z [DEBUG] Found 0 hook matchers in settings
+2026-01-29T23:54:41.327Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-01-29T23:54:41.327Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2026-01-29T23:54:41.327Z [DEBUG] Found 0 hook matchers in settings
+2026-01-29T23:54:41.327Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-01-29T23:54:41.342Z [DEBUG] tree-sitter: WASM files not found
+2026-01-29T23:54:41.365Z [DEBUG] Permission suggestions for Bash: [
+  {
+    "type": "addRules",
+    "rules": [
+      {
+        "toolName": "Read",
+        "ruleContent": "//opt/aila/logs/ai_trade/**"
+      }
+    ],
+    "behavior": "allow",
+    "destination": "session"
+  }
+]
+2026-01-29T23:54:41.365Z [DEBUG] Permission suggestions for Bash: [
+  {
+    "type": "addRules",
+    "rules": [
+      {
+        "toolName": "Read",
+        "ruleContent": "//opt/aila/logs/ai_trade/**"
+      }
+    ],
+    "behavior": "allow",
+    "destination": "session"
+  }
+]
+2026-01-29T23:54:41.403Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-29T23:54:41.403Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-29T23:54:41.403Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-29T23:54:41.403Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-29T23:54:41.415Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-29T23:54:41.424Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-29T23:54:41.424Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-29T23:54:41.424Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-29T23:54:41.426Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-29T23:54:43.153Z [DEBUG] Stream started - received first chunk
+2026-01-29T23:54:43.623Z [DEBUG] executePreToolHooks called for tool: Read
+2026-01-29T23:54:43.624Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2026-01-29T23:54:43.624Z [DEBUG] Found 0 hook matchers in settings
+2026-01-29T23:54:43.624Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2026-01-29T23:54:43.630Z [DEBUG] Permission suggestions for Read: [
+  {
+    "type": "addRules",
+    "rules": [
+      {
+        "toolName": "Read",
+        "ruleContent": "//opt/aila/logs/ai_trade/**"
+      }
+    ],
+    "behavior": "allow",
+    "destination": "session"
+  }
+]
+2026-01-29T23:54:43.641Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-29T23:54:43.641Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-29T23:54:43.641Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-29T23:54:43.641Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-29T23:54:43.646Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-29T23:54:43.653Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-29T23:54:43.654Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-29T23:54:43.654Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-29T23:54:43.656Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-29T23:54:44.734Z [DEBUG] Stream started - received first chunk
+2026-01-29T23:54:47.751Z [DEBUG] Getting matching hook commands for Stop with query: undefined
+2026-01-29T23:54:47.751Z [DEBUG] Found 0 hook matchers in settings
+2026-01-29T23:54:47.751Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2026-01-29T23:54:47.753Z [DEBUG] Getting matching hook commands for SessionEnd with query: other
+2026-01-29T23:54:47.753Z [DEBUG] Found 0 hook matchers in settings
+2026-01-29T23:54:47.753Z [DEBUG] Matched 0 unique hooks for query "other" (0 before deduplication)

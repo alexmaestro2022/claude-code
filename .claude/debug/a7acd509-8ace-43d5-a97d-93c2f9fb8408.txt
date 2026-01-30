@@ -1,0 +1,894 @@
+2026-01-30T00:38:02.005Z [DEBUG] Failed to check enabledPlatforms: TypeError: EK is not a function
+2026-01-30T00:38:02.124Z [DEBUG] Watching for changes in setting files /opt/aila/.claude...
+2026-01-30T00:38:02.134Z [DEBUG] [init] configureGlobalMTLS starting
+2026-01-30T00:38:02.134Z [DEBUG] [init] configureGlobalMTLS complete
+2026-01-30T00:38:02.134Z [DEBUG] [init] configureGlobalAgents starting
+2026-01-30T00:38:02.134Z [DEBUG] [init] configureGlobalAgents complete
+2026-01-30T00:38:02.158Z [DEBUG] Applying permission update: Adding 47 allow rule(s) to destination 'localSettings': ["Bash(curl:*)","Bash(python3:*)","Bash(pm2 restart:*)","Bash(/usr/local/bin/pm2 restart:*)","Bash(/home/*/.local/bin/pm2)","Bash(restart aila)","Bash(/root/.local/bin/pm2 restart:*)","Bash(~/.nvm/versions/node/*/bin/pm2)","Bash(sudo -u aila bash -c 'source ~/.bashrc && pm2 restart aila')","Bash(sudo -u aila /home/aila/.local/bin/pm2 restart:*)","Bash(su - aila -c \"pm2 restart aila\")","Bash(runuser -u aila -- bash -lc:*)","Bash(npm root:*)","Bash(/home/aila/.npm/_npx/5f7878ce38f1eb13/node_modules/pm2/bin/pm2 restart:*)","Bash(PM2_HOME=/home/aila/.pm2 /home/aila/.npm/_npx/5f7878ce38f1eb13/node_modules/pm2/bin/pm2 list:*)","Bash(systemctl:*)","Bash(git add:*)","Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: add visual AUTOPILOT activity indicator\n\n- Add pulsing status dot next to AUTOPILOT button \\(green=active, scanning animation, orange=warning\\)\n- Add status bar at bottom: shows running status, current pair being scanned, time since last scan\n- Add /api/ai-trade/autopilot/heartbeat endpoint with real-time scan tracking\n- Add JavaScript polling every 5 seconds for live updates\n- Add scan tracking in autopilot_mode.py \\(last_scan_time, currently_scanning, current_pair\\)\n- Add RU/EN translations for status bar labels\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")","Bash(git push:*)","Bash(sudo systemctl restart:*)","Bash(pkill:*)","Bash(/home/aila/.nvm/versions/node/*/bin/pm2)","Bash(npm exec pm2:*)","Bash(ls:*)","Bash(kill:*)","Bash(git commit:*)","Bash(journalctl:*)","Bash(pm2 logs:*)","Bash(sudo systemctl status:*)","Bash(pm2 status:*)","Bash(pgrep:*)","Bash(find:*)","Bash(grep:*)","Bash(/opt/aila/venv/bin/python:*)","Bash(netstat:*)","Bash(ss:*)","Bash(./start-claude.sh:*)","Bash(ps:*)","Bash(source ~/.nvm/nvm.sh)","Bash(/home/aila/.local/bin/pm2 restart:*)","Bash(export PATH=\"$PATH:/home/aila/.nvm/versions/node/v20.11.1/bin:/home/aila/.local/bin\")","Bash(supervisorctl status:*)","Bash(python -m pytest:*)","Bash(/usr/bin/python3 -m pytest:*)","Bash(pip3 list:*)","Bash(/opt/aila/venv/bin/pip list:*)","Bash(/opt/aila/venv/bin/pip install:*)"]
+2026-01-30T00:38:02.159Z [DEBUG] [STARTUP] Loading MCP configs...
+2026-01-30T00:38:02.161Z [DEBUG] Found 0 plugins (0 enabled, 0 disabled)
+2026-01-30T00:38:02.161Z [DEBUG] [claudeai-mcp] Checking gate (cached)...
+2026-01-30T00:38:02.162Z [DEBUG] [claudeai-mcp] Gate returned: false
+2026-01-30T00:38:02.162Z [DEBUG] [claudeai-mcp] Disabled via gate
+2026-01-30T00:38:02.199Z [DEBUG] [ToolSearch:optimistic] mode=tst-auto, ENABLE_TOOL_SEARCH=undefined, result=true
+2026-01-30T00:38:02.201Z [DEBUG] [STARTUP] Running setup()...
+2026-01-30T00:38:02.223Z [DEBUG] Loading skills from: managed=/etc/claude-code/.claude/skills, user=/opt/aila/.claude/skills, project=[]
+2026-01-30T00:38:02.225Z [DEBUG] Passes: Using fresh cached eligibility data
+2026-01-30T00:38:02.226Z [ERROR] TypeError: TypeError: Cannot read properties of undefined (reading 'safeParse')
+    at TQ6 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5228:25188)
+    at tr2 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5229:1314)
+    at Yv (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5229:1754)
+    at oq (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5229:1683)
+    at Object.Qb8 [as isPlatformInEnabledList] (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:244:2532)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:4744:21550
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:848
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:4881:6409
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:848
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5148:913
+2026-01-30T00:38:02.226Z [ERROR] Error: Error: ENOENT: no such file or directory, scandir '/etc/claude-code/.claude/skills'
+    at Module.readdirSync (node:fs:1525:3)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:9:1909
+    at hX (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:35183)
+    at Object.readdirSync (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:9:1879)
+    at sZ1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1827:369)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1827:4509
+    at q (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:6814)
+    at Un2 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:4881:4362)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:4881:6995
+    at q (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:6814)
+2026-01-30T00:38:02.226Z [ERROR] Error: Error: ENOENT: no such file or directory, scandir '/opt/aila/.claude/skills'
+    at Module.readdirSync (node:fs:1525:3)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:9:1909
+    at hX (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:35183)
+    at Object.readdirSync (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:9:1879)
+    at sZ1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1827:369)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1827:4552
+    at q (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:6814)
+    at Un2 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:4881:4362)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:4881:6995
+    at q (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:6814)
+2026-01-30T00:38:02.226Z [DEBUG] Error log sink initialized
+2026-01-30T00:38:02.230Z [DEBUG] getPluginSkills: Processing 0 enabled plugins
+2026-01-30T00:38:02.230Z [DEBUG] Total plugin skills loaded: 0
+2026-01-30T00:38:02.230Z [DEBUG] Total plugin commands loaded: 0
+2026-01-30T00:38:02.231Z [DEBUG] Registered 0 hooks from 0 plugins
+2026-01-30T00:38:02.273Z [DEBUG] [STARTUP] setup() completed in 72ms
+2026-01-30T00:38:02.273Z [DEBUG] [STARTUP] Loading commands and agents...
+2026-01-30T00:38:02.294Z [DEBUG] Total plugin agents loaded: 0
+2026-01-30T00:38:02.294Z [DEBUG] Loaded 0 unique skills (managed: 0, user: 0, project: 0, legacy commands: 0)
+2026-01-30T00:38:02.295Z [DEBUG] getSkills returning: 0 skill dir commands, 0 plugin skills, 1 bundled skills
+2026-01-30T00:38:02.298Z [DEBUG] [STARTUP] Commands and agents loaded in 25ms
+2026-01-30T00:38:02.298Z [DEBUG] [LSP MANAGER] initializeLspServerManager() called
+2026-01-30T00:38:02.298Z [DEBUG] [LSP MANAGER] Created manager instance, state=pending
+2026-01-30T00:38:02.298Z [DEBUG] [LSP MANAGER] Starting async initialization (generation 1)
+2026-01-30T00:38:02.300Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:38:02.300Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:38:02.301Z [DEBUG] Passes: Using fresh cached eligibility data
+2026-01-30T00:38:02.302Z [DEBUG] Total LSP servers loaded: 0
+2026-01-30T00:38:02.302Z [DEBUG] [STARTUP] MCP configs loaded in 143ms
+2026-01-30T00:38:02.302Z [DEBUG] [LSP SERVER MANAGER] getAllLspServers returned 0 server(s)
+2026-01-30T00:38:02.302Z [DEBUG] LSP manager initialized with 0 servers
+2026-01-30T00:38:02.302Z [DEBUG] LSP server manager initialized successfully
+2026-01-30T00:38:02.303Z [DEBUG] LSP notification handlers registered successfully for all 0 server(s)
+2026-01-30T00:38:02.303Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:38:02.377Z [DEBUG] installed_plugins.json doesn't exist, returning empty V2 object
+2026-01-30T00:38:02.377Z [DEBUG] Initialized versioned plugins system with 0 plugins
+2026-01-30T00:38:02.379Z [DEBUG] [Perfetto] initializePerfettoTracing called, env value: undefined
+2026-01-30T00:38:02.429Z [DEBUG] Writing to temp file: /opt/aila/.claude/todos/a7acd509-8ace-43d5-a97d-93c2f9fb8408-agent-a7acd509-8ace-43d5-a97d-93c2f9fb8408.json.tmp.505742.1769733482429
+2026-01-30T00:38:02.429Z [DEBUG] Temp file written successfully, size: 2 bytes
+2026-01-30T00:38:02.429Z [DEBUG] Renaming /opt/aila/.claude/todos/a7acd509-8ace-43d5-a97d-93c2f9fb8408-agent-a7acd509-8ace-43d5-a97d-93c2f9fb8408.json.tmp.505742.1769733482429 to /opt/aila/.claude/todos/a7acd509-8ace-43d5-a97d-93c2f9fb8408-agent-a7acd509-8ace-43d5-a97d-93c2f9fb8408.json
+2026-01-30T00:38:02.429Z [DEBUG] File /opt/aila/.claude/todos/a7acd509-8ace-43d5-a97d-93c2f9fb8408-agent-a7acd509-8ace-43d5-a97d-93c2f9fb8408.json written atomically
+2026-01-30T00:38:02.431Z [DEBUG] Grove: Using fresh cached config
+2026-01-30T00:38:03.984Z [DEBUG] Skills and commands included in Skill tool: keybindings-help
+2026-01-30T00:38:03.985Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:38:03.985Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:38:03.985Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:38:03.998Z [DEBUG] Stats cache stale (2026-01-28), processing 2026-01-29 to 2026-01-29 in background
+2026-01-30T00:38:04.118Z [DEBUG] Getting matching hook commands for SessionStart with query: startup
+2026-01-30T00:38:04.118Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:38:04.118Z [DEBUG] Matched 0 unique hooks for query "startup" (0 before deduplication)
+2026-01-30T00:38:04.143Z [DEBUG] Total plugin output styles loaded: 0
+2026-01-30T00:38:04.164Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:38:04.164Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:38:04.164Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:38:04.164Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:38:04.174Z [DEBUG] Getting matching hook commands for UserPromptSubmit with query: undefined
+2026-01-30T00:38:04.174Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:38:04.174Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2026-01-30T00:38:04.185Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:38:04.195Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:38:04.197Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:38:04.197Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:38:04.201Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:38:04.290Z [DEBUG] Stats cache saved successfully (lastComputedDate: 2026-01-29)
+2026-01-30T00:38:04.290Z [DEBUG] Stats cache updated with 12 new sessions
+2026-01-30T00:38:05.266Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:38:06.628Z [DEBUG] executePreToolHooks called for tool: Read
+2026-01-30T00:38:06.629Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2026-01-30T00:38:06.629Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:38:06.629Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2026-01-30T00:38:06.669Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2026-01-30T00:38:06.669Z [DEBUG] Found 3 hook matchers in settings
+2026-01-30T00:38:06.670Z [DEBUG] Matched 1 unique hooks for query "Read" (1 before deduplication)
+2026-01-30T00:38:06.701Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:38:06.701Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:38:06.701Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:38:06.701Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:38:06.718Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:38:06.730Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:38:06.730Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:38:06.730Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:38:06.732Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:38:09.270Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:38:16.875Z [DEBUG] executePreToolHooks called for tool: TodoWrite
+2026-01-30T00:38:16.877Z [DEBUG] Getting matching hook commands for PreToolUse with query: TodoWrite
+2026-01-30T00:38:16.877Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:38:16.877Z [DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+2026-01-30T00:38:16.880Z [DEBUG] Writing to temp file: /opt/aila/.claude/todos/a7acd509-8ace-43d5-a97d-93c2f9fb8408-agent-a7acd509-8ace-43d5-a97d-93c2f9fb8408.json.tmp.505742.1769733496880
+2026-01-30T00:38:16.880Z [DEBUG] Preserving file permissions: 100644
+2026-01-30T00:38:16.880Z [DEBUG] Temp file written successfully, size: 907 bytes
+2026-01-30T00:38:16.880Z [DEBUG] Applied original permissions to temp file
+2026-01-30T00:38:16.880Z [DEBUG] Renaming /opt/aila/.claude/todos/a7acd509-8ace-43d5-a97d-93c2f9fb8408-agent-a7acd509-8ace-43d5-a97d-93c2f9fb8408.json.tmp.505742.1769733496880 to /opt/aila/.claude/todos/a7acd509-8ace-43d5-a97d-93c2f9fb8408-agent-a7acd509-8ace-43d5-a97d-93c2f9fb8408.json
+2026-01-30T00:38:16.881Z [DEBUG] File /opt/aila/.claude/todos/a7acd509-8ace-43d5-a97d-93c2f9fb8408-agent-a7acd509-8ace-43d5-a97d-93c2f9fb8408.json written atomically
+2026-01-30T00:38:16.885Z [DEBUG] Getting matching hook commands for PostToolUse with query: TodoWrite
+2026-01-30T00:38:16.885Z [DEBUG] Found 3 hook matchers in settings
+2026-01-30T00:38:16.885Z [DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+2026-01-30T00:38:16.886Z [DEBUG] executePreToolHooks called for tool: Read
+2026-01-30T00:38:16.886Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2026-01-30T00:38:16.886Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:38:16.886Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2026-01-30T00:38:16.897Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2026-01-30T00:38:16.897Z [DEBUG] Found 3 hook matchers in settings
+2026-01-30T00:38:16.897Z [DEBUG] Matched 1 unique hooks for query "Read" (1 before deduplication)
+2026-01-30T00:38:16.903Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:38:16.903Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:38:16.903Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:38:16.903Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:38:16.909Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:38:16.917Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:38:16.918Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:38:16.918Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:38:16.920Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:38:17.942Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:38:21.480Z [DEBUG] executePreToolHooks called for tool: Grep
+2026-01-30T00:38:21.480Z [DEBUG] executePreToolHooks called for tool: Grep
+2026-01-30T00:38:21.482Z [DEBUG] Getting matching hook commands for PreToolUse with query: Grep
+2026-01-30T00:38:21.482Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:38:21.482Z [DEBUG] Matched 0 unique hooks for query "Grep" (0 before deduplication)
+2026-01-30T00:38:21.482Z [DEBUG] Getting matching hook commands for PreToolUse with query: Grep
+2026-01-30T00:38:21.482Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:38:21.482Z [DEBUG] Matched 0 unique hooks for query "Grep" (0 before deduplication)
+2026-01-30T00:38:21.531Z [DEBUG] Ripgrep first use test: PASSED (mode=builtin, path=/usr/local/lib/node_modules/@anthropic-ai/claude-code/vendor/ripgrep/x64-linux/rg)
+2026-01-30T00:38:21.546Z [DEBUG] Getting matching hook commands for PostToolUse with query: Grep
+2026-01-30T00:38:21.546Z [DEBUG] Found 3 hook matchers in settings
+2026-01-30T00:38:21.547Z [DEBUG] Matched 1 unique hooks for query "Grep" (1 before deduplication)
+2026-01-30T00:38:21.559Z [DEBUG] Getting matching hook commands for PostToolUse with query: Grep
+2026-01-30T00:38:21.559Z [DEBUG] Found 3 hook matchers in settings
+2026-01-30T00:38:21.559Z [DEBUG] Matched 1 unique hooks for query "Grep" (1 before deduplication)
+2026-01-30T00:38:21.565Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:38:21.565Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:38:21.565Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:38:21.565Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:38:21.571Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:38:21.579Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:38:21.579Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:38:21.579Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:38:21.581Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:38:22.541Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:38:24.808Z [DEBUG] executePreToolHooks called for tool: Read
+2026-01-30T00:38:24.808Z [DEBUG] executePreToolHooks called for tool: Read
+2026-01-30T00:38:24.808Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2026-01-30T00:38:24.808Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:38:24.808Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2026-01-30T00:38:24.809Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2026-01-30T00:38:24.809Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:38:24.809Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2026-01-30T00:38:24.824Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2026-01-30T00:38:24.824Z [DEBUG] Found 3 hook matchers in settings
+2026-01-30T00:38:24.824Z [DEBUG] Matched 1 unique hooks for query "Read" (1 before deduplication)
+2026-01-30T00:38:24.825Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2026-01-30T00:38:24.825Z [DEBUG] Found 3 hook matchers in settings
+2026-01-30T00:38:24.825Z [DEBUG] Matched 1 unique hooks for query "Read" (1 before deduplication)
+2026-01-30T00:38:24.832Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:38:24.832Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:38:24.832Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:38:24.832Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:38:24.838Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:38:24.848Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:38:24.848Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:38:24.848Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:38:24.850Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:38:25.943Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:38:28.300Z [DEBUG] executePreToolHooks called for tool: Grep
+2026-01-30T00:38:28.302Z [DEBUG] Getting matching hook commands for PreToolUse with query: Grep
+2026-01-30T00:38:28.302Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:38:28.302Z [DEBUG] Matched 0 unique hooks for query "Grep" (0 before deduplication)
+2026-01-30T00:38:28.336Z [DEBUG] Getting matching hook commands for PostToolUse with query: Grep
+2026-01-30T00:38:28.336Z [DEBUG] Found 3 hook matchers in settings
+2026-01-30T00:38:28.337Z [DEBUG] Matched 1 unique hooks for query "Grep" (1 before deduplication)
+2026-01-30T00:38:28.345Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:38:28.345Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:38:28.345Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:38:28.345Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:38:28.351Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:38:28.367Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:38:28.368Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:38:28.368Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:38:28.370Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:38:29.670Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:38:32.514Z [DEBUG] executePreToolHooks called for tool: Grep
+2026-01-30T00:38:32.514Z [DEBUG] Getting matching hook commands for PreToolUse with query: Grep
+2026-01-30T00:38:32.514Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:38:32.514Z [DEBUG] Matched 0 unique hooks for query "Grep" (0 before deduplication)
+2026-01-30T00:38:32.535Z [DEBUG] Getting matching hook commands for PostToolUse with query: Grep
+2026-01-30T00:38:32.535Z [DEBUG] Found 3 hook matchers in settings
+2026-01-30T00:38:32.535Z [DEBUG] Matched 1 unique hooks for query "Grep" (1 before deduplication)
+2026-01-30T00:38:32.541Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:38:32.541Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:38:32.541Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:38:32.541Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:38:32.546Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:38:32.555Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:38:32.556Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:38:32.556Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:38:32.560Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:38:33.756Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:38:35.145Z [DEBUG] executePreToolHooks called for tool: Grep
+2026-01-30T00:38:35.146Z [DEBUG] Getting matching hook commands for PreToolUse with query: Grep
+2026-01-30T00:38:35.146Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:38:35.146Z [DEBUG] Matched 0 unique hooks for query "Grep" (0 before deduplication)
+2026-01-30T00:38:35.177Z [DEBUG] Getting matching hook commands for PostToolUse with query: Grep
+2026-01-30T00:38:35.177Z [DEBUG] Found 3 hook matchers in settings
+2026-01-30T00:38:35.177Z [DEBUG] Matched 1 unique hooks for query "Grep" (1 before deduplication)
+2026-01-30T00:38:35.182Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:38:35.182Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:38:35.183Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:38:35.183Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:38:35.189Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:38:35.212Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:38:35.213Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:38:35.213Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:38:35.225Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:38:39.781Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:38:41.756Z [DEBUG] executePreToolHooks called for tool: Grep
+2026-01-30T00:38:41.757Z [DEBUG] Getting matching hook commands for PreToolUse with query: Grep
+2026-01-30T00:38:41.757Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:38:41.757Z [DEBUG] Matched 0 unique hooks for query "Grep" (0 before deduplication)
+2026-01-30T00:38:41.777Z [DEBUG] Getting matching hook commands for PostToolUse with query: Grep
+2026-01-30T00:38:41.777Z [DEBUG] Found 3 hook matchers in settings
+2026-01-30T00:38:41.778Z [DEBUG] Matched 1 unique hooks for query "Grep" (1 before deduplication)
+2026-01-30T00:38:41.783Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:38:41.783Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:38:41.783Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:38:41.783Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:38:41.789Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:38:41.797Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:38:41.797Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:38:41.797Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:38:41.799Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:38:43.010Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:38:43.867Z [DEBUG] executePreToolHooks called for tool: Grep
+2026-01-30T00:38:43.868Z [DEBUG] Getting matching hook commands for PreToolUse with query: Grep
+2026-01-30T00:38:43.868Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:38:43.868Z [DEBUG] Matched 0 unique hooks for query "Grep" (0 before deduplication)
+2026-01-30T00:38:43.884Z [DEBUG] Getting matching hook commands for PostToolUse with query: Grep
+2026-01-30T00:38:43.884Z [DEBUG] Found 3 hook matchers in settings
+2026-01-30T00:38:43.884Z [DEBUG] Matched 1 unique hooks for query "Grep" (1 before deduplication)
+2026-01-30T00:38:43.888Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:38:43.888Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:38:43.888Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:38:43.888Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:38:43.892Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:38:43.900Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:38:43.900Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:38:43.900Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:38:43.902Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:38:45.154Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:38:48.218Z [DEBUG] executePreToolHooks called for tool: Grep
+2026-01-30T00:38:48.219Z [DEBUG] Getting matching hook commands for PreToolUse with query: Grep
+2026-01-30T00:38:48.219Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:38:48.219Z [DEBUG] Matched 0 unique hooks for query "Grep" (0 before deduplication)
+2026-01-30T00:38:48.255Z [DEBUG] Getting matching hook commands for PostToolUse with query: Grep
+2026-01-30T00:38:48.255Z [DEBUG] Found 3 hook matchers in settings
+2026-01-30T00:38:48.255Z [DEBUG] Matched 1 unique hooks for query "Grep" (1 before deduplication)
+2026-01-30T00:38:48.262Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:38:48.262Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:38:48.262Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:38:48.262Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:38:48.267Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:38:48.276Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:38:48.276Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:38:48.276Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:38:48.279Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:38:49.544Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:38:50.465Z [DEBUG] executePreToolHooks called for tool: Grep
+2026-01-30T00:38:50.466Z [DEBUG] Getting matching hook commands for PreToolUse with query: Grep
+2026-01-30T00:38:50.466Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:38:50.466Z [DEBUG] Matched 0 unique hooks for query "Grep" (0 before deduplication)
+2026-01-30T00:38:50.496Z [DEBUG] Getting matching hook commands for PostToolUse with query: Grep
+2026-01-30T00:38:50.496Z [DEBUG] Found 3 hook matchers in settings
+2026-01-30T00:38:50.496Z [DEBUG] Matched 1 unique hooks for query "Grep" (1 before deduplication)
+2026-01-30T00:38:50.502Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:38:50.502Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:38:50.502Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:38:50.502Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:38:50.508Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:38:50.516Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:38:50.517Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:38:50.517Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:38:50.519Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:38:52.981Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:39:00.200Z [DEBUG] executePreToolHooks called for tool: TodoWrite
+2026-01-30T00:39:00.201Z [DEBUG] Getting matching hook commands for PreToolUse with query: TodoWrite
+2026-01-30T00:39:00.201Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:39:00.201Z [DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+2026-01-30T00:39:00.204Z [DEBUG] Writing to temp file: /opt/aila/.claude/todos/a7acd509-8ace-43d5-a97d-93c2f9fb8408-agent-a7acd509-8ace-43d5-a97d-93c2f9fb8408.json.tmp.505742.1769733540204
+2026-01-30T00:39:00.204Z [DEBUG] Preserving file permissions: 100644
+2026-01-30T00:39:00.205Z [DEBUG] Temp file written successfully, size: 911 bytes
+2026-01-30T00:39:00.205Z [DEBUG] Applied original permissions to temp file
+2026-01-30T00:39:00.205Z [DEBUG] Renaming /opt/aila/.claude/todos/a7acd509-8ace-43d5-a97d-93c2f9fb8408-agent-a7acd509-8ace-43d5-a97d-93c2f9fb8408.json.tmp.505742.1769733540204 to /opt/aila/.claude/todos/a7acd509-8ace-43d5-a97d-93c2f9fb8408-agent-a7acd509-8ace-43d5-a97d-93c2f9fb8408.json
+2026-01-30T00:39:00.205Z [DEBUG] File /opt/aila/.claude/todos/a7acd509-8ace-43d5-a97d-93c2f9fb8408-agent-a7acd509-8ace-43d5-a97d-93c2f9fb8408.json written atomically
+2026-01-30T00:39:00.209Z [DEBUG] Getting matching hook commands for PostToolUse with query: TodoWrite
+2026-01-30T00:39:00.209Z [DEBUG] Found 3 hook matchers in settings
+2026-01-30T00:39:00.209Z [DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+2026-01-30T00:39:00.212Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:39:00.212Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:39:00.212Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:39:00.212Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:39:00.219Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:39:00.236Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:39:00.236Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:39:00.236Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:39:00.239Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:39:04.272Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:39:52.572Z [WARN] Streaming stall detected: 46.6s gap between events (stall #1)
+2026-01-30T00:39:53.578Z [WARN] Streaming completed with 1 stall(s), total stall time: 46.6s
+2026-01-30T00:39:53.585Z [DEBUG] executePreToolHooks called for tool: Write
+2026-01-30T00:39:53.585Z [DEBUG] Getting matching hook commands for PreToolUse with query: Write
+2026-01-30T00:39:53.585Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:39:53.585Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2026-01-30T00:39:53.594Z [DEBUG] Writing to temp file: /opt/aila/aila/ai_trade/agents/sniper.py.tmp.505742.1769733593594
+2026-01-30T00:39:53.594Z [DEBUG] Preserving file permissions: 100664
+2026-01-30T00:39:53.594Z [DEBUG] Temp file written successfully, size: 12766 bytes
+2026-01-30T00:39:53.594Z [DEBUG] Applied original permissions to temp file
+2026-01-30T00:39:53.594Z [DEBUG] Renaming /opt/aila/aila/ai_trade/agents/sniper.py.tmp.505742.1769733593594 to /opt/aila/aila/ai_trade/agents/sniper.py
+2026-01-30T00:39:53.595Z [DEBUG] File /opt/aila/aila/ai_trade/agents/sniper.py written atomically
+2026-01-30T00:39:53.632Z [DEBUG] Writing to temp file: /opt/aila/.claude.json.tmp.505742.1769733593632
+2026-01-30T00:39:53.632Z [DEBUG] Preserving file permissions: 100600
+2026-01-30T00:39:53.632Z [DEBUG] Temp file written successfully, size: 3029 bytes
+2026-01-30T00:39:53.632Z [DEBUG] Applied original permissions to temp file
+2026-01-30T00:39:53.632Z [DEBUG] Renaming /opt/aila/.claude.json.tmp.505742.1769733593632 to /opt/aila/.claude.json
+2026-01-30T00:39:53.632Z [DEBUG] File /opt/aila/.claude.json written atomically
+2026-01-30T00:39:53.635Z [DEBUG] Getting matching hook commands for PostToolUse with query: Write
+2026-01-30T00:39:53.635Z [DEBUG] Found 3 hook matchers in settings
+2026-01-30T00:39:53.635Z [DEBUG] Matched 0 unique hooks for query "Write" (0 before deduplication)
+2026-01-30T00:39:53.637Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:39:53.637Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:39:53.637Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:39:53.637Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:39:53.649Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:39:53.664Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:39:53.664Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:39:53.664Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:39:53.666Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:39:54.955Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:39:59.363Z [DEBUG] executePreToolHooks called for tool: Edit
+2026-01-30T00:39:59.363Z [DEBUG] Getting matching hook commands for PreToolUse with query: Edit
+2026-01-30T00:39:59.363Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:39:59.363Z [DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+2026-01-30T00:39:59.370Z [DEBUG] Writing to temp file: /opt/aila/aila/ai_trade/agents/sniper.py.tmp.505742.1769733599370
+2026-01-30T00:39:59.370Z [DEBUG] Preserving file permissions: 100664
+2026-01-30T00:39:59.370Z [DEBUG] Temp file written successfully, size: 12773 bytes
+2026-01-30T00:39:59.370Z [DEBUG] Applied original permissions to temp file
+2026-01-30T00:39:59.370Z [DEBUG] Renaming /opt/aila/aila/ai_trade/agents/sniper.py.tmp.505742.1769733599370 to /opt/aila/aila/ai_trade/agents/sniper.py
+2026-01-30T00:39:59.370Z [DEBUG] File /opt/aila/aila/ai_trade/agents/sniper.py written atomically
+2026-01-30T00:39:59.377Z [DEBUG] Getting matching hook commands for PostToolUse with query: Edit
+2026-01-30T00:39:59.377Z [DEBUG] Found 3 hook matchers in settings
+2026-01-30T00:39:59.377Z [DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+2026-01-30T00:39:59.379Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:39:59.379Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:39:59.379Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:39:59.379Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:39:59.385Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:39:59.393Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:39:59.394Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:39:59.394Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:39:59.395Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:40:00.647Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:40:01.890Z [DEBUG] executePreToolHooks called for tool: Read
+2026-01-30T00:40:01.890Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2026-01-30T00:40:01.890Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:40:01.890Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2026-01-30T00:40:01.900Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2026-01-30T00:40:01.900Z [DEBUG] Found 3 hook matchers in settings
+2026-01-30T00:40:01.900Z [DEBUG] Matched 1 unique hooks for query "Read" (1 before deduplication)
+2026-01-30T00:40:01.906Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:40:01.906Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:40:01.906Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:40:01.906Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:40:01.915Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:40:01.928Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:40:01.928Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:40:01.928Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:40:01.931Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:40:03.171Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:40:05.008Z [DEBUG] executePreToolHooks called for tool: Grep
+2026-01-30T00:40:05.010Z [DEBUG] Getting matching hook commands for PreToolUse with query: Grep
+2026-01-30T00:40:05.010Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:40:05.010Z [DEBUG] Matched 0 unique hooks for query "Grep" (0 before deduplication)
+2026-01-30T00:40:05.072Z [DEBUG] Getting matching hook commands for PostToolUse with query: Grep
+2026-01-30T00:40:05.072Z [DEBUG] Found 3 hook matchers in settings
+2026-01-30T00:40:05.072Z [DEBUG] Matched 1 unique hooks for query "Grep" (1 before deduplication)
+2026-01-30T00:40:05.099Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:40:05.099Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:40:05.099Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:40:05.099Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:40:05.113Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:40:05.140Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:40:05.140Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:40:05.140Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:40:05.147Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:40:06.497Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:40:07.810Z [DEBUG] executePreToolHooks called for tool: Grep
+2026-01-30T00:40:07.811Z [DEBUG] Getting matching hook commands for PreToolUse with query: Grep
+2026-01-30T00:40:07.811Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:40:07.811Z [DEBUG] Matched 0 unique hooks for query "Grep" (0 before deduplication)
+2026-01-30T00:40:07.834Z [DEBUG] Getting matching hook commands for PostToolUse with query: Grep
+2026-01-30T00:40:07.834Z [DEBUG] Found 3 hook matchers in settings
+2026-01-30T00:40:07.834Z [DEBUG] Matched 1 unique hooks for query "Grep" (1 before deduplication)
+2026-01-30T00:40:07.839Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:40:07.839Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:40:07.839Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:40:07.839Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:40:07.847Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:40:07.861Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:40:07.861Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:40:07.861Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:40:07.863Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:40:10.290Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:40:12.881Z [DEBUG] executePreToolHooks called for tool: Read
+2026-01-30T00:40:12.882Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2026-01-30T00:40:12.882Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:40:12.882Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2026-01-30T00:40:12.886Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2026-01-30T00:40:12.886Z [DEBUG] Found 3 hook matchers in settings
+2026-01-30T00:40:12.886Z [DEBUG] Matched 1 unique hooks for query "Read" (1 before deduplication)
+2026-01-30T00:40:12.890Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:40:12.890Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:40:12.890Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:40:12.890Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:40:12.898Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:40:12.912Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:40:12.915Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:40:12.915Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:40:12.916Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:40:21.375Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:40:25.147Z [DEBUG] executePreToolHooks called for tool: Read
+2026-01-30T00:40:25.147Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2026-01-30T00:40:25.147Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:40:25.147Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2026-01-30T00:40:25.154Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2026-01-30T00:40:25.154Z [DEBUG] Found 3 hook matchers in settings
+2026-01-30T00:40:25.154Z [DEBUG] Matched 1 unique hooks for query "Read" (1 before deduplication)
+2026-01-30T00:40:25.160Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:40:25.160Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:40:25.160Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:40:25.160Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:40:25.166Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:40:25.175Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:40:25.176Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:40:25.176Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:40:25.177Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:40:30.822Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:40:33.805Z [DEBUG] executePreToolHooks called for tool: Edit
+2026-01-30T00:40:33.805Z [DEBUG] Getting matching hook commands for PreToolUse with query: Edit
+2026-01-30T00:40:33.805Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:40:33.805Z [DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+2026-01-30T00:40:33.835Z [DEBUG] Writing to temp file: /opt/aila/aila/ai_trade/autopilot_mode.py.tmp.505742.1769733633835
+2026-01-30T00:40:33.835Z [DEBUG] Preserving file permissions: 100664
+2026-01-30T00:40:33.835Z [DEBUG] Temp file written successfully, size: 51564 bytes
+2026-01-30T00:40:33.835Z [DEBUG] Applied original permissions to temp file
+2026-01-30T00:40:33.835Z [DEBUG] Renaming /opt/aila/aila/ai_trade/autopilot_mode.py.tmp.505742.1769733633835 to /opt/aila/aila/ai_trade/autopilot_mode.py
+2026-01-30T00:40:33.837Z [DEBUG] File /opt/aila/aila/ai_trade/autopilot_mode.py written atomically
+2026-01-30T00:40:33.849Z [DEBUG] Getting matching hook commands for PostToolUse with query: Edit
+2026-01-30T00:40:33.849Z [DEBUG] Found 3 hook matchers in settings
+2026-01-30T00:40:33.849Z [DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+2026-01-30T00:40:33.854Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:40:33.854Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:40:33.854Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:40:33.854Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:40:33.864Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:40:33.884Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:40:33.884Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:40:33.884Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:40:33.888Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:40:36.528Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:40:41.368Z [DEBUG] executePreToolHooks called for tool: Edit
+2026-01-30T00:40:41.368Z [DEBUG] Getting matching hook commands for PreToolUse with query: Edit
+2026-01-30T00:40:41.368Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:40:41.368Z [DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+2026-01-30T00:40:41.384Z [DEBUG] Writing to temp file: /opt/aila/aila/ai_trade/autopilot_mode.py.tmp.505742.1769733641384
+2026-01-30T00:40:41.384Z [DEBUG] Preserving file permissions: 100664
+2026-01-30T00:40:41.384Z [DEBUG] Temp file written successfully, size: 51560 bytes
+2026-01-30T00:40:41.384Z [DEBUG] Applied original permissions to temp file
+2026-01-30T00:40:41.384Z [DEBUG] Renaming /opt/aila/aila/ai_trade/autopilot_mode.py.tmp.505742.1769733641384 to /opt/aila/aila/ai_trade/autopilot_mode.py
+2026-01-30T00:40:41.384Z [DEBUG] File /opt/aila/aila/ai_trade/autopilot_mode.py written atomically
+2026-01-30T00:40:41.391Z [DEBUG] Getting matching hook commands for PostToolUse with query: Edit
+2026-01-30T00:40:41.391Z [DEBUG] Found 3 hook matchers in settings
+2026-01-30T00:40:41.391Z [DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+2026-01-30T00:40:41.392Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:40:41.392Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:40:41.392Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:40:41.392Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:40:41.395Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:40:41.402Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:40:41.402Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:40:41.402Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:40:41.406Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:40:42.486Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:41:01.455Z [DEBUG] executePreToolHooks called for tool: TodoWrite
+2026-01-30T00:41:01.456Z [DEBUG] Getting matching hook commands for PreToolUse with query: TodoWrite
+2026-01-30T00:41:01.456Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:41:01.456Z [DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+2026-01-30T00:41:01.458Z [DEBUG] Writing to temp file: /opt/aila/.claude/todos/a7acd509-8ace-43d5-a97d-93c2f9fb8408-agent-a7acd509-8ace-43d5-a97d-93c2f9fb8408.json.tmp.505742.1769733661458
+2026-01-30T00:41:01.458Z [DEBUG] Preserving file permissions: 100644
+2026-01-30T00:41:01.459Z [DEBUG] Temp file written successfully, size: 1139 bytes
+2026-01-30T00:41:01.459Z [DEBUG] Applied original permissions to temp file
+2026-01-30T00:41:01.459Z [DEBUG] Renaming /opt/aila/.claude/todos/a7acd509-8ace-43d5-a97d-93c2f9fb8408-agent-a7acd509-8ace-43d5-a97d-93c2f9fb8408.json.tmp.505742.1769733661458 to /opt/aila/.claude/todos/a7acd509-8ace-43d5-a97d-93c2f9fb8408-agent-a7acd509-8ace-43d5-a97d-93c2f9fb8408.json
+2026-01-30T00:41:01.459Z [DEBUG] File /opt/aila/.claude/todos/a7acd509-8ace-43d5-a97d-93c2f9fb8408-agent-a7acd509-8ace-43d5-a97d-93c2f9fb8408.json written atomically
+2026-01-30T00:41:01.462Z [DEBUG] Getting matching hook commands for PostToolUse with query: TodoWrite
+2026-01-30T00:41:01.462Z [DEBUG] Found 3 hook matchers in settings
+2026-01-30T00:41:01.462Z [DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+2026-01-30T00:41:01.463Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:41:01.463Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:41:01.463Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:41:01.463Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:41:01.470Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:41:01.483Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:41:01.484Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:41:01.484Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:41:01.486Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:41:03.136Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:41:05.826Z [DEBUG] executePreToolHooks called for tool: Bash
+2026-01-30T00:41:05.826Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2026-01-30T00:41:05.826Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:41:05.826Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-01-30T00:41:05.843Z [DEBUG] tree-sitter: WASM files not found
+2026-01-30T00:41:05.890Z [DEBUG] Creating shell snapshot for bash (/bin/bash)
+2026-01-30T00:41:05.891Z [DEBUG] Looking for shell config file: /opt/aila/.bashrc
+2026-01-30T00:41:05.891Z [DEBUG] Shell config file not found: /opt/aila/.bashrc, creating snapshot with Claude Code defaults only
+2026-01-30T00:41:05.891Z [DEBUG] Snapshots directory: /opt/aila/.claude/shell-snapshots
+2026-01-30T00:41:05.892Z [DEBUG] Creating snapshot at: /opt/aila/.claude/shell-snapshots/snapshot-bash-1769733665891-h7c7uy.sh
+2026-01-30T00:41:05.892Z [DEBUG] Shell binary exists: true
+2026-01-30T00:41:05.892Z [DEBUG] Execution timeout: 10000ms
+2026-01-30T00:41:05.919Z [DEBUG] Shell snapshot created successfully (395 bytes)
+2026-01-30T00:41:05.921Z [DEBUG] No session environment scripts found
+2026-01-30T00:41:05.991Z [DEBUG] Getting matching hook commands for PostToolUseFailure with query: Bash
+2026-01-30T00:41:05.991Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:41:05.991Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-01-30T00:41:05.993Z [DEBUG] executePreToolHooks called for tool: Bash
+2026-01-30T00:41:05.993Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2026-01-30T00:41:05.993Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:41:05.993Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-01-30T00:41:06.073Z [DEBUG] Getting matching hook commands for PostToolUseFailure with query: Bash
+2026-01-30T00:41:06.073Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:41:06.073Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-01-30T00:41:06.076Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:41:06.076Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:41:06.076Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:41:06.076Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:41:06.086Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:41:06.100Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:41:06.100Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:41:06.100Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:41:06.103Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:41:07.248Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:41:08.486Z [DEBUG] executePreToolHooks called for tool: Bash
+2026-01-30T00:41:08.486Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2026-01-30T00:41:08.486Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:41:08.486Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-01-30T00:41:08.556Z [DEBUG] Getting matching hook commands for PostToolUseFailure with query: Bash
+2026-01-30T00:41:08.556Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:41:08.556Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-01-30T00:41:08.559Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:41:08.559Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:41:08.559Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:41:08.559Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:41:08.569Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:41:08.582Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:41:08.585Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:41:08.585Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:41:08.587Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:41:11.276Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:41:28.308Z [DEBUG] executePreToolHooks called for tool: TodoWrite
+2026-01-30T00:41:28.309Z [DEBUG] Getting matching hook commands for PreToolUse with query: TodoWrite
+2026-01-30T00:41:28.309Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:41:28.309Z [DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+2026-01-30T00:41:28.311Z [DEBUG] Writing to temp file: /opt/aila/.claude/todos/a7acd509-8ace-43d5-a97d-93c2f9fb8408-agent-a7acd509-8ace-43d5-a97d-93c2f9fb8408.json.tmp.505742.1769733688311
+2026-01-30T00:41:28.311Z [DEBUG] Preserving file permissions: 100644
+2026-01-30T00:41:28.312Z [DEBUG] Temp file written successfully, size: 1141 bytes
+2026-01-30T00:41:28.312Z [DEBUG] Applied original permissions to temp file
+2026-01-30T00:41:28.312Z [DEBUG] Renaming /opt/aila/.claude/todos/a7acd509-8ace-43d5-a97d-93c2f9fb8408-agent-a7acd509-8ace-43d5-a97d-93c2f9fb8408.json.tmp.505742.1769733688311 to /opt/aila/.claude/todos/a7acd509-8ace-43d5-a97d-93c2f9fb8408-agent-a7acd509-8ace-43d5-a97d-93c2f9fb8408.json
+2026-01-30T00:41:28.312Z [DEBUG] File /opt/aila/.claude/todos/a7acd509-8ace-43d5-a97d-93c2f9fb8408-agent-a7acd509-8ace-43d5-a97d-93c2f9fb8408.json written atomically
+2026-01-30T00:41:28.316Z [DEBUG] Getting matching hook commands for PostToolUse with query: TodoWrite
+2026-01-30T00:41:28.316Z [DEBUG] Found 3 hook matchers in settings
+2026-01-30T00:41:28.316Z [DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+2026-01-30T00:41:28.318Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:41:28.318Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:41:28.318Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:41:28.318Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:41:28.333Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:41:28.349Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:41:28.350Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:41:28.350Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:41:28.353Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:41:29.742Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:41:30.267Z [DEBUG] executePreToolHooks called for tool: Bash
+2026-01-30T00:41:30.268Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2026-01-30T00:41:30.268Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:41:30.268Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-01-30T00:41:30.289Z [DEBUG] Getting matching hook commands for PostToolUseFailure with query: Bash
+2026-01-30T00:41:30.289Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:41:30.289Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-01-30T00:41:30.292Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:41:30.292Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:41:30.292Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:41:30.292Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:41:30.296Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:41:30.309Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:41:30.310Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:41:30.310Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:41:30.312Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:41:31.473Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:41:32.045Z [DEBUG] executePreToolHooks called for tool: Bash
+2026-01-30T00:41:32.045Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2026-01-30T00:41:32.045Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:41:32.045Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-01-30T00:41:32.078Z [DEBUG] Getting matching hook commands for PostToolUseFailure with query: Bash
+2026-01-30T00:41:32.078Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:41:32.078Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-01-30T00:41:32.083Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:41:32.083Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:41:32.083Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:41:32.083Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:41:32.087Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:41:32.095Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:41:32.095Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:41:32.095Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:41:32.097Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:41:33.117Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:41:34.130Z [DEBUG] executePreToolHooks called for tool: Bash
+2026-01-30T00:41:34.130Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2026-01-30T00:41:34.130Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:41:34.130Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-01-30T00:41:37.770Z [DEBUG] Getting matching hook commands for PostToolUseFailure with query: Bash
+2026-01-30T00:41:37.770Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:41:37.770Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-01-30T00:41:37.773Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:41:37.773Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:41:37.773Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:41:37.773Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:41:37.779Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:41:37.802Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:41:37.806Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:41:37.806Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:41:37.812Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:41:40.418Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:41:42.178Z [DEBUG] executePreToolHooks called for tool: Bash
+2026-01-30T00:41:42.178Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2026-01-30T00:41:42.178Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:41:42.178Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-01-30T00:41:42.193Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-01-30T00:41:42.193Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-01-30T00:41:42.194Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-01-30T00:41:42.194Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-01-30T00:41:42.197Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.c43; cc_entrypoint=sdk-cli;
+2026-01-30T00:41:42.198Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:41:42.198Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:41:42.198Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.c43; cc_entrypoint=sdk-cli;
+2026-01-30T00:41:42.199Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:41:42.199Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:41:42.199Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.c43; cc_entrypoint=sdk-cli;
+2026-01-30T00:41:42.199Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:41:42.199Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:41:42.200Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.c43; cc_entrypoint=sdk-cli;
+2026-01-30T00:41:42.200Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:41:42.200Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:41:42.212Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:41:42.213Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:41:42.213Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:41:42.213Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:41:42.916Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:41:43.016Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:41:43.075Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:41:43.493Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:41:43.683Z [DEBUG] Getting matching hook commands for PostToolUseFailure with query: Bash
+2026-01-30T00:41:43.683Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:41:43.683Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-01-30T00:41:43.685Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:41:43.685Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:41:43.685Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:41:43.685Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:41:43.691Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:41:43.704Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:41:43.704Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:41:43.704Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:41:43.706Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:41:44.924Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:41:46.101Z [DEBUG] executePreToolHooks called for tool: Bash
+2026-01-30T00:41:46.102Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2026-01-30T00:41:46.102Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:41:46.102Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-01-30T00:41:53.285Z [DEBUG] Getting matching hook commands for PostToolUseFailure with query: Bash
+2026-01-30T00:41:53.285Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:41:53.285Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-01-30T00:41:53.288Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:41:53.288Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:41:53.288Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:41:53.288Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:41:53.293Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:41:53.306Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:41:53.307Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:41:53.307Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:41:53.308Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:41:54.508Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:41:55.459Z [DEBUG] executePreToolHooks called for tool: Bash
+2026-01-30T00:41:55.459Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2026-01-30T00:41:55.459Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:41:55.459Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-01-30T00:41:55.463Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-01-30T00:41:55.463Z [DEBUG] Tool search disabled for model 'claude-haiku-4-5-20251001': model does not support tool_reference blocks. This feature is only available on Claude Sonnet 4+, Opus 4+, and newer models.
+2026-01-30T00:41:55.464Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.c43; cc_entrypoint=sdk-cli;
+2026-01-30T00:41:55.464Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:41:55.464Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:41:55.464Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.c43; cc_entrypoint=sdk-cli;
+2026-01-30T00:41:55.464Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:41:55.464Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:41:55.467Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:41:55.467Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:41:56.126Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:41:56.210Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:41:57.600Z [DEBUG] Getting matching hook commands for PostToolUseFailure with query: Bash
+2026-01-30T00:41:57.600Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:41:57.600Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-01-30T00:41:57.602Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:41:57.602Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:41:57.602Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:41:57.602Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:41:57.614Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:41:57.626Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:41:57.627Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:41:57.627Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:41:57.628Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:41:59.529Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:42:16.102Z [DEBUG] executePreToolHooks called for tool: TodoWrite
+2026-01-30T00:42:16.103Z [DEBUG] Getting matching hook commands for PreToolUse with query: TodoWrite
+2026-01-30T00:42:16.103Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:42:16.103Z [DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+2026-01-30T00:42:16.107Z [DEBUG] Writing to temp file: /opt/aila/.claude/todos/a7acd509-8ace-43d5-a97d-93c2f9fb8408-agent-a7acd509-8ace-43d5-a97d-93c2f9fb8408.json.tmp.505742.1769733736107
+2026-01-30T00:42:16.107Z [DEBUG] Preserving file permissions: 100644
+2026-01-30T00:42:16.107Z [DEBUG] Temp file written successfully, size: 895 bytes
+2026-01-30T00:42:16.107Z [DEBUG] Applied original permissions to temp file
+2026-01-30T00:42:16.107Z [DEBUG] Renaming /opt/aila/.claude/todos/a7acd509-8ace-43d5-a97d-93c2f9fb8408-agent-a7acd509-8ace-43d5-a97d-93c2f9fb8408.json.tmp.505742.1769733736107 to /opt/aila/.claude/todos/a7acd509-8ace-43d5-a97d-93c2f9fb8408-agent-a7acd509-8ace-43d5-a97d-93c2f9fb8408.json
+2026-01-30T00:42:16.107Z [DEBUG] File /opt/aila/.claude/todos/a7acd509-8ace-43d5-a97d-93c2f9fb8408-agent-a7acd509-8ace-43d5-a97d-93c2f9fb8408.json written atomically
+2026-01-30T00:42:16.110Z [DEBUG] Getting matching hook commands for PostToolUse with query: TodoWrite
+2026-01-30T00:42:16.110Z [DEBUG] Found 3 hook matchers in settings
+2026-01-30T00:42:16.110Z [DEBUG] Matched 0 unique hooks for query "TodoWrite" (0 before deduplication)
+2026-01-30T00:42:16.112Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:42:16.112Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:42:16.112Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:42:16.112Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:42:16.116Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:42:16.136Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:42:16.138Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:42:16.138Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:42:16.140Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:42:17.363Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:42:18.978Z [DEBUG] executePreToolHooks called for tool: Read
+2026-01-30T00:42:18.979Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2026-01-30T00:42:18.979Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:42:18.979Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2026-01-30T00:42:18.986Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2026-01-30T00:42:18.986Z [DEBUG] Found 3 hook matchers in settings
+2026-01-30T00:42:18.986Z [DEBUG] Matched 1 unique hooks for query "Read" (1 before deduplication)
+2026-01-30T00:42:18.994Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:42:18.994Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:42:18.994Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:42:18.994Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:42:19.005Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:42:19.024Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:42:19.024Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:42:19.024Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:42:19.027Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:42:21.996Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:42:23.137Z [DEBUG] executePreToolHooks called for tool: Grep
+2026-01-30T00:42:23.138Z [DEBUG] Getting matching hook commands for PreToolUse with query: Grep
+2026-01-30T00:42:23.138Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:42:23.138Z [DEBUG] Matched 0 unique hooks for query "Grep" (0 before deduplication)
+2026-01-30T00:42:23.158Z [DEBUG] Getting matching hook commands for PostToolUse with query: Grep
+2026-01-30T00:42:23.158Z [DEBUG] Found 3 hook matchers in settings
+2026-01-30T00:42:23.158Z [DEBUG] Matched 1 unique hooks for query "Grep" (1 before deduplication)
+2026-01-30T00:42:23.162Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:42:23.162Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:42:23.162Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:42:23.162Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:42:23.164Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:42:23.175Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:42:23.176Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:42:23.176Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:42:23.177Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:42:24.324Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:42:25.042Z [DEBUG] executePreToolHooks called for tool: Read
+2026-01-30T00:42:25.042Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2026-01-30T00:42:25.042Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:42:25.042Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2026-01-30T00:42:25.050Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2026-01-30T00:42:25.050Z [DEBUG] Found 3 hook matchers in settings
+2026-01-30T00:42:25.050Z [DEBUG] Matched 1 unique hooks for query "Read" (1 before deduplication)
+2026-01-30T00:42:25.054Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:42:25.054Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:42:25.054Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:42:25.054Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:42:25.058Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:42:25.067Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:42:25.067Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:42:25.067Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:42:25.069Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:42:26.558Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:42:27.206Z [DEBUG] executePreToolHooks called for tool: Bash
+2026-01-30T00:42:27.206Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2026-01-30T00:42:27.206Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:42:27.206Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-01-30T00:42:27.245Z [DEBUG] Getting matching hook commands for PostToolUseFailure with query: Bash
+2026-01-30T00:42:27.245Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:42:27.245Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-01-30T00:42:27.248Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:42:27.248Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:42:27.248Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:42:27.248Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:42:27.255Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:42:27.264Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:42:27.264Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:42:27.264Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:42:27.266Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:42:30.091Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:42:30.714Z [DEBUG] executePreToolHooks called for tool: Read
+2026-01-30T00:42:30.714Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2026-01-30T00:42:30.714Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:42:30.714Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2026-01-30T00:42:30.719Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2026-01-30T00:42:30.719Z [DEBUG] Found 3 hook matchers in settings
+2026-01-30T00:42:30.719Z [DEBUG] Matched 1 unique hooks for query "Read" (1 before deduplication)
+2026-01-30T00:42:30.722Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:42:30.722Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:42:30.722Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:42:30.722Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:42:30.726Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:42:30.734Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:42:30.734Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:42:30.734Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:42:30.736Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:42:36.502Z [DEBUG] Stream started - received first chunk
+2026-01-30T00:42:51.029Z [DEBUG] executePreToolHooks called for tool: Edit
+2026-01-30T00:42:51.029Z [DEBUG] Getting matching hook commands for PreToolUse with query: Edit
+2026-01-30T00:42:51.029Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T00:42:51.029Z [DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+2026-01-30T00:42:51.056Z [DEBUG] Writing to temp file: /opt/aila/CLAUDE_MEMO.md.tmp.505742.1769733771056
+2026-01-30T00:42:51.056Z [DEBUG] Preserving file permissions: 100644
+2026-01-30T00:42:51.057Z [DEBUG] Temp file written successfully, size: 98840 bytes
+2026-01-30T00:42:51.057Z [DEBUG] Applied original permissions to temp file
+2026-01-30T00:42:51.057Z [DEBUG] Renaming /opt/aila/CLAUDE_MEMO.md.tmp.505742.1769733771056 to /opt/aila/CLAUDE_MEMO.md
+2026-01-30T00:42:51.057Z [DEBUG] File /opt/aila/CLAUDE_MEMO.md written atomically
+2026-01-30T00:42:51.065Z [DEBUG] Getting matching hook commands for PostToolUse with query: Edit
+2026-01-30T00:42:51.065Z [DEBUG] Found 3 hook matchers in settings
+2026-01-30T00:42:51.065Z [DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+2026-01-30T00:42:51.066Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T00:42:51.066Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T00:42:51.066Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T00:42:51.066Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T00:42:51.069Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T00:42:51.081Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T00:42:51.082Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T00:42:51.082Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T00:42:51.084Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T00:42:55.373Z [DEBUG] Stream started - received first chunk

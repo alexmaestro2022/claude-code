@@ -1,0 +1,32 @@
+[
+  {
+    "content": "CONFIDENCE — динамический расчёт для breakout/breakdown/liquidation",
+    "status": "completed",
+    "activeForm": "Реализую динамический расчёт confidence"
+  },
+  {
+    "content": "LEVERAGE — ограничить уровнем агента (level_config)",
+    "status": "completed",
+    "activeForm": "Ограничиваю leverage уровнем агента"
+  },
+  {
+    "content": "MIN SL — минимум 2%, пересчёт TP",
+    "status": "completed",
+    "activeForm": "Устанавливаю минимум SL 2%"
+  },
+  {
+    "content": "API LOGGING — добавить параметры в prepare_snipe()",
+    "status": "completed",
+    "activeForm": "Добавляю API logging в prepare_snipe"
+  },
+  {
+    "content": "funding_flip — убрать заглушку, оставить TODO",
+    "status": "completed",
+    "activeForm": "Убираю заглушку funding_flip"
+  },
+  {
+    "content": "Коммит и пуш",
+    "status": "in_progress",
+    "activeForm": "Коммичу и пушу"
+  }
+]

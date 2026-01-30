@@ -1,20 +1,20 @@
 {
   "positions": {
-    "XAUTUSDT": {
-      "symbol": "XAUTUSDT",
-      "side": "LONG",
-      "entry_price": 5538.0,
-      "amount": 0.001,
+    "AXSUSDT": {
+      "symbol": "AXS/USDT",
+      "side": "SHORT",
+      "entry_price": 2.1171,
+      "amount": 4.7,
       "leverage": 2,
-      "stop_loss": null,
-      "take_profit": null,
-      "position_size_usdt": 5.538,
+      "stop_loss": 2.1827,
+      "take_profit": 2.0233,
+      "position_size_usdt": 10,
       "source": "TRADER",
-      "strategy": "unknown",
-      "confidence": 0,
-      "opened_at": "2026-01-29T06:06:16.130581",
-      "opened_at_ts": 1769666776130
+      "strategy": "Bearish Trend Continuation",
+      "confidence": 78,
+      "opened_at": "2026-01-30T07:53:22.011369",
+      "opened_at_ts": 1769759602011
     }
   },
-  "updated_at": "2026-01-29T06:06:16.130612"
+  "updated_at": "2026-01-30T07:53:22.011581"
 }

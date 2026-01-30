@@ -87,8 +87,12 @@ class PositionManager:
                 logger.error(f"[POSITION] Failed to get ticker for {symbol}: {ticker}")
                 return None
             price = ticker["last"]
-            raw_amount = position_size_usdt / price
-            logger.info(f"[POSITION] Calculated raw_amount: {raw_amount:.8f} = ${position_size_usdt} / {price}")
+            # Calculate position value with leverage
+            # position_size_usdt is the margin (risk amount)
+            # position_value = margin * leverage
+            position_value = position_size_usdt * leverage
+            raw_amount = position_value / price
+            logger.info(f"[POSITION] Calculated raw_amount: {raw_amount:.8f} = (${position_size_usdt} * {leverage}x) / {price} = ${position_value:.2f} / {price}")
 
             # Round quantity to valid precision for Bybit
             logger.info(f"[POSITION] Calling round_qty for {symbol}, raw_amount={raw_amount:.8f}")
