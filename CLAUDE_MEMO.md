@@ -2550,6 +2550,8 @@ DELETE /api/admin/knowledge/{fn} — удалить файл
 - OAuth credentials: `/opt/aila/.claude/.credentials.json` (скопированы из `/home/aila/.claude/`)
 - **Причина:** systemd `ProtectHome=true` блокирует `/home/aila/` для сервиса, поэтому credentials в `/opt/aila/.claude/`
 - При обновлении credentials надо копировать: `cp ~/.claude/.credentials.json /opt/aila/.claude/`
+- **Git credentials:** `.git-credentials` и `.gitconfig` скопированы в `/opt/aila/` (cron `*/30 * * * *` синхронизирует)
+- Без этого Claude Code из админ панели не может делать `git push` (HOME=/opt/aila, а не /home/aila)
 - **Chat cwd:** `/opt/aila/` (корень проекта) — Claude видит CLAUDE.md и имеет контекст проекта
 - **Code:** всегда `--dangerously-skip-permissions` + `--no-session-persistence` (endpoint за авторизацией)
 - **Промпт Chat:** инструкция формировать КОНКРЕТНЫЕ команды с абсолютными путями `/opt/aila/...`
