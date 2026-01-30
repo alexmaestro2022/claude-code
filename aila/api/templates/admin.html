@@ -1892,6 +1892,23 @@ function setMode(mode) {
     currentMode = mode;
     document.getElementById('modeManual').classList.toggle('active', mode === 'manual');
     document.getElementById('modeAuto').classList.toggle('active', mode === 'auto');
+
+    // Cancel any pending auto-send countdown when switching modes
+    cancelAutoCountdown();
+
+    // If command block is visible, update its mode display
+    const cmdBlock = document.getElementById('commandBlock');
+    if (cmdBlock && cmdBlock.style.display !== 'none') {
+        const modeLabel = document.getElementById('cmdBlockMode');
+        modeLabel.textContent = mode === 'manual' ? 'Manual' : 'Auto';
+        modeLabel.className = 'badge ' + mode;
+        // Show/hide edit button based on mode
+        document.getElementById('editCmdBtn').style.display = mode === 'manual' ? 'inline-flex' : 'none';
+        // Start countdown if switched to auto
+        if (mode === 'auto') {
+            startAutoCountdown();
+        }
+    }
 }
 
 // =============================================
@@ -2160,20 +2177,7 @@ function addMessage(role, content, type = 'text', scroll = true) {
         div.className = 'msg msg-assistant';
         const formatted = formatResponse(content);
         div.innerHTML = `<div>${formatted.html}</div><div class="msg-time">${now}</div>`;
-
-        // If has command and manual mode, add action buttons
-        if (formatted.hasCommand && currentMode === 'manual') {
-            const actions = document.createElement('div');
-            actions.className = 'msg-actions';
-            actions.innerHTML = `
-                <button class="msg-action-btn send" onclick="sendToCode(this)" data-command="${escapeAttr(formatted.command)}">
-                    <i class="fa-solid fa-play"></i> ${t('send_to_code')}
-                </button>
-                <button class="msg-action-btn edit" onclick="editBeforeSend(this)" data-command="${escapeAttr(formatted.command)}">
-                    <i class="fa-solid fa-pen"></i> ${t('edit_cmd')}
-                </button>`;
-            div.appendChild(actions);
-        }
+        // Command buttons removed — now handled by showCommandBlock()
     }
 
     area.appendChild(div);
@@ -2247,6 +2251,7 @@ async function sendMessage() {
     input.value = '';
     autoResize(input);
     addMessage('user', message);
+    autoIterationCount = 0;  // Reset iteration count on new user message
 
     setWorking(true, t('thinking'));
     showWorkingState('thinking');
@@ -2302,17 +2307,17 @@ async function sendMessage() {
 
 async function sendToCode(btn) {
     const command = btn.dataset.command;
-    // Remove action buttons
     btn.parentElement.remove();
-    await executeInCode(command, false);
+    // Route through command preview block
+    showCommandBlock(command, currentMode);
 }
 
 function editBeforeSend(btn) {
     const command = btn.dataset.command;
-    document.getElementById('chatInput').value = command;
-    document.getElementById('chatInput').focus();
-    autoResize(document.getElementById('chatInput'));
     btn.parentElement.remove();
+    // Show in command block in edit mode
+    showCommandBlock(command, 'manual');
+    toggleEditCommand();
 }
 
 async function executeInCode(command, autoMode) {
@@ -2344,6 +2349,18 @@ async function executeInCode(command, autoMode) {
         if (resp.status === 401) {
             localStorage.removeItem('admin_token');
             location.reload();
+            return;
+        }
+
+        // Handle blocked command (403)
+        if (resp.status === 403) {
+            const errData = await resp.json().catch(() => ({ detail: 'Command blocked' }));
+            if (_workingTimerInterval) { clearInterval(_workingTimerInterval); _workingTimerInterval = null; }
+            timerEl.textContent = '';
+            isWorking = false;
+            document.getElementById('sendBtn').disabled = false;
+            showWorkingState('error', errData.detail || 'Blocked');
+            addMessage('system', `🚫 ${errData.detail || 'Command blocked by security settings'}`);
             return;
         }
 
@@ -2450,13 +2467,31 @@ async function analyzeResult(output, originalCommand = '') {
         setWorking(false);
         addMessage('assistant', data.response, data.has_command ? 'command' : 'text');
 
-        // Auto mode: continue chain
-        if (data.has_command && currentMode === 'auto') {
-            const maxIter = parseInt(autoSettings.maxIter || 10);
-            // Simple iteration tracking via data attribute
+        // If Chat wants another command — go through showCommandBlock
+        if (data.has_command) {
             const cmdMatch = data.response.match(/\[COMMAND_FOR_CODE\]([\s\S]*?)\[\/COMMAND_FOR_CODE\]/);
             if (cmdMatch) {
-                await executeInCode(cmdMatch[1].trim(), true);
+                const command = cmdMatch[1].trim();
+                autoIterationCount++;
+                const maxIter = parseInt(autoSettings.maxIter || 10);
+
+                if (currentMode === 'auto' && autoIterationCount >= maxIter) {
+                    // Hit iteration limit — force manual confirmation
+                    addMessage('system', `Auto: ${autoIterationCount}/${maxIter} iterations. Manual confirmation required.`);
+                    showCommandBlock(command, 'manual');
+                } else if (currentMode === 'auto') {
+                    // Auto: check security, then show block with countdown or manual confirm
+                    const secCheck = await api('/check-command', 'POST', { command, mode: 'auto' });
+                    if (!secCheck.allowed) {
+                        addMessage('system', `Blocked: ${secCheck.block_reason}`);
+                    } else if (secCheck.needs_confirmation) {
+                        showCommandBlock(command, 'manual');
+                    } else {
+                        showCommandBlock(command, 'auto');
+                    }
+                } else {
+                    showCommandBlock(command, 'manual');
+                }
             }
         }
     } catch (e) {
@@ -2790,6 +2825,7 @@ let pendingCodeResult = '';
 let autoSendTimer = null;
 let autoSendCountdown = 3;
 let commandHistory = [];
+let autoIterationCount = 0;  // Track auto mode iterations
 
 function showCommandBlock(command, mode) {
     originalCommand = command;
@@ -2877,6 +2913,7 @@ document.addEventListener('DOMContentLoaded', () => {
 async function confirmSendToCode() {
     cancelAutoCountdown();
     const command = currentCommand || originalCommand;
+    const isAuto = currentMode === 'auto';
     document.getElementById('commandBlock').style.display = 'none';
 
     if (command !== originalCommand) {
@@ -2887,7 +2924,9 @@ async function confirmSendToCode() {
     commandHistory.unshift({ command, timestamp: new Date().toLocaleTimeString() });
     if (commandHistory.length > 20) commandHistory.pop();
 
-    await executeInCode(command, false);
+    // Auto mode: executeInCode with autoMode=true so result goes to analyzeResult
+    // Manual mode: autoMode=false so result block with confirm buttons is shown
+    await executeInCode(command, isAuto);
 }
 
 function cancelCommand() {

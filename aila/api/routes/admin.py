@@ -1025,23 +1025,12 @@ async def execute_code_stream(request: Request):
     if not command:
         raise HTTPException(status_code=400, detail="Command required")
 
-    mode = body.get("mode", "manual")
-
-    # Security check via settings-based checker
-    sec_check = _check_command_security(command, mode)
+    # Security check — block dangerous commands server-side
+    # Confirmation logic is handled client-side via /check-command
+    sec_check = _check_command_security(command, "manual")
     if not sec_check["allowed"]:
         _audit_log("admin", "BLOCKED_COMMAND", command, sec_check["block_reason"] or "")
         raise HTTPException(status_code=403, detail=sec_check["block_reason"])
-
-    # In auto mode, if needs confirmation — return JSON instead of stream
-    if mode == "auto" and sec_check["needs_confirmation"]:
-        return {
-            "needs_confirmation": True,
-            "command": command,
-            "risk_level": sec_check["risk_level"],
-            "affected_areas": sec_check["affected_areas"],
-            "warnings": sec_check["warnings"],
-        }
 
     _audit_log("admin", "EXECUTE_STREAM", command)
 
