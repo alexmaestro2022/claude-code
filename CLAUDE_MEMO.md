@@ -2518,8 +2518,9 @@ GET  /api/admin/session          — проверка сессии
 POST /api/admin/chat             — сообщение в Claude Chat
 GET  /api/admin/chat/history     — история чата
 POST /api/admin/chat/clear       — очистка истории
-POST /api/admin/code/execute     — выполнение через Claude Code
-POST /api/admin/code/stop        — остановка выполнения
+POST /api/admin/code/execute     — выполнение через Claude Code (fallback, синхронный)
+POST /api/admin/code/execute-stream — выполнение через Claude Code (SSE стриминг, основной)
+POST /api/admin/code/stop        — остановка выполнения (SIGTERM → SIGKILL)
 GET  /api/admin/commands         — список команд
 POST /api/admin/commands         — создать команду
 PUT  /api/admin/commands/{id}    — редактировать
@@ -2643,6 +2644,34 @@ DELETE /api/admin/knowledge/{fn} — удалить файл
 
 ---
 
-**Последнее обновление:** 2026-01-30 (refactor: SNIPER dynamic confidence, leverage limits, min SL)
+## 50. Admin Panel — Streaming Status Indicators (2026-01-30)
+
+### SSE Streaming для Claude Code:
+- Новый endpoint `POST /code/execute-stream` — SSE (Server-Sent Events) стриминг
+- `asyncio.create_subprocess_exec()` вместо `subprocess.run()` — неблокирующий
+- Читает stdout построчно в реальном времени
+- JSON events: `{"status": "thinking|executing|done|error", "output": "...", "message": "..."}`
+- `_detect_claude_state(line)` определяет состояние по содержимому строки
+- Старый `/code/execute` сохранён как fallback
+
+### Status Indicators в UI:
+- **Thinking** (жёлтый) — иконка мозга с пульсацией `fa-brain`
+- **Executing** (синий) — вращающаяся шестерёнка `fa-gear fa-spin` + текст действия
+- **Done** (зелёный) — галочка `fa-circle-check`, авто-скрытие через 3 сек
+- **Error** (красный) — треугольник `fa-triangle-exclamation` + текст ошибки
+- Функция `showWorkingState(state, detail)` управляет всеми состояниями
+
+### Stop Button:
+- Кнопка Stop показывается при thinking/executing
+- Backend: SIGTERM → wait 5s → SIGKILL эскалация
+- `_running_process` теперь `asyncio.subprocess.Process`
+
+### Файлы:
+- `aila/api/routes/admin.py` — streaming endpoint, stop fix, state detection
+- `aila/api/templates/admin.html` — UI indicators, CSS, JS streaming consumer
+
+---
+
+**Последнее обновление:** 2026-01-30 (feat: streaming status indicators for Claude Code)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`

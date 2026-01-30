@@ -409,22 +409,32 @@
             border: 1px solid var(--border);
             border-radius: 12px;
             font-size: 0.85rem;
-            color: var(--yellow);
         }
         .working-indicator.active { display: flex; align-items: center; gap: 8px; }
-        .typing-dots span {
-            display: inline-block;
-            width: 6px; height: 6px;
-            border-radius: 50%;
-            background: var(--yellow);
-            animation: typing 1.4s infinite;
+        .status-state { display: none; align-items: center; gap: 8px; }
+        .status-state.active { display: flex; }
+        #statusThinking { color: #fbbf24; }
+        #statusExecuting { color: #3b82f6; }
+        #statusDone { color: #22c55e; }
+        #statusError { color: #ef4444; }
+        .status-state i { font-size: 1rem; }
+        @keyframes fa-pulse-custom {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.1); }
         }
-        .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
-        .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
-        @keyframes typing {
-            0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
-            30% { opacity: 1; transform: translateY(-4px); }
+        #statusThinking .fa-brain { animation: fa-pulse-custom 1.5s ease-in-out infinite; }
+        .working-indicator .stop-btn {
+            background: transparent;
+            border: 1px solid rgba(239,68,68,0.4);
+            color: var(--red);
+            border-radius: 6px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 0.75rem;
+            margin-left: 4px;
+            transition: all 0.2s;
         }
+        .working-indicator .stop-btn:hover { background: rgba(239,68,68,0.15); border-color: var(--red); }
 
         /* Input area */
         .input-area {
@@ -865,9 +875,26 @@
 
         <!-- WORKING INDICATOR -->
         <div class="working-indicator" id="workingIndicator">
-            <div class="typing-dots"><span></span><span></span><span></span></div>
-            <span id="workingText" data-i18n="thinking">Claude is thinking...</span>
+            <div id="statusThinking" class="status-state">
+                <i class="fa-solid fa-brain"></i>
+                <span data-i18n="status_thinking">Claude thinking...</span>
+            </div>
+            <div id="statusExecuting" class="status-state">
+                <i class="fa-solid fa-gear fa-spin"></i>
+                <span id="executingText" data-i18n="status_executing">Executing task...</span>
+            </div>
+            <div id="statusDone" class="status-state">
+                <i class="fa-solid fa-circle-check"></i>
+                <span data-i18n="status_done">Done</span>
+            </div>
+            <div id="statusError" class="status-state">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <span id="errorText" data-i18n="status_error">Error</span>
+            </div>
             <span id="workingTimer" style="opacity:0.6;font-size:0.75rem;margin-left:4px;"></span>
+            <button class="stop-btn" id="stopBtn" onclick="stopExecution()" style="display:none;" title="Stop">
+                <i class="fa-solid fa-stop"></i>
+            </button>
         </div>
 
         <!-- INPUT AREA -->
@@ -1268,6 +1295,11 @@ const translations = {
         placeholder: 'Напишите запрос...',
         thinking: 'Claude думает...',
         executing: 'Claude Code выполняет...',
+        status_thinking: 'Claude думает...',
+        status_executing: 'Выполняет задачу...',
+        status_done: 'Готово',
+        status_error: 'Ошибка',
+        status_stopped: 'Остановлено',
         send_to_code: 'Отправить в Claude Code',
         edit_cmd: 'Редактировать',
         analyze_result: 'Отправить в Chat для анализа',
@@ -1896,6 +1928,7 @@ async function sendMessage() {
     addMessage('user', message);
 
     setWorking(true, t('thinking'));
+    showWorkingState('thinking');
 
     try {
         const data = await api('/chat', 'POST', { message });
@@ -1907,6 +1940,7 @@ async function sendMessage() {
         }
 
         setWorking(false);
+        showWorkingState('done');
 
         addMessage('assistant', data.response, data.has_command ? 'command' : 'text');
 
@@ -1945,28 +1979,101 @@ function editBeforeSend(btn) {
 }
 
 async function executeInCode(command, autoMode) {
-    setWorking(true, t('executing'));
+    isWorking = true;
+    document.getElementById('sendBtn').disabled = true;
+    _workingStartTime = Date.now();
+    const timerEl = document.getElementById('workingTimer');
+    timerEl.textContent = '0 сек';
+    if (_workingTimerInterval) clearInterval(_workingTimerInterval);
+    _workingTimerInterval = setInterval(() => {
+        timerEl.textContent = _formatElapsed(Date.now() - _workingStartTime);
+    }, 1000);
+
+    showWorkingState('thinking');
+    scrollToBottom();
+
+    let fullOutput = '';
 
     try {
-        const data = await api('/code/execute', 'POST', { command, auto_mode: autoMode });
+        const resp = await fetch(API + '/code/execute-stream', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Admin-Token': adminToken,
+            },
+            body: JSON.stringify({ command, auto_mode: autoMode }),
+        });
 
-        // Check for rate limit response
-        if (data.error && data.error_type === 'rate_limit_info') {
-            handleRateLimitResponse(data);
+        if (resp.status === 401) {
+            localStorage.removeItem('admin_token');
+            location.reload();
             return;
         }
 
-        setWorking(false);
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
 
-        addMessage('code_result', data.output, 'code_result');
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+                if (!line.startsWith('data: ')) continue;
+                try {
+                    const event = JSON.parse(line.slice(6));
+
+                    if (event.status === 'thinking') {
+                        showWorkingState('thinking');
+                    } else if (event.status === 'executing') {
+                        showWorkingState('executing', event.output ? event.output.slice(0, 80) : t('status_executing'));
+                    } else if (event.status === 'error' && !event.return_code && event.return_code !== 0) {
+                        // Intermediate error line — just show state
+                        showWorkingState('executing', event.output ? event.output.slice(0, 80) : '');
+                    }
+
+                    if (event.output) {
+                        fullOutput += (fullOutput ? '\n' : '') + event.output;
+                    }
+
+                    // Final events
+                    if (event.status === 'done') {
+                        showWorkingState('done');
+                    } else if (event.status === 'error' && (event.return_code !== undefined || event.message === 'Rate limit hit')) {
+                        if (event.rate_limit) {
+                            handleRateLimitResponse({ error: true, error_type: 'rate_limit_info', message: 'Rate limit' });
+                            return;
+                        }
+                        showWorkingState('error', event.message || t('status_error'));
+                    }
+                } catch {}
+            }
+        }
+
+        // Finished
+        if (_workingTimerInterval) { clearInterval(_workingTimerInterval); _workingTimerInterval = null; }
+        timerEl.textContent = '';
+        isWorking = false;
+        document.getElementById('sendBtn').disabled = false;
+
+        const output = fullOutput || 'Command completed (no output)';
+        addMessage('code_result', output, 'code_result');
 
         if (autoMode) {
-            await analyzeResult(data.output, command);
+            await analyzeResult(output, command);
         } else {
-            addResultActions(data.output);
+            addResultActions(output);
         }
     } catch (e) {
-        setWorking(false);
+        if (_workingTimerInterval) { clearInterval(_workingTimerInterval); _workingTimerInterval = null; }
+        timerEl.textContent = '';
+        isWorking = false;
+        document.getElementById('sendBtn').disabled = false;
+        showWorkingState('error', e.message);
         setStatus('error', t('error'));
         addMessage('system', 'Execution error: ' + e.message);
     }
@@ -2035,8 +2142,15 @@ async function clearChat() {
 async function stopExecution() {
     try {
         await api('/code/stop', 'POST');
-        setWorking(false);
+        if (_workingTimerInterval) { clearInterval(_workingTimerInterval); _workingTimerInterval = null; }
+        document.getElementById('workingTimer').textContent = '';
+        isWorking = false;
+        document.getElementById('sendBtn').disabled = false;
+        showWorkingState('error', t('status_stopped'));
+        setStatus('ready', t('ready'));
         addMessage('system', t('execution_stopped'));
+        // Auto-hide after 3s
+        setTimeout(() => showWorkingState('hidden'), 3000);
     } catch {}
 }
 
@@ -2357,17 +2471,68 @@ function _formatElapsed(ms) {
     return `${min} мин ${s < 10 ? '0' : ''}${s} сек`;
 }
 
+let _doneHideTimeout = null;
+
+function showWorkingState(state, detail) {
+    const indicator = document.getElementById('workingIndicator');
+    const stopBtn = document.getElementById('stopBtn');
+
+    // Clear any pending done-hide timeout
+    if (_doneHideTimeout) { clearTimeout(_doneHideTimeout); _doneHideTimeout = null; }
+
+    // Hide all status states
+    document.querySelectorAll('.status-state').forEach(el => el.classList.remove('active'));
+
+    if (state === 'hidden') {
+        indicator.classList.remove('active');
+        stopBtn.style.display = 'none';
+        return;
+    }
+
+    indicator.classList.add('active');
+
+    const stateEl = document.getElementById('status' + state.charAt(0).toUpperCase() + state.slice(1));
+    if (stateEl) stateEl.classList.add('active');
+
+    // Update executing detail text
+    if (state === 'executing' && detail) {
+        document.getElementById('executingText').textContent = detail;
+    }
+    // Update error text
+    if (state === 'error' && detail) {
+        document.getElementById('errorText').textContent = detail;
+    }
+
+    // Show/hide stop button
+    stopBtn.style.display = (state === 'thinking' || state === 'executing') ? 'inline-flex' : 'none';
+
+    // Update top bar status dot
+    if (state === 'thinking' || state === 'executing') {
+        setStatus('working', state === 'thinking' ? t('thinking') : t('executing'));
+    } else if (state === 'done') {
+        setStatus('ready', t('ready'));
+    } else if (state === 'error') {
+        setStatus('error', t('error'));
+    }
+
+    // Auto-hide done state after 3 seconds
+    if (state === 'done') {
+        _doneHideTimeout = setTimeout(() => {
+            showWorkingState('hidden');
+        }, 3000);
+    }
+}
+
 function setWorking(working, text) {
     isWorking = working;
-    const indicator = document.getElementById('workingIndicator');
     const sendBtn = document.getElementById('sendBtn');
     const timerEl = document.getElementById('workingTimer');
-    indicator.classList.toggle('active', working);
-    document.getElementById('workingText').textContent = text || '';
     sendBtn.disabled = working;
-    setStatus(working ? 'working' : 'ready', working ? (text || t('working')) : t('ready'));
 
     if (working) {
+        // Determine state from text
+        const state = (text && text.includes(t('executing'))) ? 'executing' : 'thinking';
+        showWorkingState(state, text);
         _workingStartTime = Date.now();
         timerEl.textContent = '0 сек';
         if (_workingTimerInterval) clearInterval(_workingTimerInterval);
@@ -2378,6 +2543,7 @@ function setWorking(working, text) {
     } else {
         if (_workingTimerInterval) { clearInterval(_workingTimerInterval); _workingTimerInterval = null; }
         timerEl.textContent = '';
+        showWorkingState('hidden');
     }
 }
 

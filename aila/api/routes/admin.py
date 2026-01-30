@@ -71,8 +71,8 @@ _auth_codes: dict[str, dict] = {}  # code -> {expires, attempts}
 _admin_sessions: dict[str, dict] = {}  # token -> {created, last_active}
 _failed_attempts: dict[str, dict] = {}  # ip -> {count, blocked_until}
 
-# Running processes
-_running_process: Optional[subprocess.Popen] = None
+# Running processes (async subprocess for streaming)
+_running_process: Optional[asyncio.subprocess.Process] = None
 _process_lock = asyncio.Lock()
 
 # Scheduler state
@@ -666,7 +666,7 @@ async def execute_code(request: Request):
         raise HTTPException(status_code=403, detail="Path restriction violated")
 
     async with _process_lock:
-        if _running_process and _running_process.poll() is None:
+        if _running_process and _running_process.returncode is None:
             raise HTTPException(status_code=409, detail="Another command is running")
 
         _audit_log("admin", "EXECUTE", command)
@@ -725,16 +725,167 @@ async def execute_code(request: Request):
             }
 
 
+def _detect_claude_state(line: str) -> str:
+    """Detect Claude Code execution state from output line."""
+    lower = line.lower().strip()
+    if not lower:
+        return "executing"
+    # Error patterns
+    if any(p in lower for p in ["error", "traceback", "exception", "failed", "fatal"]):
+        return "error"
+    # Thinking patterns (Claude analyzing/planning)
+    if any(p in lower for p in [
+        "thinking", "analyzing", "planning", "considering",
+        "reading", "searching", "looking", "exploring",
+    ]):
+        return "thinking"
+    return "executing"
+
+
+@router.post("/code/execute-stream")
+async def execute_code_stream(request: Request):
+    """Execute command via Claude Code CLI with SSE streaming."""
+    _require_auth(request)
+    global _running_process
+
+    body = await request.json()
+    command = body.get("command", "").strip()
+
+    if not command:
+        raise HTTPException(status_code=400, detail="Command required")
+
+    # Security: filter dangerous commands
+    dangerous = ["rm -rf /", "cat .env", "echo $API_KEY", "DROP TABLE", "DELETE FROM"]
+    for d in dangerous:
+        if d.lower() in command.lower():
+            _audit_log("admin", "BLOCKED_COMMAND", command)
+            raise HTTPException(status_code=403, detail=f"Dangerous command blocked: {d}")
+
+    if ".." in command and ("/etc/" in command or "/root/" in command):
+        raise HTTPException(status_code=403, detail="Path restriction violated")
+
+    _audit_log("admin", "EXECUTE_STREAM", command)
+
+    async def event_stream():
+        """Generate SSE events from Claude Code subprocess."""
+        global _running_process
+
+        async with _process_lock:
+            if _running_process and _running_process.returncode is None:
+                yield f"data: {json.dumps({'status': 'error', 'message': 'Another command is running'})}\n\n"
+                return
+
+            try:
+                claude_env = _get_claude_env()
+                logger.info(f"[ADMIN_CODE_STREAM] Executing: {command[:100]}")
+
+                proc = await asyncio.create_subprocess_exec(
+                    "claude", "--print",
+                    "--no-session-persistence",
+                    "--dangerously-skip-permissions",
+                    command,
+                    cwd="/opt/aila",
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                    env=claude_env,
+                )
+                _running_process = proc
+
+            except FileNotFoundError:
+                yield f"data: {json.dumps({'status': 'error', 'message': 'claude CLI not found'})}\n\n"
+                return
+            except Exception as e:
+                yield f"data: {json.dumps({'status': 'error', 'message': str(e)})}\n\n"
+                return
+
+        # Send initial thinking state
+        yield f"data: {json.dumps({'status': 'thinking', 'message': 'Claude is thinking...'})}\n\n"
+
+        output_lines: list[str] = []
+        error_lines: list[str] = []
+
+        async def read_stderr():
+            """Read stderr in background."""
+            assert proc.stderr is not None
+            async for raw_line in proc.stderr:
+                line = raw_line.decode("utf-8", errors="replace").rstrip()
+                if line:
+                    error_lines.append(line)
+
+        stderr_task = asyncio.create_task(read_stderr())
+
+        try:
+            assert proc.stdout is not None
+            async for raw_line in proc.stdout:
+                line = raw_line.decode("utf-8", errors="replace").rstrip()
+                if not line:
+                    continue
+                output_lines.append(line)
+                state = _detect_claude_state(line)
+                yield f"data: {json.dumps({'status': state, 'output': line})}\n\n"
+
+        except asyncio.CancelledError:
+            # Client disconnected — kill process
+            if proc.returncode is None:
+                proc.terminate()
+                try:
+                    await asyncio.wait_for(proc.wait(), timeout=3)
+                except asyncio.TimeoutError:
+                    proc.kill()
+            raise
+
+        await stderr_task
+        await proc.wait()
+
+        _running_process = None
+        full_output = "\n".join(output_lines)
+        full_error = "\n".join(error_lines)
+
+        # Check for rate limit
+        combined = f"{full_output} {full_error}"
+        if _is_rate_limit_error(combined):
+            await _handle_rate_limit("code_stream", combined[:300])
+            _increment_admin_stats("code")
+            yield f"data: {json.dumps({'status': 'error', 'message': 'Rate limit hit', 'rate_limit': True})}\n\n"
+            return
+
+        response = full_output or full_error or "Command completed (no output)"
+        success = proc.returncode == 0
+
+        _increment_admin_stats("code")
+        _save_chat_message("code_result", response, "code_result")
+        _audit_log("admin", "EXECUTE_STREAM_RESULT", command[:50], response[:200])
+
+        yield f"data: {json.dumps({'status': 'done' if success else 'error', 'message': 'Done' if success else 'Error', 'output': response[-500:] if len(response) > 500 else '', 'return_code': proc.returncode})}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
 @router.post("/code/stop")
 async def stop_code(request: Request):
     """Stop running Claude Code process."""
     _require_auth(request)
     global _running_process
-    if _running_process and _running_process.poll() is None:
+
+    if _running_process and _running_process.returncode is None:
+        # Graceful: SIGTERM → wait → SIGKILL
         _running_process.terminate()
+        try:
+            await asyncio.wait_for(_running_process.wait(), timeout=5)
+        except asyncio.TimeoutError:
+            _running_process.kill()
+            await _running_process.wait()
         _running_process = None
         _audit_log("admin", "STOP_CODE")
         return {"success": True, "message": "Process terminated"}
+
     return {"success": True, "message": "No running process"}
 
 
@@ -742,7 +893,7 @@ async def stop_code(request: Request):
 async def code_status(request: Request):
     """Get Claude Code execution status."""
     _require_auth(request)
-    running = _running_process is not None and _running_process.poll() is None
+    running = _running_process is not None and _running_process.returncode is None
     return {"running": running}
 
 
