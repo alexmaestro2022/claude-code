@@ -53,6 +53,10 @@ class AutopilotMode:
         self._signal_queue = SignalQueue()
         self._agent_stats = AgentStatsManager()
 
+        # Inject agent_stats into sniper for level-based leverage limits
+        if hasattr(self._orchestrator, 'sniper'):
+            self._orchestrator.sniper._agent_stats = self._agent_stats
+
         # Cascade analysis stats
         self._cascade_stats = {
             'current_stage': None,  # 'vip_p1', 'p2', 'p3', or None
@@ -499,7 +503,7 @@ class AutopilotMode:
                         'entry_price': snipe.get('entry_price'),
                         'stop_loss': snipe.get('stop_loss'),
                         'take_profit': snipe.get('take_profit'),
-                        'leverage': 5,  # Conservative for sniper
+                        'leverage': snipe.get('leverage', 2),
                         'position_size_pct': 1,  # Smaller size for sniper
                         'reasoning': snipe.get('reasoning', ''),
                         'trigger_type': trigger,

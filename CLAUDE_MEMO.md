@@ -2614,6 +2614,35 @@ DELETE /api/admin/knowledge/{fn} — удалить файл
 
 ---
 
-**Последнее обновление:** 2026-01-29 (feat: Claude Code update button)
+## 49. Улучшения SNIPER агента (2026-01-30)
+
+### Динамический расчёт CONFIDENCE:
+- **breakout/breakdown:** базовый 65% + бонусы за объём (+5/+10), RSI силу (+5/+5), близость к уровню (+5), макс 90%
+- **liquidation_cascade:** базовый 70% + бонусы за размер движения (+5/+10) и RSI экстремум (+5/+10), макс 95%
+- Методы: `_calc_breakout_confidence()`, `_calc_liquidation_confidence()`
+
+### LEVERAGE ограничен уровнем агента:
+- Метод `_get_max_leverage()` получает лимит из `SNIPER_LEVELS` через `agent_stats`
+- `leverage = min(calculated, level_max_leverage)`
+- `agent_stats` инжектируется из `AutopilotMode.__init__`
+
+### Минимальный SL = 2%:
+- `sl_percent = max(1.5 * atr_percent, 2.0)`
+- TP пересчитывается с R:R >= 2.0
+- Метод `_calc_sl_tp()` для единообразного расчёта
+
+### API Logging в prepare_snipe():
+- Параметры `agent="SNIPER"`, `action="prepare_snipe"`, `context=f"pair={symbol},trigger={trigger_type}"`
+
+### funding_flip:
+- Убрана заглушка `_check_funding_flip`, оставлен TODO комментарий в `_triggers`
+
+### Файлы изменены:
+- `aila/ai_trade/agents/sniper.py` — основные изменения
+- `aila/ai_trade/autopilot_mode.py` — инъекция agent_stats, leverage из snipe
+
+---
+
+**Последнее обновление:** 2026-01-30 (refactor: SNIPER dynamic confidence, leverage limits, min SL)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
