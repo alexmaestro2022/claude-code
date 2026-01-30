@@ -2722,6 +2722,6 @@ DELETE /api/admin/knowledge/{fn} — удалить файл
 
 ---
 
-**Последнее обновление:** 2026-01-30 (feat: Chat/Code interaction + security settings)
+**Последнее обновление:** 2026-01-30 (fix: correct Manual/Auto mode interaction flow)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
