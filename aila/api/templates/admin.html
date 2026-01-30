@@ -2290,6 +2290,7 @@ function addMessage(role, content, type = 'text', scroll = true) {
         hljs.highlightElement(block);
         // Add copy button
         const pre = block.parentElement;
+        if (!pre) return;
         pre.style.position = 'relative';
         const copyBtn = document.createElement('button');
         copyBtn.className = 'copy-btn';
@@ -3348,7 +3349,7 @@ function toggleProcess() {
 
 function appendConfirmButtons() {
     const area = document.getElementById('chatArea');
-    const lastMsg = area.querySelector('.msg-row:last-child .msg-bubble');
+    const lastMsg = area.querySelector('.msg-assistant:last-child');
     if (!lastMsg) return;
     const btns = document.createElement('div');
     btns.className = 'confirm-buttons';
