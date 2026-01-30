@@ -415,3 +415,39 @@ cd /opt/aila && /opt/aila/venv/bin/python -m pytest tests/test_bybit_exchange.py
 - `"удали правило:"` + текст — удалить указанное правило
 - `"измени правило:"` + старое правило + `"на:"` + новое правило — изменить правило
 - После любого изменения правил — закоммить и запуши
+
+---
+
+## 18. Правила обновления этого файла
+
+Claude Code **ДОЛЖЕН** обновлять этот файл (`CLAUDE.md`) когда:
+
+1. **Исправлен важный баг** — добавить в секцию ниже "Исправленные проблемы"
+2. **Добавлена новая функция** — добавить в секцию "Функционал"
+3. **Изменена архитектура** — обновить секцию "Структура"
+4. **Найдено важное решение** — добавить в секцию "Решения и паттерны"
+5. **Изменены API endpoints** — обновить документацию
+
+После каждого коммита с важными изменениями — актуализировать этот файл.
+
+### Исправленные проблемы
+- OAuth credentials не синхронизировались между `/home/aila/.claude/` и `/opt/aila/.claude/` из-за `ProtectHome=true` в systemd. Решение: cron `*/5` + `_sync_claude_credentials()` в коде.
+
+### Функционал
+- **Admin Panel Chat/Code** — двойной режим: Chat (с сессиями, KB) + Code (одноразовые команды)
+- **Security Settings** — 4 вкладки защиты AI Trade (Protection, Permissions, Critical, Limits)
+- **Session Management** — initialize, status, clear с архивацией истории
+- **Knowledge Base** — RULES.md + AILA_SESSION_MEMORY.md, обновление через `[UPDATE_KNOWLEDGE]` теги
+
+### Структура
+- `aila/api/routes/admin.py` — бэкенд Admin Panel (~2300 строк)
+- `aila/api/templates/admin.html` — UI Admin Panel (CSS + HTML + JS)
+- `claude_chat/knowledge/` — база знаний для Claude Chat
+- `claude_chat/history/` — история чата (current.json + архивы)
+- `data/admin/settings.json` — настройки безопасности
+
+### Решения и паттерны
+- **OAuth auth**: `_get_claude_env()` удаляет `ANTHROPIC_API_KEY` и `CLAUDE_API_KEY`, использует OAuth Max через `/opt/aila/.claude/.credentials.json`
+- **Chat vs Code сессии**: Chat без `--no-session-persistence` (сохраняет контекст), Code с `--no-session-persistence` (одноразовые)
+- **SSE streaming**: `asyncio.create_subprocess_exec` + `StreamingResponse` для real-time вывода Code
+- **Knowledge в промпте**: приоритетный порядок (RULES.md первый), max 50KB на файл
