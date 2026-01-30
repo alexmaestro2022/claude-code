@@ -10,12 +10,21 @@ from .base_agent import BaseAgent
 
 logger = logging.getLogger("ai_trade")
 
+MIN_SL_PERCENT = 2.0
+MIN_RR_RATIO = 2.0
+
 
 class SniperAgent(BaseAgent):
     """Sniper entries on key market events."""
 
+    __slots__ = ("scanner", "_cache", "_pending_snipes", "_triggers", "_agent_stats")
+
     def __init__(
-        self, claude_client: Any, knowledge_base: Any, scanner: Any = None
+        self,
+        claude_client: Any,
+        knowledge_base: Any,
+        scanner: Any = None,
+        agent_stats: Any = None,
     ) -> None:
         super().__init__(
             name="SNIPER",
@@ -24,14 +33,99 @@ class SniperAgent(BaseAgent):
             log_path="/opt/aila/logs/ai_trade/sniper.log",
         )
         self.scanner = scanner
+        self._agent_stats = agent_stats
         self._cache = TTLCache(default_ttl=10.0)
         self._pending_snipes: list[dict[str, Any]] = []
         self._triggers: dict[str, Callable] = {
             "breakout": self._check_breakout,
             "breakdown": self._check_breakdown,
             "liquidation_cascade": self._check_liquidations,
-            "funding_flip": self._check_funding_flip,
+            # TODO: Implement funding_flip when exchange funding rate API is integrated
         }
+
+    def _get_max_leverage(self) -> int:
+        """Get max leverage from agent level config."""
+        if self._agent_stats:
+            limits = self._agent_stats.get_level_limits("SNIPER")
+            return limits.get("max_leverage", 2)
+        return 2  # Default conservative
+
+    def _calc_sl_tp(
+        self, price: float, atr: float, direction: str
+    ) -> tuple[float, float]:
+        """Calculate SL/TP with min SL 2% and R:R >= 2.0."""
+        atr_percent = (atr / price) * 100 if price > 0 else 2.0
+        sl_percent = max(1.5 * atr_percent, MIN_SL_PERCENT)
+        tp_percent = sl_percent * MIN_RR_RATIO
+
+        sl_offset = price * sl_percent / 100
+        tp_offset = price * tp_percent / 100
+
+        if direction == "LONG":
+            return price - sl_offset, price + tp_offset
+        return price + sl_offset, price - tp_offset
+
+    def _calc_breakout_confidence(self, data: dict[str, Any]) -> int:
+        """Calculate dynamic confidence for breakout/breakdown.
+
+        Base 65% + bonuses for volume, RSI strength, proximity to level.
+        Max 90%.
+        """
+        confidence = 65
+
+        # Volume bonus: higher volume = higher confidence
+        vol_ratio = data.get("volume_ratio", 1.0)
+        if vol_ratio > 2.0:
+            confidence += 10
+        elif vol_ratio > 1.5:
+            confidence += 5
+
+        # RSI strength bonus: stronger RSI = higher confidence
+        rsi = data.get("rsi", 50)
+        rsi_distance = abs(rsi - 50)
+        if rsi_distance > 15:
+            confidence += 5
+        if rsi_distance > 25:
+            confidence += 5
+
+        # Proximity to level bonus
+        price = data.get("price", 0)
+        high_24h = data.get("high_24h", 0)
+        low_24h = data.get("low_24h", 0)
+
+        if high_24h and price > 0:
+            proximity_high = abs(price - high_24h) / price * 100
+            if proximity_high < 0.05:
+                confidence += 5
+
+        if low_24h and price > 0:
+            proximity_low = abs(price - low_24h) / price * 100
+            if proximity_low < 0.05:
+                confidence += 5
+
+        return min(confidence, 90)
+
+    def _calc_liquidation_confidence(self, change: float, rsi: float) -> int:
+        """Calculate dynamic confidence for liquidation cascade.
+
+        Base 70% + bonuses for move size and RSI extremum.
+        Max 95%.
+        """
+        confidence = 70
+
+        # Move size bonus
+        if change > 8:
+            confidence += 10
+        elif change > 6:
+            confidence += 5
+
+        # RSI extremum bonus
+        if rsi < 15 or rsi > 85:
+            confidence += 10
+        elif rsi < 20 or rsi > 80:
+            confidence += 5
+
+        return min(confidence, 95)
 
     async def think(self, context: dict[str, Any]) -> dict[str, Any]:
         """Process sniper context."""
@@ -59,24 +153,34 @@ class SniperAgent(BaseAgent):
 
     async def prepare_snipe(self, snipe: dict[str, Any]) -> dict[str, Any]:
         """Calculate precise entry parameters for a snipe."""
+        symbol = snipe.get("pair", "")
+        trigger_type = snipe.get("trigger_type", "")
+        max_lev = self._get_max_leverage()
+
         prompt = f"""Prepare sniper entry:
 
-TRIGGER: {snipe.get('trigger_type')}
-PAIR: {snipe.get('pair')}
+TRIGGER: {trigger_type}
+PAIR: {symbol}
 DIRECTION: {snipe.get('direction')}
 ENTRY PRICE: {snipe.get('entry_price')}
+MAX LEVERAGE: {max_lev}
 
 Calculate optimal parameters.
 
 Respond in JSON only:
 {{"entry_type": "market"|"limit", "entry_price": number,
 "stop_loss": number, "take_profit_1": number, "take_profit_2": number,
-"position_size_pct": 1-3, "leverage": 5-15,
+"position_size_pct": 1-3, "leverage": 1-{max_lev},
 "max_slippage_pct": number, "time_limit_seconds": 30-300,
 "abort_conditions": ["condition1", "condition2"]}}"""
 
-        result = await self.claude_client.analyze(prompt)
-        self.log(f"Snipe prepared: {snipe.get('pair')} {snipe.get('direction')}")
+        result = await self.claude_client.analyze(
+            prompt,
+            agent="SNIPER",
+            action="prepare_snipe",
+            context=f"pair={symbol},trigger={trigger_type}",
+        )
+        self.log(f"Snipe prepared: {symbol} {snipe.get('direction')}")
         return result
 
     async def get_pending_snipes(self) -> list[dict[str, Any]]:
@@ -114,6 +218,7 @@ Respond in JSON only:
                         "stop_loss": result.get("stop_loss"),
                         "take_profit": result.get("take_profit"),
                         "confidence": result.get("confidence", 70),
+                        "leverage": result.get("leverage", 2),
                         "urgency": result.get("urgency", "medium"),
                         "reasoning": result.get("reasoning", ""),
                         "timestamp": datetime.utcnow().isoformat(),
@@ -142,15 +247,19 @@ Respond in JSON only:
             if high_24h and price > high_24h * 0.999 and atr > 0:
                 rsi = data.get("rsi", 50)
                 if 55 < rsi < 80:  # Not overbought
+                    confidence = self._calc_breakout_confidence(data)
+                    sl, tp = self._calc_sl_tp(price, atr, "LONG")
+                    max_lev = self._get_max_leverage()
                     return {
                         "triggered": True,
                         "direction": "LONG",
                         "entry_price": price,
-                        "stop_loss": price - atr * 1.5,
-                        "take_profit": price + atr * 3,
-                        "confidence": min(85, 50 + int(rsi - 50)),
+                        "stop_loss": sl,
+                        "take_profit": tp,
+                        "confidence": confidence,
+                        "leverage": min(5, max_lev),
                         "urgency": "high",
-                        "reasoning": f"Breakout: price at 24h high, RSI={rsi}",
+                        "reasoning": f"Breakout: price at 24h high, RSI={rsi}, conf={confidence}%",
                     }
         except Exception as e:
             self.log(f"Breakout check error {pair}: {e}", "error")
@@ -173,15 +282,19 @@ Respond in JSON only:
             if low_24h and price < low_24h * 1.001 and atr > 0:
                 rsi = data.get("rsi", 50)
                 if 20 < rsi < 45:  # Not oversold
+                    confidence = self._calc_breakout_confidence(data)
+                    sl, tp = self._calc_sl_tp(price, atr, "SHORT")
+                    max_lev = self._get_max_leverage()
                     return {
                         "triggered": True,
                         "direction": "SHORT",
                         "entry_price": price,
-                        "stop_loss": price + atr * 1.5,
-                        "take_profit": price - atr * 3,
-                        "confidence": min(85, 50 + int(50 - rsi)),
+                        "stop_loss": sl,
+                        "take_profit": tp,
+                        "confidence": confidence,
+                        "leverage": min(5, max_lev),
                         "urgency": "high",
-                        "reasoning": f"Breakdown: price at 24h low, RSI={rsi}",
+                        "reasoning": f"Breakdown: price at 24h low, RSI={rsi}, conf={confidence}%",
                     }
         except Exception as e:
             self.log(f"Breakdown check error {pair}: {e}", "error")
@@ -204,23 +317,20 @@ Respond in JSON only:
             # Sharp move (>5%) + extreme RSI = potential liquidation cascade
             if change > 5 and (rsi < 20 or rsi > 80) and atr > 0:
                 direction = "LONG" if rsi < 20 else "SHORT"
-                sl_mult = 2.0 if change > 8 else 1.5
+                confidence = self._calc_liquidation_confidence(change, rsi)
+                sl, tp = self._calc_sl_tp(price, atr, direction)
+                max_lev = self._get_max_leverage()
                 return {
                     "triggered": True,
                     "direction": direction,
                     "entry_price": price,
-                    "stop_loss": price + atr * sl_mult * (-1 if direction == "LONG" else 1),
-                    "take_profit": price + atr * 2 * (1 if direction == "LONG" else -1),
-                    "confidence": 60,
+                    "stop_loss": sl,
+                    "take_profit": tp,
+                    "confidence": confidence,
+                    "leverage": min(3, max_lev),
                     "urgency": "high",
-                    "reasoning": f"Liquidation cascade: {change:.1f}% move, RSI={rsi}",
+                    "reasoning": f"Liquidation cascade: {change:.1f}% move, RSI={rsi}, conf={confidence}%",
                 }
         except Exception as e:
             self.log(f"Liquidation check error {pair}: {e}", "error")
-        return {"triggered": False}
-
-    async def _check_funding_flip(self, pair: str) -> dict[str, Any]:
-        """Check for extreme funding rate flip (contrarian signal)."""
-        # Funding rate data requires exchange-specific API
-        # Placeholder for future integration
         return {"triggered": False}
