@@ -30,6 +30,42 @@ logger = logging.getLogger("admin")
 router = APIRouter(prefix="/api/admin", tags=["Admin"])
 
 
+_CREDS_SRC = Path("/home/aila/.claude/.credentials.json")
+_CREDS_DST = Path("/opt/aila/.claude/.credentials.json")
+_CREDS_LAST_SYNC: float = 0
+
+
+def _sync_claude_credentials() -> None:
+    """Sync OAuth credentials from /home/aila to /opt/aila if newer.
+
+    systemd ProtectHome=true blocks /home/aila from the aila service,
+    but this function may run from contexts where /home is accessible
+    (e.g. Claude Code subprocess or cron).
+    """
+    global _CREDS_LAST_SYNC
+    now = time.time()
+    # Check at most every 60 seconds
+    if now - _CREDS_LAST_SYNC < 60:
+        return
+    _CREDS_LAST_SYNC = now
+
+    try:
+        if not _CREDS_SRC.exists():
+            return
+        # Compare mtime — sync only if source is newer
+        src_mtime = _CREDS_SRC.stat().st_mtime
+        dst_mtime = _CREDS_DST.stat().st_mtime if _CREDS_DST.exists() else 0
+        if src_mtime > dst_mtime:
+            import shutil
+            shutil.copy2(str(_CREDS_SRC), str(_CREDS_DST))
+            logger.info("[AUTH] Synced OAuth credentials from /home/aila to /opt/aila")
+    except PermissionError:
+        # Expected when running under systemd with ProtectHome=true
+        pass
+    except Exception as e:
+        logger.debug(f"[AUTH] Credentials sync skipped: {e}")
+
+
 def _get_claude_env() -> dict[str, str]:
     """Build environment for claude subprocess using Max subscription.
 
@@ -40,9 +76,13 @@ def _get_claude_env() -> dict[str, str]:
     Credentials are copied to /opt/aila/.claude/.credentials.json,
     and HOME is set to /opt/aila so claude finds them there.
     """
+    # Try to sync fresh credentials (no-op if /home is blocked)
+    _sync_claude_credentials()
+
     env = os.environ.copy()
-    # Remove API key to force OAuth/subscription auth
+    # Remove API keys to force OAuth/subscription auth
     env.pop("ANTHROPIC_API_KEY", None)
+    env.pop("CLAUDE_API_KEY", None)
     # Ensure claude is in PATH
     if "/usr/local/bin" not in env.get("PATH", ""):
         env["PATH"] = f"/usr/local/bin:{env.get('PATH', '/usr/bin')}"
