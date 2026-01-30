@@ -650,6 +650,38 @@
         }
         .sub-widget:hover { border-color: rgba(251,191,36,0.3); }
 
+        /* Session indicator */
+        .session-widget {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .session-widget:hover { border-color: var(--accent-dim); color: var(--text-primary); }
+        .session-widget .session-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+            animation: pulse-dot 2s infinite;
+        }
+        @keyframes pulse-dot { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+        /* System messages */
+        .msg-system-info {
+            text-align: center;
+            padding: 8px 16px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-style: italic;
+            border-bottom: 1px solid var(--border);
+        }
+
         /* Usage stats grid */
         .usage-grid {
             display: grid;
@@ -940,6 +972,12 @@
                 <span class="status-dot"></span>
                 <span id="statusText" data-i18n="ready">Ready</span>
             </div>
+            <div class="session-widget" onclick="openModal('sessionInfoModal')" title="Session info">
+                <span class="session-dot"></span>
+                <span id="sessionUptime">0m</span>
+                <span style="color:var(--border);">|</span>
+                <span>KB: <span id="sessionKbCount">0</span></span>
+            </div>
             <div class="sub-widget" onclick="openModal('usageModal')" title="Subscription usage">
                 <i class="fa-solid fa-crown" style="color:#fbbf24;font-size:0.7rem;"></i>
                 <span id="subType" style="font-size:0.75rem;font-weight:600;color:#fbbf24;">Max</span>
@@ -951,6 +989,9 @@
         <div class="top-bar-right">
             <button class="top-btn danger" onclick="stopExecution()" data-i18n-title="stop">
                 <i class="fa-solid fa-stop"></i>
+            </button>
+            <button class="top-btn" onclick="newSession()" data-i18n-title="new_session" title="New Session">
+                <i class="fa-solid fa-rotate-right"></i>
             </button>
             <button class="top-btn" onclick="clearChat()" data-i18n-title="clear_chat">
                 <i class="fa-solid fa-trash"></i>
@@ -1172,6 +1213,50 @@
 </div>
 
 <!-- SETTINGS MODAL -->
+<!-- SESSION INFO MODAL -->
+<div class="modal-overlay" id="sessionInfoModal" onclick="closeModalOnOverlay(event)">
+    <div class="modal-content" style="max-width:420px;">
+        <div class="modal-header">
+            <h3 style="font-weight:600;"><i class="fa-solid fa-circle-info mr-2"></i> Session Info</h3>
+            <button class="modal-close" onclick="closeModal('sessionInfoModal')"><i class="fa-solid fa-times"></i></button>
+        </div>
+        <div class="modal-body" style="font-size:0.85rem;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+                <div style="padding:10px;border-radius:8px;background:var(--bg-dark);border:1px solid var(--border);">
+                    <div style="font-size:0.7rem;color:var(--text-secondary);text-transform:uppercase;">Session ID</div>
+                    <div style="font-weight:600;margin-top:4px;" id="siSessionId">-</div>
+                </div>
+                <div style="padding:10px;border-radius:8px;background:var(--bg-dark);border:1px solid var(--border);">
+                    <div style="font-size:0.7rem;color:var(--text-secondary);text-transform:uppercase;">Uptime</div>
+                    <div style="font-weight:600;margin-top:4px;" id="siUptime">-</div>
+                </div>
+                <div style="padding:10px;border-radius:8px;background:var(--bg-dark);border:1px solid var(--border);">
+                    <div style="font-size:0.7rem;color:var(--text-secondary);text-transform:uppercase;">Knowledge Files</div>
+                    <div style="font-weight:600;margin-top:4px;" id="siKbFiles">-</div>
+                </div>
+                <div style="padding:10px;border-radius:8px;background:var(--bg-dark);border:1px solid var(--border);">
+                    <div style="font-size:0.7rem;color:var(--text-secondary);text-transform:uppercase;">History</div>
+                    <div style="font-weight:600;margin-top:4px;" id="siHistoryCount">-</div>
+                </div>
+            </div>
+            <div style="padding:10px;border-radius:8px;background:var(--bg-dark);border:1px solid var(--border);margin-bottom:12px;">
+                <div style="font-size:0.7rem;color:var(--text-secondary);text-transform:uppercase;margin-bottom:6px;">Knowledge Base Files</div>
+                <div id="siKbFilesList" style="font-size:0.8rem;line-height:1.6;">-</div>
+            </div>
+            <div style="padding:10px;border-radius:8px;background:var(--bg-dark);border:1px solid var(--border);">
+                <div style="font-size:0.7rem;color:var(--text-secondary);text-transform:uppercase;margin-bottom:6px;">Last KB Load</div>
+                <div id="siKbLastLoaded" style="font-size:0.8rem;">-</div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-ghost" onclick="closeModal('sessionInfoModal')">Close</button>
+            <button class="btn btn-primary" onclick="newSession(); closeModal('sessionInfoModal');">
+                <i class="fa-solid fa-rotate-right"></i> New Session
+            </button>
+        </div>
+    </div>
+</div>
+
 <div class="modal-overlay" id="settingsModal" onclick="closeModalOnOverlay(event)">
     <div class="modal-content">
         <div class="modal-header">
@@ -1534,6 +1619,10 @@ const translations = {
         today_label: 'Сегодня:',
         stop: 'Стоп',
         clear_chat: 'Очистить чат',
+        new_session: 'Новая сессия',
+        new_session_confirm: 'Начать новую сессию? История будет заархивирована.',
+        session_initialized: 'Сессия инициализирована',
+        session_cleared: 'Сессия очищена, история заархивирована',
         knowledge_base: 'База знаний',
         settings: 'Настройки',
         ai_trade: 'AI Trade',
@@ -1797,6 +1886,8 @@ function showPanel() {
     loadChatHistory();
     loadUsage();
     startScheduledTimer();
+    // Initialize chat session (loads knowledge base, starts status updates)
+    initializeSession();
     // Refresh usage every 60s
     setInterval(loadUsage, 60000);
     // Check for Claude Code updates on load and every 6h
@@ -2510,6 +2601,69 @@ async function clearChat() {
             <div class="msg-time">System</div>
         </div>`;
     } catch {}
+}
+
+// =============================================
+// Session management
+// =============================================
+let _sessionStatusInterval = null;
+
+async function initializeSession() {
+    try {
+        const res = await api('/session/initialize', 'POST');
+        if (res.knowledge_files) {
+            document.getElementById('sessionKbCount').textContent = res.knowledge_files.length;
+        }
+        updateSessionStatus();
+        // Start periodic session status updates
+        if (_sessionStatusInterval) clearInterval(_sessionStatusInterval);
+        _sessionStatusInterval = setInterval(updateSessionStatus, 60000);
+    } catch (e) {
+        console.warn('Session init failed:', e);
+    }
+}
+
+async function updateSessionStatus() {
+    try {
+        const res = await api('/session/status');
+        if (res.uptime) document.getElementById('sessionUptime').textContent = res.uptime;
+        if (res.knowledge_files) document.getElementById('sessionKbCount').textContent = res.knowledge_files.length;
+        // Update modal if open
+        const modal = document.getElementById('sessionInfoModal');
+        if (modal && modal.style.display !== 'none') {
+            document.getElementById('siSessionId').textContent = res.session_id || '-';
+            document.getElementById('siUptime').textContent = res.uptime || '-';
+            document.getElementById('siKbFiles').textContent = res.knowledge_files ? res.knowledge_files.length : 0;
+            document.getElementById('siHistoryCount').textContent = res.history_count || 0;
+            document.getElementById('siKbLastLoaded').textContent = res.knowledge_last_loaded || '-';
+            if (res.knowledge_files && res.knowledge_files.length) {
+                document.getElementById('siKbFilesList').innerHTML = res.knowledge_files.map(
+                    f => `<span style="display:inline-block;padding:2px 8px;margin:2px;border-radius:4px;background:var(--border);font-size:0.75rem;">${f}</span>`
+                ).join('');
+            }
+        }
+    } catch {}
+}
+
+async function newSession() {
+    if (!confirm(t('new_session_confirm'))) return;
+    try {
+        const res = await api('/session/clear', 'POST');
+        if (res.success) {
+            const area = document.getElementById('chatArea');
+            area.innerHTML = `<div class="msg-system-info">${t('session_cleared')} (${res.archived} msgs archived)</div>
+            <div class="msg msg-assistant">
+                <div>${t('welcome_msg')}</div>
+                <div class="msg-time">System</div>
+            </div>`;
+            // Re-initialize session
+            await initializeSession();
+            autoIterationCount = 0;
+            addMessage('system', t('session_initialized'));
+        }
+    } catch (e) {
+        addMessage('system', 'Error: ' + e.message);
+    }
 }
 
 async function stopExecution() {

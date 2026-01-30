@@ -2714,6 +2714,9 @@ DELETE /api/admin/knowledge/{fn} — удалить файл
 - `POST /api/admin/check-command` — проверка риска команды
 - `POST /api/admin/confirm-code` — выполнение подтверждённой команды (SSE streaming)
 - `POST /api/admin/confirm-chat` — отправка результата в Chat для анализа
+- `POST /api/admin/session/initialize` — инициализация сессии (загрузка KB, session ID)
+- `GET /api/admin/session/status` — статус сессии (uptime, KB, history count)
+- `POST /api/admin/session/clear` — новая сессия (архивация истории, сброс KB кэша)
 
 ### Файлы:
 - `aila/api/routes/admin.py` — бэкенд: security checker, settings API, confirm endpoints
@@ -2722,6 +2725,6 @@ DELETE /api/admin/knowledge/{fn} — удалить файл
 
 ---
 
-**Последнее обновление:** 2026-01-30 (fix: correct Manual/Auto mode interaction flow)
+**Последнее обновление:** 2026-01-30 (feat: session management with init, status, clear + archive)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
