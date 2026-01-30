@@ -400,41 +400,56 @@
         .msg-action-btn.analyze { background: var(--blue); color: #fff; }
         .msg-action-btn.skip { background: transparent; border: 1px solid var(--border); color: var(--text-secondary); }
 
-        /* Working indicator */
-        .working-indicator {
+        /* Status bar */
+        .status-bar {
             display: none;
-            align-self: flex-start;
-            padding: 12px 16px;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 14px;
             background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 12px;
-            font-size: 0.85rem;
+            border-radius: 20px;
+            font-size: 0.82rem;
+            align-self: flex-start;
         }
-        .working-indicator.active { display: flex; align-items: center; gap: 8px; }
-        .status-state { display: none; align-items: center; gap: 8px; }
-        .status-state.active { display: flex; }
-        #statusThinking { color: #fbbf24; }
-        #statusExecuting { color: #3b82f6; }
-        #statusDone { color: #22c55e; }
-        #statusError { color: #ef4444; }
-        .status-state i { font-size: 1rem; }
-        @keyframes fa-pulse-custom {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.5; transform: scale(1.1); }
-        }
-        #statusThinking .fa-brain { animation: fa-pulse-custom 1.5s ease-in-out infinite; }
-        .working-indicator .stop-btn {
+        .status-bar.active { display: flex; }
+        .status-btn {
+            width: 34px; height: 34px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
             background: transparent;
-            border: 1px solid rgba(239,68,68,0.4);
-            color: var(--red);
-            border-radius: 6px;
-            padding: 4px 8px;
             cursor: pointer;
-            font-size: 0.75rem;
-            margin-left: 4px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.85rem;
             transition: all 0.2s;
+            flex-shrink: 0;
         }
-        .working-indicator .stop-btn:hover { background: rgba(239,68,68,0.15); border-color: var(--red); }
+        .status-btn.thinking { border-color: #fbbf24; color: #fbbf24; }
+        .status-btn.executing { border-color: #3b82f6; color: #3b82f6; }
+        .status-btn.done { border-color: #22c55e; color: #22c55e; pointer-events: none; }
+        .status-btn.stopped { border-color: #ef4444; color: #ef4444; pointer-events: none; }
+        .status-btn.error { border-color: #ef4444; color: #ef4444; pointer-events: none; }
+        .status-btn:hover:not(.done):not(.stopped):not(.error) {
+            border-color: #ef4444; color: #ef4444; background: rgba(239,68,68,0.1);
+        }
+        @keyframes sb-pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+        @keyframes sb-spin { to { transform: rotate(360deg); } }
+        .status-btn.thinking i { animation: sb-pulse 1.5s ease-in-out infinite; }
+        .status-btn.executing i { animation: sb-spin 1.2s linear infinite; }
+        .status-divider { width: 1px; height: 18px; background: var(--border); flex-shrink: 0; }
+        .status-timer { opacity: 0.6; font-size: 0.75rem; white-space: nowrap; }
+        .status-action { color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+
+        /* Confirm buttons */
+        .confirm-buttons { display: flex; gap: 8px; margin-top: 8px; }
+        .btn-confirm {
+            padding: 6px 14px; border-radius: 8px; border: none; cursor: pointer;
+            font-size: 0.8rem; font-weight: 600; transition: all 0.2s;
+        }
+        .btn-confirm.yes { background: #22c55e; color: #fff; }
+        .btn-confirm.yes:hover { filter: brightness(1.1); }
+        .btn-confirm.clarify { background: transparent; border: 1px solid var(--blue); color: var(--blue); }
+        .btn-confirm.clarify:hover { background: rgba(59,130,246,0.1); }
 
         /* Input area */
         .input-area {
@@ -1101,28 +1116,14 @@
             </div>
         </div>
 
-        <!-- WORKING INDICATOR -->
-        <div class="working-indicator" id="workingIndicator">
-            <div id="statusThinking" class="status-state">
+        <!-- STATUS BAR -->
+        <div class="status-bar" id="statusBar">
+            <button class="status-btn" id="statusBtn" onclick="toggleProcess()" title="Stop">
                 <i class="fa-solid fa-brain"></i>
-                <span data-i18n="status_thinking">Claude thinking...</span>
-            </div>
-            <div id="statusExecuting" class="status-state">
-                <i class="fa-solid fa-gear fa-spin"></i>
-                <span id="executingText" data-i18n="status_executing">Executing task...</span>
-            </div>
-            <div id="statusDone" class="status-state">
-                <i class="fa-solid fa-circle-check"></i>
-                <span data-i18n="status_done">Done</span>
-            </div>
-            <div id="statusError" class="status-state">
-                <i class="fa-solid fa-triangle-exclamation"></i>
-                <span id="errorText" data-i18n="status_error">Error</span>
-            </div>
-            <span id="workingTimer" style="opacity:0.6;font-size:0.75rem;margin-left:4px;"></span>
-            <button class="stop-btn" id="stopBtn" onclick="stopExecution()" style="display:none;" title="Stop">
-                <i class="fa-solid fa-stop"></i>
             </button>
+            <span class="status-timer" id="workingTimer"></span>
+            <div class="status-divider"></div>
+            <span class="status-action" id="statusAction">Claude thinking...</span>
         </div>
 
         <!-- INPUT AREA -->
@@ -1643,6 +1644,16 @@ const translations = {
         status_done: 'Готово',
         status_error: 'Ошибка',
         status_stopped: 'Остановлено',
+        analyzing_request: 'Анализирую запрос...',
+        reading_file: 'Читаю файл...',
+        writing_file: 'Редактирую файл...',
+        executing_command: 'Выполняю команду...',
+        searching: 'Поиск...',
+        git_operation: 'Git операция...',
+        completed: 'Завершено',
+        stopped_by_user: 'Остановлено пользователем',
+        confirm_yes: 'Да, верно',
+        clarify: 'Уточнить',
         send_to_code: 'Отправить в Claude Code',
         edit_cmd: 'Редактировать',
         analyze_result: 'Отправить в Chat для анализа',
@@ -2348,7 +2359,7 @@ async function sendMessage() {
     showWorkingState('thinking');
 
     try {
-        const data = await api('/chat', 'POST', { message });
+        const data = await api('/chat', 'POST', { message, mode: currentMode });
 
         // Check for rate limit response
         if (data.error && data.error_type === 'rate_limit_info') {
@@ -2360,6 +2371,14 @@ async function sendMessage() {
         showWorkingState('done');
 
         addMessage('assistant', data.response, data.has_command ? 'command' : 'text');
+
+        // Manual mode: show confirm buttons if response asks for confirmation
+        if (!data.has_command && currentMode === 'manual') {
+            const resp = data.response || '';
+            if (/\?\s*$|Верно\??|Правильно\??|Выполняю\??|подтвер/i.test(resp)) {
+                appendConfirmButtons();
+            }
+        }
 
         // Refresh knowledge if files were updated
         if (data.knowledge_updated && data.knowledge_updated.length > 0) {
@@ -2475,10 +2494,13 @@ async function executeInCode(command, autoMode) {
                     if (event.status === 'thinking') {
                         showWorkingState('thinking');
                     } else if (event.status === 'executing') {
-                        showWorkingState('executing', event.output ? event.output.slice(0, 80) : t('status_executing'));
+                        const raw = event.output ? event.output.slice(0, 120) : '';
+                        const parsed = parseClaudeAction(raw) || raw.slice(0, 60) || t('status_executing');
+                        showWorkingState('executing', parsed);
                     } else if (event.status === 'error' && !event.return_code && event.return_code !== 0) {
-                        // Intermediate error line — just show state
-                        showWorkingState('executing', event.output ? event.output.slice(0, 80) : '');
+                        const raw = event.output ? event.output.slice(0, 120) : '';
+                        const parsed = parseClaudeAction(raw) || raw.slice(0, 60) || '';
+                        showWorkingState('executing', parsed);
                     }
 
                     if (event.output) {
@@ -2673,11 +2695,9 @@ async function stopExecution() {
         document.getElementById('workingTimer').textContent = '';
         isWorking = false;
         document.getElementById('sendBtn').disabled = false;
-        showWorkingState('error', t('status_stopped'));
+        showWorkingState('stopped', t('stopped_by_user'));
         setStatus('ready', t('ready'));
         addMessage('system', t('execution_stopped'));
-        // Auto-hide after 3s
-        setTimeout(() => showWorkingState('hidden'), 3000);
     } catch {}
 }
 
@@ -3278,53 +3298,92 @@ function _formatElapsed(ms) {
 let _doneHideTimeout = null;
 
 function showWorkingState(state, detail) {
-    const indicator = document.getElementById('workingIndicator');
-    const stopBtn = document.getElementById('stopBtn');
+    const bar = document.getElementById('statusBar');
+    const btn = document.getElementById('statusBtn');
+    const actionEl = document.getElementById('statusAction');
 
     // Clear any pending done-hide timeout
     if (_doneHideTimeout) { clearTimeout(_doneHideTimeout); _doneHideTimeout = null; }
 
-    // Hide all status states
-    document.querySelectorAll('.status-state').forEach(el => el.classList.remove('active'));
-
     if (state === 'hidden') {
-        indicator.classList.remove('active');
-        stopBtn.style.display = 'none';
+        bar.classList.remove('active');
         return;
     }
 
-    indicator.classList.add('active');
+    bar.classList.add('active');
 
-    const stateEl = document.getElementById('status' + state.charAt(0).toUpperCase() + state.slice(1));
-    if (stateEl) stateEl.classList.add('active');
+    // Reset button classes
+    btn.className = 'status-btn ' + state;
 
-    // Update executing detail text
-    if (state === 'executing' && detail) {
-        document.getElementById('executingText').textContent = detail;
+    // Set button icon based on state
+    const icons = { thinking: 'fa-brain', executing: 'fa-gear', done: 'fa-circle-check', error: 'fa-triangle-exclamation', stopped: 'fa-stop' };
+    btn.innerHTML = `<i class="fa-solid ${icons[state] || icons.thinking}"></i>`;
+
+    // Set action text
+    if (detail) {
+        actionEl.textContent = detail;
+    } else {
+        const defaults = { thinking: t('status_thinking'), executing: t('status_executing'), done: t('completed'), error: t('status_error'), stopped: t('stopped_by_user') };
+        actionEl.textContent = defaults[state] || '';
     }
-    // Update error text
-    if (state === 'error' && detail) {
-        document.getElementById('errorText').textContent = detail;
-    }
-
-    // Show/hide stop button
-    stopBtn.style.display = (state === 'thinking' || state === 'executing') ? 'inline-flex' : 'none';
 
     // Update top bar status dot
     if (state === 'thinking' || state === 'executing') {
         setStatus('working', state === 'thinking' ? t('thinking') : t('executing'));
     } else if (state === 'done') {
         setStatus('ready', t('ready'));
-    } else if (state === 'error') {
-        setStatus('error', t('error'));
+    } else if (state === 'error' || state === 'stopped') {
+        setStatus(state === 'stopped' ? 'ready' : 'error', state === 'stopped' ? t('ready') : t('error'));
     }
 
-    // Auto-hide done state after 3 seconds
-    if (state === 'done') {
-        _doneHideTimeout = setTimeout(() => {
-            showWorkingState('hidden');
-        }, 3000);
+    // Auto-hide done/stopped state after 3 seconds
+    if (state === 'done' || state === 'stopped') {
+        _doneHideTimeout = setTimeout(() => showWorkingState('hidden'), 3000);
     }
+}
+
+function toggleProcess() {
+    if (isWorking) stopExecution();
+}
+
+function appendConfirmButtons() {
+    const area = document.getElementById('chatArea');
+    const lastMsg = area.querySelector('.msg-row:last-child .msg-bubble');
+    if (!lastMsg) return;
+    const btns = document.createElement('div');
+    btns.className = 'confirm-buttons';
+    btns.innerHTML = `
+        <button class="btn-confirm yes" onclick="confirmUnderstanding(this)">${t('confirm_yes')}</button>
+        <button class="btn-confirm clarify" onclick="continueEditing(this)">${t('clarify')}</button>
+    `;
+    lastMsg.appendChild(btns);
+    scrollToBottom();
+}
+
+function confirmUnderstanding(btn) {
+    btn.closest('.confirm-buttons').remove();
+    const input = document.getElementById('chatInput');
+    input.value = 'Да, верно. Выполняй.';
+    sendMessage();
+}
+
+function continueEditing(btn) {
+    btn.closest('.confirm-buttons').remove();
+    document.getElementById('chatInput').focus();
+}
+
+function parseClaudeAction(text) {
+    if (!text) return null;
+    const lower = text.toLowerCase();
+    if (lower.includes('reading') || lower.includes('read file') || lower.includes('cat ')) return t('reading_file');
+    if (lower.includes('writing') || lower.includes('edit') || lower.includes('wrote')) return t('writing_file');
+    if (lower.includes('bash') || lower.includes('running') || lower.includes('command')) return t('executing_command');
+    if (lower.includes('git ')) return t('git_operation');
+    if (lower.includes('search') || lower.includes('grep') || lower.includes('find')) return t('searching');
+    if (lower.includes('analy')) return t('analyzing_request');
+    if (lower.includes('done') || lower.includes('complete')) return t('completed');
+    if (lower.includes('error') || lower.includes('failed')) return t('status_error');
+    return null;
 }
 
 function setWorking(working, text) {

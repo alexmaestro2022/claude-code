@@ -2797,6 +2797,30 @@ logger.info(f"[POSITION] Calculated raw_amount: {raw_amount:.8f} = (${position_s
 
 ---
 
+## UX-улучшения Claude Chat/Code (2026-01-30)
+
+### Mode-aware система промптов:
+- Backend `/chat` endpoint принимает `mode` (manual/auto) из фронтенда
+- **Manual режим**: Claude сначала описывает план, спрашивает подтверждение, только после "да" формирует COMMAND_FOR_CODE
+- **Auto режим**: при первом сообщении спрашивает подтверждение, далее работает автоматически
+
+### Compact Status Bar (вместо Working Indicator):
+- Круглая кнопка с иконкой состояния (thinking=жёлтый пульс, executing=синий спин, done=зелёный, stopped=красный)
+- Таймер + разделитель + текст действия
+- Клик по кнопке → остановка выполнения
+- `parseClaudeAction()` — парсит вывод Claude и показывает человекочитаемый статус (Читаю файл, Git операция, и т.д.)
+
+### Кнопки подтверждения в чате:
+- В manual режиме если ответ Claude заканчивается вопросом — появляются кнопки "Да, верно" и "Уточнить"
+- "Да, верно" автоматически отправляет подтверждение
+- "Уточнить" фокусирует поле ввода
+
+### Файлы:
+- `aila/api/routes/admin.py` — mode в /chat endpoint, mode-aware system prompt
+- `aila/api/templates/admin.html` — CSS status-bar, HTML statusBar, JS parseClaudeAction/confirmButtons, translations
+
+---
+
 ## Исправление: единая сессия для desktop и mobile (2026-01-30)
 
 ### Проблема:

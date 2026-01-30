@@ -929,6 +929,7 @@ async def chat_message(request: Request):
     _require_auth(request)
     body = await request.json()
     message = body.get("message", "").strip()
+    mode = body.get("mode", "manual")  # manual | auto
     if not message:
         raise HTTPException(status_code=400, detail="Message required")
 
@@ -976,6 +977,18 @@ async def chat_message(request: Request):
 
 # ТЕКУЩИЙ ЗАПРОС
 {message}
+
+# РЕЖИМ РАБОТЫ: {'РУЧНОЙ (Manual)' if mode == 'manual' else 'АВТОМАТИЧЕСКИЙ (Auto)'}
+{(
+    '- Сначала опиши как ты понял задачу пользователя и какие действия планируешь.\n'
+    '- Спроси подтверждение: "Верно? Выполняю?"\n'
+    '- Только после явного подтверждения ("да", "верно", "выполняй") формируй [COMMAND_FOR_CODE].\n'
+    '- Если пользователь уточняет или поправляет — скорректируй план и снова спроси подтверждение.'
+) if mode == 'manual' else (
+    '- При первом сообщении кратко опиши план и спроси подтверждение.\n'
+    '- После подтверждения выполняй все последующие задачи автоматически, без дополнительных вопросов.\n'
+    '- Сразу формируй [COMMAND_FOR_CODE] для каждого действия.'
+)}
 
 # ИНСТРУКЦИИ
 - Отвечай на русском языке. Будь кратким и полезным.
