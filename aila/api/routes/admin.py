@@ -407,11 +407,29 @@ def _sanitize_filename(filename: str) -> str:
     return "".join(c for c in filename if c.isalnum() or c in "._- ")
 
 
-def _get_chat_history(limit: int = 20) -> list[dict]:
-    """Get recent chat history."""
+def _get_chat_history(limit: int = 20, for_prompt: bool = False) -> list[dict]:
+    """Get recent chat history.
+
+    Args:
+        limit: Max number of messages to return.
+        for_prompt: If True, filter out code_result messages and trim content.
+    """
     history_file = HISTORY_DIR / "current.json"
     history = _load_json(history_file, [])
-    return history[-limit:] if isinstance(history, list) else []
+    if not isinstance(history, list):
+        return []
+    if for_prompt:
+        # Exclude code_result messages (can be very large) and trim content
+        filtered = [
+            m for m in history
+            if m.get("type") != "code_result"
+        ]
+        for m in filtered:
+            if len(m.get("content", "")) > 1000:
+                m = dict(m)
+                m["content"] = m["content"][:1000] + "..."
+        return filtered[-limit:]
+    return history[-limit:]
 
 
 def _save_chat_message(role: str, content: str, msg_type: str = "text") -> None:
@@ -492,8 +510,9 @@ async def chat_message(request: Request):
     _save_chat_message("user", message)
 
     # Build context
+    _chat_start = time.time()
     knowledge = _load_knowledge_base()
-    history = _get_chat_history(10)
+    history = _get_chat_history(10, for_prompt=True)
     history_text = "\n".join(
         f"{'User' if m['role'] == 'user' else 'Assistant'}: {m['content']}"
         for m in history[:-1]  # exclude current message
@@ -557,17 +576,19 @@ Claude Code имеет ПОЛНЫЙ доступ к /opt/aila/ и может:
 Используй АБСОЛЮТНЫЕ пути от /opt/aila/."""
 
     try:
-        # Run claude CLI for Chat with proper env
+        # Run claude CLI for Chat with Sonnet (faster than default Opus)
         claude_env = _get_claude_env()
-        logger.info("[ADMIN_CHAT] Calling claude CLI, cwd=/opt/aila")
+        prompt_len = len(prompt)
+        logger.info(f"[ADMIN_CHAT] Calling claude CLI, prompt={prompt_len} chars")
         result = await asyncio.to_thread(
             subprocess.run,
-            ["claude", "--print", prompt],
+            ["claude", "--print", "--model", "sonnet", prompt],
             cwd="/opt/aila",
             capture_output=True,
             text=True,
             env=claude_env,
         )
+        elapsed = time.time() - _chat_start
         response = result.stdout.strip() if result.stdout else ""
         stderr = result.stderr.strip() if result.stderr else ""
 
@@ -580,12 +601,12 @@ Claude Code имеет ПОЛНЫЙ доступ к /opt/aila/ и может:
 
         if not response and stderr:
             response = f"Ошибка Claude: {stderr[:500]}"
-            logger.error(f"[ADMIN_CHAT] stderr: {stderr[:300]}")
+            logger.error(f"[ADMIN_CHAT] stderr: {stderr[:300]} ({elapsed:.1f}s)")
         elif not response:
             response = f"Ошибка: нет ответа от Claude (code={result.returncode})"
-            logger.error(f"[ADMIN_CHAT] Empty output, returncode={result.returncode}")
+            logger.error(f"[ADMIN_CHAT] Empty output, returncode={result.returncode} ({elapsed:.1f}s)")
         else:
-            logger.info(f"[ADMIN_CHAT] Response received, {len(response)} chars")
+            logger.info(f"[ADMIN_CHAT] Response {len(response)} chars in {elapsed:.1f}s")
     except FileNotFoundError:
         response = "Ошибка: claude CLI не найден. Проверьте установку."
         logger.error("[ADMIN_CHAT] claude CLI not found in PATH")
@@ -674,12 +695,14 @@ async def execute_code(request: Request):
         try:
             cmd = [
                 "claude", "--print",
+                "--model", "sonnet",
                 "--no-session-persistence",
                 "--dangerously-skip-permissions",
                 command,
             ]
 
             claude_env = _get_claude_env()
+            _code_start = time.time()
             logger.info(f"[ADMIN_CODE] Executing: {command[:100]}")
             result = await asyncio.to_thread(
                 subprocess.run,
@@ -700,9 +723,11 @@ async def execute_code(request: Request):
                 _increment_admin_stats("code")
                 return rl_result
 
+            _code_elapsed = time.time() - _code_start
             if not output and error:
-                logger.error(f"[ADMIN_CODE] stderr: {error[:300]}")
+                logger.error(f"[ADMIN_CODE] stderr: {error[:300]} ({_code_elapsed:.1f}s)")
             response = output or error or "Command completed (no output)"
+            logger.info(f"[ADMIN_CODE] Done {len(response)} chars in {_code_elapsed:.1f}s")
 
             # Track and save
             _increment_admin_stats("code")
@@ -781,6 +806,7 @@ async def execute_code_stream(request: Request):
 
                 proc = await asyncio.create_subprocess_exec(
                     "claude", "--print",
+                    "--model", "sonnet",
                     "--no-session-persistence",
                     "--dangerously-skip-permissions",
                     command,
@@ -1732,7 +1758,7 @@ async def _process_queue() -> None:
             claude_env = _get_claude_env()
             result = await asyncio.to_thread(
                 subprocess.run,
-                ["claude", "--print", "--no-session-persistence", "--dangerously-skip-permissions", task["command"]],
+                ["claude", "--print", "--model", "sonnet", "--no-session-persistence", "--dangerously-skip-permissions", task["command"]],
                 cwd="/opt/aila",
                 capture_output=True,
                 text=True,

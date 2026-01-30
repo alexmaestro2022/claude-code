@@ -2672,6 +2672,24 @@ DELETE /api/admin/knowledge/{fn} — удалить файл
 
 ---
 
-**Последнее обновление:** 2026-01-30 (feat: streaming status indicators for Claude Code)
+## 51. Оптимизация скорости Claude Chat/Code (2026-01-30)
+
+### Проблема:
+- Claude CLI использовал Opus 4.5 по умолчанию — самая медленная модель
+- История чата включала `code_result` сообщения (могут быть огромными)
+- Отсутствовало логирование времени выполнения
+
+### Исправления:
+- **`--model sonnet`** добавлен во все вызовы Claude CLI (Chat, Code, Code-Stream, Scheduler)
+- **Фильтрация истории** для промпта: `code_result` сообщения исключаются, контент обрезается до 1000 символов
+- **Тайминг-логи** добавлены: `[ADMIN_CHAT] Response 1200 chars in 8.3s`, `[ADMIN_CODE] Done 500 chars in 5.1s`
+- Размер промпта логируется: `prompt=25000 chars`
+
+### Файлы:
+- `aila/api/routes/admin.py` — все 4 вызова CLI + `_get_chat_history(for_prompt=True)`
+
+---
+
+**Последнее обновление:** 2026-01-30 (perf: optimize Claude Chat/Code prompt size)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
