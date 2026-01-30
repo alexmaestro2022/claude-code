@@ -126,9 +126,7 @@ _knowledge_loaded = False
 _knowledge_last_loaded: Optional[str] = None
 _knowledge_cache: dict[str, str] = {}  # filename -> content
 
-# Chat session state
-_chat_session_started: Optional[float] = None
-_chat_session_id: Optional[str] = None
+# Chat session state (removed globals — now in _admin_sessions[token])
 
 # File type classification
 _FILE_TYPE_MAP = {
@@ -407,11 +405,18 @@ async def check_session(request: Request):
 async def initialize_session(request: Request):
     """Initialize chat session: load knowledge base, return session info."""
     _require_auth(request)
-    global _chat_session_started, _chat_session_id
+
+    token = request.cookies.get("admin_token")
+    if not token or token not in _admin_sessions:
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
     # Generate session ID and timestamp
-    _chat_session_id = secrets.token_urlsafe(8)
-    _chat_session_started = time.time()
+    session_id = secrets.token_urlsafe(8)
+    session_started = time.time()
+
+    # Save to admin sessions
+    _admin_sessions[token]["session_id"] = session_id
+    _admin_sessions[token]["session_started"] = session_started
 
     # Load knowledge base
     knowledge = _load_knowledge_base()
@@ -422,17 +427,17 @@ async def initialize_session(request: Request):
     history_count = len(history)
 
     logger.info(
-        f"[SESSION] Initialized session {_chat_session_id}, "
+        f"[SESSION] Initialized session {session_id}, "
         f"kb_files={len(kb_files)}, history={history_count}"
     )
 
     return {
-        "session_id": _chat_session_id,
+        "session_id": session_id,
         "knowledge_loaded": _knowledge_loaded,
         "knowledge_files": kb_files,
         "knowledge_last_loaded": _knowledge_last_loaded,
         "history_count": history_count,
-        "started": datetime.fromtimestamp(_chat_session_started).isoformat(),
+        "started": datetime.fromtimestamp(session_started).isoformat(),
     }
 
 
@@ -441,20 +446,28 @@ async def session_status(request: Request):
     """Get current chat session status."""
     _require_auth(request)
 
+    token = request.cookies.get("admin_token")
+    if not token or token not in _admin_sessions:
+        return {"active": False}
+
+    session = _admin_sessions[token]
+    session_id = session.get("session_id")
+    session_started = session.get("session_started")
+
     history = _get_chat_history(200)
     history_count = len(history)
 
-    uptime_sec = int(time.time() - _chat_session_started) if _chat_session_started else 0
+    uptime_sec = int(time.time() - session_started) if session_started else 0
     hours, remainder = divmod(uptime_sec, 3600)
     minutes, _ = divmod(remainder, 60)
     uptime_str = f"{hours}h {minutes}m" if hours else f"{minutes}m"
 
     return {
-        "session_id": _chat_session_id,
-        "active": _chat_session_started is not None,
+        "session_id": session_id,
+        "active": session_started is not None,
         "started": (
-            datetime.fromtimestamp(_chat_session_started).isoformat()
-            if _chat_session_started else None
+            datetime.fromtimestamp(session_started).isoformat()
+            if session_started else None
         ),
         "uptime": uptime_str,
         "knowledge_loaded": _knowledge_loaded,
@@ -472,8 +485,11 @@ async def session_status(request: Request):
 async def clear_session(request: Request):
     """Clear session: archive history, reset knowledge cache, start fresh."""
     _require_auth(request)
-    global _chat_session_started, _chat_session_id
     global _knowledge_loaded, _knowledge_last_loaded, _knowledge_cache
+
+    token = request.cookies.get("admin_token")
+    if not token or token not in _admin_sessions:
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
     # Archive current history
     history_file = HISTORY_DIR / "current.json"
@@ -493,15 +509,18 @@ async def clear_session(request: Request):
     _knowledge_cache = {}
 
     # Reset session
-    old_id = _chat_session_id
-    _chat_session_id = secrets.token_urlsafe(8)
-    _chat_session_started = time.time()
+    old_id = _admin_sessions[token].get("session_id")
+    new_session_id = secrets.token_urlsafe(8)
+    new_session_started = time.time()
 
-    _audit_log("admin", "SESSION_CLEAR", f"old={old_id}, new={_chat_session_id}")
+    _admin_sessions[token]["session_id"] = new_session_id
+    _admin_sessions[token]["session_started"] = new_session_started
+
+    _audit_log("admin", "SESSION_CLEAR", f"old={old_id}, new={new_session_id}")
 
     return {
         "success": True,
-        "new_session_id": _chat_session_id,
+        "new_session_id": new_session_id,
         "archived": len(history) if isinstance(history, list) else 0,
     }
 
