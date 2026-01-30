@@ -497,6 +497,39 @@
         .send-btn:hover { filter: brightness(1.1); box-shadow: 0 0 15px var(--accent-dim); }
         .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+        /* Chat mode button */
+        .chat-mode-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            border: 2px solid var(--border);
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+            font-size: 1rem;
+        }
+        .chat-mode-btn:hover {
+            border-color: var(--blue);
+            color: var(--blue);
+        }
+        .chat-mode-btn.active {
+            border-color: var(--accent);
+            background: rgba(0, 255, 136, 0.08);
+            color: var(--accent);
+        }
+        .chat-mode-btn.active i {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
         /* Modals */
         .modal-overlay {
             display: none;
@@ -1129,6 +1162,9 @@
         <!-- INPUT AREA -->
         <div class="input-area">
             <div class="input-wrapper">
+                <button class="chat-mode-btn" id="chatModeBtn" onclick="toggleChatMode()" title="Chat mode (dialog only)">
+                    <i class="fa-solid fa-comment-dots"></i>
+                </button>
                 <textarea class="input-field" id="chatInput"
                     placeholder="Write a request..." data-i18n-placeholder="placeholder"
                     rows="1"
@@ -1590,6 +1626,7 @@ const API = '/api/admin';
 let adminToken = localStorage.getItem('admin_token') || '';
 let currentMode = 'manual'; // manual | auto
 let isWorking = false;
+let chatModeActive = false;
 let commands = [];
 let scheduledTasks = [];
 let autoSettings = JSON.parse(localStorage.getItem('admin_auto_settings') || '{}');
@@ -1637,6 +1674,10 @@ const translations = {
         // Chat
         welcome_msg: 'Добро пожаловать! Я <b>Claude Chat</b> — ваш ассистент AILA.<br>Используйте быстрые команды или напишите запрос.',
         placeholder: 'Напишите запрос...',
+        chat_mode_on: 'Режим чата включён',
+        chat_mode_off: 'Обычный режим (Chat + Code)',
+        chat_mode_placeholder: '💬 Режим чата — спрашивайте что угодно...',
+        chat_only_label: '💬 Только чат',
         thinking: 'Claude думает...',
         executing: 'Claude Code выполняет...',
         status_thinking: 'Claude думает...',
@@ -2014,6 +2055,27 @@ function setMode(mode) {
 }
 
 // =============================================
+// Chat-only mode
+// =============================================
+function toggleChatMode() {
+    chatModeActive = !chatModeActive;
+    const btn = document.getElementById('chatModeBtn');
+    const input = document.getElementById('chatInput');
+
+    if (chatModeActive) {
+        btn.classList.add('active');
+        btn.title = t('chat_mode_on');
+        input.placeholder = t('chat_mode_placeholder');
+        addMessage('system', '💬 ' + t('chat_mode_on'));
+    } else {
+        btn.classList.remove('active');
+        btn.title = 'Chat mode (dialog only)';
+        input.placeholder = t('placeholder');
+        addMessage('system', '🔧 ' + t('chat_mode_off'));
+    }
+}
+
+// =============================================
 // Status
 // =============================================
 function setStatus(status, text) {
@@ -2360,7 +2422,11 @@ async function sendMessage() {
     showWorkingState('thinking');
 
     try {
-        const data = await api('/chat', 'POST', { message, mode: currentMode });
+        const data = await api('/chat', 'POST', {
+            message,
+            mode: currentMode,
+            chat_only: chatModeActive,
+        });
 
         // Check for rate limit response
         if (data.error && data.error_type === 'rate_limit_info') {
@@ -2373,39 +2439,47 @@ async function sendMessage() {
 
         addMessage('assistant', data.response, data.has_command ? 'command' : 'text');
 
-        // Manual mode: show confirm buttons if response asks for confirmation
-        if (!data.has_command && currentMode === 'manual') {
-            const resp = data.response || '';
-            if (/\?\s*$|Верно\??|Правильно\??|Выполняю\??|подтвер/i.test(resp)) {
-                appendConfirmButtons();
+        // In chat-only mode, skip command processing entirely
+        if (data.chat_only) {
+            // Refresh knowledge if files were updated
+            if (data.knowledge_updated && data.knowledge_updated.length > 0) {
+                loadKnowledge();
             }
-        }
+        } else {
+            // Manual mode: show confirm buttons if response asks for confirmation
+            if (!data.has_command && currentMode === 'manual') {
+                const resp = data.response || '';
+                if (/\?\s*$|Верно\??|Правильно\??|Выполняю\??|подтвер/i.test(resp)) {
+                    appendConfirmButtons();
+                }
+            }
 
-        // Refresh knowledge if files were updated
-        if (data.knowledge_updated && data.knowledge_updated.length > 0) {
-            loadKnowledge();
-        }
+            // Refresh knowledge if files were updated
+            if (data.knowledge_updated && data.knowledge_updated.length > 0) {
+                loadKnowledge();
+            }
 
-        // Command detected — show preview block
-        if (data.has_command) {
-            const cmdMatch = data.response.match(/\[COMMAND_FOR_CODE\]([\s\S]*?)\[\/COMMAND_FOR_CODE\]/);
-            if (cmdMatch) {
-                const command = cmdMatch[1].trim();
-                if (currentMode === 'auto') {
-                    // Auto: check security first
-                    const secCheck = await api('/check-command', 'POST', { command, mode: 'auto' });
-                    if (!secCheck.allowed) {
-                        addMessage('system', `Blocked: ${secCheck.block_reason}`);
-                    } else if (secCheck.needs_confirmation) {
-                        // Security requires confirmation even in auto
-                        showCommandBlock(command, 'manual');
+            // Command detected — show preview block
+            if (data.has_command) {
+                const cmdMatch = data.response.match(/\[COMMAND_FOR_CODE\]([\s\S]*?)\[\/COMMAND_FOR_CODE\]/);
+                if (cmdMatch) {
+                    const command = cmdMatch[1].trim();
+                    if (currentMode === 'auto') {
+                        // Auto: check security first
+                        const secCheck = await api('/check-command', 'POST', { command, mode: 'auto' });
+                        if (!secCheck.allowed) {
+                            addMessage('system', `Blocked: ${secCheck.block_reason}`);
+                        } else if (secCheck.needs_confirmation) {
+                            // Security requires confirmation even in auto
+                            showCommandBlock(command, 'manual');
+                        } else {
+                            // Safe to auto-execute with countdown
+                            showCommandBlock(command, 'auto');
+                        }
                     } else {
-                        // Safe to auto-execute with countdown
-                        showCommandBlock(command, 'auto');
+                        // Manual: always show preview
+                        showCommandBlock(command, 'manual');
                     }
-                } else {
-                    // Manual: always show preview
-                    showCommandBlock(command, 'manual');
                 }
             }
         }

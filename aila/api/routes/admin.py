@@ -923,35 +923,56 @@ def _process_knowledge_updates(response: str) -> list[str]:
     return updated
 
 
-@router.post("/chat")
-async def chat_message(request: Request):
-    """Send message to Claude Chat."""
-    _require_auth(request)
-    body = await request.json()
-    message = body.get("message", "").strip()
-    mode = body.get("mode", "manual")  # manual | auto
-    if not message:
-        raise HTTPException(status_code=400, detail="Message required")
+def _build_chat_only_prompt(
+    message: str,
+    knowledge: str,
+    history_text: str,
+    system_context: str,
+) -> str:
+    """Build prompt for chat-only mode — direct dialog, no Code commands."""
+    return f"""{system_context}
 
-    # Save user message
-    _save_chat_message("user", message)
+# БАЗА ЗНАНИЙ
+{knowledge}
 
-    # Build context
-    _chat_start = time.time()
-    knowledge = _load_knowledge_base()
-    history = _get_chat_history(10, for_prompt=True)
-    history_text = "\n".join(
-        f"{'User' if m['role'] == 'user' else 'Assistant'}: {m['content']}"
-        for m in history[:-1]  # exclude current message
-    )
+# РЕЖИМ: ТОЛЬКО ЧАТ
+Ты — Claude Chat, интеллектуальный помощник для управления AILA AI Trade ботом.
+Ты общаешься с пользователем напрямую.
+НЕ формируй команды для Claude Code.
+НЕ используй [COMMAND_FOR_CODE].
+Просто отвечай на вопросы, рассуждай, помогай.
 
-    # Read context.md if exists
-    context_file = CHAT_DIR / "context.md"
-    system_context = ""
-    if context_file.exists():
-        system_context = context_file.read_text(errors="replace")[:10000]
+- ВСЕГДА следуй правилам из RULES.md
+- Используй контекст из AILA_SESSION_MEMORY.md
+- Отвечай на русском языке
 
-    prompt = f"""{system_context}
+# УПРАВЛЕНИЕ ПРАВИЛАМИ
+Если пользователь просит создать/добавить/удалить/изменить правило:
+- Ответь что правило добавлено/удалено/изменено
+- Добавь тег для обновления файла:
+  [UPDATE_KNOWLEDGE]RULES.md|append|текст правила[/UPDATE_KNOWLEDGE]
+  [UPDATE_KNOWLEDGE]RULES.md|remove|текст для удаления[/UPDATE_KNOWLEDGE]
+
+# ИСТОРИЯ ЧАТА
+{history_text}
+
+# ВОПРОС
+{message}
+
+# ФОРМАТ ОТВЕТА
+Отвечай структурированно, используй ## заголовки, списки, таблицы где уместно.
+Будь кратким и полезным."""
+
+
+def _build_full_prompt(
+    message: str,
+    knowledge: str,
+    history_text: str,
+    system_context: str,
+    mode: str,
+) -> str:
+    """Build prompt for full Chat + Code mode."""
+    return f"""{system_context}
 
 # БАЗА ЗНАНИЙ
 Ты изучил следующие файлы и ДОЛЖЕН следовать им:
@@ -996,11 +1017,14 @@ async def chat_message(request: Request):
   [COMMAND_FOR_CODE]конкретная bash команда или задача[/COMMAND_FOR_CODE]
 
 # ПРАВИЛА ДЛЯ COMMAND_FOR_CODE
-Claude Code имеет ПОЛНЫЙ доступ к /opt/aila/ и может:
-- Читать/редактировать любые файлы проекта
-- Выполнять bash команды (cat, grep, tail, ls и т.д.)
-- Перезапускать сервисы (sudo systemctl restart aila)
-- Читать логи, конфиги, код
+Claude Code работает на РЕАЛЬНОМ VPS сервере Vultr Tokyo (НЕ контейнер, НЕ Docker, НЕ sandbox).
+У тебя ПОЛНЫЕ ПРАВА:
+- Читать/редактировать любые файлы в /opt/aila/
+- Выполнять любые bash команды
+- sudo РАБОТАЕТ без пароля: sudo systemctl restart aila
+- Git: commit, push, pull
+- Устанавливать пакеты: pip, npm
+НЕ ПИШИ что "нет доступа" или "контейнер" — это неправда.
 
 ПРАВИЛЬНЫЕ примеры команд:
 [COMMAND_FOR_CODE]cat /opt/aila/logs/ai_trade/trader.log | tail -50[/COMMAND_FOR_CODE]
@@ -1013,6 +1037,45 @@ Claude Code имеет ПОЛНЫЙ доступ к /opt/aila/ и может:
 [COMMAND_FOR_CODE]посмотри настройки[/COMMAND_FOR_CODE]
 
 Используй АБСОЛЮТНЫЕ пути от /opt/aila/."""
+
+
+@router.post("/chat")
+async def chat_message(request: Request):
+    """Send message to Claude Chat."""
+    _require_auth(request)
+    body = await request.json()
+    message = body.get("message", "").strip()
+    mode = body.get("mode", "manual")  # manual | auto
+    chat_only = body.get("chat_only", False)
+    if not message:
+        raise HTTPException(status_code=400, detail="Message required")
+
+    # Save user message
+    _save_chat_message("user", message)
+
+    # Build context
+    _chat_start = time.time()
+    knowledge = _load_knowledge_base()
+    history = _get_chat_history(10, for_prompt=True)
+    history_text = "\n".join(
+        f"{'User' if m['role'] == 'user' else 'Assistant'}: {m['content']}"
+        for m in history[:-1]  # exclude current message
+    )
+
+    # Read context.md if exists
+    context_file = CHAT_DIR / "context.md"
+    system_context = ""
+    if context_file.exists():
+        system_context = context_file.read_text(errors="replace")[:10000]
+
+    if chat_only:
+        prompt = _build_chat_only_prompt(
+            message, knowledge, history_text, system_context
+        )
+    else:
+        prompt = _build_full_prompt(
+            message, knowledge, history_text, system_context, mode
+        )
 
     try:
         # Run claude CLI for Chat with Sonnet (faster than default Opus)
@@ -1065,8 +1128,8 @@ Claude Code имеет ПОЛНЫЙ доступ к /opt/aila/ и может:
     if clean_response:
         response = clean_response
 
-    # Check if response contains command for Code
-    has_command = "[COMMAND_FOR_CODE]" in response
+    # In chat-only mode, never parse commands
+    has_command = False if chat_only else "[COMMAND_FOR_CODE]" in response
 
     # Save assistant response
     _save_chat_message("assistant", response, "command" if has_command else "text")
@@ -1075,6 +1138,7 @@ Claude Code имеет ПОЛНЫЙ доступ к /opt/aila/ и может:
     return {
         "response": response,
         "has_command": has_command,
+        "chat_only": chat_only,
         "knowledge_updated": knowledge_updated,
         "timestamp": datetime.now().isoformat(),
     }

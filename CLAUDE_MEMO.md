@@ -2842,6 +2842,26 @@ logger.info(f"[POSITION] Calculated raw_amount: {raw_amount:.8f} = (${position_s
 
 ---
 
-**Последнее обновление:** 2026-01-30 (fix: single session for all devices)
+## Режим чата (Chat-only mode) (2026-01-30)
+
+### Описание:
+- Кнопка 💬 слева от поля ввода в админ-панели
+- При активации — Claude Chat отвечает напрямую без формирования [COMMAND_FOR_CODE]
+- При деактивации — обычный режим Chat + Code
+
+### Реализация:
+- **Frontend**: кнопка `#chatModeBtn` с toggle состоянием, CSS `.chat-mode-btn` / `.active`
+- **Backend**: параметр `chat_only` в POST `/chat`, отдельный промпт `_build_chat_only_prompt()`
+- Промпт для chat-only включает базу знаний и историю, но запрещает формировать команды
+- Существующий промпт вынесен в `_build_full_prompt()` для чистоты кода
+- Ответ содержит `chat_only: true` — фронтенд пропускает парсинг команд
+
+### Файлы:
+- `aila/api/routes/admin.py` — `_build_chat_only_prompt()`, `_build_full_prompt()`, `chat_only` в `/chat`
+- `aila/api/templates/admin.html` — CSS chat-mode-btn, HTML кнопка, JS toggleChatMode, sendMessage обновлён
+
+---
+
+**Последнее обновление:** 2026-01-30 (feat: chat-only mode)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
