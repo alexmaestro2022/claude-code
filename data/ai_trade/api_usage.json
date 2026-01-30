@@ -1,17 +1,17 @@
 {
   "session": {
-    "start_time": "2026-01-30T07:29:22.230831",
+    "start_time": "2026-01-30T12:47:09.408235",
     "calls": {
-      "sonnet": 50,
-      "haiku": 10
+      "sonnet": 41,
+      "haiku": 9
     },
     "input_tokens": {
-      "sonnet": 25574,
-      "haiku": 980
+      "sonnet": 21221,
+      "haiku": 886
     },
     "output_tokens": {
-      "sonnet": 11589,
-      "haiku": 794
+      "sonnet": 8953,
+      "haiku": 833
     }
   },
   "daily": {
@@ -129,51 +129,51 @@
     },
     "2026-01-30": {
       "calls": {
-        "sonnet": 127,
-        "haiku": 23
+        "sonnet": 208,
+        "haiku": 42
       },
       "cost": {
-        "sonnet": 0.6411660000000001,
-        "haiku": 0.003027250000000001
+        "sonnet": 1.049235,
+        "haiku": 0.005838750000000003
       },
       "input_tokens": {
-        "sonnet": 67352,
-        "haiku": 2249
+        "sonnet": 112615,
+        "haiku": 4125
       },
       "output_tokens": {
-        "sonnet": 29274,
-        "haiku": 1972
+        "sonnet": 47426,
+        "haiku": 3846
       },
       "agents": {
         "TRADER": {
-          "calls": 18,
-          "cost": 0.185055,
-          "input_tokens": 31460,
-          "output_tokens": 6045
+          "calls": 32,
+          "cost": 0.326634,
+          "input_tokens": 57838,
+          "output_tokens": 10208
         },
         "NEWS": {
-          "calls": 23,
-          "cost": 0.003027250000000001,
-          "input_tokens": 2249,
-          "output_tokens": 1972
+          "calls": 42,
+          "cost": 0.005838750000000003,
+          "input_tokens": 4125,
+          "output_tokens": 3846
         },
         "PREDICTOR": {
-          "calls": 31,
-          "cost": 0.164043,
-          "input_tokens": 9721,
-          "output_tokens": 8992
+          "calls": 53,
+          "cost": 0.28428899999999996,
+          "input_tokens": 16663,
+          "output_tokens": 15620
         },
         "WHALE": {
-          "calls": 47,
-          "cost": 0.12389100000000002,
-          "input_tokens": 8662,
-          "output_tokens": 6527
+          "calls": 82,
+          "cost": 0.21207600000000001,
+          "input_tokens": 14382,
+          "output_tokens": 11262
         },
         "REVIEWER": {
-          "calls": 31,
-          "cost": 0.16817700000000002,
-          "input_tokens": 17509,
-          "output_tokens": 7710
+          "calls": 41,
+          "cost": 0.226236,
+          "input_tokens": 23732,
+          "output_tokens": 10336
         }
       }
     }
@@ -181,66 +181,66 @@
   "monthly": {
     "2026-01": {
       "calls": {
-        "sonnet": 886,
-        "haiku": 124
+        "sonnet": 967,
+        "haiku": 143
       },
       "cost": {
-        "sonnet": 6.125715000000002,
-        "haiku": 0.01743574999999998
+        "sonnet": 6.533784000000004,
+        "haiku": 0.020247249999999987
       }
     }
   },
   "total": {
-    "calls": 1010,
-    "cost": 6.143150749999995,
-    "input_tokens": 1000293,
-    "output_tokens": 222271
+    "calls": 1110,
+    "cost": 6.554031249999993,
+    "input_tokens": 1047432,
+    "output_tokens": 242297
   },
   "agents": {
     "NEWS": {
-      "calls": 124,
-      "cost": 0.01743574999999998,
-      "input_tokens": 12133,
-      "output_tokens": 11522,
-      "avg_cost": 0.00014061088709677402,
+      "calls": 143,
+      "cost": 0.020247249999999987,
+      "input_tokens": 14009,
+      "output_tokens": 13396,
+      "avg_cost": 0.00014158916083916075,
       "avg_input": 97,
-      "avg_output": 92
+      "avg_output": 93
     },
     "TRADER": {
-      "calls": 150,
-      "cost": 2.966070000000001,
-      "input_tokens": 761035,
-      "output_tokens": 45531,
-      "avg_cost": 0.019773800000000008,
-      "avg_input": 5073,
+      "calls": 164,
+      "cost": 3.1076490000000003,
+      "input_tokens": 787413,
+      "output_tokens": 49694,
+      "avg_cost": 0.018949079268292684,
+      "avg_input": 4801,
       "avg_output": 303
     },
     "WHALE": {
-      "calls": 323,
-      "cost": 0.8727989999999998,
-      "input_tokens": 61668,
-      "output_tokens": 45853,
-      "avg_cost": 0.0027021640866873057,
-      "avg_input": 190,
+      "calls": 358,
+      "cost": 0.9609839999999996,
+      "input_tokens": 67388,
+      "output_tokens": 50588,
+      "avg_cost": 0.00268431284916201,
+      "avg_input": 188,
       "avg_output": 141
     },
     "PREDICTOR": {
-      "calls": 254,
-      "cost": 1.3636499999999998,
-      "input_tokens": 79900,
-      "output_tokens": 74930,
-      "avg_cost": 0.005368700787401574,
+      "calls": 276,
+      "cost": 1.483896,
+      "input_tokens": 86842,
+      "output_tokens": 81558,
+      "avg_cost": 0.005376434782608696,
       "avg_input": 314,
       "avg_output": 295
     },
     "REVIEWER": {
-      "calls": 136,
-      "cost": 0.827376,
-      "input_tokens": 80057,
-      "output_tokens": 39147,
-      "avg_cost": 0.00608364705882353,
-      "avg_input": 588,
-      "avg_output": 287
+      "calls": 146,
+      "cost": 0.8854350000000001,
+      "input_tokens": 86280,
+      "output_tokens": 41773,
+      "avg_cost": 0.006064623287671233,
+      "avg_input": 590,
+      "avg_output": 286
     },
     "UNKNOWN": {
       "calls": 23,
@@ -273,7 +273,7 @@
   },
   "budget": {
     "initial_balance": 17.07,
-    "accumulated_cost": 6.143150749999995,
+    "accumulated_cost": 6.554031249999993,
     "last_reset_date": "2026-01-28T08:48:07.266852",
     "daily_reset_date": "2026-01-30"
   }

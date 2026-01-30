@@ -77,6 +77,38 @@ class PositionManager:
                 position_size_usdt = MIN_ORDER_SIZE_USDT
                 signal["position_size_usdt"] = position_size_usdt
 
+            # Check available balance before opening position
+            logger.info(f"[POSITION] Checking available balance for {symbol}")
+            try:
+                balance = await self._exchange.get_balance("USDT")
+                available_balance = balance.get("free", 0)
+                logger.info(f"[POSITION] Available balance: ${available_balance:.2f}")
+
+                # Calculate required margin (for Bybit isolated margin)
+                # Margin = position_size / leverage
+                required_margin = position_size_usdt / leverage
+                logger.info(f"[POSITION] Required margin: ${required_margin:.2f} (position=${position_size_usdt:.2f}, leverage={leverage}x)")
+
+                # Check if we have enough balance
+                if available_balance < required_margin:
+                    # Try reducing position to fit available balance
+                    max_position_size = available_balance * leverage
+                    if max_position_size >= MIN_ORDER_SIZE_USDT:
+                        logger.warning(
+                            f"[POSITION] Insufficient balance ${available_balance:.2f} < ${required_margin:.2f}, "
+                            f"reducing position: ${position_size_usdt:.2f} → ${max_position_size:.2f}"
+                        )
+                        position_size_usdt = max_position_size
+                        signal["position_size_usdt"] = position_size_usdt
+                    else:
+                        logger.error(
+                            f"[POSITION] REJECT: Available balance ${available_balance:.2f} insufficient. "
+                            f"Need ${required_margin:.2f} margin (min position ${MIN_ORDER_SIZE_USDT} with {leverage}x leverage)"
+                        )
+                        return None
+            except Exception as e:
+                logger.error(f"[POSITION] Failed to check balance: {e}, continuing anyway")
+
             logger.info(f"[POSITION] Setting leverage {leverage}x for {symbol}")
             await self._exchange.set_leverage(leverage, symbol)
 

@@ -4,27 +4,27 @@
     "level": 1,
     "xp": 25,
     "xp_to_next_level": 75,
-    "total_trades": 4,
+    "total_trades": 5,
     "winning_trades": 1,
-    "losing_trades": 3,
-    "winrate": 25.0,
-    "total_pnl_usdt": -0.19732599999999997,
+    "losing_trades": 4,
+    "winrate": 20.0,
+    "total_pnl_usdt": -0.22049199999999997,
     "total_pnl_percent": 0.0,
     "best_trade_usdt": 0.128189,
     "worst_trade_usdt": -0.191943,
     "avg_trade_duration_minutes": 0,
     "avg_rr_ratio": 0.0,
     "consecutive_wins": 0,
-    "consecutive_losses": 1,
+    "consecutive_losses": 2,
     "max_consecutive_wins": 1,
     "max_consecutive_losses": 2,
-    "trades_today": 4,
-    "pnl_today_usdt": -0.19732599999999997,
-    "trades_this_week": 4,
-    "pnl_this_week_usdt": -0.19732599999999997,
-    "last_trade_time": "2026-01-30T07:21:08.522701",
+    "trades_today": 5,
+    "pnl_today_usdt": -0.22049199999999997,
+    "trades_this_week": 5,
+    "pnl_this_week_usdt": -0.22049199999999997,
+    "last_trade_time": "2026-01-30T11:45:25.466952",
     "last_win_time": "2026-01-30T06:34:06.798295",
-    "last_loss_time": "2026-01-30T07:21:08.522687",
+    "last_loss_time": "2026-01-30T11:45:25.466941",
     "paused_until": null,
     "pause_reason": null,
     "trigger_stats": {
@@ -49,8 +49,8 @@
         "pnl": 0.0
       },
       "stop_loss": {
-        "trades": 3,
-        "pnl": -0.325515
+        "trades": 4,
+        "pnl": -0.348681
       },
       "take_profit": {
         "trades": 1,
@@ -73,6 +73,18 @@
     "enabled": true,
     "cooldown_remaining": 0.0,
     "trades_history": [
+      {
+        "symbol": "PAXGUSDT",
+        "side": "SHORT",
+        "pnl_usdt": -0.023166,
+        "pnl_pct": 0.1,
+        "entry_price": 5162.2,
+        "exit_price": 5159.7,
+        "close_reason": "stop_loss",
+        "leverage": "2",
+        "grade": "C",
+        "closed_at": "2026-01-30T11:45:25.466927"
+      },
       {
         "symbol": "BNBUSDT",
         "side": "LONG",
@@ -123,6 +135,6 @@
       }
     ]
   },
-  "saved_at": "2026-01-30T07:21:08.523246",
+  "saved_at": "2026-01-30T11:45:25.467767",
   "version": "2.0"
 }

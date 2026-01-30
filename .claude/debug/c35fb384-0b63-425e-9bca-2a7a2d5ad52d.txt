@@ -672,3 +672,43 @@
 2026-01-30T09:34:59.493Z [DEBUG] [API:auth] OAuth token check starting
 2026-01-30T09:34:59.494Z [DEBUG] [API:auth] OAuth token check complete
 2026-01-30T09:35:00.963Z [DEBUG] Stream started - received first chunk
+2026-01-30T09:35:04.393Z [DEBUG] executePreToolHooks called for tool: Bash
+2026-01-30T09:35:04.394Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2026-01-30T09:35:04.394Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T09:35:04.394Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-01-30T09:35:04.544Z [DEBUG] Getting matching hook commands for PostToolUseFailure with query: Bash
+2026-01-30T09:35:04.544Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T09:35:04.544Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-01-30T09:35:04.546Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T09:35:04.546Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T09:35:04.546Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T09:35:04.546Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T09:35:04.551Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T09:35:04.562Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T09:35:04.562Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T09:35:04.562Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T09:35:04.564Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T09:35:06.562Z [DEBUG] Stream started - received first chunk
+2026-01-30T09:35:07.875Z [DEBUG] executePreToolHooks called for tool: Bash
+2026-01-30T09:35:07.875Z [DEBUG] Getting matching hook commands for PreToolUse with query: Bash
+2026-01-30T09:35:07.875Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T09:35:07.875Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-01-30T09:35:09.922Z [DEBUG] Getting matching hook commands for PostToolUseFailure with query: Bash
+2026-01-30T09:35:09.922Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T09:35:09.922Z [DEBUG] Matched 0 unique hooks for query "Bash" (0 before deduplication)
+2026-01-30T09:35:09.924Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T09:35:09.924Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T09:35:09.924Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T09:35:09.924Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T09:35:09.927Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T09:35:09.934Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.22.10a; cc_entrypoint=sdk-cli;
+2026-01-30T09:35:09.934Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T09:35:09.934Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T09:35:09.935Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T09:35:12.080Z [DEBUG] Stream started - received first chunk
+2026-01-30T09:35:26.937Z [DEBUG] Getting matching hook commands for Stop with query: undefined
+2026-01-30T09:35:26.937Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T09:35:26.937Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2026-01-30T09:35:26.939Z [DEBUG] Getting matching hook commands for SessionEnd with query: other
+2026-01-30T09:35:26.939Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T09:35:26.939Z [DEBUG] Matched 0 unique hooks for query "other" (0 before deduplication)

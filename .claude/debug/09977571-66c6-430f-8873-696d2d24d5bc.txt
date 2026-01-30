@@ -1,0 +1,270 @@
+2026-01-30T13:24:49.121Z [DEBUG] Failed to check enabledPlatforms: TypeError: LK is not a function
+2026-01-30T13:24:49.232Z [DEBUG] Watching for changes in setting files /opt/aila/.claude...
+2026-01-30T13:24:49.252Z [DEBUG] [init] configureGlobalMTLS starting
+2026-01-30T13:24:49.252Z [DEBUG] [init] configureGlobalMTLS complete
+2026-01-30T13:24:49.252Z [DEBUG] [init] configureGlobalAgents starting
+2026-01-30T13:24:49.253Z [DEBUG] [init] configureGlobalAgents complete
+2026-01-30T13:24:49.276Z [DEBUG] Applying permission update: Adding 47 allow rule(s) to destination 'localSettings': ["Bash(curl:*)","Bash(python3:*)","Bash(pm2 restart:*)","Bash(/usr/local/bin/pm2 restart:*)","Bash(/home/*/.local/bin/pm2)","Bash(restart aila)","Bash(/root/.local/bin/pm2 restart:*)","Bash(~/.nvm/versions/node/*/bin/pm2)","Bash(sudo -u aila bash -c 'source ~/.bashrc && pm2 restart aila')","Bash(sudo -u aila /home/aila/.local/bin/pm2 restart:*)","Bash(su - aila -c \"pm2 restart aila\")","Bash(runuser -u aila -- bash -lc:*)","Bash(npm root:*)","Bash(/home/aila/.npm/_npx/5f7878ce38f1eb13/node_modules/pm2/bin/pm2 restart:*)","Bash(PM2_HOME=/home/aila/.pm2 /home/aila/.npm/_npx/5f7878ce38f1eb13/node_modules/pm2/bin/pm2 list:*)","Bash(systemctl:*)","Bash(git add:*)","Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: add visual AUTOPILOT activity indicator\n\n- Add pulsing status dot next to AUTOPILOT button \\(green=active, scanning animation, orange=warning\\)\n- Add status bar at bottom: shows running status, current pair being scanned, time since last scan\n- Add /api/ai-trade/autopilot/heartbeat endpoint with real-time scan tracking\n- Add JavaScript polling every 5 seconds for live updates\n- Add scan tracking in autopilot_mode.py \\(last_scan_time, currently_scanning, current_pair\\)\n- Add RU/EN translations for status bar labels\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")","Bash(git push:*)","Bash(sudo systemctl restart:*)","Bash(pkill:*)","Bash(/home/aila/.nvm/versions/node/*/bin/pm2)","Bash(npm exec pm2:*)","Bash(ls:*)","Bash(kill:*)","Bash(git commit:*)","Bash(journalctl:*)","Bash(pm2 logs:*)","Bash(sudo systemctl status:*)","Bash(pm2 status:*)","Bash(pgrep:*)","Bash(find:*)","Bash(grep:*)","Bash(/opt/aila/venv/bin/python:*)","Bash(netstat:*)","Bash(ss:*)","Bash(./start-claude.sh:*)","Bash(ps:*)","Bash(source ~/.nvm/nvm.sh)","Bash(/home/aila/.local/bin/pm2 restart:*)","Bash(export PATH=\"$PATH:/home/aila/.nvm/versions/node/v20.11.1/bin:/home/aila/.local/bin\")","Bash(supervisorctl status:*)","Bash(python -m pytest:*)","Bash(/usr/bin/python3 -m pytest:*)","Bash(pip3 list:*)","Bash(/opt/aila/venv/bin/pip list:*)","Bash(/opt/aila/venv/bin/pip install:*)"]
+2026-01-30T13:24:49.276Z [DEBUG] [STARTUP] Loading MCP configs...
+2026-01-30T13:24:49.278Z [DEBUG] Found 0 plugins (0 enabled, 0 disabled)
+2026-01-30T13:24:49.279Z [DEBUG] [claudeai-mcp] Checking gate (cached)...
+2026-01-30T13:24:49.279Z [DEBUG] [claudeai-mcp] Gate returned: false
+2026-01-30T13:24:49.279Z [DEBUG] [claudeai-mcp] Disabled via gate
+2026-01-30T13:24:49.333Z [DEBUG] [ToolSearch:optimistic] mode=tst-auto, ENABLE_TOOL_SEARCH=undefined, result=true
+2026-01-30T13:24:49.337Z [DEBUG] [STARTUP] Running setup()...
+2026-01-30T13:24:49.362Z [DEBUG] Loading skills from: managed=/etc/claude-code/.claude/skills, user=/opt/aila/.claude/skills, project=[]
+2026-01-30T13:24:49.365Z [DEBUG] Passes: Using fresh cached eligibility data
+2026-01-30T13:24:49.366Z [ERROR] TypeError: TypeError: Cannot read properties of undefined (reading 'safeParse')
+    at HU6 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5222:25476)
+    at ca2 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5223:1314)
+    at wv (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5223:1754)
+    at yq (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5223:1683)
+    at Object.xx8 [as isPlatformInEnabledList] (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:244:2532)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:4738:21551
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:848
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:4875:6409
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:848
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5142:1037
+2026-01-30T13:24:49.366Z [ERROR] Error: Error: ENOENT: no such file or directory, scandir '/etc/claude-code/.claude/skills'
+    at Module.readdirSync (node:fs:1525:3)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:9:1909
+    at BX (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:35431)
+    at Object.readdirSync (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:9:1879)
+    at fZ1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1873:369)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1873:4509
+    at q (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:6814)
+    at bo2 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:4875:4362)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:4875:6995
+    at q (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:6814)
+2026-01-30T13:24:49.367Z [ERROR] Error: Error: ENOENT: no such file or directory, scandir '/opt/aila/.claude/skills'
+    at Module.readdirSync (node:fs:1525:3)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:9:1909
+    at BX (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:35431)
+    at Object.readdirSync (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:9:1879)
+    at fZ1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1873:369)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1873:4552
+    at q (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:6814)
+    at bo2 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:4875:4362)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:4875:6995
+    at q (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:6814)
+2026-01-30T13:24:49.367Z [DEBUG] Error log sink initialized
+2026-01-30T13:24:49.369Z [DEBUG] getPluginSkills: Processing 0 enabled plugins
+2026-01-30T13:24:49.369Z [DEBUG] Total plugin skills loaded: 0
+2026-01-30T13:24:49.369Z [DEBUG] Total plugin commands loaded: 0
+2026-01-30T13:24:49.369Z [DEBUG] Registered 0 hooks from 0 plugins
+2026-01-30T13:24:49.406Z [DEBUG] [STARTUP] setup() completed in 69ms
+2026-01-30T13:24:49.406Z [DEBUG] [STARTUP] Loading commands and agents...
+2026-01-30T13:24:49.419Z [DEBUG] Total plugin agents loaded: 0
+2026-01-30T13:24:49.419Z [DEBUG] Loaded 0 unique skills (managed: 0, user: 0, project: 0, legacy commands: 0)
+2026-01-30T13:24:49.421Z [DEBUG] getSkills returning: 0 skill dir commands, 0 plugin skills, 1 bundled skills
+2026-01-30T13:24:49.424Z [DEBUG] [STARTUP] Commands and agents loaded in 18ms
+2026-01-30T13:24:49.425Z [DEBUG] [LSP MANAGER] initializeLspServerManager() called
+2026-01-30T13:24:49.425Z [DEBUG] [LSP MANAGER] Created manager instance, state=pending
+2026-01-30T13:24:49.425Z [DEBUG] [LSP MANAGER] Starting async initialization (generation 1)
+2026-01-30T13:24:49.426Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T13:24:49.426Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T13:24:49.427Z [DEBUG] Passes: Using fresh cached eligibility data
+2026-01-30T13:24:49.428Z [DEBUG] Total LSP servers loaded: 0
+2026-01-30T13:24:49.428Z [DEBUG] [STARTUP] MCP configs loaded in 152ms
+2026-01-30T13:24:49.428Z [DEBUG] [LSP SERVER MANAGER] getAllLspServers returned 0 server(s)
+2026-01-30T13:24:49.428Z [DEBUG] LSP manager initialized with 0 servers
+2026-01-30T13:24:49.428Z [DEBUG] LSP server manager initialized successfully
+2026-01-30T13:24:49.429Z [DEBUG] LSP notification handlers registered successfully for all 0 server(s)
+2026-01-30T13:24:49.429Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T13:24:49.483Z [DEBUG] installed_plugins.json doesn't exist, returning empty V2 object
+2026-01-30T13:24:49.483Z [DEBUG] Initialized versioned plugins system with 0 plugins
+2026-01-30T13:24:49.485Z [DEBUG] [Perfetto] initializePerfettoTracing called, env value: undefined
+2026-01-30T13:24:49.584Z [DEBUG] Writing to temp file: /opt/aila/.claude/todos/09977571-66c6-430f-8873-696d2d24d5bc-agent-09977571-66c6-430f-8873-696d2d24d5bc.json.tmp.641219.1769779489584
+2026-01-30T13:24:49.584Z [DEBUG] Temp file written successfully, size: 2 bytes
+2026-01-30T13:24:49.584Z [DEBUG] Renaming /opt/aila/.claude/todos/09977571-66c6-430f-8873-696d2d24d5bc-agent-09977571-66c6-430f-8873-696d2d24d5bc.json.tmp.641219.1769779489584 to /opt/aila/.claude/todos/09977571-66c6-430f-8873-696d2d24d5bc-agent-09977571-66c6-430f-8873-696d2d24d5bc.json
+2026-01-30T13:24:49.585Z [DEBUG] File /opt/aila/.claude/todos/09977571-66c6-430f-8873-696d2d24d5bc-agent-09977571-66c6-430f-8873-696d2d24d5bc.json written atomically
+2026-01-30T13:24:49.602Z [DEBUG] Grove: Using fresh cached config
+2026-01-30T13:24:51.142Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T13:24:51.142Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T13:24:51.142Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T13:24:51.176Z [DEBUG] Stats cache is up to date
+2026-01-30T13:24:51.397Z [DEBUG] Session index: added 1, updated 0, removed 0, summaries generated 0 (total: 59)
+2026-01-30T13:24:51.456Z [DEBUG] Getting matching hook commands for SessionStart with query: startup
+2026-01-30T13:24:51.456Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T13:24:51.456Z [DEBUG] Matched 0 unique hooks for query "startup" (0 before deduplication)
+2026-01-30T13:24:51.493Z [DEBUG] Total plugin output styles loaded: 0
+2026-01-30T13:24:51.559Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T13:24:51.559Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T13:24:51.559Z [DEBUG] Sending 1 skills via attachment (initial, 1 total sent)
+2026-01-30T13:24:51.560Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T13:24:51.560Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T13:24:51.580Z [DEBUG] Getting matching hook commands for UserPromptSubmit with query: undefined
+2026-01-30T13:24:51.580Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T13:24:51.580Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2026-01-30T13:24:51.610Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T13:24:51.637Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.25.525; cc_entrypoint=sdk-cli;
+2026-01-30T13:24:51.640Z [ERROR] ReferenceError: ReferenceError: Bun is not defined
+    at i57 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1447:3896)
+    at n57 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1447:4104)
+    at IvK (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5142:6790)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5142:4110
+    at async v_6 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1075:2007)
+    at async aMA (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5142:4080)
+    at async nf (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3143:5189)
+    at async PUK.submitMessage (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:6224:5312)
+    at async VUK (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:6224:9434)
+2026-01-30T13:24:51.641Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T13:24:51.641Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T13:24:51.659Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T13:24:53.646Z [DEBUG] Stream started - received first chunk
+2026-01-30T13:24:55.069Z [DEBUG] executePreToolHooks called for tool: Read
+2026-01-30T13:24:55.069Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2026-01-30T13:24:55.069Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T13:24:55.069Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2026-01-30T13:24:55.109Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2026-01-30T13:24:55.109Z [DEBUG] Found 3 hook matchers in settings
+2026-01-30T13:24:55.109Z [DEBUG] Matched 1 unique hooks for query "Read" (1 before deduplication)
+2026-01-30T13:24:55.141Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T13:24:55.141Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T13:24:55.141Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T13:24:55.142Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T13:24:55.145Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T13:24:55.152Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.25.525; cc_entrypoint=sdk-cli;
+2026-01-30T13:24:55.152Z [ERROR] ReferenceError: ReferenceError: Bun is not defined
+    at i57 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1447:3896)
+    at n57 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1447:4104)
+    at IvK (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5142:6790)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5142:4110
+    at async v_6 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1075:2007)
+    at async aMA (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5142:4080)
+    at async nf (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3143:5189)
+    at async nf (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3143:11070)
+    at async PUK.submitMessage (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:6224:5312)
+2026-01-30T13:24:55.153Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T13:24:55.153Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T13:24:55.154Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T13:24:57.040Z [DEBUG] Stream started - received first chunk
+2026-01-30T13:24:58.382Z [DEBUG] executePreToolHooks called for tool: Grep
+2026-01-30T13:24:58.384Z [DEBUG] Getting matching hook commands for PreToolUse with query: Grep
+2026-01-30T13:24:58.384Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T13:24:58.384Z [DEBUG] Matched 0 unique hooks for query "Grep" (0 before deduplication)
+2026-01-30T13:24:58.406Z [DEBUG] Ripgrep first use test: PASSED (mode=builtin, path=/usr/local/lib/node_modules/@anthropic-ai/claude-code/vendor/ripgrep/x64-linux/rg)
+2026-01-30T13:24:58.410Z [DEBUG] Getting matching hook commands for PostToolUse with query: Grep
+2026-01-30T13:24:58.410Z [DEBUG] Found 3 hook matchers in settings
+2026-01-30T13:24:58.410Z [DEBUG] Matched 1 unique hooks for query "Grep" (1 before deduplication)
+2026-01-30T13:24:58.426Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T13:24:58.426Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T13:24:58.426Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T13:24:58.426Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T13:24:58.430Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T13:24:58.435Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.25.525; cc_entrypoint=sdk-cli;
+2026-01-30T13:24:58.436Z [ERROR] ReferenceError: ReferenceError: Bun is not defined
+    at i57 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1447:3896)
+    at n57 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1447:4104)
+    at IvK (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5142:6790)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5142:4110
+    at async v_6 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1075:2007)
+    at async aMA (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5142:4080)
+    at async nf (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3143:5189)
+    at async nf (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3143:11070)
+    at async nf (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3143:11070)
+2026-01-30T13:24:58.436Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T13:24:58.436Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T13:24:58.438Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T13:25:00.618Z [DEBUG] Stream started - received first chunk
+2026-01-30T13:25:01.713Z [DEBUG] executePreToolHooks called for tool: Read
+2026-01-30T13:25:01.713Z [DEBUG] Getting matching hook commands for PreToolUse with query: Read
+2026-01-30T13:25:01.713Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T13:25:01.713Z [DEBUG] Matched 0 unique hooks for query "Read" (0 before deduplication)
+2026-01-30T13:25:01.721Z [DEBUG] Getting matching hook commands for PostToolUse with query: Read
+2026-01-30T13:25:01.721Z [DEBUG] Found 3 hook matchers in settings
+2026-01-30T13:25:01.722Z [DEBUG] Matched 1 unique hooks for query "Read" (1 before deduplication)
+2026-01-30T13:25:01.736Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T13:25:01.736Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T13:25:01.736Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T13:25:01.736Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T13:25:01.742Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T13:25:01.750Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.25.525; cc_entrypoint=sdk-cli;
+2026-01-30T13:25:01.751Z [ERROR] ReferenceError: ReferenceError: Bun is not defined
+    at i57 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1447:3896)
+    at n57 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1447:4104)
+    at IvK (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5142:6790)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5142:4110
+    at async v_6 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1075:2007)
+    at async aMA (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5142:4080)
+    at async nf (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3143:5189)
+    at async nf (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3143:11070)
+    at async nf (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3143:11070)
+2026-01-30T13:25:01.751Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T13:25:01.751Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T13:25:01.753Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T13:25:03.412Z [DEBUG] Stream started - received first chunk
+2026-01-30T13:25:08.112Z [DEBUG] executePreToolHooks called for tool: Edit
+2026-01-30T13:25:08.113Z [DEBUG] Getting matching hook commands for PreToolUse with query: Edit
+2026-01-30T13:25:08.113Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T13:25:08.113Z [DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+2026-01-30T13:25:08.115Z [DEBUG] Permission suggestions for Edit: [
+  {
+    "type": "setMode",
+    "mode": "acceptEdits",
+    "destination": "session"
+  }
+]
+2026-01-30T13:25:08.136Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T13:25:08.136Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T13:25:08.137Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T13:25:08.137Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T13:25:08.142Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T13:25:08.153Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.25.525; cc_entrypoint=sdk-cli;
+2026-01-30T13:25:08.154Z [ERROR] ReferenceError: ReferenceError: Bun is not defined
+    at i57 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1447:3896)
+    at n57 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1447:4104)
+    at IvK (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5142:6790)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5142:4110
+    at async v_6 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1075:2007)
+    at async aMA (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5142:4080)
+    at async nf (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3143:5189)
+    at async nf (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3143:11070)
+    at async nf (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3143:11070)
+2026-01-30T13:25:08.155Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T13:25:08.155Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T13:25:08.156Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T13:25:10.164Z [DEBUG] Stream started - received first chunk
+2026-01-30T13:25:12.548Z [DEBUG] executePreToolHooks called for tool: Edit
+2026-01-30T13:25:12.549Z [DEBUG] Getting matching hook commands for PreToolUse with query: Edit
+2026-01-30T13:25:12.549Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T13:25:12.549Z [DEBUG] Matched 0 unique hooks for query "Edit" (0 before deduplication)
+2026-01-30T13:25:12.556Z [DEBUG] Permission suggestions for Edit: [
+  {
+    "type": "setMode",
+    "mode": "acceptEdits",
+    "destination": "session"
+  }
+]
+2026-01-30T13:25:12.575Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-01-30T13:25:12.575Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-01-30T13:25:12.576Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-01-30T13:25:12.576Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-01-30T13:25:12.580Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-01-30T13:25:12.599Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.25.525; cc_entrypoint=sdk-cli;
+2026-01-30T13:25:12.600Z [ERROR] ReferenceError: ReferenceError: Bun is not defined
+    at i57 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1447:3896)
+    at n57 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1447:4104)
+    at IvK (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5142:6790)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5142:4110
+    at async v_6 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1075:2007)
+    at async aMA (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5142:4080)
+    at async nf (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3143:5189)
+    at async nf (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3143:11070)
+    at async nf (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3143:11070)
+2026-01-30T13:25:12.600Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-01-30T13:25:12.600Z [DEBUG] [API:auth] OAuth token check starting
+2026-01-30T13:25:12.603Z [DEBUG] [API:auth] OAuth token check complete
+2026-01-30T13:25:14.510Z [DEBUG] Stream started - received first chunk
+2026-01-30T13:25:16.034Z [DEBUG] Getting matching hook commands for Stop with query: undefined
+2026-01-30T13:25:16.034Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T13:25:16.034Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2026-01-30T13:25:16.037Z [DEBUG] Getting matching hook commands for SessionEnd with query: other
+2026-01-30T13:25:16.037Z [DEBUG] Found 0 hook matchers in settings
+2026-01-30T13:25:16.037Z [DEBUG] Matched 0 unique hooks for query "other" (0 before deduplication)

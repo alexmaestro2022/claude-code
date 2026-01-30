@@ -139,6 +139,13 @@
         "added_at": "2026-01-29T02:51:52"
       },
       {
+        "symbol": "AXSUSDT",
+        "pnl_usdt": -0.15392026,
+        "grade": "C",
+        "close_reason": "stop_loss",
+        "added_at": "2026-01-30T10:35:00.996319"
+      },
+      {
         "symbol": "XAUTUSDT",
         "pnl_usdt": -0.11934666,
         "grade": "D",
@@ -218,6 +225,13 @@
         "grade": "D",
         "close_reason": "stop_loss",
         "added_at": "2026-01-30T02:31:59.724040"
+      },
+      {
+        "symbol": "PAXGUSDT",
+        "pnl_usdt": -0.023166,
+        "grade": "C",
+        "close_reason": "stop_loss",
+        "added_at": "2026-01-30T11:45:25.468062"
       },
       {
         "symbol": "BNBUSDT",
