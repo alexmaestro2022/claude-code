@@ -659,6 +659,10 @@ class AutopilotMode:
             opportunity['position_size_usdt'] = size['position_size_usdt']
             opportunity['source_agent'] = agent
 
+            # Map SNIPER's 'direction' to position_manager's 'decision'
+            if 'direction' in opportunity and 'decision' not in opportunity:
+                opportunity['decision'] = opportunity['direction']
+
             logger.info(f"[{agent}][EXECUTE] Opening position for {symbol}")
             result = await self._orchestrator.position_manager.open_position(opportunity)
             logger.info(f"[{agent}][EXECUTE] Position result: {result is not None}")

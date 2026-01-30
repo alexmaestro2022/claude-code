@@ -35,3 +35,7 @@ config/google_credentials.json
 # OS
 .DS_Store
 Thumbs.db
+.git-credentials
+.npm/
+.pm2/
+.claude.json*
