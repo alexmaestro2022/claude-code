@@ -2690,6 +2690,38 @@ DELETE /api/admin/knowledge/{fn} — удалить файл
 
 ---
 
-**Последнее обновление:** 2026-01-30 (perf: optimize Claude Chat/Code prompt size)
+## 52. Chat/Code Interaction Flow + Security Settings (2026-01-30)
+
+### Архитектура Chat ↔ Code:
+- **Command Preview Block** — команда от Chat показывается перед отправкой в Code
+  - Manual: кнопки "Отправить" / "Редактировать" / "Отмена"
+  - Auto: обратный отсчёт 3 сек с возможностью отмены
+  - Ctrl+Enter отправить, Escape отменить, Ctrl+E редактировать
+- **Result Block** — результат Code показывается с кнопками "Отправить в Chat" / "Пропустить"
+- **Risk Indicator** — оценка риска команды (low/medium/high/critical)
+
+### Security Settings (кнопка щита в top bar):
+- **4 вкладки:** Protection, Permissions, Critical, Limits
+- **10 категорий защиты AI Trade:** логика, стратегия, риски, обучение, позиции, капитал, агенты, каскад, пары, API ключи
+- **Разрешения:** file edit, restart, git push, log clear, file delete, .env, DB edit
+- **Критические операции:** open/close position, autopilot toggle, leverage, API keys (некоторые нельзя отключить)
+- **Лимиты Auto:** max iterations, timeout, human checkpoint every N actions
+- **Настройки хранятся:** `/opt/aila/data/admin/settings.json`
+
+### Новые API endpoints:
+- `GET /api/admin/settings` — загрузка настроек безопасности
+- `PUT /api/admin/settings` — сохранение настроек
+- `POST /api/admin/check-command` — проверка риска команды
+- `POST /api/admin/confirm-code` — выполнение подтверждённой команды (SSE streaming)
+- `POST /api/admin/confirm-chat` — отправка результата в Chat для анализа
+
+### Файлы:
+- `aila/api/routes/admin.py` — бэкенд: security checker, settings API, confirm endpoints
+- `aila/api/templates/admin.html` — UI: command block, result block, security modal, JS flow
+- `data/admin/settings.json` — файл настроек безопасности
+
+---
+
+**Последнее обновление:** 2026-01-30 (feat: Chat/Code interaction + security settings)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
