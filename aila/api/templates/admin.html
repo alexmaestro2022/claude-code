@@ -2053,12 +2053,14 @@ async function api(endpoint, method = 'GET', body = null) {
 // =============================================
 function setMode(mode) {
     currentMode = mode;
-    autoConfirmed = false; // Reset on mode switch
+    autoConfirmed = false;
     document.getElementById('modeManual').classList.toggle('active', mode === 'manual');
     const autoBtn = document.getElementById('modeAuto');
     autoBtn.classList.toggle('active', mode === 'auto');
-    // Remove confirmed indicator
     autoBtn.querySelector('.auto-confirmed-dot')?.remove();
+
+    // Reset auto_confirmed on backend
+    api('/chat/reset-auto', 'POST').catch(() => {});
 
     // Cancel any pending auto-send countdown when switching modes
     cancelAutoCountdown();
@@ -2436,6 +2438,10 @@ async function sendMessage() {
     const input = document.getElementById('chatInput');
     const message = input.value.trim();
     if (!message || isWorking) return;
+
+    // Disable send button immediately to prevent double-click
+    const sendBtn = document.getElementById('sendBtn');
+    if (sendBtn) sendBtn.disabled = true;
 
     input.value = '';
     autoResize(input);

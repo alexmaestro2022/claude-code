@@ -947,20 +947,29 @@ def _get_mode_instructions(mode: str, auto_confirmed: bool = False) -> str:
         )
     if auto_confirmed:
         return (
-            "- Пользователь УЖЕ подтвердил план. Выполняй АВТОМАТИЧЕСКИ.\n"
-            "- Сразу формируй [COMMAND_FOR_CODE] для каждого действия без вопросов.\n"
-            "- НЕ спрашивай подтверждение повторно."
+            "- ВАЖНО: Пользователь УЖЕ подтвердил план.\n"
+            "- Выполняй задачу АВТОМАТИЧЕСКИ. Сразу формируй [COMMAND_FOR_CODE].\n"
+            "- ЗАПРЕЩЕНО спрашивать подтверждение повторно. Действуй!"
         )
     return (
-        "- Кратко опиши план действий и спроси: \"Подтверждаете? (да/нет)\"\n"
-        "- После подтверждения выполняй автоматически, формируй [COMMAND_FOR_CODE]."
+        "- Кратко опиши план (2-3 пункта) и спроси: \"Подтверждаете? (да/нет)\"\n"
+        "- После ответа \"да\" работай автоматически, формируй [COMMAND_FOR_CODE]."
     )
 
 
 _AUTO_CONFIRM_WORDS = frozenset([
     "да", "верно", "подтверждаю", "выполняй", "делай", "погнали",
-    "продолжай", "ок", "окей", "yes", "ok", "go", "confirm",
+    "продолжай", "ок", "окей", "yes", "ok", "go", "confirm", "давай",
 ])
+
+
+def _is_auto_confirmation(message: str) -> bool:
+    """Check if message is a confirmation for auto mode."""
+    msg = message.lower().strip().rstrip(".!,")
+    # Short messages with confirmation words
+    if len(message) <= 30:
+        return any(w in msg for w in _AUTO_CONFIRM_WORDS)
+    return False
 
 
 # --- First message prompts (full context) ---
@@ -1087,19 +1096,16 @@ async def chat_message(request: Request):
     # Track auto_confirmed state in session
     auto_confirmed = session.get("auto_confirmed", False)
     if mode == "auto" and token in _admin_sessions:
-        msg_lower = message.lower().strip()
-        # Detect confirmation words
-        if msg_lower in _AUTO_CONFIRM_WORDS or any(
-            w == msg_lower for w in _AUTO_CONFIRM_WORDS
-        ):
+        if _is_auto_confirmation(message):
             auto_confirmed = True
             _admin_sessions[token]["auto_confirmed"] = True
-            logger.info("[ADMIN_CHAT] Auto mode confirmed by user")
+            logger.info(
+                "[ADMIN_CHAT] Auto mode confirmed by user: %s", message[:50],
+            )
         # Reset on new task (long message that isn't a confirmation)
-        elif len(message) > 50:
-            auto_confirmed = False
+        elif len(message) > 30 and not auto_confirmed:
             _admin_sessions[token]["auto_confirmed"] = False
-            logger.info("[ADMIN_CHAT] Auto mode reset — new task detected")
+            logger.info("[ADMIN_CHAT] Auto mode — new task, awaiting confirmation")
 
     _chat_start = time.time()
 
@@ -1214,6 +1220,16 @@ async def get_chat_history_api(request: Request):
     _require_auth(request)
     history = _get_chat_history(50)
     return {"history": history}
+
+
+@router.post("/chat/reset-auto")
+async def reset_auto_mode(request: Request):
+    """Reset auto_confirmed state."""
+    _require_auth(request)
+    token = _get_session_token(request)
+    if token and token in _admin_sessions:
+        _admin_sessions[token]["auto_confirmed"] = False
+    return {"success": True}
 
 
 @router.post("/chat/clear")
