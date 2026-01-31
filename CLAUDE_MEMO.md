@@ -2969,6 +2969,29 @@ Auto режим в Admin Panel всегда просил подтвержден�
 
 ---
 
-**Последнее обновление:** 2026-01-31 (feat: one-time permissions for blocked security actions)
+## 35. Chat Prompt — точное выполнение запросов (2026-01-31)
+
+### Проблема:
+Chat добавлял лишние действия которые пользователь не просил. Например: "перенеси индикатор" → Chat планировал 4 пункта вместо одного.
+
+### Исправление:
+Добавлено правило "ТОЧНОЕ ВЫПОЛНЕНИЕ" во все 4 промпта Chat:
+- `_build_first_chat_only` — chat-only первое сообщение
+- `_build_first_full` — chat+code первое сообщение
+- `_build_followup_chat_only` — chat-only follow-up
+- `_build_followup_full` — chat+code follow-up
+
+### Правило:
+- Делать ТОЛЬКО то, что просит пользователь
+- НЕ добавлять "улучшения" без запроса
+- НЕ менять то, что не упоминалось
+- Предлагать улучшения ОТДЕЛЬНО ПОСЛЕ основной задачи
+
+### Файлы:
+- `aila/api/routes/admin.py` — промпты Chat
+
+---
+
+**Последнее обновление:** 2026-01-31 (fix: Chat prompt - execute exactly what user asks)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
