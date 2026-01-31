@@ -2992,6 +2992,28 @@ Chat добавлял лишние действия которые пользо�
 
 ---
 
-**Последнее обновление:** 2026-01-31 (fix: Chat prompt - execute exactly what user asks)
+## 36. Chat → Opus 4.5 + новый промпт (2026-01-31)
+
+### Изменения:
+- **Модель Chat**: sonnet → **opus** (Chat endpoints: /chat, /confirm-chat)
+- **Модель Code**: остаётся **sonnet** (Code endpoints: /code/execute, /code/execute-stream, /confirm-code)
+- **Промпт переписан**: убрана избыточность, добавлена роль "Claude как в claude.ai"
+- **Mode instructions**: упрощены до одной строки каждый
+- **Follow-up промпты**: минимизированы, без дублирования
+
+### Структура промптов:
+| Промпт | Режим | Описание |
+|--------|-------|----------|
+| `_build_first_chat_only` | chat-only, 1st msg | Полная KB, без [COMMAND_FOR_CODE] |
+| `_build_first_full` | chat+code, 1st msg | Полная KB + команды сервера |
+| `_build_followup_chat_only` | chat-only, follow-up | Минимальный + история |
+| `_build_followup_full` | chat+code, follow-up | Минимальный + история + режим |
+
+### Файлы:
+- `aila/api/routes/admin.py` — промпты и subprocess вызовы
+
+---
+
+**Последнее обновление:** 2026-01-31 (feat: upgrade Chat to Opus 4.5)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
