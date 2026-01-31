@@ -3070,6 +3070,25 @@ User → Chat (план + подтверждение) → "да" (auto_confirmed
 
 ---
 
-**Последнее обновление:** 2026-01-31 (fix: auto mode reset after task complete)
+## 41. Правила разработки + pre-deploy check (2026-01-31)
+
+### Добавлено в CLAUDE.md (секция 19):
+- Один коммит = одна функция
+- Перед/после изменения — проверки
+- Не трогать рабочий код
+- Точечные изменения
+- Бэкапы через git tags
+
+### Скрипт `/opt/aila/scripts/pre-deploy-check.sh`:
+- Git status, diff
+- Синтаксис Python (ast.parse)
+- Import check
+- Последние коммиты
+
+### Текущий рабочий тег: `working-20260131`
+
+---
+
+**Последнее обновление:** 2026-01-31 (docs: development rules + pre-deploy check)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
