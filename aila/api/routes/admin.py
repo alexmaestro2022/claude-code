@@ -391,6 +391,8 @@ async def verify_code(request: Request):
         "created": now,
         "last_active": now,
         "ip": ip,
+        "session_context_sent": False,
+        "auto_confirmed": False,
     }
 
     await _send_telegram(f"🔓 Вход в Админ панель\n🌐 IP: {ip}")
@@ -1046,64 +1048,40 @@ def _is_auto_confirmation(message: str) -> bool:
 
 # --- First message prompts (full context) ---
 
-def _build_first_chat_only(
+def _build_first_prompt(
     message: str, knowledge: str, system_context: str,
+    mode: str, chat_only: bool = False, auto_confirmed: bool = False,
 ) -> str:
-    """First message in chat-only mode — full knowledge, no Code commands."""
-    mode_instructions = "Режим чата — только отвечай на вопросы, не выполняй команды на сервере."
-    return f"""{system_context}
-
-# КТО ТЫ
-Ты — Claude, умный ИИ-ассистент от Anthropic. Ты помогаешь управлять платформой AILA AI Trade.
-Ты работаешь так же как Claude в claude.ai — умный, понимающий контекст, helpful.
-Отвечай на русском.
-
-# ТВОИ ВОЗМОЖНОСТИ
-1. **Отвечать на вопросы** — любые, как обычный Claude
-2. **Анализировать** — логи, код, данные, ситуации
-
-# ПРАВИЛА
-- Делай ТОЛЬКО то, что просят. Не добавляй лишнего.
-- Будь кратким — не пиши стены текста.
-- Спрашивай если неясно — лучше уточнить чем сделать неправильно.
-- НЕ формируй [COMMAND_FOR_CODE] в этом режиме.
-
-# УПРАВЛЕНИЕ ПРАВИЛАМИ
-[UPDATE_KNOWLEDGE]RULES.md|append|текст[/UPDATE_KNOWLEDGE]
-[UPDATE_KNOWLEDGE]RULES.md|remove|текст[/UPDATE_KNOWLEDGE]
-
-# РЕЖИМ РАБОТЫ
-{mode_instructions}
-
-# БАЗА ЗНАНИЙ
-{knowledge}
-
-# ЗАПРОС
-{message}"""
-
-
-def _build_first_full(
-    message: str, knowledge: str, system_context: str,
-    mode: str, auto_confirmed: bool = False,
-) -> str:
-    """First message in Chat+Code mode — full knowledge + instructions."""
+    """First message — full context with knowledge base."""
     mode_instructions = _get_mode_instructions(mode, auto_confirmed)
-    return f"""{system_context}
+    if chat_only:
+        mode_instructions = "Только диалог, без команд на сервере."
 
-# КТО ТЫ
-Ты — Claude, умный ИИ-ассистент от Anthropic. Ты помогаешь управлять платформой AILA AI Trade.
-Ты работаешь так же как Claude в claude.ai — умный, понимающий контекст, helpful.
-Отвечай на русском.
-
-# ТВОИ ВОЗМОЖНОСТИ
-1. **Отвечать на вопросы** — любые, как обычный Claude
-2. **Анализировать** — логи, код, данные, ситуации
-3. **Выполнять задачи на сервере** — через Claude Code
-
-# КАК РАБОТАТЬ С СЕРВЕРОМ
+    server_block = ""
+    if not chat_only:
+        server_block = """
+# КОМАНДЫ НА СЕРВЕРЕ
 Когда нужно что-то сделать на сервере (прочитать файл, изменить код, перезапустить сервис):
 [COMMAND_FOR_CODE]конкретная команда с абсолютными путями /opt/aila/...[/COMMAND_FOR_CODE]
-Сервер — реальный VPS, полные права, sudo без пароля.
+Сервер — реальный VPS Vultr Tokyo, полные права, sudo без пароля."""
+
+    return f"""{system_context}
+
+# КТО ТЫ
+Ты — Claude (Opus 4.5), умный ИИ-ассистент от Anthropic.
+Ты работаешь ТОЧНО ТАК ЖЕ как Claude в claude.ai:
+- Умный и понимающий
+- Краткий и полезный
+- Понимаешь намерения, не добавляешь лишнего
+- Отвечаешь структурированно когда нужно
+
+# ПЛАТФОРМА
+Ты помогаешь управлять AILA AI Trade — криптовалютный торговый бот на Bybit Futures.
+Отвечай на русском.
+{server_block}
+
+# РЕЖИМ: {mode.upper() if not chat_only else 'CHAT-ONLY'}
+{mode_instructions}
 
 # ПРАВИЛА
 - Делай ТОЛЬКО то, что просят. Не добавляй лишнего.
@@ -1114,46 +1092,39 @@ def _build_first_full(
 [UPDATE_KNOWLEDGE]RULES.md|append|текст[/UPDATE_KNOWLEDGE]
 [UPDATE_KNOWLEDGE]RULES.md|remove|текст[/UPDATE_KNOWLEDGE]
 
-# РЕЖИМ РАБОТЫ
-{mode_instructions}
-
-# БАЗА ЗНАНИЙ
+# БАЗА ЗНАНИЙ (запомни на всю сессию)
 {knowledge}
 
-# ЗАПРОС
-{message}"""
-
-
-# --- Follow-up prompts (minimal context) ---
-
-def _build_followup_chat_only(
-    message: str, history_text: str,
-) -> str:
-    """Follow-up in chat-only mode — minimal prompt."""
-    return f"""Ты — Claude, умный ИИ-ассистент. Отвечай на русском. НЕ формируй [COMMAND_FOR_CODE].
-Делай только то, что просят.
-
-# ИСТОРИЯ
-{history_text}
+# ВАЖНО
+Эта информация действует ВСЮ сессию. В следующих сообщениях будет только краткое напоминание кто ты, но базу знаний повторять не будем — ты её уже знаешь.
 
 # ЗАПРОС
 {message}"""
 
 
-def _build_followup_full(
+def _build_followup_prompt(
     message: str, history_text: str, mode: str,
-    auto_confirmed: bool = False,
+    chat_only: bool = False, auto_confirmed: bool = False,
 ) -> str:
-    """Follow-up in Chat+Code mode — minimal prompt."""
+    """Follow-up — minimal prompt with history, no knowledge base."""
     mode_instructions = _get_mode_instructions(mode, auto_confirmed)
-    return f"""Ты — Claude, умный ИИ-ассистент. Отвечай на русском. Делай только то, что просят.
-Для команд на сервере: [COMMAND_FOR_CODE]команда[/COMMAND_FOR_CODE]
-Режим: {mode_instructions}
+    if chat_only:
+        mode_instructions = "Только диалог, без команд."
 
-# ИСТОРИЯ
+    server_hint = ""
+    if not chat_only:
+        server_hint = "\nДля команд на сервере: [COMMAND_FOR_CODE]команда[/COMMAND_FOR_CODE]"
+
+    return f"""# НАПОМИНАНИЕ
+Ты — Claude (Opus 4.5), умный ассистент для AILA AI Trade.
+Работай как Claude в claude.ai — умно, кратко, по делу.
+База знаний уже загружена в начале сессии.
+Режим: {mode_instructions}{server_hint}
+
+# ИСТОРИЯ ДИАЛОГА
 {history_text}
 
-# ЗАПРОС
+# НОВЫЙ ЗАПРОС
 {message}"""
 
 
@@ -1202,12 +1173,9 @@ async def chat_message(request: Request):
         if context_file.exists():
             system_context = context_file.read_text(errors="replace")[:10000]
 
-        if chat_only:
-            prompt = _build_first_chat_only(message, knowledge, system_context)
-        else:
-            prompt = _build_first_full(
-                message, knowledge, system_context, mode, auto_confirmed,
-            )
+        prompt = _build_first_prompt(
+            message, knowledge, system_context, mode, chat_only, auto_confirmed,
+        )
 
         # Mark context as sent
         if token in _admin_sessions:
@@ -1219,17 +1187,14 @@ async def chat_message(request: Request):
         history = _get_chat_history(5, for_prompt=True)
         history_text = _format_history_compact(history, 5)
 
-        if chat_only:
-            prompt = _build_followup_chat_only(message, history_text)
-        else:
-            prompt = _build_followup_full(
-                message, history_text, mode, auto_confirmed,
-            )
+        prompt = _build_followup_prompt(
+            message, history_text, mode, chat_only, auto_confirmed,
+        )
 
         prompt_type = "follow-up (minimal)"
 
     try:
-        # Run claude CLI for Chat with Sonnet (faster than default Opus)
+        # Run claude CLI for Chat with Opus
         claude_env = _get_claude_env()
         prompt_len = len(prompt)
         est_tokens = prompt_len // 4
