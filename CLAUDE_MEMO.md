@@ -3029,6 +3029,14 @@ Chat добавлял лишние действия которые пользо�
 
 ---
 
-**Последнее обновление:** 2026-01-31 (feat: smart Chat - full context first, minimal follow-ups)
+## 38. Opus везде — константа CLAUDE_MODEL (2026-01-31)
+
+- Добавлена константа `CLAUDE_MODEL = "opus"` в начало admin.py
+- Все 6 subprocess вызовов используют `CLAUDE_MODEL` вместо hardcoded строк
+- Chat, Code, confirm-chat, confirm-code, scheduled tasks — всё на Opus 4.5
+
+---
+
+**Последнее обновление:** 2026-01-31 (feat: Opus everywhere via CLAUDE_MODEL constant)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
