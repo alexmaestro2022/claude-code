@@ -91,6 +91,9 @@ def _get_claude_env() -> dict[str, str]:
     env["HOME"] = "/opt/aila"
     return env
 
+# Claude model — Max subscription, always Opus 4.5
+CLAUDE_MODEL = "opus"
+
 # Paths
 DATA_DIR = Path("/opt/aila/data/admin")
 CHAT_DIR = Path("/opt/aila/claude_chat")
@@ -1203,7 +1206,7 @@ async def chat_message(request: Request):
         )
         result = await asyncio.to_thread(
             subprocess.run,
-            ["claude", "--print", "--model", "opus", prompt],
+            ["claude", "--print", "--model", CLAUDE_MODEL, prompt],
             cwd="/opt/aila",
             capture_output=True,
             text=True,
@@ -1340,7 +1343,7 @@ async def execute_code(request: Request):
         try:
             cmd = [
                 "claude", "--print",
-                "--model", "sonnet",
+                "--model", CLAUDE_MODEL,
                 "--no-session-persistence",
                 "--dangerously-skip-permissions",
                 command,
@@ -1464,7 +1467,7 @@ async def execute_code_stream(request: Request):
 
                 proc = await asyncio.create_subprocess_exec(
                     "claude", "--print",
-                    "--model", "sonnet",
+                    "--model", CLAUDE_MODEL,
                     "--no-session-persistence",
                     "--dangerously-skip-permissions",
                     command,
@@ -1612,7 +1615,7 @@ async def confirm_send_to_code(request: Request):
             try:
                 claude_env = _get_claude_env()
                 proc = await asyncio.create_subprocess_exec(
-                    "claude", "--print", "--model", "sonnet",
+                    "claude", "--print", "--model", CLAUDE_MODEL,
                     "--no-session-persistence", "--dangerously-skip-permissions",
                     command, cwd="/opt/aila",
                     stdout=asyncio.subprocess.PIPE,
@@ -1742,7 +1745,7 @@ async def confirm_send_to_chat(request: Request):
         claude_env = _get_claude_env()
         result = await asyncio.to_thread(
             subprocess.run,
-            ["claude", "--print", "--model", "opus", prompt],
+            ["claude", "--print", "--model", CLAUDE_MODEL, prompt],
             cwd="/opt/aila", capture_output=True, text=True, env=claude_env,
         )
         response = result.stdout.strip() if result.stdout else ""
@@ -2615,7 +2618,7 @@ async def _process_queue() -> None:
             claude_env = _get_claude_env()
             result = await asyncio.to_thread(
                 subprocess.run,
-                ["claude", "--print", "--model", "sonnet", "--no-session-persistence", "--dangerously-skip-permissions", task["command"]],
+                ["claude", "--print", "--model", CLAUDE_MODEL, "--no-session-persistence", "--dangerously-skip-permissions", task["command"]],
                 cwd="/opt/aila",
                 capture_output=True,
                 text=True,
