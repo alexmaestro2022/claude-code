@@ -2738,7 +2738,7 @@ async function analyzeResult(output, originalCommand = '') {
     const msg = `Проанализируй результат выполнения команды и скажи, нужны ли дополнительные действия:\n\nКоманда: ${originalCommand}\n\nРезультат:\n${output.substring(0, 3000)}`;
 
     try {
-        const data = await api('/chat', 'POST', { message: msg });
+        const data = await api('/chat', 'POST', { message: msg, mode: currentMode, chat_only: chatModeActive });
         setWorking(false);
         addMessage('assistant', data.response, data.has_command ? 'command' : 'text');
 
