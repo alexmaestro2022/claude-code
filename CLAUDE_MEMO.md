@@ -3037,6 +3037,23 @@ Chat добавлял лишние действия которые пользо�
 
 ---
 
-**Последнее обновление:** 2026-01-31 (feat: Opus everywhere via CLAUDE_MODEL constant)
+## 39. Chat/Code interaction flow fix (2026-01-31)
+
+### Исправления:
+1. **`_get_mode_instructions`** — расширены до чётких пошаговых инструкций:
+   - MANUAL: "сначала опиши задачу → спроси подтверждение → ТОЛЬКО потом команда"
+   - AUTO (не подтв.): "опиши план → спроси подтверждение"
+   - AUTO (подтв.): "сразу формируй команду"
+2. **`analyzeResult()` в frontend** — теперь передаёт `mode` и `chat_only` в `/chat`
+
+### Полный поток Manual:
+User → Chat ("Верно?") → кнопки подтверждения → Chat ([COMMAND_FOR_CODE]) → превью команды → Code (SSE) → результат → кнопки "Отправить в Chat?" → Chat анализирует
+
+### Полный поток Auto:
+User → Chat (план + подтверждение) → "да" (auto_confirmed) → Chat → команда → countdown 3с → Code → analyzeResult → цикл (до maxIter)
+
+---
+
+**Последнее обновление:** 2026-01-31 (fix: Chat/Code interaction flow)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
