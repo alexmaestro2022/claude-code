@@ -1023,20 +1023,10 @@ def _format_history_compact(
 def _get_mode_instructions(mode: str, auto_confirmed: bool = False) -> str:
     """Get mode-specific instructions for Chat+Code mode."""
     if mode == "manual":
-        return (
-            "- Сначала опиши план и спроси подтверждение: \"Верно? Выполняю?\"\n"
-            "- Только после подтверждения формируй [COMMAND_FOR_CODE]."
-        )
+        return "Перед выполнением команд на сервере — покажи план и спроси подтверждение."
     if auto_confirmed:
-        return (
-            "- ВАЖНО: Пользователь УЖЕ подтвердил план.\n"
-            "- Выполняй задачу АВТОМАТИЧЕСКИ. Сразу формируй [COMMAND_FOR_CODE].\n"
-            "- ЗАПРЕЩЕНО спрашивать подтверждение повторно. Действуй!"
-        )
-    return (
-        "- Кратко опиши план (2-3 пункта) и спроси: \"Подтверждаете? (да/нет)\"\n"
-        "- После ответа \"да\" работай автоматически, формируй [COMMAND_FOR_CODE]."
-    )
+        return "Выполняй команды автоматически без дополнительных вопросов."
+    return "Кратко опиши что будешь делать и спроси подтверждение. После 'да' — работай автоматически."
 
 
 _AUTO_CONFIRM_WORDS = frozenset([
@@ -1060,31 +1050,35 @@ def _build_first_chat_only(
     message: str, knowledge: str, system_context: str,
 ) -> str:
     """First message in chat-only mode — full knowledge, no Code commands."""
+    mode_instructions = "Режим чата — только отвечай на вопросы, не выполняй команды на сервере."
     return f"""{system_context}
 
-# ИНИЦИАЛИЗАЦИЯ СЕССИИ — ЗАПОМНИ НА ВСЮ СЕССИЮ
+# КТО ТЫ
+Ты — Claude, умный ИИ-ассистент от Anthropic. Ты помогаешь управлять платформой AILA AI Trade.
+Ты работаешь так же как Claude в claude.ai — умный, понимающий контекст, helpful.
+Отвечай на русском.
 
-## БАЗА ЗНАНИЙ:
-{knowledge}
+# ТВОИ ВОЗМОЖНОСТИ
+1. **Отвечать на вопросы** — любые, как обычный Claude
+2. **Анализировать** — логи, код, данные, ситуации
 
-## РОЛЬ:
-Ты — Claude Chat, помощник AILA AI Trade бота.
-НЕ формируй [COMMAND_FOR_CODE]. Просто отвечай на вопросы.
-Следуй правилам из RULES.md. Отвечай на русском.
+# ПРАВИЛА
+- Делай ТОЛЬКО то, что просят. Не добавляй лишнего.
+- Будь кратким — не пиши стены текста.
+- Спрашивай если неясно — лучше уточнить чем сделать неправильно.
+- НЕ формируй [COMMAND_FOR_CODE] в этом режиме.
 
-## КРИТИЧЕСКИ ВАЖНО: ТОЧНОЕ ВЫПОЛНЕНИЕ
-- Делай ТОЛЬКО то, что просит пользователь.
-- НЕ добавляй дополнительные "улучшения" без запроса.
-- НЕ меняй то, что пользователь не упоминал.
-- Если просят "перенести X" — переноси ТОЛЬКО X, ничего больше.
-- Если хочешь предложить улучшения — спроси ОТДЕЛЬНО ПОСЛЕ выполнения основной задачи.
-
-## УПРАВЛЕНИЕ ПРАВИЛАМИ:
-Для изменения правил используй теги:
+# УПРАВЛЕНИЕ ПРАВИЛАМИ
 [UPDATE_KNOWLEDGE]RULES.md|append|текст[/UPDATE_KNOWLEDGE]
 [UPDATE_KNOWLEDGE]RULES.md|remove|текст[/UPDATE_KNOWLEDGE]
 
-## ЗАПРОС:
+# РЕЖИМ РАБОТЫ
+{mode_instructions}
+
+# БАЗА ЗНАНИЙ
+{knowledge}
+
+# ЗАПРОС
 {message}"""
 
 
@@ -1093,41 +1087,40 @@ def _build_first_full(
     mode: str, auto_confirmed: bool = False,
 ) -> str:
     """First message in Chat+Code mode — full knowledge + instructions."""
-    mode_label = "РУЧНОЙ" if mode == "manual" else (
-        "АВТО (подтверждён)" if auto_confirmed else "АВТО"
-    )
+    mode_instructions = _get_mode_instructions(mode, auto_confirmed)
     return f"""{system_context}
 
-# ИНИЦИАЛИЗАЦИЯ СЕССИИ — ЗАПОМНИ НА ВСЮ СЕССИЮ
+# КТО ТЫ
+Ты — Claude, умный ИИ-ассистент от Anthropic. Ты помогаешь управлять платформой AILA AI Trade.
+Ты работаешь так же как Claude в claude.ai — умный, понимающий контекст, helpful.
+Отвечай на русском.
 
-## БАЗА ЗНАНИЙ:
-{knowledge}
+# ТВОИ ВОЗМОЖНОСТИ
+1. **Отвечать на вопросы** — любые, как обычный Claude
+2. **Анализировать** — логи, код, данные, ситуации
+3. **Выполнять задачи на сервере** — через Claude Code
 
-## РОЛЬ:
-Ты — Claude Chat, помощник AILA AI Trade бота.
-Следуй правилам из RULES.md. Отвечай на русском.
-
-## КРИТИЧЕСКИ ВАЖНО: ТОЧНОЕ ВЫПОЛНЕНИЕ
-- Делай ТОЛЬКО то, что просит пользователь.
-- НЕ добавляй дополнительные "улучшения" без запроса.
-- НЕ меняй то, что пользователь не упоминал.
-- Если просят "перенести X" — переноси ТОЛЬКО X, ничего больше.
-- Если хочешь предложить улучшения — спроси ОТДЕЛЬНО ПОСЛЕ выполнения основной задачи.
-
-## УПРАВЛЕНИЕ ПРАВИЛАМИ:
-Для изменения правил:
-[UPDATE_KNOWLEDGE]RULES.md|append|текст[/UPDATE_KNOWLEDGE]
-[UPDATE_KNOWLEDGE]RULES.md|remove|текст[/UPDATE_KNOWLEDGE]
-
-## РЕЖИМ: {mode_label}
-{_get_mode_instructions(mode, auto_confirmed)}
-
-## КОМАНДЫ ДЛЯ CODE:
-Для действий на сервере формируй:
+# КАК РАБОТАТЬ С СЕРВЕРОМ
+Когда нужно что-то сделать на сервере (прочитать файл, изменить код, перезапустить сервис):
 [COMMAND_FOR_CODE]конкретная команда с абсолютными путями /opt/aila/...[/COMMAND_FOR_CODE]
 Сервер — реальный VPS, полные права, sudo без пароля.
 
-## ЗАПРОС:
+# ПРАВИЛА
+- Делай ТОЛЬКО то, что просят. Не добавляй лишнего.
+- Будь кратким — не пиши стены текста.
+- Спрашивай если неясно — лучше уточнить чем сделать неправильно.
+
+# УПРАВЛЕНИЕ ПРАВИЛАМИ
+[UPDATE_KNOWLEDGE]RULES.md|append|текст[/UPDATE_KNOWLEDGE]
+[UPDATE_KNOWLEDGE]RULES.md|remove|текст[/UPDATE_KNOWLEDGE]
+
+# РЕЖИМ РАБОТЫ
+{mode_instructions}
+
+# БАЗА ЗНАНИЙ
+{knowledge}
+
+# ЗАПРОС
 {message}"""
 
 
@@ -1137,16 +1130,14 @@ def _build_followup_chat_only(
     message: str, history_text: str,
 ) -> str:
     """Follow-up in chat-only mode — minimal prompt."""
-    return f"""# ПРОДОЛЖЕНИЕ СЕССИИ (chat-only)
+    return f"""Ты — Claude, умный ИИ-ассистент. Отвечай на русском. НЕ формируй [COMMAND_FOR_CODE].
+Делай только то, что просят.
 
-## ИСТОРИЯ:
+# ИСТОРИЯ
 {history_text}
 
-## ЗАПРОС:
-{message}
-
-Отвечай кратко на русском. НЕ формируй [COMMAND_FOR_CODE]. База знаний загружена.
-ВАЖНО: Делай ТОЛЬКО то, что просит пользователь. НЕ добавляй улучшения без запроса."""
+# ЗАПРОС
+{message}"""
 
 
 def _build_followup_full(
@@ -1154,20 +1145,16 @@ def _build_followup_full(
     auto_confirmed: bool = False,
 ) -> str:
     """Follow-up in Chat+Code mode — minimal prompt."""
-    mode_label = "ручной" if mode == "manual" else (
-        "авто (подтверждён)" if auto_confirmed else "авто"
-    )
-    return f"""# ПРОДОЛЖЕНИЕ СЕССИИ
+    mode_instructions = _get_mode_instructions(mode, auto_confirmed)
+    return f"""Ты — Claude, умный ИИ-ассистент. Отвечай на русском. Делай только то, что просят.
+Для команд на сервере: [COMMAND_FOR_CODE]команда[/COMMAND_FOR_CODE]
+Режим: {mode_instructions}
 
-## ИСТОРИЯ:
+# ИСТОРИЯ
 {history_text}
 
-## ЗАПРОС:
-{message}
-
-Режим: {mode_label}. {_get_mode_instructions(mode, auto_confirmed)}
-Отвечай кратко на русском. База знаний загружена.
-ВАЖНО: Делай ТОЛЬКО то, что просит пользователь. НЕ добавляй улучшения без запроса."""
+# ЗАПРОС
+{message}"""
 
 
 @router.post("/chat")
@@ -1251,7 +1238,7 @@ async def chat_message(request: Request):
         )
         result = await asyncio.to_thread(
             subprocess.run,
-            ["claude", "--print", "--model", "sonnet", prompt],
+            ["claude", "--print", "--model", "opus", prompt],
             cwd="/opt/aila",
             capture_output=True,
             text=True,
@@ -1790,7 +1777,7 @@ async def confirm_send_to_chat(request: Request):
         claude_env = _get_claude_env()
         result = await asyncio.to_thread(
             subprocess.run,
-            ["claude", "--print", "--model", "sonnet", prompt],
+            ["claude", "--print", "--model", "opus", prompt],
             cwd="/opt/aila", capture_output=True, text=True, env=claude_env,
         )
         response = result.stdout.strip() if result.stdout else ""
