@@ -1037,12 +1037,14 @@ def _get_mode_instructions(mode: str, auto_confirmed: bool = False) -> str:
         )
     if auto_confirmed:
         return (
-            "РЕЖИМ: AUTO (подтверждён)\n"
-            "Выполняй задачи автоматически. Сразу формируй [COMMAND_FOR_CODE] без вопросов."
+            "РЕЖИМ: AUTO (выполнение)\n"
+            "Выполняй текущую задачу автоматически. Сразу формируй [COMMAND_FOR_CODE] без вопросов.\n"
+            "Когда задача ЗАВЕРШЕНА — напиши \"Готово\" или \"Задача выполнена\" и краткий итог."
         )
     return (
-        "РЕЖИМ: AUTO (ожидает подтверждения)\n"
-        "Кратко опиши план и спроси подтверждение. После \"да\" — работай автоматически."
+        "РЕЖИМ: AUTO (новая задача)\n"
+        "Кратко опиши как понял задачу и спроси: \"Подтверждаете?\"\n"
+        "НЕ выполняй и НЕ формируй [COMMAND_FOR_CODE] пока пользователь не подтвердит."
     )
 
 
@@ -1059,6 +1061,20 @@ def _is_auto_confirmation(message: str) -> bool:
     if len(message) <= 30:
         return any(w in msg for w in _AUTO_CONFIRM_WORDS)
     return False
+
+
+_TASK_COMPLETE_PATTERNS = (
+    "готово", "выполнено", "завершено", "сделано",
+    "done", "complete", "finished", "успешно",
+    "задача выполнена", "изменения применены",
+    "перезапустил", "закоммитил", "запушил",
+)
+
+
+def _is_task_complete(response: str) -> bool:
+    """Check if Claude's response indicates task completion."""
+    resp_lower = response.lower()
+    return any(p in resp_lower for p in _TASK_COMPLETE_PATTERNS)
 
 
 # --- First message prompts (full context) ---
@@ -1171,10 +1187,11 @@ async def chat_message(request: Request):
             auto_confirmed = True
             _admin_sessions[token]["auto_confirmed"] = True
             logger.info(
-                "[ADMIN_CHAT] Auto mode confirmed by user: %s", message[:50],
+                "[ADMIN_CHAT] Auto confirmed by user: %s", message[:50],
             )
-        # Reset on new task (long message that isn't a confirmation)
-        elif len(message) > 30 and not auto_confirmed:
+        # New task (long message) — reset auto_confirmed, require new confirmation
+        elif len(message) > 30:
+            auto_confirmed = False
             _admin_sessions[token]["auto_confirmed"] = False
             logger.info("[ADMIN_CHAT] Auto mode — new task, awaiting confirmation")
 
@@ -1264,6 +1281,13 @@ async def chat_message(request: Request):
 
     # In chat-only mode, never parse commands
     has_command = False if chat_only else "[COMMAND_FOR_CODE]" in response
+
+    # Auto mode: reset auto_confirmed when task is complete (no more commands)
+    if mode == "auto" and auto_confirmed and not has_command and _is_task_complete(response):
+        auto_confirmed = False
+        if token in _admin_sessions:
+            _admin_sessions[token]["auto_confirmed"] = False
+        logger.info("[ADMIN_CHAT] Task complete — auto_confirmed reset to False")
 
     # Save assistant response
     _save_chat_message("assistant", response, "command" if has_command else "text")
