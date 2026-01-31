@@ -23,7 +23,7 @@ from io import BytesIO
 
 import aiohttp
 from fastapi import APIRouter, HTTPException, Request, UploadFile, File, Form
-from fastapi.responses import Response, StreamingResponse
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 
 logger = logging.getLogger("admin")
 
@@ -644,13 +644,23 @@ def _load_security_settings() -> dict[str, Any]:
     return result
 
 
-def _check_command_security(command: str, mode: str) -> dict[str, Any]:
+def _check_command_security(
+    command: str, mode: str, session: Optional[dict] = None,
+) -> dict[str, Any]:
     """Check command against security restrictions.
+
+    Args:
+        command: Command string to check
+        mode: Execution mode ("manual" or "auto")
+        session: Admin session dict (for one-time permissions)
 
     Returns:
         {
             "allowed": bool,
             "needs_confirmation": bool,
+            "needs_permission": bool,
+            "permission_type": str or None,
+            "permission_reason": str or None,
             "block_reason": str or None,
             "warnings": list[str],
             "affected_areas": list[str],
@@ -662,9 +672,21 @@ def _check_command_security(command: str, mode: str) -> dict[str, Any]:
     protected_paths = settings.get("protected_paths", [])
     dangerous_cmds = settings.get("dangerous_commands", [])
 
+    # Human-readable reasons for permission types
+    _perm_reasons: dict[str, str] = {
+        "allow_file_delete": "File deletion is disabled in security settings",
+        "allow_env_edit": "Environment file editing is disabled",
+        "allow_database_edit": "Database file editing is disabled",
+        "allow_bot_restart": "Bot restart is disabled",
+        "allow_git_push": "Git push is disabled",
+    }
+
     result: dict[str, Any] = {
         "allowed": True,
         "needs_confirmation": False,
+        "needs_permission": False,
+        "permission_type": None,
+        "permission_reason": None,
         "block_reason": None,
         "warnings": [],
         "affected_areas": [],
@@ -673,7 +695,7 @@ def _check_command_security(command: str, mode: str) -> dict[str, Any]:
 
     cmd_lower = command.lower()
 
-    # 1. Dangerous commands — always block
+    # 1. Dangerous commands — always hard-block (no permission dialog)
     for dc in dangerous_cmds:
         if dc.lower() in cmd_lower:
             result["allowed"] = False
@@ -681,7 +703,10 @@ def _check_command_security(command: str, mode: str) -> dict[str, Any]:
             result["risk_level"] = "critical"
             return result
 
-    # 2. Permission checks — full block if disabled
+    # Helper: check one-time permission in session
+    otp = (session or {}).get("one_time_permissions", {})
+
+    # 2. Permission checks — block or request one-time permission
     perm_checks = [
         ("allow_file_delete", ["rm ", "unlink", "remove"]),
         ("allow_env_edit", [".env", "dotenv"]),
@@ -691,24 +716,47 @@ def _check_command_security(command: str, mode: str) -> dict[str, Any]:
         if not restrictions.get(perm, False):
             for pat in patterns:
                 if pat in cmd_lower:
-                    result["allowed"] = False
-                    result["block_reason"] = f"Blocked by setting: {perm}"
-                    result["risk_level"] = "high"
-                    return result
+                    # Check one-time permission
+                    if otp.get(perm):
+                        # Permission granted — allow and mark for consumption
+                        result["_consume_permission"] = perm
+                        break
+                    else:
+                        result["allowed"] = False
+                        result["needs_permission"] = True
+                        result["permission_type"] = perm
+                        result["permission_reason"] = _perm_reasons.get(perm, perm)
+                        result["block_reason"] = f"Blocked by setting: {perm}"
+                        result["risk_level"] = "high"
+                        return result
+            if result.get("_consume_permission"):
+                break
 
     if not restrictions.get("allow_bot_restart", True):
         if any(x in cmd_lower for x in ["restart", "systemctl"]):
-            result["allowed"] = False
-            result["block_reason"] = "Bot restart is disabled"
-            result["risk_level"] = "high"
-            return result
+            if otp.get("allow_bot_restart"):
+                result["_consume_permission"] = "allow_bot_restart"
+            else:
+                result["allowed"] = False
+                result["needs_permission"] = True
+                result["permission_type"] = "allow_bot_restart"
+                result["permission_reason"] = _perm_reasons["allow_bot_restart"]
+                result["block_reason"] = "Bot restart is disabled"
+                result["risk_level"] = "high"
+                return result
 
     if not restrictions.get("allow_git_push", True):
         if "git push" in cmd_lower:
-            result["allowed"] = False
-            result["block_reason"] = "Git push is disabled"
-            result["risk_level"] = "high"
-            return result
+            if otp.get("allow_git_push"):
+                result["_consume_permission"] = "allow_git_push"
+            else:
+                result["allowed"] = False
+                result["needs_permission"] = True
+                result["permission_type"] = "allow_git_push"
+                result["permission_reason"] = _perm_reasons["allow_git_push"]
+                result["block_reason"] = "Git push is disabled"
+                result["risk_level"] = "high"
+                return result
 
     # 3. Protected paths
     for path in protected_paths:
@@ -779,11 +827,45 @@ async def save_settings_api(request: Request):
 async def check_command_api(request: Request):
     """Check command security before execution."""
     _require_auth(request)
+    token = _get_session_token(request)
+    session = _admin_sessions.get(token)
     body = await request.json()
     command = body.get("command", "")
     mode = body.get("mode", "manual")
-    result = _check_command_security(command, mode)
+    result = _check_command_security(command, mode, session=session)
+    # Remove internal key before returning
+    result.pop("_consume_permission", None)
     return result
+
+
+@router.post("/security/one-time-permission")
+async def grant_one_time_permission(request: Request):
+    """Grant a one-time permission for a blocked action."""
+    _require_auth(request)
+    token = _get_session_token(request)
+    session = _admin_sessions.get(token)
+    if not session:
+        raise HTTPException(status_code=401, detail="No active session")
+
+    body = await request.json()
+    perm_type = body.get("permission_type", "")
+
+    valid_perms = {
+        "allow_file_delete", "allow_env_edit", "allow_database_edit",
+        "allow_bot_restart", "allow_git_push",
+    }
+    if perm_type not in valid_perms:
+        raise HTTPException(status_code=400, detail=f"Invalid permission: {perm_type}")
+
+    # Store one-time permission in session
+    if "one_time_permissions" not in session:
+        session["one_time_permissions"] = {}
+    session["one_time_permissions"][perm_type] = True
+
+    _audit_log("admin", "ONE_TIME_PERMISSION", perm_type, "granted")
+    logger.info(f"[SECURITY] One-time permission granted: {perm_type}")
+
+    return {"success": True, "permission_type": perm_type}
 
 
 # =============================================
@@ -1252,6 +1334,9 @@ async def execute_code(request: Request):
     _require_auth(request)
     global _running_process
 
+    token = _get_session_token(request)
+    session = _admin_sessions.get(token)
+
     body = await request.json()
     command = body.get("command", "").strip()
 
@@ -1259,10 +1344,24 @@ async def execute_code(request: Request):
         raise HTTPException(status_code=400, detail="Command required")
 
     # Security check via settings-based checker
-    sec_check = _check_command_security(command, "manual")
+    sec_check = _check_command_security(command, "manual", session=session)
     if not sec_check["allowed"]:
+        if sec_check.get("needs_permission"):
+            # Return 200 with needs_permission so frontend can show dialog
+            return {
+                "needs_permission": True,
+                "permission_type": sec_check["permission_type"],
+                "permission_reason": sec_check["permission_reason"],
+                "command": command,
+            }
         _audit_log("admin", "BLOCKED_COMMAND", command, sec_check["block_reason"] or "")
         raise HTTPException(status_code=403, detail=sec_check["block_reason"])
+
+    # Consume one-time permission if used
+    consumed = sec_check.pop("_consume_permission", None)
+    if consumed and session and "one_time_permissions" in session:
+        session["one_time_permissions"].pop(consumed, None)
+        _audit_log("admin", "ONE_TIME_PERMISSION_USED", consumed, command[:80])
 
     async with _process_lock:
         if _running_process and _running_process.returncode is None:
@@ -1351,6 +1450,9 @@ async def execute_code_stream(request: Request):
     _require_auth(request)
     global _running_process
 
+    token = _get_session_token(request)
+    session = _admin_sessions.get(token)
+
     body = await request.json()
     command = body.get("command", "").strip()
 
@@ -1358,11 +1460,24 @@ async def execute_code_stream(request: Request):
         raise HTTPException(status_code=400, detail="Command required")
 
     # Security check — block dangerous commands server-side
-    # Confirmation logic is handled client-side via /check-command
-    sec_check = _check_command_security(command, "manual")
+    sec_check = _check_command_security(command, "manual", session=session)
     if not sec_check["allowed"]:
+        if sec_check.get("needs_permission"):
+            # Return JSON (not SSE) with needs_permission so frontend shows dialog
+            return JSONResponse({
+                "needs_permission": True,
+                "permission_type": sec_check["permission_type"],
+                "permission_reason": sec_check["permission_reason"],
+                "command": command,
+            })
         _audit_log("admin", "BLOCKED_COMMAND", command, sec_check["block_reason"] or "")
         raise HTTPException(status_code=403, detail=sec_check["block_reason"])
+
+    # Consume one-time permission if used
+    consumed = sec_check.pop("_consume_permission", None)
+    if consumed and session and "one_time_permissions" in session:
+        session["one_time_permissions"].pop(consumed, None)
+        _audit_log("admin", "ONE_TIME_PERMISSION_USED", consumed, command[:80])
 
     _audit_log("admin", "EXECUTE_STREAM", command)
 

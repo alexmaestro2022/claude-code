@@ -2923,6 +2923,37 @@ Auto режим в Admin Panel всегда просил подтвержден�
 
 ---
 
-**Последнее обновление:** 2026-01-31 (fix: auto mode confirmation logic for mobile)
+## One-Time Permissions for Blocked Security Actions (2026-01-31)
+
+### Проблема:
+Когда команда блокировалась настройками безопасности (например `allow_file_delete: false`), возвращался жёсткий 403 без возможности разового разрешения.
+
+### Решение:
+- **Permission dialog** — вместо 403 для permission-based блокировок возвращается `needs_permission` ответ
+- Фронтенд показывает модальное окно с причиной блокировки и командой
+- Пользователь может нажать "Allow once" для разового разрешения или "Cancel"
+- Разрешение хранится в `_admin_sessions[token]["one_time_permissions"]` и потребляется после использования
+- Dangerous commands (rm -rf /, shutdown и т.д.) по-прежнему жёстко блокируются без диалога
+
+### Backend (`admin.py`):
+- `_check_command_security()` — новый параметр `session`, проверяет `one_time_permissions`, возвращает `needs_permission`/`permission_type`/`permission_reason`
+- `POST /security/one-time-permission` — новый endpoint, сохраняет разрешение в сессии
+- `/code/execute` и `/code/execute-stream` — передают session, возвращают 200 + JSON при `needs_permission` вместо 403
+- `/check-command` — передаёт session, возвращает `needs_permission` в ответе
+- Потребление one-time permission после успешного выполнения команды
+
+### Frontend (`admin.html`):
+- Permission modal с иконкой щита, причиной и командой
+- `showPermissionDialog()`, `grantPermission()`, `denyPermission()` функции
+- `executeInCode()` — обработка JSON ответа (не SSE) при `needs_permission`
+- `sendMessage()` — обработка `needs_permission` из `/check-command` для auto mode
+
+### Файлы:
+- `aila/api/routes/admin.py` — security check, one-time permission endpoint, execute endpoints
+- `aila/api/templates/admin.html` — permission modal, JS handlers
+
+---
+
+**Последнее обновление:** 2026-01-31 (feat: one-time permissions for blocked security actions)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
