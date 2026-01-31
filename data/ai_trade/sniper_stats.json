@@ -18,8 +18,8 @@
     "consecutive_losses": 2,
     "max_consecutive_wins": 1,
     "max_consecutive_losses": 2,
-    "trades_today": 5,
-    "pnl_today_usdt": -0.22049199999999997,
+    "trades_today": 0,
+    "pnl_today_usdt": 0.0,
     "trades_this_week": 5,
     "pnl_this_week_usdt": -0.22049199999999997,
     "last_trade_time": "2026-01-30T11:45:25.466952",
@@ -68,7 +68,14 @@
       "tokens_out_total": 0,
       "cost_total_usdt": 0.0
     },
-    "daily_history": {},
+    "daily_history": {
+      "2026-01-30": {
+        "trades": 0,
+        "pnl_usdt": 0.0,
+        "api_calls": 0,
+        "api_cost": 0.0
+      }
+    },
     "weekly_history": {},
     "enabled": true,
     "cooldown_remaining": 0.0,
@@ -135,6 +142,6 @@
       }
     ]
   },
-  "saved_at": "2026-01-30T11:45:25.467767",
+  "saved_at": "2026-01-31T20:52:14.682821",
   "version": "2.0"
 }

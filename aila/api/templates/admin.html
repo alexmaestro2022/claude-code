@@ -1049,9 +1049,6 @@
             </div>
         </div>
         <div class="top-bar-right">
-            <button class="top-btn danger" onclick="stopExecution()" data-i18n-title="stop">
-                <i class="fa-solid fa-stop"></i>
-            </button>
             <button class="top-btn" onclick="newSession()" data-i18n-title="new_session" title="New Session">
                 <i class="fa-solid fa-rotate-right"></i>
             </button>
@@ -2860,18 +2857,6 @@ async function refreshContext() {
     addMessage('system', '🔄 ' + t('context_refreshed'));
 }
 
-async function stopExecution() {
-    try {
-        await api('/code/stop', 'POST');
-        if (_workingTimerInterval) { clearInterval(_workingTimerInterval); _workingTimerInterval = null; }
-        document.getElementById('workingTimer').textContent = '';
-        isWorking = false;
-        document.getElementById('sendBtn').disabled = false;
-        showWorkingState('stopped', t('stopped_by_user'));
-        setStatus('ready', t('ready'));
-        addMessage('system', t('execution_stopped'));
-    } catch {}
-}
 
 // =============================================
 // Knowledge base

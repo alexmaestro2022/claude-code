@@ -1,20 +1,4 @@
 {
-  "positions": {
-    "SUIUSDT": {
-      "symbol": "SUI/USDT",
-      "side": "SHORT",
-      "entry_price": 1.2843,
-      "amount": 10.0,
-      "leverage": 2,
-      "stop_loss": 1.3243,
-      "take_profit": 1.2271,
-      "position_size_usdt": 10,
-      "source": "TRADER",
-      "strategy": "Bearish Trend Continuation",
-      "confidence": 83,
-      "opened_at": "2026-01-30T13:24:03.004562",
-      "opened_at_ts": 1769779443004
-    }
-  },
-  "updated_at": "2026-01-30T13:24:03.004798"
+  "positions": {},
+  "updated_at": "2026-01-31T18:43:51.876400"
 }

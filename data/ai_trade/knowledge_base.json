@@ -110,6 +110,27 @@
     "trader_learning": {
       "best_pairs": [
         {
+          "symbol": "SUIUSDT",
+          "pnl_usdt": 0.54708446,
+          "grade": "A",
+          "close_reason": "take_profit",
+          "added_at": "2026-01-31T08:16:54.585287"
+        },
+        {
+          "symbol": "SUIUSDT",
+          "pnl_usdt": 0.504104,
+          "grade": "A",
+          "close_reason": "take_profit",
+          "added_at": "2026-01-31T14:26:45.952619"
+        },
+        {
+          "symbol": "SUIUSDT",
+          "pnl_usdt": 0.288156,
+          "grade": "A",
+          "close_reason": "take_profit",
+          "added_at": "2026-01-31T18:43:51.028499"
+        },
+        {
           "symbol": "PTBUSDT",
           "pnl_usdt": 0.15709507,
           "grade": "B",
@@ -263,6 +284,6 @@
       ]
     }
   },
-  "saved_at": "2026-01-30T14:07:23.737886",
+  "saved_at": "2026-01-31T20:52:17.591544",
   "version": "2.0"
 }

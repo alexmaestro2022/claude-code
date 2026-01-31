@@ -1015,7 +1015,7 @@ def _format_history_compact(
     lines: list[str] = []
     for msg in recent:
         role = "U" if msg.get("role") == "user" else "A"
-        content = msg.get("content", "")[:200]
+        content = msg.get("content", "")[:500]
         lines.append(f"{role}: {content}")
     return "\n".join(lines)
 

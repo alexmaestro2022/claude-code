@@ -2,12 +2,12 @@
   "data": {
     "stats": {
       "trades_this_hour": 0,
-      "trades_today": 9,
-      "last_hour_reset": "2026-01-30 13:37:02.917237",
-      "last_day_reset": "2026-01-30",
-      "trader_signals": 64,
-      "sniper_signals": 95,
-      "trader_trades": 9,
+      "trades_today": 2,
+      "last_hour_reset": "2026-01-31 20:06:25.032693",
+      "last_day_reset": "2026-01-31",
+      "trader_signals": 109,
+      "sniper_signals": 138,
+      "trader_trades": 11,
       "sniper_trades": 5
     },
     "config": {
@@ -23,6 +23,6 @@
     },
     "running": true
   },
-  "saved_at": "2026-01-30T14:07:23.739086",
+  "saved_at": "2026-01-31T20:52:17.595226",
   "version": "2.0"
 }
