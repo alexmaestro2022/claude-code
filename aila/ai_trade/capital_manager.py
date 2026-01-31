@@ -68,24 +68,83 @@ class CapitalManager:
         kelly = max(kelly, 0)
         return kelly
 
-    def calculate_position_size(self, entry_price: float, stop_loss: float, risk_pct: Optional[float] = None) -> dict:
-        """Calculate position size based on risk percentage and stop distance."""
+    def calculate_position_size(
+        self, entry_price: float, stop_loss: float,
+        risk_pct: Optional[float] = None, leverage: int = 1
+    ) -> dict:
+        """Calculate position size based on risk, stop distance and leverage.
+
+        Args:
+            entry_price: Entry price for the trade
+            stop_loss: Stop loss price
+            risk_pct: Risk percentage of trading capital (default from config)
+            leverage: Leverage multiplier (increases buying power)
+
+        Returns:
+            Dict with position sizing details and can_trade flag
+        """
         if risk_pct is None:
             risk_pct = self._config['max_risk_per_trade_pct']
+
         available = self._allocation.trading
+        min_trade = self._config['min_trade_size_usdt']
+        buying_power = available * leverage
+
+        # Risk amount in USDT
         risk_amount = available * (risk_pct / 100)
+
         stop_distance_pct = abs(entry_price - stop_loss) / entry_price
         if stop_distance_pct == 0:
-            return {'position_size_usdt': 0, 'quantity': 0, 'risk_amount': 0, 'risk_pct': 0}
+            return {
+                'can_trade': False, 'position_size_usdt': 0,
+                'margin_required': 0, 'quantity': 0,
+                'risk_amount': 0, 'risk_pct': 0,
+                'reason': 'Stop distance is zero',
+            }
+
+        # Notional position size from risk formula
         position_size = risk_amount / stop_distance_pct
-        position_size = min(position_size, available)
-        position_size = max(position_size, self._config['min_trade_size_usdt'])
+
+        # Cap at buying power (available * leverage)
+        position_size = min(position_size, buying_power)
+
+        # Check against Bybit minimum notional order size ($10)
+        if position_size < min_trade:
+            # Can we afford the minimum order?
+            min_margin = min_trade / leverage
+            if min_margin > available:
+                return {
+                    'can_trade': False, 'position_size_usdt': 0,
+                    'margin_required': min_margin, 'quantity': 0,
+                    'risk_amount': 0, 'risk_pct': 0,
+                    'reason': f'Margin ${min_margin:.2f} > available ${available:.2f}',
+                }
+            # Check actual risk of min order (allow up to 3x stated risk for small accounts)
+            actual_risk = min_trade * stop_distance_pct
+            actual_risk_pct = (actual_risk / available) * 100
+            max_allowed_risk_pct = risk_pct * 3
+            if actual_risk_pct > max_allowed_risk_pct:
+                return {
+                    'can_trade': False, 'position_size_usdt': 0,
+                    'margin_required': 0, 'quantity': 0,
+                    'risk_amount': actual_risk, 'risk_pct': actual_risk_pct,
+                    'reason': f'Min order risk {actual_risk_pct:.1f}% > max {max_allowed_risk_pct:.1f}%',
+                }
+            position_size = min_trade
+            risk_amount = actual_risk
+
+        margin_required = position_size / leverage
         quantity = position_size / entry_price
+        actual_risk_pct = (risk_amount / available) * 100 if available > 0 else 0
+
         return {
+            'can_trade': True,
             'position_size_usdt': round(position_size, 2),
+            'margin_required': round(margin_required, 2),
             'quantity': quantity,
             'risk_amount': round(risk_amount, 2),
-            'risk_pct': risk_pct
+            'risk_pct': round(actual_risk_pct, 2),
+            'reason': '',
         }
 
     def calculate_compound_plan(self, initial: float, target: float, monthly_return_pct: float) -> dict:

@@ -649,12 +649,24 @@ class AutopilotMode:
 
         try:
             logger.info(f"[{agent}][EXECUTE] Calculating trade size for {symbol}")
+            trade_leverage = opportunity.get('leverage', 3)
             size = await self._orchestrator.calculate_trade_size(
                 entry_price=opportunity['entry_price'],
                 stop_loss=opportunity['stop_loss'],
-                confidence=opportunity.get('confidence', 50)
+                confidence=opportunity.get('confidence', 50),
+                leverage=trade_leverage
             )
-            logger.info(f"[{agent}][EXECUTE] Size calculated: ${size['position_size_usdt']:.2f}")
+
+            # Check if capital manager approved the trade
+            if not size.get('can_trade', True):
+                reason = size.get('reason', 'unknown')
+                logger.warning(f"[{agent}][EXECUTE] Capital manager rejected: {reason}")
+                return None
+
+            logger.info(
+                f"[{agent}][EXECUTE] Size: ${size['position_size_usdt']:.2f} "
+                f"(margin=${size.get('margin_required', 0):.2f}, risk={size.get('risk_pct', 0):.1f}%)"
+            )
 
             opportunity['position_size_usdt'] = size['position_size_usdt']
             opportunity['source_agent'] = agent

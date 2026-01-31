@@ -235,7 +235,10 @@ class AgentOrchestrator:
             'phase': phase
         }
 
-    async def calculate_trade_size(self, entry_price: float, stop_loss: float, confidence: int = 50) -> dict:
+    async def calculate_trade_size(
+        self, entry_price: float, stop_loss: float,
+        confidence: int = 50, leverage: int = 1
+    ) -> dict:
         """Calculate optimal trade size using Kelly Criterion adjusted by confidence."""
         stats = self.knowledge_base.data
         kelly = self.capital_manager.kelly_criterion(
@@ -247,7 +250,8 @@ class AgentOrchestrator:
         return self.capital_manager.calculate_position_size(
             entry_price=entry_price,
             stop_loss=stop_loss,
-            risk_pct=adjusted_risk * 100
+            risk_pct=adjusted_risk * 100,
+            leverage=leverage
         )
 
     async def check_market_safety(self) -> dict[str, Any]:

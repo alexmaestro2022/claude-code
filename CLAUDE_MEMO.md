@@ -237,13 +237,28 @@ const balanceColor = totalPnl > 0 ? '#00ff88' : (totalPnl < 0 ? '#ff4444' : '#00
 
 ## 6. Position Sizing
 
-### Режим fixed_amount:
-- `order_size` = размер позиции (notional value), НЕ маржа!
-- Пример: `order_size=10 USDT` с leverage 10x = позиция 10 USDT, маржа 1 USDT
+### Логика расчёта (capital_manager.py + position_manager.py):
+- `position_size_usdt` = MARGIN (залог из кошелька)
+- `notional = margin * leverage` (номинальный объём позиции)
+- Bybit минимум: $10 notional (не margin!)
+- `min_margin = $10 / leverage` (минимальный залог)
 
-| Баланс | Leverage | order_size | Макс. позиций |
-|--------|----------|------------|---------------|
-| 4.5 USDT | 10x | 10 USDT | ~4 позиции (маржа 1 USDT каждая) |
+### Формула:
+1. `risk_amount = available * risk_pct%` (макс. убыток в USDT)
+2. `position_size = risk_amount / stop_distance_pct` (notional)
+3. `margin = position_size / leverage`
+4. Если `position_size < $10`: bump до $10, проверить что risk <= risk_pct * 3
+
+### Пример (баланс $9.44, leverage 3x, risk 2%, stop 2%):
+- available = $7.55 (минус 20% резерв)
+- risk_amount = $0.15
+- position = $0.15 / 0.02 = $7.50 notional
+- $7.50 < $10 min → bump to $10
+- margin = $10 / 3 = $3.33 ✓
+- actual risk = $10 * 2% = $0.20 = 2.65% (< 6% limit)
+
+### Без leverage:
+- С leverage 1x: margin = $10 > available $7.55 → `can_trade: false`
 
 ---
 

@@ -65,45 +65,51 @@ class PositionManager:
             logger.info(f"[POSITION] Signal keys: {list(signal.keys())}")
             logger.info(f"[POSITION] Full signal: {signal}")
 
-            # Enforce minimum order size for Bybit
-            # Bybit requires min $10 position size, but margin = position_size / leverage
-            if position_size_usdt < MIN_ORDER_SIZE_USDT:
-                # Calculate required margin for minimum order
-                required_margin = MIN_ORDER_SIZE_USDT / leverage
+            # Enforce minimum order size for Bybit ($10 notional)
+            # position_size_usdt here is MARGIN, notional = margin * leverage
+            notional_value = position_size_usdt * leverage
+            if notional_value < MIN_ORDER_SIZE_USDT:
+                # Need at least $10 notional, so min margin = $10 / leverage
+                min_margin = MIN_ORDER_SIZE_USDT / leverage
                 logger.info(
-                    f"Calculated size: ${position_size_usdt:.2f}, "
-                    f"using minimum: ${MIN_ORDER_SIZE_USDT} (margin: ${required_margin:.2f} with {leverage}x)"
+                    f"Notional ${notional_value:.2f} < min ${MIN_ORDER_SIZE_USDT}, "
+                    f"adjusting margin: ${position_size_usdt:.2f} → ${min_margin:.2f} ({leverage}x)"
                 )
-                position_size_usdt = MIN_ORDER_SIZE_USDT
+                position_size_usdt = min_margin
                 signal["position_size_usdt"] = position_size_usdt
 
             # Check available balance before opening position
+            # position_size_usdt IS the margin; notional = margin * leverage
             logger.info(f"[POSITION] Checking available balance for {symbol}")
             try:
                 balance = await self._exchange.get_balance("USDT")
                 available_balance = balance.get("free", 0)
                 logger.info(f"[POSITION] Available balance: ${available_balance:.2f}")
 
-                # Calculate required margin (for Bybit isolated margin)
-                # Margin = position_size / leverage
-                required_margin = position_size_usdt / leverage
-                logger.info(f"[POSITION] Required margin: ${required_margin:.2f} (position=${position_size_usdt:.2f}, leverage={leverage}x)")
+                # position_size_usdt is margin, required from wallet
+                required_margin = position_size_usdt
+                notional = position_size_usdt * leverage
+                logger.info(
+                    f"[POSITION] Required margin: ${required_margin:.2f}, "
+                    f"notional: ${notional:.2f} ({leverage}x leverage)"
+                )
 
-                # Check if we have enough balance
+                # Check if we have enough balance for margin
                 if available_balance < required_margin:
-                    # Try reducing position to fit available balance
-                    max_position_size = available_balance * leverage
-                    if max_position_size >= MIN_ORDER_SIZE_USDT:
+                    # Reduce margin to available, check notional still meets min
+                    max_margin = available_balance
+                    max_notional = max_margin * leverage
+                    if max_notional >= MIN_ORDER_SIZE_USDT:
                         logger.warning(
-                            f"[POSITION] Insufficient balance ${available_balance:.2f} < ${required_margin:.2f}, "
-                            f"reducing position: ${position_size_usdt:.2f} → ${max_position_size:.2f}"
+                            f"[POSITION] Reducing margin: ${position_size_usdt:.2f} → ${max_margin:.2f} "
+                            f"(notional ${max_notional:.2f})"
                         )
-                        position_size_usdt = max_position_size
+                        position_size_usdt = max_margin
                         signal["position_size_usdt"] = position_size_usdt
                     else:
                         logger.error(
-                            f"[POSITION] REJECT: Available balance ${available_balance:.2f} insufficient. "
-                            f"Need ${required_margin:.2f} margin (min position ${MIN_ORDER_SIZE_USDT} with {leverage}x leverage)"
+                            f"[POSITION] REJECT: Available ${available_balance:.2f} insufficient. "
+                            f"Min notional ${MIN_ORDER_SIZE_USDT} needs margin ${MIN_ORDER_SIZE_USDT / leverage:.2f}"
                         )
                         return None
             except Exception as e:
