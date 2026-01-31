@@ -2897,6 +2897,31 @@ logger.info(f"[POSITION] Calculated raw_amount: {raw_amount:.8f} = (${position_s
 
 ---
 
-**Последнее обновление:** 2026-01-30 (perf: optimize chat prompts)
+## Auto Mode — Подтверждение плана (2026-01-31)
+
+### Проблема:
+Auto режим в Admin Panel всегда просил подтверждение при каждом сообщении, не запоминая что пользователь уже подтвердил план.
+
+### Решение:
+- **`auto_confirmed`** — новое поле в `_admin_sessions[token]`, отслеживает подтверждение плана
+- При Auto режиме: первое сообщение → Claude спрашивает план → пользователь подтверждает ("да", "верно", "подтверждаю") → далее работает автоматически
+- Сброс `auto_confirmed` при: новой задаче (>50 символов), смене режима, новой сессии
+- `_get_mode_instructions(mode, auto_confirmed)` — промпт меняется в зависимости от состояния подтверждения
+- `_AUTO_CONFIRM_WORDS` — frozenset слов-подтверждений (да, верно, ok, yes, etc.)
+- Бэкенд возвращает `auto_confirmed` в ответе API → фронтенд показывает зелёную точку на кнопке Auto
+
+### Mobile CSS:
+- Улучшена адаптивность `.top-bar` — flex-wrap, правильные gap'ы
+- `.mode-toggle` всегда виден (`display: flex !important`)
+- Breakpoint 480px — скрытие виджетов session/subscription на очень маленьких экранах
+- Кнопки подтверждения показываются и в auto режиме (когда план ещё не подтверждён)
+
+### Файлы:
+- `aila/api/routes/admin.py` — `_get_mode_instructions()`, `_AUTO_CONFIRM_WORDS`, tracking в `/chat`
+- `aila/api/templates/admin.html` — mobile CSS, `autoConfirmed` state, green dot indicator
+
+---
+
+**Последнее обновление:** 2026-01-31 (fix: auto mode confirmation logic for mobile)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
