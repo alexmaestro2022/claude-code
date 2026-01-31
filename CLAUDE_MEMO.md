@@ -3014,6 +3014,21 @@ Chat добавлял лишние действия которые пользо�
 
 ---
 
-**Последнее обновление:** 2026-01-31 (feat: upgrade Chat to Opus 4.5)
+## 37. Smart Chat — full context first, minimal follow-ups (2026-01-31)
+
+### Изменения:
+- **4 функции промптов → 2**: `_build_first_prompt()` и `_build_followup_prompt()`
+- Параметры `chat_only` и `mode` передаются в обе функции — логика внутри
+- **Первый запрос**: полная KB + "запомни на всю сессию" (~5-10k токенов)
+- **Follow-up**: только напоминание "кто ты" + история (~1-2k токенов)
+- **session_context_sent**: явно инициализируется при создании сессии
+- **auto_confirmed**: тоже явно инициализируется
+
+### Файлы:
+- `aila/api/routes/admin.py` — промпты, создание сессии
+
+---
+
+**Последнее обновление:** 2026-01-31 (feat: smart Chat - full context first, minimal follow-ups)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
