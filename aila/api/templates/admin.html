@@ -816,9 +816,23 @@
 
         /* Responsive */
         @media (max-width: 768px) {
-            .top-bar { flex-wrap: wrap; gap: 8px; padding: 10px; }
-            .content-area { padding: 0 12px; }
-            .msg { max-width: 95%; }
+            .top-bar { flex-wrap: wrap; gap: 8px; padding: 8px 10px; }
+            .top-bar-left { gap: 8px; flex-wrap: wrap; width: 100%; justify-content: space-between; }
+            .top-bar-left > div:first-child { font-size: 0.95rem !important; }
+            .top-bar-right { width: 100%; justify-content: flex-end; flex-wrap: wrap; gap: 6px; }
+            .top-bar-right .top-btn { padding: 6px 8px; font-size: 0.8rem; }
+            .mode-toggle { display: flex !important; order: 0; }
+            .mode-btn { padding: 5px 10px; font-size: 0.75rem; }
+            .status-indicator { font-size: 0.75rem; }
+            .session-widget, .sub-widget { font-size: 0.7rem; padding: 4px 8px !important; }
+            .content-area { padding: 0 8px; }
+            .msg { max-width: 98%; }
+            .input-area { padding: 8px 10px; gap: 6px; }
+        }
+        @media (max-width: 480px) {
+            .top-bar-left > div:first-child span:not(.accent) { display: none; }
+            .session-widget, .sub-widget { display: none !important; }
+            .top-bar-right a[href="/ai-trade"] { display: none; }
         }
 
         /* Command preview block */
@@ -1628,6 +1642,7 @@
 const API = '/api/admin';
 let adminToken = localStorage.getItem('admin_token') || '';
 let currentMode = 'manual'; // manual | auto
+let autoConfirmed = false; // auto mode plan confirmed by user
 let isWorking = false;
 let chatModeActive = false;
 let commands = [];
@@ -2038,8 +2053,12 @@ async function api(endpoint, method = 'GET', body = null) {
 // =============================================
 function setMode(mode) {
     currentMode = mode;
+    autoConfirmed = false; // Reset on mode switch
     document.getElementById('modeManual').classList.toggle('active', mode === 'manual');
-    document.getElementById('modeAuto').classList.toggle('active', mode === 'auto');
+    const autoBtn = document.getElementById('modeAuto');
+    autoBtn.classList.toggle('active', mode === 'auto');
+    // Remove confirmed indicator
+    autoBtn.querySelector('.auto-confirmed-dot')?.remove();
 
     // Cancel any pending auto-send countdown when switching modes
     cancelAutoCountdown();
@@ -2447,6 +2466,19 @@ async function sendMessage() {
         setWorking(false);
         showWorkingState('done');
 
+        // Update auto_confirmed state from backend
+        if (data.auto_confirmed !== null && data.auto_confirmed !== undefined) {
+            autoConfirmed = data.auto_confirmed;
+            const autoBtn = document.getElementById('modeAuto');
+            autoBtn.querySelector('.auto-confirmed-dot')?.remove();
+            if (autoConfirmed) {
+                const dot = document.createElement('span');
+                dot.className = 'auto-confirmed-dot';
+                dot.style.cssText = 'width:6px;height:6px;background:#22c55e;border-radius:50%;display:inline-block;margin-left:4px;';
+                autoBtn.appendChild(dot);
+            }
+        }
+
         addMessage('assistant', data.response, data.has_command ? 'command' : 'text');
 
         // In chat-only mode, skip command processing entirely
@@ -2456,10 +2488,10 @@ async function sendMessage() {
                 loadKnowledge();
             }
         } else {
-            // Manual mode: show confirm buttons if response asks for confirmation
-            if (!data.has_command && currentMode === 'manual') {
+            // Show confirm buttons if response asks for confirmation (manual + auto before confirmed)
+            if (!data.has_command) {
                 const resp = data.response || '';
-                if (/\?\s*$|Верно\??|Правильно\??|Выполняю\??|подтвер/i.test(resp)) {
+                if (/\?\s*$|Верно\??|Правильно\??|Выполняю\??|подтвер|да\/нет/i.test(resp)) {
                     appendConfirmButtons();
                 }
             }

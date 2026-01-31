@@ -525,6 +525,7 @@ async def clear_session(request: Request):
     _admin_sessions[token]["session_id"] = new_session_id
     _admin_sessions[token]["session_started"] = new_session_started
     _admin_sessions[token]["session_context_sent"] = False
+    _admin_sessions[token]["auto_confirmed"] = False
 
     _audit_log("admin", "SESSION_CLEAR", f"old={old_id}, new={new_session_id}")
 
@@ -937,17 +938,29 @@ def _format_history_compact(
     return "\n".join(lines)
 
 
-def _get_mode_instructions(mode: str) -> str:
+def _get_mode_instructions(mode: str, auto_confirmed: bool = False) -> str:
     """Get mode-specific instructions for Chat+Code mode."""
     if mode == "manual":
         return (
             "- Сначала опиши план и спроси подтверждение: \"Верно? Выполняю?\"\n"
             "- Только после подтверждения формируй [COMMAND_FOR_CODE]."
         )
+    if auto_confirmed:
+        return (
+            "- Пользователь УЖЕ подтвердил план. Выполняй АВТОМАТИЧЕСКИ.\n"
+            "- Сразу формируй [COMMAND_FOR_CODE] для каждого действия без вопросов.\n"
+            "- НЕ спрашивай подтверждение повторно."
+        )
     return (
-        "- При первом сообщении кратко опиши план и спроси подтверждение.\n"
+        "- Кратко опиши план действий и спроси: \"Подтверждаете? (да/нет)\"\n"
         "- После подтверждения выполняй автоматически, формируй [COMMAND_FOR_CODE]."
     )
+
+
+_AUTO_CONFIRM_WORDS = frozenset([
+    "да", "верно", "подтверждаю", "выполняй", "делай", "погнали",
+    "продолжай", "ок", "окей", "yes", "ok", "go", "confirm",
+])
 
 
 # --- First message prompts (full context) ---
@@ -978,9 +991,13 @@ def _build_first_chat_only(
 
 
 def _build_first_full(
-    message: str, knowledge: str, system_context: str, mode: str,
+    message: str, knowledge: str, system_context: str,
+    mode: str, auto_confirmed: bool = False,
 ) -> str:
     """First message in Chat+Code mode — full knowledge + instructions."""
+    mode_label = "РУЧНОЙ" if mode == "manual" else (
+        "АВТО (подтверждён)" if auto_confirmed else "АВТО"
+    )
     return f"""{system_context}
 
 # ИНИЦИАЛИЗАЦИЯ СЕССИИ — ЗАПОМНИ НА ВСЮ СЕССИЮ
@@ -997,8 +1014,8 @@ def _build_first_full(
 [UPDATE_KNOWLEDGE]RULES.md|append|текст[/UPDATE_KNOWLEDGE]
 [UPDATE_KNOWLEDGE]RULES.md|remove|текст[/UPDATE_KNOWLEDGE]
 
-## РЕЖИМ: {'РУЧНОЙ' if mode == 'manual' else 'АВТО'}
-{_get_mode_instructions(mode)}
+## РЕЖИМ: {mode_label}
+{_get_mode_instructions(mode, auto_confirmed)}
 
 ## КОМАНДЫ ДЛЯ CODE:
 Для действий на сервере формируй:
@@ -1028,8 +1045,12 @@ def _build_followup_chat_only(
 
 def _build_followup_full(
     message: str, history_text: str, mode: str,
+    auto_confirmed: bool = False,
 ) -> str:
     """Follow-up in Chat+Code mode — minimal prompt."""
+    mode_label = "ручной" if mode == "manual" else (
+        "авто (подтверждён)" if auto_confirmed else "авто"
+    )
     return f"""# ПРОДОЛЖЕНИЕ СЕССИИ
 
 ## ИСТОРИЯ:
@@ -1038,7 +1059,7 @@ def _build_followup_full(
 ## ЗАПРОС:
 {message}
 
-Режим: {'ручной' if mode == 'manual' else 'авто'}. {_get_mode_instructions(mode)}
+Режим: {mode_label}. {_get_mode_instructions(mode, auto_confirmed)}
 Отвечай кратко на русском. База знаний загружена."""
 
 
@@ -1063,6 +1084,23 @@ async def chat_message(request: Request):
     context_sent = session.get("session_context_sent", False)
     is_first = not context_sent or force_context
 
+    # Track auto_confirmed state in session
+    auto_confirmed = session.get("auto_confirmed", False)
+    if mode == "auto" and token in _admin_sessions:
+        msg_lower = message.lower().strip()
+        # Detect confirmation words
+        if msg_lower in _AUTO_CONFIRM_WORDS or any(
+            w == msg_lower for w in _AUTO_CONFIRM_WORDS
+        ):
+            auto_confirmed = True
+            _admin_sessions[token]["auto_confirmed"] = True
+            logger.info("[ADMIN_CHAT] Auto mode confirmed by user")
+        # Reset on new task (long message that isn't a confirmation)
+        elif len(message) > 50:
+            auto_confirmed = False
+            _admin_sessions[token]["auto_confirmed"] = False
+            logger.info("[ADMIN_CHAT] Auto mode reset — new task detected")
+
     _chat_start = time.time()
 
     if is_first:
@@ -1076,7 +1114,9 @@ async def chat_message(request: Request):
         if chat_only:
             prompt = _build_first_chat_only(message, knowledge, system_context)
         else:
-            prompt = _build_first_full(message, knowledge, system_context, mode)
+            prompt = _build_first_full(
+                message, knowledge, system_context, mode, auto_confirmed,
+            )
 
         # Mark context as sent
         if token in _admin_sessions:
@@ -1091,7 +1131,9 @@ async def chat_message(request: Request):
         if chat_only:
             prompt = _build_followup_chat_only(message, history_text)
         else:
-            prompt = _build_followup_full(message, history_text, mode)
+            prompt = _build_followup_full(
+                message, history_text, mode, auto_confirmed,
+            )
 
         prompt_type = "follow-up (minimal)"
 
@@ -1161,6 +1203,7 @@ async def chat_message(request: Request):
         "has_command": has_command,
         "chat_only": chat_only,
         "knowledge_updated": knowledge_updated,
+        "auto_confirmed": auto_confirmed if mode == "auto" else None,
         "timestamp": datetime.now().isoformat(),
     }
 
