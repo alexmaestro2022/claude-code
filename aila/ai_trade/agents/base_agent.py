@@ -1,6 +1,7 @@
 """Base agent class for AI trading agents."""
 
 import logging
+import os
 from datetime import datetime
 from typing import Any, Optional
 
@@ -23,14 +24,33 @@ class BaseAgent:
         self.logger = logging.getLogger(f"ai_trade.{name.lower()}")
 
         if log_path:
-            handler = logging.FileHandler(log_path)
-            handler.setLevel(logging.INFO)
-            handler.setFormatter(logging.Formatter(
-                "%(asctime)s [%(levelname)s] [%(name)s] %(message)s",
-                datefmt="%Y-%m-%d %H:%M:%S",
-            ))
-            self.logger.addHandler(handler)
+            self._setup_file_handler(log_path)
+
+        # Always ensure logger level is set
+        if not self.logger.level:
             self.logger.setLevel(logging.INFO)
+
+    def _setup_file_handler(self, log_path: str) -> None:
+        """Setup file handler, avoiding duplicates and ensuring directory exists."""
+        # Ensure log directory exists
+        log_dir = os.path.dirname(log_path)
+        if log_dir:
+            os.makedirs(log_dir, exist_ok=True)
+
+        # Avoid adding duplicate handlers for the same file
+        for h in self.logger.handlers:
+            if isinstance(h, logging.FileHandler) and h.baseFilename == os.path.abspath(log_path):
+                return
+
+        handler = logging.FileHandler(log_path)
+        handler.setLevel(logging.INFO)
+        handler.setFormatter(logging.Formatter(
+            "%(asctime)s [%(levelname)s] [%(name)s] %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        ))
+        self.logger.addHandler(handler)
+        self.logger.setLevel(logging.INFO)
+        self.logger.info(f"[{self.name}] Agent logger initialized")
 
     async def think(self, context: dict[str, Any]) -> dict[str, Any]:
         """Each agent implements its own logic."""
