@@ -17,7 +17,15 @@ MIN_RR_RATIO = 2.0
 class SniperAgent(BaseAgent):
     """Sniper entries on key market events."""
 
-    __slots__ = ("scanner", "_cache", "_pending_snipes", "_triggers", "_agent_stats")
+    __slots__ = (
+        "scanner",
+        "_cache",
+        "_pending_snipes",
+        "_triggers",
+        "_agent_stats",
+        "_snipe_cooldowns",
+        "_duplicate_counter",
+    )
 
     def __init__(
         self,
@@ -42,6 +50,10 @@ class SniperAgent(BaseAgent):
             "liquidation_cascade": self._check_liquidations,
             # TODO: Implement funding_flip when exchange funding rate API is integrated
         }
+        # Cooldown tracking: pair -> last_trigger_time
+        self._snipe_cooldowns: dict[str, datetime] = {}
+        # Count duplicates for monitoring
+        self._duplicate_counter: int = 0
 
     def _get_max_leverage(self) -> int:
         """Get max leverage from agent level config."""
@@ -198,6 +210,28 @@ Respond in JSON only:
             self.log(f"Snipe cancelled: {pair}")
         return cancelled
 
+    def get_duplicate_stats(self) -> dict[str, Any]:
+        """Get statistics about blocked duplicate snipes."""
+        active_cooldowns = sum(
+            1
+            for pair, ts in self._snipe_cooldowns.items()
+            if (datetime.utcnow() - ts).total_seconds() < 300
+        )
+        return {
+            "total_duplicates_blocked": self._duplicate_counter,
+            "active_cooldowns": active_cooldowns,
+            "cooldown_pairs": [
+                {
+                    "pair": pair,
+                    "remaining_seconds": max(
+                        0, 300 - int((datetime.utcnow() - ts).total_seconds())
+                    ),
+                }
+                for pair, ts in self._snipe_cooldowns.items()
+                if (datetime.utcnow() - ts).total_seconds() < 300
+            ],
+        }
+
     async def _analyze_pair(self, pair: str) -> dict[str, Any]:
         """Analyze a pair for snipe opportunity."""
         cache_key = f"snipe:{pair}"
@@ -224,6 +258,20 @@ Respond in JSON only:
                 )
                 return {"snipe_ready": False}
 
+        # Check cooldown (5 minutes minimum between snipes for same pair)
+        if pair in self._snipe_cooldowns:
+            last_trigger = self._snipe_cooldowns[pair]
+            elapsed_seconds = (datetime.utcnow() - last_trigger).total_seconds()
+            if elapsed_seconds < 300:  # 5 minutes
+                self._duplicate_counter += 1
+                remaining = 300 - int(elapsed_seconds)
+                self.log(
+                    f"Snipe cooldown active for {pair}: {remaining}s remaining "
+                    f"(duplicates blocked: {self._duplicate_counter})",
+                    "debug",
+                )
+                return {"snipe_ready": False}
+
         for trigger_name, trigger_func in self._triggers.items():
             try:
                 result = await trigger_func(pair)
@@ -242,7 +290,13 @@ Respond in JSON only:
                         "reasoning": result.get("reasoning", ""),
                         "timestamp": datetime.utcnow().isoformat(),
                     }
+                    # Set cooldown
+                    self._snipe_cooldowns[pair] = datetime.utcnow()
                     self._cache.set(cache_key, snipe)
+                    self.log(
+                        f"Snipe cooldown started for {pair} (5 min)",
+                        "debug",
+                    )
                     return snipe
             except Exception as e:
                 self.log(f"Trigger {trigger_name} error for {pair}: {e}", "error")
@@ -328,14 +382,30 @@ Respond in JSON only:
             if not data:
                 return {"triggered": False}
 
-            change = abs(data.get("change_24h", 0))
-            rsi = data.get("rsi", 50)
-            atr = data.get("atr", 0)
-            price = data.get("price", 0)
+            # Safe extraction with None checks
+            change_24h = data.get("change_24h")
+            rsi = data.get("rsi")
+            atr = data.get("atr")
+            price = data.get("price")
+
+            # Check for None values before processing
+            if change_24h is None or rsi is None or atr is None or price is None:
+                return {"triggered": False}
+
+            # Ensure numeric values
+            if not isinstance(change_24h, (int, float)):
+                return {"triggered": False}
+            if not isinstance(rsi, (int, float)):
+                return {"triggered": False}
+            if not isinstance(atr, (int, float)):
+                return {"triggered": False}
+            if not isinstance(price, (int, float)):
+                return {"triggered": False}
+
+            change = abs(change_24h)
 
             # Sharp move (>5%) + extreme RSI = potential liquidation cascade
-            if (change is not None and rsi is not None and atr is not None and
-                change > 5 and (rsi < 20 or rsi > 80) and atr > 0):
+            if change > 5 and (rsi < 20 or rsi > 80) and atr > 0 and price > 0:
                 direction = "LONG" if rsi < 20 else "SHORT"
                 confidence = self._calc_liquidation_confidence(change, rsi)
                 sl, tp = self._calc_sl_tp(price, atr, direction)
