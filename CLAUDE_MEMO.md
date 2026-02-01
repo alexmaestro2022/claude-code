@@ -3085,10 +3085,15 @@ User → Chat (план + подтверждение) → "да" (auto_confirmed
 - Import check
 - Последние коммиты
 
-### Текущий рабочий тег: `working-20260131`
+### Текущий рабочий тег: `stable-base-20260201`
 
 ---
 
-**Последнее обновление:** 2026-01-31 (docs: development rules + pre-deploy check)
+**Последнее обновление:** 2026-02-01 (fix: sniper log spam + base_agent logger init)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
-**Рабочая ветка:** `claude/start-new-session-4XrKU`
+**Рабочая ветка:** `stable-working`
+
+### Исправления 2026-02-01:
+- **Sniper log spam** — добавлена дедупликация логов `_last_opportunity_log` (5 мин на пару) в `scan_for_snipes`
+- **BaseAgent logger** — `_setup_file_handler()`: проверка директории, дедупликация хэндлеров, init-лог при старте
+- **Permission denied** — исправлены права на файлы `data/ai_trade/*.json` после восстановления бэкапа
