@@ -25,6 +25,7 @@ class SniperAgent(BaseAgent):
         "_agent_stats",
         "_snipe_cooldowns",
         "_duplicate_counter",
+        "_last_opportunity_log",
     )
 
     def __init__(
@@ -54,6 +55,8 @@ class SniperAgent(BaseAgent):
         self._snipe_cooldowns: dict[str, datetime] = {}
         # Count duplicates for monitoring
         self._duplicate_counter: int = 0
+        # Log dedup: pair -> last_log_time (prevent log spam)
+        self._last_opportunity_log: dict[str, datetime] = {}
 
     def _get_max_leverage(self) -> int:
         """Get max leverage from agent level config."""
@@ -153,13 +156,23 @@ class SniperAgent(BaseAgent):
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         snipes: list[dict[str, Any]] = []
+        now = datetime.utcnow()
         for pair, result in zip(pairs, results):
             if isinstance(result, Exception):
                 self.log(f"Snipe scan failed for {pair}: {result}", "error")
                 continue
             if result and result.get("snipe_ready"):
                 snipes.append(result)
-                self.log(f"Snipe opportunity: {pair} - {result.get('trigger_type')}", "warning")
+                # Log max once per 5 min per pair to prevent spam
+                last_log = self._last_opportunity_log.get(pair)
+                if not last_log or (now - last_log).total_seconds() >= 300:
+                    trigger = result.get("trigger_type", "unknown")
+                    conf = result.get("confidence", 0)
+                    self.log(
+                        f"Snipe opportunity: {pair} - {trigger} (conf={conf}%)",
+                        "warning",
+                    )
+                    self._last_opportunity_log[pair] = now
 
         return snipes
 
