@@ -3089,7 +3089,7 @@ User → Chat (план + подтверждение) → "да" (auto_confirmed
 
 ---
 
-**Последнее обновление:** 2026-02-02 (fix: learning chain complete)
+**Последнее обновление:** 2026-02-02 (feat: active position management)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `stable-working`
 
@@ -3125,6 +3125,36 @@ User → Chat (план + подтверждение) → "да" (auto_confirmed
   → _run_analyst() (Claude Haiku анализ → grade + lesson → KB)
   → MENTOR.daily_review() (ежедневно → правила, XP, настройки)
   → learned_rules попадают в промпт TRADER через get_context_for_analysis()
+```
+
+#### ЭТАП 3: Active Position Management (ЗАВЕРШЁН)
+- **Exchange methods** — 3 новых метода в `bybit_exchange.py`:
+  - `set_trading_stop(symbol, trailing_stop, active_price, stop_loss, take_profit)` — Bybit v5 /position/set-trading-stop
+  - `amend_order(order_id, symbol, new_price, new_qty, new_trigger_price)` — Bybit v5 /order/amend
+  - `close_position_market(symbol)` — закрытие позиции reduceOnly market order
+- **PositionMonitor** — новый модуль `position_monitor.py`:
+  - Быстрые правила (каждые 15с, без Claude):
+    - Breakeven: SL → entry+0.1% при PnL >= +1.5%
+    - Trailing stop: SL трейлит 1.5% от пика при PnL >= +3%
+    - Time warning: флаг если позиция > 8 часов
+  - Claude evaluation (каждые 2.5 мин на позицию):
+    - Вызывает TRADER.evaluate_exit() → HOLD/CLOSE/MOVE_SL/MOVE_TP/PARTIAL_CLOSE
+    - Выполняет рекомендованные действия через exchange API
+- **evaluate_exit() обновлён** в `agents/trader.py`:
+  - Расширенный промпт: PnL%, peak PnL, leverage, SL/TP, news sentiment
+  - 5 действий: HOLD, CLOSE, MOVE_SL, MOVE_TP, PARTIAL_CLOSE
+  - API логирование: agent=TRADER, action=evaluate_exit, use_haiku=True
+- **Интеграция в autopilot** — `check_positions()` вызывается в `_autopilot_loop()` каждый цикл
+
+#### Архитектура управления позицией (ПОСЛЕ этапа 3):
+```
+Позиция открыта → Autopilot loop (10s cycle)
+  ├── _sync_closed_positions (30s) — обнаружение закрытий SL/TP
+  └── position_monitor.check_positions (15s) — активное управление:
+      ├── Breakeven rule (fast, no Claude)
+      ├── Trailing stop rule (fast, no Claude)
+      ├── Time warning (fast, no Claude)
+      └── Claude evaluate_exit (2.5 min) → HOLD/CLOSE/MOVE_SL/MOVE_TP/PARTIAL_CLOSE
 ```
 
 ### Исправления 2026-02-01:
