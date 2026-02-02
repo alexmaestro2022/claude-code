@@ -375,47 +375,74 @@ class TraderAgent(BaseAgent):
         """
         symbol = position.get("symbol", "unknown")
         pnl_pct = position.get("unrealized_pnl_pct", 0)
+        peak_pnl = position.get("peak_pnl_pct", 0)
+        direction = position.get("direction", "LONG")
+        leverage = position.get("leverage", 1)
+        entry_price = position.get("entry_price", 0)
+        current_price = position.get("current_price", market_data.get("price", 0))
 
-        prompt = f"""You are monitoring an open position. Decide what to do.
+        # Derive trend/momentum signals from indicators
+        macd = market_data.get("macd", {})
+        bb = market_data.get("bollinger", {})
+        vp = market_data.get("volume_profile", {})
+        srsi = market_data.get("stoch_rsi", {})
+
+        macd_signal = "bullish" if (macd.get("histogram") or 0) > 0 else "bearish"
+        vol_ratio = vp.get("ratio", 1.0) if vp else "N/A"
+
+        # Determine if momentum supports or opposes position
+        momentum_status = "neutral"
+        if direction == "LONG":
+            if macd_signal == "bearish" and (srsi.get("k", 50) if srsi else 50) > 70:
+                momentum_status = "fading"
+            elif macd_signal == "bullish" and (srsi.get("k", 50) if srsi else 50) < 80:
+                momentum_status = "supporting"
+        elif direction == "SHORT":
+            if macd_signal == "bullish" and (srsi.get("k", 50) if srsi else 50) < 30:
+                momentum_status = "fading"
+            elif macd_signal == "bearish" and (srsi.get("k", 50) if srsi else 50) > 20:
+                momentum_status = "supporting"
+
+        prompt = f"""## ROLE
+You are a position manager. Evaluate this open position and decide the best action.
 
 ## POSITION
-Pair: {symbol}
-Direction: {position.get('direction', 'LONG')}
-Leverage: {position.get('leverage', 1)}x
-Entry: {position.get('entry_price', 0)}
-Current: {position.get('current_price', market_data.get('price', 0))}
-Unrealized PnL: {pnl_pct:.2f}%
-Peak PnL: {position.get('peak_pnl_pct', 0):.2f}%
-Duration: {position.get('duration', 'unknown')}
-Stop Loss: {position.get('stop_loss', 'none')}
-Take Profit: {position.get('take_profit', 'none')}
+- Pair: {symbol} | Direction: {direction} | Leverage: {leverage}x
+- Entry: {entry_price} | Current: {current_price}
+- PnL: {pnl_pct:+.2f}% | Peak PnL: {peak_pnl:+.2f}% | Drawdown from peak: {peak_pnl - pnl_pct:.2f}%
+- Duration: {position.get('duration', 'unknown')}
+- Stop Loss: {position.get('stop_loss', 'none')} | Take Profit: {position.get('take_profit', 'none')}
 
-## CURRENT MARKET
-Price: {market_data.get('price', 0)}
-RSI: {market_data.get('rsi', 'N/A')}
-Trend: {market_data.get('trend', 'N/A')}
-ATR: {market_data.get('atr', 'N/A')}
-News sentiment: {market_data.get('news_sentiment', 'N/A')}
+## CURRENT INDICATORS
+- Price: {current_price} | Trend: {market_data.get('trend', 'N/A')}
+- RSI: {market_data.get('rsi', 'N/A')} | StochRSI K: {srsi.get('k', 'N/A') if srsi else 'N/A'}
+- MACD: {macd_signal} (hist={macd.get('histogram', 'N/A')})
+- Bollinger %B: {bb.get('pct_b', 'N/A') if bb else 'N/A'}
+- Volume ratio: {vol_ratio} (>1.5=high, <0.5=low)
+- ATR: {market_data.get('atr', 'N/A')}
+- Momentum: {momentum_status}
+- News sentiment: {market_data.get('news_sentiment', 'N/A')}
+- Support: {market_data.get('support', 'N/A')} | Resistance: {market_data.get('resistance', 'N/A')}
 
-## RULES
-- If PnL is dropping from peak, consider tightening SL
-- If trend reversed against position, consider closing
-- If PnL > +5% and momentum fading, consider partial close
-- Never move SL further from entry (only tighten)
-- Partial close: 25-75% of position
+## DECISION RULES
+1. PnL dropping from peak by >50% of peak → tighten SL or partial close
+2. Trend reversed against position → CLOSE (urgency=high)
+3. PnL > +5% and momentum=fading → PARTIAL_CLOSE 50%
+4. PnL > +3% → move SL to breakeven+0.5%
+5. NEVER move SL further from entry (only tighten)
+6. If near S/R level that opposes position → consider closing
+7. Partial close: 25-75% of position
 
 ## TASK
-Respond in JSON:
-
+Respond STRICTLY in JSON:
 {{
     "action": "HOLD" | "CLOSE" | "MOVE_SL" | "MOVE_TP" | "PARTIAL_CLOSE",
-    "new_sl": null or price (only for MOVE_SL),
-    "new_tp": null or price (only for MOVE_TP),
-    "close_pct": null or 25-75 (only for PARTIAL_CLOSE),
-    "reason": "brief explanation",
+    "new_sl": null or exact price (for MOVE_SL only),
+    "new_tp": null or exact price (for MOVE_TP only),
+    "close_pct": null or 25-75 (for PARTIAL_CLOSE only),
+    "reason": "1 sentence explaining why",
     "urgency": "low" | "medium" | "high"
-}}
-"""
+}}"""
         result = await self.claude_client.analyze(
             prompt,
             use_haiku=True,
