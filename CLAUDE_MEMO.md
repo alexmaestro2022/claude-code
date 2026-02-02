@@ -3252,3 +3252,8 @@ User → Chat (план + подтверждение) → "да" (auto_confirmed
   - OAuth badge в Admin панели (top-bar)
   - Проверка в autopilot loop: предупреждение при <2ч, остановка при expired
   - Credentials: `/opt/aila/.claude/.credentials.json` → `claudeAiOauth.expiresAt` (ms timestamp)
+- **OAuth auto-refresh** — автоматическое обновление токена через `refresh_token` grant:
+  - `aila/utils/oauth_refresh.py` → `OAuthRefresher` класс (endpoint: `platform.claude.com/v1/oauth/token`)
+  - Autopilot: при <2ч вызывает `ensure_valid_token()`, останавливается только если refresh тоже не сработал
+  - `check_oauth.sh`: пробует `try_refresh()` перед отправкой Telegram алертов
+  - Client ID: `9d1c250a-e61b-44d9-88ed-5944d1962f5e`, scopes: inference/mcp/profile/sessions
