@@ -3099,9 +3099,10 @@ User → Chat (план + подтверждение) → "да" (auto_confirmed
 - **ClaudeMaxClient** — новый клиент `claude_max_client.py`:
   - Вместо платного API (`anthropic.AsyncAnthropic`) → бесплатный CLI (`claude --print`)
   - Модель: всегда Opus 4.5 (Max subscription)
-  - OAuth авторизация через `/home/aila/.claude/.credentials.json`
+  - OAuth авторизация через `/opt/aila/.claude/.credentials.json` (HOME=/opt/aila из-за ProtectHome=true)
   - Совместимый интерфейс: `analyze()`, `batch_analyze_market()`, `analyze_trade_result()`
-  - Retry: 3 попытки с exponential backoff, таймаут 120с
+  - Retry: 2 попытки с exponential backoff, таймаут 300с
+  - Двухступенчатый batch: split по 3 пары → pick finalist
   - Лог: `/opt/aila/logs/ai_trade/cli_usage.log`
 - **Orchestrator переключен**: `ClaudeClient()` → `ClaudeMaxClient()` (все 16 агентов)
   - Старый `claude_client.py` сохранён как fallback
@@ -3216,14 +3217,15 @@ User → Chat (план + подтверждение) → "да" (auto_confirmed
 - **Stochastic RSI** (14,14,3,3): %K, %D
 - Все расчёты ЛОКАЛЬНЫЕ, чистый Python
 
-#### 6.2 Оптимизация промпта batch_analyze:
-- Структура: ROLE → MARKET DATA → MARKET CONTEXT → EXPERIENCE → RULES → TASK
-- Новые индикаторы: macd_signal, bb_pct_b, vol_ratio, stoch_rsi_k/d, support/resistance
-- BTC context: цена, тренд, RSI, MACD signal → влияет на altcoin confidence
-- Market sentiment: bullish/bearish/neutral с процентом
-- Recent trades: последние 3 сделки из agent_stats
-- Indicator guide: объяснение каждого индикатора для Claude
-- DRY: claude_client.py делегирует к claude_max_client.py
+#### 6.2 Batch analysis — двухступенчатая система:
+- **MAX_PAIRS_PER_BATCH = 3** — Opus не справляется с большими промптами
+- **Двухступенчатый анализ**: Stage 1 (батчи по 3 пары) → Stage 2 (pick best finalist)
+- 13 пар → 5 батчей × ~10с = ~50с полный цикл (было: бесконечные таймауты)
+- **Ультра-компактный промпт**: короткие ключи (s, p, chg, bb, vr, srsi), без INDICATOR GUIDE
+- BTC context: одна строка. Recent trades: одна строка. Experience удалён из батчей.
+- **HOME=/opt/aila** для CLI subprocess (ProtectHome=true блокирует /home/aila)
+- MAX_RETRIES = 2 (было 3), CLI_TIMEOUT = 300с
+- Стоимость: ~$0.07 за батч, ~$0.50 за полный цикл 13 пар
 
 #### 6.3 Оптимизация промпта evaluate_exit:
 - Все индикаторы: MACD, Bollinger %B, StochRSI, volume ratio, S/R
