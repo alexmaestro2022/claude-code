@@ -3778,11 +3778,16 @@ function formatNumber(n) {
 // OAuth status for Admin
 // =============================================
 let _oauthRemainAdmin = 0;
+let _oauthStatusAdmin = 'expired';
+let _oauthRefreshedAdmin = 0;
 async function loadOAuthAdmin() {
     try {
         const r = await fetch('/api/ai-trade/oauth/status');
         const d = await r.json();
+        const prev = _oauthRemainAdmin;
         _oauthRemainAdmin = d.remaining_seconds || 0;
+        _oauthStatusAdmin = d.status || 'expired';
+        if (_oauthRemainAdmin > prev + 600 && prev > 0) _oauthRefreshedAdmin = Date.now();
         updateOAuthAdmin();
     } catch(e) {}
 }
@@ -3794,10 +3799,21 @@ function updateOAuthAdmin() {
     const s = _oauthRemainAdmin;
     const h = Math.floor(s / 3600);
     const m = Math.floor((s % 3600) / 60);
+    if (_oauthRefreshedAdmin && Date.now() - _oauthRefreshedAdmin < 10000) {
+        badge.className = 'oauth-badge-admin ok';
+        dot.style.background = '#00ff88';
+        timer.textContent = 'refreshed \u2713';
+        return;
+    }
+    _oauthRefreshedAdmin = 0;
     if (s <= 0) {
         badge.className = 'oauth-badge-admin expired';
         dot.style.background = '#ef4444';
-        timer.textContent = 'EXPIRED';
+        timer.textContent = 'OFFLINE';
+    } else if (_oauthStatusAdmin === 'warning') {
+        badge.className = 'oauth-badge-admin warn';
+        dot.style.background = '#fbbf24';
+        timer.textContent = h + 'ч ' + String(m).padStart(2,'0') + 'м \u26a0';
     } else if (s < 7200) {
         badge.className = 'oauth-badge-admin warn';
         dot.style.background = '#fbbf24';

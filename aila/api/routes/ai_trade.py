@@ -1592,32 +1592,32 @@ async def get_trades_history(agent: str = "trader", limit: int = 50):
 
 @router.get("/oauth/status")
 async def get_oauth_status():
-    """Get OAuth token status and expiry info."""
+    """Get OAuth token status with auto-refresh info."""
+    from datetime import timezone as tz
     creds_path = Path("/opt/aila/.claude/.credentials.json")
-    log_path = Path("/opt/aila/logs/ai_trade/oauth_check.log")
+    refresh_log_path = Path("/opt/aila/logs/ai_trade/oauth_refresh.json")
+
     result = {
         "connected": False,
         "expires_at": None,
         "remaining_seconds": 0,
         "remaining_human": "EXPIRED",
-        "last_check": None,
+        "auto_refresh_enabled": True,
+        "last_refresh": None,
         "last_check_result": "NO_CREDENTIALS",
+        "status": "expired",
     }
 
     # Read credentials
+    remaining = 0
     try:
         if creds_path.exists():
             data = json.loads(creds_path.read_text())
-            oauth = data.get("claudeAiOauth", {})
-            expires_ms = oauth.get("expiresAt", 0)
+            expires_ms = data.get("claudeAiOauth", {}).get("expiresAt", 0)
             if expires_ms:
-                from datetime import timezone
-                expires_dt = datetime.fromtimestamp(
-                    expires_ms / 1000, tz=timezone.utc
-                )
-                now = datetime.now(tz=timezone.utc)
+                expires_dt = datetime.fromtimestamp(expires_ms / 1000, tz=tz.utc)
+                now = datetime.now(tz=tz.utc)
                 remaining = max(0, (expires_dt - now).total_seconds())
-
                 hours = int(remaining // 3600)
                 minutes = int((remaining % 3600) // 60)
 
@@ -1627,29 +1627,37 @@ async def get_oauth_status():
                 result["remaining_human"] = (
                     f"{hours}ч {minutes:02d}м" if remaining > 0 else "EXPIRED"
                 )
-                result["last_check_result"] = (
-                    "OK" if remaining > 0 else "EXPIRED"
-                )
     except Exception:
         pass
 
-    # Read last check from log
+    # Read refresh log
     try:
-        if log_path.exists():
-            lines = log_path.read_text().strip().splitlines()
-            if lines:
-                last_line = lines[-1]
-                colon_idx = last_line.find(": ", 4)
-                if colon_idx > 0:
-                    result["last_check"] = last_line[:colon_idx].strip()
-                    status_part = last_line[colon_idx + 2:].upper()
-                    if "EXPIRED" in status_part:
-                        result["last_check_result"] = "EXPIRED"
-                    elif "OK" in status_part:
-                        result["last_check_result"] = "OK"
-                    elif "WARNING" in status_part:
-                        result["last_check_result"] = "WARNING"
+        if refresh_log_path.exists():
+            rlog = json.loads(refresh_log_path.read_text())
+            result["last_refresh"] = {
+                "time": rlog.get("last_refresh_time"),
+                "success": rlog.get("last_refresh_success"),
+                "new_expiry": rlog.get("last_refresh_new_expiry"),
+                "error": rlog.get("last_refresh_error"),
+                "count_today": rlog.get("refresh_count_today", 0),
+                "failures_today": rlog.get("refresh_failures_today", 0),
+            }
     except Exception:
         pass
+
+    # Determine status
+    if remaining <= 0:
+        result["status"] = "expired"
+        result["last_check_result"] = "EXPIRED"
+    elif remaining < 7200:
+        lr = result.get("last_refresh")
+        if lr and lr.get("success") is True:
+            result["status"] = "refreshing"
+        else:
+            result["status"] = "warning"
+        result["last_check_result"] = "WARNING"
+    else:
+        result["status"] = "healthy"
+        result["last_check_result"] = "OK"
 
     return result

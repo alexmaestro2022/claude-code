@@ -627,13 +627,13 @@
 
     <!-- OAuth Status Modal -->
     <div class="modal-overlay" id="oauthModal" onclick="closeModalOnOverlay(event)">
-        <div class="modal-content" style="max-width:420px;">
+        <div class="modal-content" style="max-width:440px;">
             <div class="modal-header">
                 <h3 class="font-semibold"><i class="fa-solid fa-key mr-2"></i> Claude OAuth</h3>
                 <button class="modal-close" onclick="closeModal('oauthModal')"><i class="fa-solid fa-times"></i></button>
             </div>
             <div class="modal-body" style="padding:16px;">
-                <div style="display:flex;flex-direction:column;gap:12px;">
+                <div style="display:flex;flex-direction:column;gap:10px;">
                     <div style="display:flex;justify-content:space-between;">
                         <span class="text-dim">Status</span>
                         <span id="oauthModalStatus" class="font-bold">--</span>
@@ -646,17 +646,21 @@
                         <span class="text-dim">Remaining</span>
                         <span id="oauthModalRemaining" class="font-bold">--</span>
                     </div>
+                    <hr style="border-color:var(--border);margin:2px 0;">
                     <div style="display:flex;justify-content:space-between;">
-                        <span class="text-dim">Last check</span>
-                        <span id="oauthModalLastCheck">--</span>
+                        <span class="text-dim">Auto-refresh</span>
+                        <span id="oauthModalAutoRefresh">--</span>
                     </div>
-                    <hr style="border-color:var(--border);margin:4px 0;">
-                    <div class="text-dim" style="font-size:0.8rem;">
-                        <b>Renew token:</b><br>
-                        <code style="font-size:0.75rem;color:#fbbf24;">su - aila -c 'claude auth login'</code><br>
-                        <code style="font-size:0.75rem;color:#fbbf24;">cp /home/aila/.claude/.credentials.json /opt/aila/.claude/.credentials.json</code><br>
-                        <code style="font-size:0.75rem;color:#fbbf24;">sudo systemctl restart aila</code>
+                    <div style="display:flex;justify-content:space-between;">
+                        <span class="text-dim">Last refresh</span>
+                        <span id="oauthModalLastRefresh">--</span>
                     </div>
+                    <div style="display:flex;justify-content:space-between;">
+                        <span class="text-dim">Refreshes today</span>
+                        <span id="oauthModalRefreshCount">--</span>
+                    </div>
+                    <hr style="border-color:var(--border);margin:2px 0;">
+                    <div id="oauthModalInfo" class="text-dim" style="font-size:0.8rem;"></div>
                 </div>
             </div>
         </div>
@@ -1528,27 +1532,60 @@
 
         // OAuth status
         let _oauthRemainingSec = 0;
+        let _oauthStatus = 'expired';
+        let _oauthRefreshedAt = 0; // timestamp when "refreshed" flash started
         async function loadOAuthStatus() {
             try {
                 const r = await fetch('/api/ai-trade/oauth/status');
                 const d = await r.json();
+                const prevRemaining = _oauthRemainingSec;
                 _oauthRemainingSec = d.remaining_seconds || 0;
-                updateOAuthUI(d);
-                // Update modal
-                const ms = document.getElementById('oauthModalStatus');
-                if (ms) {
-                    ms.textContent = d.connected ? 'Connected' : 'EXPIRED';
-                    ms.style.color = d.connected ? '#00ff88' : '#ef4444';
+                _oauthStatus = d.status || 'expired';
+                // Detect successful refresh: remaining jumped up
+                if (_oauthRemainingSec > prevRemaining + 600 && prevRemaining > 0) {
+                    _oauthRefreshedAt = Date.now();
                 }
-                const me = document.getElementById('oauthModalExpires');
-                if (me) me.textContent = d.expires_at ? new Date(d.expires_at).toLocaleString() : '--';
-                const mr = document.getElementById('oauthModalRemaining');
-                if (mr) { mr.textContent = d.remaining_human; mr.style.color = d.connected ? '#00ff88' : '#ef4444'; }
-                const ml = document.getElementById('oauthModalLastCheck');
-                if (ml) ml.textContent = d.last_check || '--';
+                updateOAuthBadge();
+                updateOAuthModal(d);
             } catch(e) {}
         }
-        function updateOAuthUI() {
+        function updateOAuthModal(d) {
+            const statusEl = document.getElementById('oauthModalStatus');
+            if (statusEl) {
+                const labels = {healthy:'Connected',refreshing:'Refreshed',warning:'Warning',expired:'EXPIRED'};
+                const colors = {healthy:'#00ff88',refreshing:'#00ff88',warning:'#fbbf24',expired:'#ef4444'};
+                statusEl.textContent = labels[d.status] || d.status;
+                statusEl.style.color = colors[d.status] || '#ccc';
+            }
+            const expEl = document.getElementById('oauthModalExpires');
+            if (expEl) expEl.textContent = d.expires_at ? new Date(d.expires_at).toLocaleString() : '--';
+            const remEl = document.getElementById('oauthModalRemaining');
+            if (remEl) { remEl.textContent = d.remaining_human; remEl.style.color = d.connected ? '#00ff88' : '#ef4444'; }
+            const arEl = document.getElementById('oauthModalAutoRefresh');
+            if (arEl) { arEl.innerHTML = d.auto_refresh_enabled ? '<span style="color:#00ff88">Enabled</span>' : '<span style="color:#ef4444">Disabled</span>'; }
+            const lr = d.last_refresh;
+            const lrEl = document.getElementById('oauthModalLastRefresh');
+            if (lrEl && lr && lr.time) {
+                const t = new Date(lr.time).toLocaleString();
+                lrEl.innerHTML = lr.success ? `<span style="color:#00ff88">${t}</span>` : `<span style="color:#ef4444">${t} (failed)</span>`;
+            } else if (lrEl) { lrEl.textContent = 'Never'; }
+            const rcEl = document.getElementById('oauthModalRefreshCount');
+            if (rcEl && lr) {
+                const fails = lr.failures_today || 0;
+                rcEl.innerHTML = `${lr.count_today || 0}` + (fails > 0 ? ` <span style="color:#ef4444">(${fails} failed)</span>` : '');
+            }
+            const infoEl = document.getElementById('oauthModalInfo');
+            if (infoEl) {
+                if (d.status === 'expired') {
+                    infoEl.innerHTML = '<b style="color:#ef4444">Token expired!</b> Manual renewal needed:<br><code style="font-size:0.75rem;color:#fbbf24;">su - aila -c \'claude auth login\'</code><br><code style="font-size:0.75rem;color:#fbbf24;">cp /home/aila/.claude/.credentials.json /opt/aila/.claude/.credentials.json</code><br><code style="font-size:0.75rem;color:#fbbf24;">sudo systemctl restart aila</code>';
+                } else if (d.status === 'warning') {
+                    infoEl.innerHTML = '<b style="color:#fbbf24">Auto-refresh failed.</b> Token still valid but may expire soon. Will retry automatically.';
+                } else {
+                    infoEl.innerHTML = '<span style="color:#00ff88">Token refreshes automatically.</span>';
+                }
+            }
+        }
+        function updateOAuthBadge() {
             const badge = document.getElementById('oauthBadge');
             const dot = document.getElementById('oauthDot');
             const timer = document.getElementById('oauthTimer');
@@ -1556,10 +1593,22 @@
             const s = _oauthRemainingSec;
             const h = Math.floor(s / 3600);
             const m = Math.floor((s % 3600) / 60);
+            // Show "refreshed" flash for 10 seconds after detected refresh
+            if (_oauthRefreshedAt && Date.now() - _oauthRefreshedAt < 10000) {
+                badge.className = 'oauth-badge ok';
+                dot.style.background = '#00ff88';
+                timer.textContent = 'refreshed \u2713';
+                return;
+            }
+            _oauthRefreshedAt = 0;
             if (s <= 0) {
                 badge.className = 'oauth-badge expired';
                 dot.style.background = '#ef4444';
-                timer.textContent = 'EXPIRED';
+                timer.textContent = 'OFFLINE';
+            } else if (_oauthStatus === 'warning') {
+                badge.className = 'oauth-badge warn';
+                dot.style.background = '#fbbf24';
+                timer.textContent = h + 'ч ' + String(m).padStart(2,'0') + 'м \u26a0';
             } else if (s < 7200) {
                 badge.className = 'oauth-badge warn';
                 dot.style.background = '#fbbf24';
@@ -1570,10 +1619,9 @@
                 timer.textContent = h + 'ч ' + String(m).padStart(2,'0') + 'м';
             }
         }
-        // Client-side countdown every second
         setInterval(() => {
             if (_oauthRemainingSec > 0) _oauthRemainingSec--;
-            updateOAuthUI();
+            updateOAuthBadge();
         }, 1000);
 
         // Initialize
