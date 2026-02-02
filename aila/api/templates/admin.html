@@ -1029,6 +1029,9 @@
                 <button class="mode-btn" id="modeAuto" onclick="setMode('auto')">
                     <i class="fa-solid fa-lock-open"></i> <span data-i18n="auto">Auto</span>
                 </button>
+                <button class="mode-btn" id="autoPauseBtn" onclick="toggleAutoPause()" style="display:none;" title="Pause auto-cycle">
+                    <i class="fa-solid fa-pause"></i>
+                </button>
             </div>
             <div class="status-indicator status-ready" id="statusIndicator">
                 <span class="status-dot"></span>
@@ -1793,6 +1796,9 @@ const translations = {
         resume: 'Возобновить',
         pause: 'Пауза',
         run_now: 'Запустить',
+        auto_paused: 'Auto-цикл приостановлен. Текущая операция продолжается.',
+        auto_resumed: 'Auto-цикл возобновлён.',
+        auto_paused_waiting: 'Auto-цикл на паузе. Нажмите Resume для продолжения.',
         // Claude Code update
         claude_code_update: 'Обновление Claude Code',
         checking_updates: 'Проверка обновлений...',
@@ -2083,6 +2089,13 @@ function setMode(mode) {
 
     // Reset auto_confirmed on backend
     api('/chat/reset-auto', 'POST').catch(() => {});
+
+    // Reset pause state and hide pause button
+    autoPaused = false;
+    const pauseBtn = document.getElementById('autoPauseBtn');
+    pauseBtn.style.display = mode === 'auto' ? 'inline-flex' : 'none';
+    pauseBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
+    pauseBtn.classList.remove('active');
 
     // Cancel any pending auto-send countdown when switching modes
     cancelAutoCountdown();
@@ -2750,7 +2763,10 @@ async function analyzeResult(output, originalCommand = '') {
                 autoIterationCount++;
                 const maxIter = parseInt(autoSettings.maxIter || 10);
 
-                if (currentMode === 'auto' && autoIterationCount >= maxIter) {
+                if (autoPaused) {
+                    addMessage('system', t('auto_paused_waiting') || 'Auto-cycle paused. Press Resume to continue.');
+                    showCommandBlock(command, 'manual');
+                } else if (currentMode === 'auto' && autoIterationCount >= maxIter) {
                     // Hit iteration limit — force manual confirmation
                     addMessage('system', `Auto: ${autoIterationCount}/${maxIter} iterations. Manual confirmation required.`);
                     showCommandBlock(command, 'manual');
@@ -3157,6 +3173,22 @@ let autoSendTimer = null;
 let autoSendCountdown = 5;
 let commandHistory = [];
 let autoIterationCount = 0;  // Track auto mode iterations
+let autoPaused = false;
+
+function toggleAutoPause() {
+    autoPaused = !autoPaused;
+    const btn = document.getElementById('autoPauseBtn');
+    if (autoPaused) {
+        btn.innerHTML = '<i class="fa-solid fa-play"></i>';
+        btn.classList.add('active');
+        cancelAutoCountdown();
+        addMessage('system', t('auto_paused') || 'Auto-cycle paused. Current operation continues.');
+    } else {
+        btn.innerHTML = '<i class="fa-solid fa-pause"></i>';
+        btn.classList.remove('active');
+        addMessage('system', t('auto_resumed') || 'Auto-cycle resumed.');
+    }
+}
 
 function showCommandBlock(command, mode) {
     originalCommand = command;
@@ -3181,8 +3213,8 @@ function showCommandBlock(command, mode) {
     // Check command security
     checkCommandRisk(command);
 
-    // Auto mode: countdown
-    if (mode === 'auto') {
+    // Auto mode: countdown (skip if paused)
+    if (mode === 'auto' && !autoPaused) {
         startAutoCountdown();
     } else {
         document.getElementById('autoCountdown').style.display = 'none';
