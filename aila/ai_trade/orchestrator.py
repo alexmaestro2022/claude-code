@@ -27,7 +27,8 @@ from .autopilot_mode import AutopilotMode
 from .scaling_manager import ScalingManager
 from .exchanges.multi_exchange import MultiExchangeManager
 from .exchanges.bybit_exchange import BybitExchange
-from .claude_client import ClaudeClient, get_api_usage, set_api_usage_orchestrator
+from .claude_client import ClaudeClient, get_api_usage, set_api_usage_orchestrator  # noqa: F401 — kept as fallback
+from .claude_max_client import ClaudeMaxClient
 from .knowledge_base import KnowledgeBase
 from .market_scanner import MarketScanner
 from .risk_manager import RiskManager
@@ -60,7 +61,7 @@ class AgentOrchestrator:
         self.exchanges = MultiExchangeManager()
         self.exchanges.add_exchange(self._bybit_exchange)
 
-        self.claude_client = ClaudeClient()
+        self.claude_client = ClaudeMaxClient()  # Max subscription via CLI (free)
         self.knowledge_base = KnowledgeBase()
         self.scanner = MarketScanner(self._bybit_exchange)
         self.risk_manager = RiskManager()
