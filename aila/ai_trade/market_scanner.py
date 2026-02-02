@@ -182,6 +182,11 @@ class MarketScanner:
             ema50 = self._calculate_ema(closes, 50)
             ema200 = self._calculate_ema(closes, 200)
             atr = self._calculate_atr(highs, lows, closes)
+            macd = self._calculate_macd(closes)
+            bb = self._calculate_bollinger(closes)
+            vol_profile = self._calculate_volume_profile(volumes)
+            sr = self._calculate_support_resistance(highs, lows, closes)
+            stoch_rsi = self._calculate_stochastic_rsi(closes)
 
             trend = self._determine_trend(current_price, ema50, ema200)
 
@@ -194,8 +199,12 @@ class MarketScanner:
                 "trend": trend,
                 "volume_24h": sum(volumes[-24:]) if len(volumes) >= 24 else sum(volumes),
                 "change_24h": ((current_price - closes[0]) / closes[0] * 100) if closes[0] else 0,
-                "support": min(lows[-20:]),
-                "resistance": max(highs[-20:]),
+                "support": sr["support"] if sr else min(lows[-20:]),
+                "resistance": sr["resistance"] if sr else max(highs[-20:]),
+                "macd": macd,
+                "bollinger": bb,
+                "volume_profile": vol_profile,
+                "stoch_rsi": stoch_rsi,
             }
             self._cache.set(cache_key, result)
             return result
@@ -295,6 +304,188 @@ class MarketScanner:
             )
             true_ranges.append(tr)
         return sum(true_ranges[-period:]) / period
+
+    @staticmethod
+    def _calculate_macd(
+        closes: list[float], fast: int = 12, slow: int = 26, signal: int = 9
+    ) -> Optional[dict[str, float]]:
+        """Calculate MACD (12, 26, 9) — line, signal, histogram."""
+        if len(closes) < slow + signal:
+            return None
+
+        def _ema(data: list[float], period: int) -> list[float]:
+            mult = 2 / (period + 1)
+            result = [sum(data[:period]) / period]
+            for price in data[period:]:
+                result.append((price - result[-1]) * mult + result[-1])
+            return result
+
+        ema_fast = _ema(closes, fast)
+        ema_slow = _ema(closes, slow)
+
+        # Align lengths: ema_fast starts at index fast, ema_slow at index slow
+        offset = slow - fast
+        macd_line = [
+            ema_fast[offset + i] - ema_slow[i]
+            for i in range(len(ema_slow))
+        ]
+
+        if len(macd_line) < signal:
+            return None
+
+        signal_line = _ema(macd_line, signal)
+        # Align: signal_line starts signal periods into macd_line
+        histogram = macd_line[-1] - signal_line[-1]
+
+        return {
+            "macd": round(macd_line[-1], 6),
+            "signal": round(signal_line[-1], 6),
+            "histogram": round(histogram, 6),
+        }
+
+    @staticmethod
+    def _calculate_bollinger(
+        closes: list[float], period: int = 20, std_dev: float = 2.0
+    ) -> Optional[dict[str, float]]:
+        """Calculate Bollinger Bands (20, 2) — upper, lower, %B."""
+        if len(closes) < period:
+            return None
+
+        window = closes[-period:]
+        sma = sum(window) / period
+        variance = sum((x - sma) ** 2 for x in window) / period
+        std = variance ** 0.5
+
+        upper = sma + std_dev * std
+        lower = sma - std_dev * std
+        current = closes[-1]
+
+        band_width = upper - lower
+        pct_b = (current - lower) / band_width if band_width > 0 else 0.5
+
+        return {
+            "upper": round(upper, 6),
+            "lower": round(lower, 6),
+            "middle": round(sma, 6),
+            "pct_b": round(pct_b, 4),
+            "width_pct": round(band_width / sma * 100, 2) if sma else 0,
+        }
+
+    @staticmethod
+    def _calculate_volume_profile(
+        volumes: list[float], period: int = 20
+    ) -> Optional[dict[str, float]]:
+        """Calculate volume ratio: current vs average over N candles."""
+        if len(volumes) < period + 1:
+            return None
+
+        avg_vol = sum(volumes[-(period + 1):-1]) / period
+        current_vol = volumes[-1]
+        ratio = current_vol / avg_vol if avg_vol > 0 else 1.0
+
+        return {
+            "current": round(current_vol, 2),
+            "avg_20": round(avg_vol, 2),
+            "ratio": round(ratio, 2),
+        }
+
+    @staticmethod
+    def _calculate_support_resistance(
+        highs: list[float], lows: list[float], closes: list[float],
+        lookback: int = 50,
+    ) -> Optional[dict[str, float]]:
+        """Find nearest support/resistance from local min/max over N candles."""
+        if len(closes) < lookback:
+            return None
+
+        h = highs[-lookback:]
+        l = lows[-lookback:]
+        price = closes[-1]
+
+        # Find local maxima and minima (swing points)
+        resistance_levels = []
+        support_levels = []
+        for i in range(2, len(h) - 2):
+            if h[i] > h[i - 1] and h[i] > h[i - 2] and h[i] > h[i + 1] and h[i] > h[i + 2]:
+                resistance_levels.append(h[i])
+            if l[i] < l[i - 1] and l[i] < l[i - 2] and l[i] < l[i + 1] and l[i] < l[i + 2]:
+                support_levels.append(l[i])
+
+        # Nearest support below price
+        supports_below = [s for s in support_levels if s < price]
+        support = max(supports_below) if supports_below else min(l)
+
+        # Nearest resistance above price
+        resistances_above = [r for r in resistance_levels if r > price]
+        resistance = min(resistances_above) if resistances_above else max(h)
+
+        return {
+            "support": round(support, 6),
+            "resistance": round(resistance, 6),
+            "distance_to_support_pct": round((price - support) / price * 100, 2) if support else 0,
+            "distance_to_resistance_pct": round((resistance - price) / price * 100, 2) if resistance else 0,
+        }
+
+    @staticmethod
+    def _calculate_stochastic_rsi(
+        closes: list[float],
+        rsi_period: int = 14, stoch_period: int = 14,
+        k_smooth: int = 3, d_smooth: int = 3,
+    ) -> Optional[dict[str, float]]:
+        """Calculate Stochastic RSI (14, 14, 3, 3)."""
+        needed = rsi_period + stoch_period + d_smooth + 5
+        if len(closes) < needed:
+            return None
+
+        # Step 1: Calculate RSI series
+        deltas = [closes[i] - closes[i - 1] for i in range(1, len(closes))]
+        rsi_values = []
+        avg_gain = sum(max(d, 0) for d in deltas[:rsi_period]) / rsi_period
+        avg_loss = sum(max(-d, 0) for d in deltas[:rsi_period]) / rsi_period
+
+        for i in range(rsi_period, len(deltas)):
+            gain = max(deltas[i], 0)
+            loss = max(-deltas[i], 0)
+            avg_gain = (avg_gain * (rsi_period - 1) + gain) / rsi_period
+            avg_loss = (avg_loss * (rsi_period - 1) + loss) / rsi_period
+            rs = avg_gain / avg_loss if avg_loss > 0 else 100
+            rsi_values.append(100 - (100 / (1 + rs)))
+
+        if len(rsi_values) < stoch_period:
+            return None
+
+        # Step 2: Stochastic of RSI
+        stoch_k_raw = []
+        for i in range(stoch_period - 1, len(rsi_values)):
+            window = rsi_values[i - stoch_period + 1:i + 1]
+            low_rsi = min(window)
+            high_rsi = max(window)
+            diff = high_rsi - low_rsi
+            k = ((rsi_values[i] - low_rsi) / diff * 100) if diff > 0 else 50
+            stoch_k_raw.append(k)
+
+        if len(stoch_k_raw) < k_smooth:
+            return None
+
+        # Step 3: Smooth %K
+        stoch_k = [
+            sum(stoch_k_raw[i - k_smooth + 1:i + 1]) / k_smooth
+            for i in range(k_smooth - 1, len(stoch_k_raw))
+        ]
+
+        if len(stoch_k) < d_smooth:
+            return None
+
+        # Step 4: %D = SMA of %K
+        stoch_d = [
+            sum(stoch_k[i - d_smooth + 1:i + 1]) / d_smooth
+            for i in range(d_smooth - 1, len(stoch_k))
+        ]
+
+        return {
+            "k": round(stoch_k[-1], 2),
+            "d": round(stoch_d[-1], 2),
+        }
 
     async def get_pairs_by_priority(
         self,
