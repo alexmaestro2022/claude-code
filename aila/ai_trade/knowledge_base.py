@@ -25,17 +25,26 @@ class KnowledgeBase:
         if os.path.exists(self._path):
             try:
                 with open(self._path, "r") as f:
-                    return json.load(f)
+                    raw = json.load(f)
+                # Handle wrapped format {"data": {...}, "saved_at": ...}
+                if "data" in raw and "saved_at" in raw:
+                    return raw["data"]
+                return raw
             except (json.JSONDecodeError, IOError) as e:
                 logger.error(f"Error loading knowledge base: {e}")
         return self._default_structure()
 
     def save(self) -> None:
-        """Save knowledge base to file."""
+        """Save knowledge base to file (wrapped format for persistence compat)."""
         try:
             os.makedirs(os.path.dirname(self._path), exist_ok=True)
+            wrapped = {
+                "data": self.data,
+                "saved_at": datetime.now().isoformat(),
+                "version": "2.0",
+            }
             with open(self._path, "w") as f:
-                json.dump(self.data, f, indent=2, ensure_ascii=False)
+                json.dump(wrapped, f, indent=2, ensure_ascii=False)
         except IOError as e:
             logger.error(f"Error saving knowledge base: {e}")
 
@@ -98,15 +107,48 @@ class KnowledgeBase:
         """Get statistics for a specific pair."""
         return self.data["pair_performance"].get(pair, {})
 
-    def get_context_for_analysis(self, pair: Optional[str] = None) -> dict[str, Any]:
-        """Get relevant knowledge context for AI analysis."""
+    def get_context_for_analysis(
+        self, pair: Optional[str] = None, agent: str = "TRADER"
+    ) -> dict[str, Any]:
+        """Get relevant knowledge context for AI analysis.
+
+        Merges top-level data with agent-specific learning data
+        from trader_learning / sniper_learning sections.
+        """
+        # Collect successful setups from both sources
+        top_setups = self.data.get("successful_setups", [])
+        top_mistakes = self.data.get("mistakes_to_avoid", [])
+
+        # Agent-specific learning data (written by autopilot)
+        agent_key = f"{agent.lower()}_learning"
+        agent_data = self.data.get(agent_key, {})
+        agent_best = agent_data.get("best_pairs", [])
+        agent_mistakes = agent_data.get("mistakes_to_avoid", [])
+        learned_rules = agent_data.get("learned_rules", [])
+
+        # Also check trader_profile for mentor-written rules
+        profile_rules = self.data.get("trader_profile", {}).get("learned_rules", [])
+
+        # Merge: agent-specific data takes priority (most recent)
+        all_setups = top_setups + [
+            {"pair": p.get("symbol", ""), "pnl": p.get("pnl_usdt", 0),
+             "grade": p.get("grade", ""), "strategy": p.get("close_reason", ""),
+             "timestamp": p.get("added_at", "")}
+            for p in agent_best
+        ]
+        all_mistakes = top_mistakes + agent_mistakes
+
+        # Merge learned rules from both sources
+        all_rules = learned_rules + profile_rules
+
         context: dict[str, Any] = {
-            "total_trades": self.data["total_trades"],
-            "win_rate": self.data["win_rate"],
-            "total_pnl": self.data["total_pnl"],
-            "successful_setups": self.data["successful_setups"][-5:],
-            "mistakes_to_avoid": self.data["mistakes_to_avoid"][-5:],
-            "best_strategies": self.data["best_strategies"][-3:],
+            "total_trades": self.data.get("total_trades", 0),
+            "win_rate": self.data.get("win_rate", 0.0),
+            "total_pnl": self.data.get("total_pnl", 0.0),
+            "successful_setups": all_setups[-5:],
+            "mistakes_to_avoid": all_mistakes[-5:],
+            "best_strategies": self.data.get("best_strategies", [])[-3:],
+            "learned_rules": all_rules[-5:],
         }
         if pair:
             context["pair_performance"] = {pair: self.get_pair_stats(pair)}

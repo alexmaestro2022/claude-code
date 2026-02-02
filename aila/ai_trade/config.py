@@ -41,7 +41,7 @@ SCANNER_CONFIG = {
 TIMEFRAMES = ["1m", "5m", "15m", "1h", "4h"]
 
 # Knowledge base paths
-KNOWLEDGE_BASE_PATH = "/opt/aila/data/ai_knowledge.json"
+KNOWLEDGE_BASE_PATH = "/opt/aila/data/ai_trade/knowledge_base.json"
 TRADER_KNOWLEDGE_PATH = "/opt/aila/data/ai_trade/trader_knowledge.json"
 SNIPER_KNOWLEDGE_PATH = "/opt/aila/data/ai_trade/sniper_knowledge.json"
 SHARED_KNOWLEDGE_PATH = "/opt/aila/data/ai_trade/shared_knowledge.json"
