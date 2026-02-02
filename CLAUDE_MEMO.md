@@ -3051,7 +3051,19 @@ Chat добавлял лишние действия которые пользо�
 User → Chat ("Верно?") → кнопки подтверждения → Chat ([COMMAND_FOR_CODE]) → превью команды → Code (SSE) → результат → кнопки "Отправить в Chat?" → Chat анализирует
 
 ### Полный поток Auto:
-User → Chat (план + подтверждение) → "да" (auto_confirmed) → Chat → команда → countdown 3с → Code → analyzeResult → цикл (до maxIter)
+User → Chat (план + подтверждение) → "да" (auto_confirmed) → Chat → команда → countdown 5с → Code → analyzeResult → цикл (до maxIter)
+
+### Полный поток Scheduled (2026-02-02):
+_check_scheduled_tasks → _task_queue → _process_queue → _execute_scheduled_with_chat:
+Chat(KB + задача, mode="scheduled") → [COMMAND_FOR_CODE] → Code → результат →
+Chat(follow-up + анализ) → [COMMAND_FOR_CODE] → Code → ... → "Готово" → Telegram
+
+Ключевые функции:
+- `_call_claude_cli(prompt)` — вызов Chat (без permissions)
+- `_execute_code_cli(command)` — вызов Code (с --dangerously-skip-permissions)
+- `_execute_scheduled_with_chat(task)` — основной цикл (max 10 итераций)
+- Первый промпт — полная KB, follow-up — compact context
+- Rate limit → postpone task на RATE_LIMIT_COOLDOWN секунд
 
 ---
 
@@ -3090,9 +3102,9 @@ User → Chat (план + подтверждение) → "да" (auto_confirmed
 
 ---
 
-**Последнее обновление:** 2026-02-02 (feat: Max subscription CLI + enrichment dedup)
+**Последнее обновление:** 2026-02-02 (feat: scheduled tasks Chat+Code cycle)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
-**Рабочая ветка:** `stable-working`
+**Рабочая ветка:** `claude/start-new-session-4XrKU`
 
 ### Исправления 2026-02-02:
 
