@@ -3182,6 +3182,30 @@ User → Chat (план + подтверждение) → "да" (auto_confirmed
       └── Claude evaluate_exit (2.5 min) → HOLD/CLOSE/MOVE_SL/MOVE_TP/PARTIAL_CLOSE
 ```
 
+### Этап 5: Управление TRADER (вкл/выкл) + Position Sizing (2026-02-02):
+
+#### 5.1 Position Sizing с плечом:
+- **Проблема**: `risk_guard.py` и `risk_manager.py` использовали `RISK_LIMITS["min_balance_usdt"]` ($10) вместо `MIN_ORDER_SIZE_USDT` ($10) для проверки ордера
+- **Исправление**: используется `MIN_ORDER_SIZE_USDT / leverage` как минимальный margin. Баланс $9.73 + leverage 3x → margin $3.33 → APPROVED
+- **config.py**: `min_balance_usdt` снижен с $10 до $5
+
+#### 5.2 Toggle endpoint:
+- `POST /api/ai-trade/agent/{agent}/toggle` — переключает TRADER/SNIPER вкл/выкл
+- При включении — также очищает pause
+- При выключении — positions remain open (position_monitor продолжает работу)
+
+#### 5.3 Auto-reset pause (4 часа):
+- `MAX_PAUSE_HOURS = 4` в `agent_stats.py`
+- `is_paused()` проверяет `paused_at` timestamp, auto-reset при превышении 4h
+- `_check_loss_streak_pause()` записывает `paused_at`
+- `POST /api/ai-trade/agent/{agent}/reset-pause` — ручной сброс паузы
+
+#### API endpoints (новые):
+| Метод | URL | Описание |
+|-------|-----|----------|
+| POST | `/api/ai-trade/agent/{agent}/toggle` | Toggle on/off |
+| POST | `/api/ai-trade/agent/{agent}/reset-pause` | Reset pause manually |
+
 ### Исправления 2026-02-01:
 - **Sniper log spam** — добавлена дедупликация логов `_last_opportunity_log` (5 мин на пару) в `scan_for_snipes`
 - **BaseAgent logger** — `_setup_file_handler()`: проверка директории, дедупликация хэндлеров, init-лог при старте
