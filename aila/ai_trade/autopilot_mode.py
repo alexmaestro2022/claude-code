@@ -505,6 +505,13 @@ class AutopilotMode:
 
                     logger.warning(f"[SNIPER][STAGE 1] Found: {trigger} {direction} {pair} @ {confidence}%")
 
+                    # Fetch market data so REVIEWER can validate
+                    try:
+                        market_data = await self._orchestrator.trader.scanner.get_market_data(pair)
+                    except Exception as e:
+                        logger.warning(f"[SNIPER] Failed to fetch market data for {pair}: {e}")
+                        market_data = {}
+
                     # Convert snipe to opportunity format
                     opportunity = {
                         'pair': pair,
@@ -519,6 +526,7 @@ class AutopilotMode:
                         'reasoning': snipe.get('reasoning', ''),
                         'trigger_type': trigger,
                         'urgency': snipe.get('urgency', 'medium'),
+                        'market_data': market_data,
                     }
 
                     # Add to queue with HIGH priority
