@@ -1081,6 +1081,33 @@ async def toggle_agent(agent: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/agent/{agent}/reset-pause")
+async def reset_agent_pause(agent: str):
+    """Reset pause for agent manually."""
+    try:
+        agent_upper = agent.upper()
+        if agent_upper not in ("TRADER", "SNIPER"):
+            raise HTTPException(status_code=400, detail="Invalid agent. Use TRADER or SNIPER")
+
+        orch = await get_orchestrator()
+        if not hasattr(orch, 'autopilot'):
+            raise HTTPException(status_code=500, detail="Autopilot not initialized")
+
+        was_paused, reason = orch.autopilot._agent_stats.is_paused(agent_upper)
+        orch.autopilot._agent_stats.clear_pause(agent_upper)
+
+        return {
+            "agent": agent_upper,
+            "was_paused": was_paused,
+            "previous_reason": reason,
+            "status": "pause_cleared",
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/agent/{agent}/enable")
 async def enable_agent(agent: str):
     """Enable an agent."""

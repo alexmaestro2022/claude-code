@@ -14,6 +14,9 @@ from .config import (
     PERFORMANCE_LIMITS,
 )
 
+# Max pause duration — auto-reset after this
+MAX_PAUSE_HOURS = 4
+
 logger = logging.getLogger("ai_trade.agent_stats")
 
 
@@ -296,16 +299,18 @@ class AgentStatsManager:
         pause_minutes = PERFORMANCE_LIMITS.get("loss_streak_pause_minutes", 60)
 
         if stats["consecutive_losses"] >= max_streak:
-            pause_until = datetime.utcnow() + timedelta(minutes=pause_minutes)
+            now = datetime.utcnow()
+            pause_until = now + timedelta(minutes=pause_minutes)
             stats["paused_until"] = pause_until.isoformat()
+            stats["paused_at"] = now.isoformat()
             stats["pause_reason"] = f"{stats['consecutive_losses']} consecutive losses"
-            logger.warning(f"[{agent}] PAUSED for {pause_minutes} min due to {stats['consecutive_losses']} losses")
+            logger.warning(f"[{agent}] PAUSED for {pause_minutes} min due to {stats['consecutive_losses']} losses (auto-reset in {MAX_PAUSE_HOURS}h)")
             return {"paused": True, "until": stats["paused_until"], "reason": stats["pause_reason"]}
 
         return {"paused": False}
 
     def is_paused(self, agent: str) -> tuple[bool, Optional[str]]:
-        """Check if agent is paused."""
+        """Check if agent is paused. Auto-clears after MAX_PAUSE_HOURS."""
         stats = self.get_stats(agent)
         paused_until = stats.get("paused_until")
 
@@ -315,12 +320,26 @@ class AgentStatsManager:
         if isinstance(paused_until, str):
             paused_until = datetime.fromisoformat(paused_until)
 
-        if datetime.utcnow() < paused_until:
+        now = datetime.utcnow()
+
+        # Auto-reset if pause exceeds MAX_PAUSE_HOURS (even if paused_until is further)
+        paused_at = stats.get("paused_at")
+        if paused_at:
+            if isinstance(paused_at, str):
+                paused_at = datetime.fromisoformat(paused_at)
+            hours_paused = (now - paused_at).total_seconds() / 3600
+            if hours_paused >= MAX_PAUSE_HOURS:
+                logger.warning(f"[{agent}] Auto-reset pause after {hours_paused:.1f}h (max {MAX_PAUSE_HOURS}h)")
+                self.clear_pause(agent)
+                return False, None
+
+        if now < paused_until:
             return True, stats.get("pause_reason")
 
-        # Clear pause
+        # Clear expired pause
         stats["paused_until"] = None
         stats["pause_reason"] = None
+        stats["paused_at"] = None
         self._save_stats(agent)
         return False, None
 
@@ -328,6 +347,7 @@ class AgentStatsManager:
         """Clear pause for agent."""
         stats = self._trader_stats if agent == "TRADER" else self._sniper_stats
         stats["paused_until"] = None
+        stats["paused_at"] = None
         stats["pause_reason"] = None
         stats["consecutive_losses"] = 0
         self._save_stats(agent)
