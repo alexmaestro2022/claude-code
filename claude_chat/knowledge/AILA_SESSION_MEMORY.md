@@ -1,7 +1,7 @@
 ## AILA AI TRADE — ПАМЯТЬ СЕССИИ
 
 > **Загрузи этот файл в начале новой сессии для восстановления контекста**
-> **Последнее обновление:** 2026-01-30 21:30 UTC
+> **Последнее обновление:** 2026-02-02 20:00 UTC
 
 ---
 
@@ -311,6 +311,17 @@ TRADER, SNIPER, REVIEWER, RISK_GUARD, ANALYST, MENTOR, RESEARCHER, WHALE_TRACKER
 | 9 | Claude через API | Переключено на подписку Max |
 | 10 | Истории Chat/Code | Изолированы через разные cwd |
 
+### 2026-02-02 — Диагностика и фиксы pipeline
+
+| # | Проблема | Решение |
+|---|----------|---------|
+| 11 | `_processed_pairs` не очищался после reject | `mark_processed(pair, agent, success=False)` в обоих failure branches |
+| 12 | Stage 4 пустые данные = "нет подтверждения" | Считает только available_checks, `effective_min = min(required, available)` |
+| 13 | SNIPER игнорировал trigger_* настройки | Фильтрация по `sniper_settings.json` перед итерацией triggers |
+| 14 | Kelly Criterion cold-start: win_rate=0 → 0% | Fallback на `max_risk_per_trade_pct` (2%) при нулевой статистике |
+| 15 | False positive rate limit в admin chat | `_is_rate_limit_error()` проверяет только stderr, убраны broad patterns |
+| 16 | RULES.md устаревший (pm2, дубли CLAUDE.md) | Очищен с 186→62 строк (-82%), pm2→systemctl |
+
 ---
 
 ## 📊 ПОЛЕЗНЫЕ API ENDPOINTS
@@ -408,8 +419,9 @@ sudo systemctl restart aila
 | Каскад | ✅ Пауза при лимите |
 | Realtime PnL | ✅ Каждую секунду |
 | Админ панель | ✅ Через подписку Max |
-| Rate Limit | ✅ Детекция + уведомления |
+| Rate Limit | ✅ Детекция только stderr (фикс false positive) |
+| Ветка | `claude/start-new-session-4XrKU` (единственная) |
 
 ---
 
-**Сессия:** Интеграция SNIPER, каскадный анализ, отслеживание закрытий, админ панель с Claude Chat/Code, подписка Max
+**Последняя сессия:** Диагностика pipeline, 3 критических фикса сделок, Kelly cold-start, rate limit false positive, очистка RULES.md
