@@ -3243,3 +3243,12 @@ User → Chat (план + подтверждение) → "да" (auto_confirmed
 - **Sniper log spam** — добавлена дедупликация логов `_last_opportunity_log` (5 мин на пару) в `scan_for_snipes`
 - **BaseAgent logger** — `_setup_file_handler()`: проверка директории, дедупликация хэндлеров, init-лог при старте
 - **Permission denied** — исправлены права на файлы `data/ai_trade/*.json` после восстановления бэкапа
+
+### Добавлено 2026-02-02:
+- **OAuth мониторинг** — полная система отслеживания OAuth токена Claude:
+  - `scripts/check_oauth.sh` — bash скрипт проверки + Telegram алерты (cron каждые 2ч)
+  - `GET /api/ai-trade/oauth/status` — API endpoint со статусом токена и обратным отсчётом
+  - OAuth badge в шапке AI Trade (зелёный/жёлтый/красный с countdown)
+  - OAuth badge в Admin панели (top-bar)
+  - Проверка в autopilot loop: предупреждение при <2ч, остановка при expired
+  - Credentials: `/opt/aila/.claude/.credentials.json` → `claudeAiOauth.expiresAt` (ms timestamp)
