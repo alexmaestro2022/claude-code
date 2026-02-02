@@ -14,6 +14,7 @@ from .signal_queue import SignalQueue, SignalPriority
 from .agent_stats import AgentStatsManager
 from .config import AGENT_COOLDOWNS, PERFORMANCE_LIMITS
 from .position_monitor import PositionMonitor
+from ..utils.oauth_refresh import OAuthRefresher
 
 logger = logging.getLogger("ai_trade.autopilot")
 logger.setLevel(logging.INFO)
@@ -37,7 +38,7 @@ class AutopilotMode:
         '_signal_queue', '_agent_stats', '_sniper_scan_counter',
         '_last_sniper_scan', '_current_agent', '_cascade_stats',
         '_last_position_sync', '_position_monitor',
-        '_oauth_warn_sent', '_oauth_expired_sent',
+        '_oauth_refresher', '_oauth_warn_sent', '_oauth_expired_sent',
     ]
 
     def __init__(self, orchestrator: Any) -> None:
@@ -73,7 +74,8 @@ class AutopilotMode:
         # Position sync tracking
         self._last_position_sync: Optional[datetime] = None
 
-        # OAuth alert flags
+        # OAuth auto-refresh
+        self._oauth_refresher = OAuthRefresher()
         self._oauth_warn_sent: bool = False
         self._oauth_expired_sent: bool = False
 
@@ -174,55 +176,66 @@ class AutopilotMode:
         return {'passed': True, 'checks': checks}
 
     async def _check_oauth_token(self) -> bool:
-        """Check OAuth token expiry. Returns False if expired (should stop)."""
+        """Check OAuth token expiry and auto-refresh. Returns False to stop."""
         try:
-            creds = Path("/opt/aila/.claude/.credentials.json")
-            if not creds.exists():
-                return True  # No file — skip check, don't block
-            data = json.loads(creds.read_text())
-            expires_ms = data.get("claudeAiOauth", {}).get("expiresAt", 0)
-            if not expires_ms:
-                return True
-            now_ms = datetime.now(tz=timezone.utc).timestamp() * 1000
-            remaining_s = (expires_ms - now_ms) / 1000
+            remaining = self._oauth_refresher.get_remaining_seconds()
 
-            if remaining_s <= 0 and not self._oauth_expired_sent:
-                self._oauth_expired_sent = True
-                logger.error("[OAUTH] Token EXPIRED! Stopping autopilot.")
-                try:
-                    notifier = self._orchestrator.telegram
-                    await notifier.send_message(
-                        "🔴 <b>AILA AI Trade</b>: OAuth EXPIRED!\n\n"
-                        "Autopilot STOPPED.\n\n"
-                        "<code>su - aila -c 'claude auth login'</code>\n"
-                        "<code>cp /home/aila/.claude/.credentials.json "
-                        "/opt/aila/.claude/.credentials.json</code>\n"
-                        "<code>sudo systemctl restart aila</code>"
-                    )
-                except Exception:
-                    pass
-                return False
-
-            if remaining_s < 7200 and not self._oauth_warn_sent:
-                self._oauth_warn_sent = True
-                hours = int(remaining_s // 3600)
-                mins = int((remaining_s % 3600) // 60)
-                logger.warning(f"[OAUTH] Token expires in {hours}h {mins}m!")
-                try:
-                    notifier = self._orchestrator.telegram
-                    await notifier.send_message(
-                        f"🟡 <b>AILA AI Trade</b>: OAuth expires in "
-                        f"~{hours}h {mins}m!\n\n"
-                        "Renew soon:\n"
-                        "<code>su - aila -c 'claude auth login'</code>"
-                    )
-                except Exception:
-                    pass
-
-            # Reset flags if token refreshed
-            if remaining_s >= 7200:
+            # Token is fresh — reset flags
+            if remaining >= 7200:
                 self._oauth_warn_sent = False
                 self._oauth_expired_sent = False
+                return True
+
+            # Token expiring soon or expired — try auto-refresh
+            if remaining < 7200:
+                refreshed = await self._oauth_refresher.ensure_valid_token()
+                if refreshed:
+                    new_remaining = self._oauth_refresher.get_remaining_seconds()
+                    if new_remaining >= 7200:
+                        logger.info(
+                            f"[OAUTH] Auto-refreshed! New expiry in "
+                            f"{new_remaining // 3600}h {(new_remaining % 3600) // 60}m"
+                        )
+                        self._oauth_warn_sent = False
+                        self._oauth_expired_sent = False
+                        return True
+
+                # Refresh failed or token still short — warn once
+                if not self._oauth_warn_sent and remaining > 0:
+                    self._oauth_warn_sent = True
+                    hours = int(remaining // 3600)
+                    mins = int((remaining % 3600) // 60)
+                    logger.warning(
+                        f"[OAUTH] Refresh failed, token expires in {hours}h {mins}m"
+                    )
+                    try:
+                        await self._orchestrator.telegram.send_message(
+                            f"🟡 <b>AILA AI Trade</b>: OAuth auto-refresh failed!\n\n"
+                            f"Token expires in ~{hours}h {mins}m.\n\n"
+                            "Manual renewal:\n"
+                            "<code>su - aila -c 'claude auth login'</code>\n"
+                            "<code>cp /home/aila/.claude/.credentials.json "
+                            "/opt/aila/.claude/.credentials.json</code>"
+                        )
+                    except Exception:
+                        pass
+
+                # Expired and refresh failed — stop autopilot
+                if remaining <= 0 and not self._oauth_expired_sent:
+                    self._oauth_expired_sent = True
+                    logger.error("[OAUTH] Token EXPIRED and refresh failed! Stopping.")
+                    try:
+                        await self._orchestrator.telegram.send_message(
+                            "🔴 <b>AILA AI Trade</b>: OAuth EXPIRED!\n\n"
+                            "Auto-refresh FAILED. Autopilot STOPPED.\n\n"
+                            "<code>su - aila -c 'claude auth login'</code>\n"
+                            "<code>cp /home/aila/.claude/.credentials.json "
+                            "/opt/aila/.claude/.credentials.json</code>\n"
+                            "<code>sudo systemctl restart aila</code>"
+                        )
+                    except Exception:
+                        pass
+                    return False
 
         except Exception as e:
             logger.error(f"[OAUTH] Check error: {e}")
