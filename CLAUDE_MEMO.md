@@ -3260,3 +3260,8 @@ User → Chat (план + подтверждение) → "да" (auto_confirmed
   - Refresh log: `/opt/aila/logs/ai_trade/oauth_refresh.json` (count/failures/last time)
   - API `/api/ai-trade/oauth/status` → status: `healthy`/`refreshing`/`warning`/`expired`
   - UI: "refreshed" flash на 10с при обнаружении refresh, OFFLINE при expired, warning icon при failed refresh
+- **Fix: Cold-start Kelly Criterion** — при `win_rate=0` (нет завершённых сделок) Kelly возвращал 0, делая `risk_pct=0%` и блокируя ВСЕ сделки. Добавлен fallback на `max_risk_per_trade_pct` из конфига (2%).
+  - Файл: `orchestrator.py:250` — `if kelly <= 0: kelly = config['max_risk_per_trade_pct'] / 100`
+  - Ошибка в логах: `Capital manager rejected: Min order risk X% > max 0.0%`
+- **Fix: CLI exit code 1 debug** — при пустом stderr теперь читается stdout для диагностики
+  - Файл: `claude_max_client.py:287-291`
