@@ -34,7 +34,7 @@ _cli_usage_logger.propagate = False
 # Claude CLI config
 CLAUDE_CLI = "/usr/local/bin/claude"
 CLAUDE_MODEL = "claude-opus-4-5-20251101"
-CLI_TIMEOUT = 120  # seconds
+CLI_TIMEOUT = 300  # seconds (Opus + large prompts need more time)
 MAX_RETRIES = 3
 BASE_DELAY = 2.0  # seconds for exponential backoff
 
