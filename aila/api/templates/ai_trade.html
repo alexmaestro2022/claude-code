@@ -106,6 +106,18 @@
         .status-paused { background: #fbbf24; }
         .status-disabled { background: #6b7280; }
 
+        /* OAuth indicator */
+        .oauth-badge {
+            display: flex; align-items: center; gap: 6px;
+            padding: 4px 12px; border-radius: 8px; cursor: pointer;
+            border: 1px solid var(--border); font-size: 0.8rem;
+            transition: all 0.3s;
+        }
+        .oauth-badge.ok { border-color: rgba(0,255,136,0.3); color: #00ff88; }
+        .oauth-badge.warn { border-color: rgba(251,191,36,0.3); color: #fbbf24; animation: blink 1.5s infinite; }
+        .oauth-badge.expired { border-color: rgba(239,68,68,0.3); color: #ef4444; animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0.5; } }
+
         /* Position row */
         .position-row {
             display: flex;
@@ -340,6 +352,10 @@
                             $<span id="balanceValue">0.00</span>
                             <span id="balanceChange" class="text-xs ml-1"></span>
                         </div>
+                    </div>
+                    <div id="oauthBadge" class="oauth-badge ok" onclick="openModal('oauthModal')" title="Claude OAuth Status">
+                        <span id="oauthDot" style="width:8px;height:8px;border-radius:50%;background:#00ff88;display:inline-block;"></span>
+                        <span>Claude: <span id="oauthTimer">--</span></span>
                     </div>
                 </div>
 
@@ -608,6 +624,43 @@
     </div>
 
     <!-- MODALS -->
+
+    <!-- OAuth Status Modal -->
+    <div class="modal-overlay" id="oauthModal" onclick="closeModalOnOverlay(event)">
+        <div class="modal-content" style="max-width:420px;">
+            <div class="modal-header">
+                <h3 class="font-semibold"><i class="fa-solid fa-key mr-2"></i> Claude OAuth</h3>
+                <button class="modal-close" onclick="closeModal('oauthModal')"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="modal-body" style="padding:16px;">
+                <div style="display:flex;flex-direction:column;gap:12px;">
+                    <div style="display:flex;justify-content:space-between;">
+                        <span class="text-dim">Status</span>
+                        <span id="oauthModalStatus" class="font-bold">--</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;">
+                        <span class="text-dim">Expires</span>
+                        <span id="oauthModalExpires">--</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;">
+                        <span class="text-dim">Remaining</span>
+                        <span id="oauthModalRemaining" class="font-bold">--</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;">
+                        <span class="text-dim">Last check</span>
+                        <span id="oauthModalLastCheck">--</span>
+                    </div>
+                    <hr style="border-color:var(--border);margin:4px 0;">
+                    <div class="text-dim" style="font-size:0.8rem;">
+                        <b>Renew token:</b><br>
+                        <code style="font-size:0.75rem;color:#fbbf24;">su - aila -c 'claude auth login'</code><br>
+                        <code style="font-size:0.75rem;color:#fbbf24;">cp /home/aila/.claude/.credentials.json /opt/aila/.claude/.credentials.json</code><br>
+                        <code style="font-size:0.75rem;color:#fbbf24;">sudo systemctl restart aila</code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Balance Modal -->
     <div class="modal-overlay" id="balanceModal" onclick="closeModalOnOverlay(event)">
@@ -1473,6 +1526,56 @@
             document.getElementById('apiTotalLimitInput').value = 17.07;
         }
 
+        // OAuth status
+        let _oauthRemainingSec = 0;
+        async function loadOAuthStatus() {
+            try {
+                const r = await fetch('/api/ai-trade/oauth/status');
+                const d = await r.json();
+                _oauthRemainingSec = d.remaining_seconds || 0;
+                updateOAuthUI(d);
+                // Update modal
+                const ms = document.getElementById('oauthModalStatus');
+                if (ms) {
+                    ms.textContent = d.connected ? 'Connected' : 'EXPIRED';
+                    ms.style.color = d.connected ? '#00ff88' : '#ef4444';
+                }
+                const me = document.getElementById('oauthModalExpires');
+                if (me) me.textContent = d.expires_at ? new Date(d.expires_at).toLocaleString() : '--';
+                const mr = document.getElementById('oauthModalRemaining');
+                if (mr) { mr.textContent = d.remaining_human; mr.style.color = d.connected ? '#00ff88' : '#ef4444'; }
+                const ml = document.getElementById('oauthModalLastCheck');
+                if (ml) ml.textContent = d.last_check || '--';
+            } catch(e) {}
+        }
+        function updateOAuthUI() {
+            const badge = document.getElementById('oauthBadge');
+            const dot = document.getElementById('oauthDot');
+            const timer = document.getElementById('oauthTimer');
+            if (!badge) return;
+            const s = _oauthRemainingSec;
+            const h = Math.floor(s / 3600);
+            const m = Math.floor((s % 3600) / 60);
+            if (s <= 0) {
+                badge.className = 'oauth-badge expired';
+                dot.style.background = '#ef4444';
+                timer.textContent = 'EXPIRED';
+            } else if (s < 7200) {
+                badge.className = 'oauth-badge warn';
+                dot.style.background = '#fbbf24';
+                timer.textContent = h + 'ч ' + String(m).padStart(2,'0') + 'м';
+            } else {
+                badge.className = 'oauth-badge ok';
+                dot.style.background = '#00ff88';
+                timer.textContent = h + 'ч ' + String(m).padStart(2,'0') + 'м';
+            }
+        }
+        // Client-side countdown every second
+        setInterval(() => {
+            if (_oauthRemainingSec > 0) _oauthRemainingSec--;
+            updateOAuthUI();
+        }, 1000);
+
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             applyLanguage();
@@ -1488,6 +1591,10 @@
 
             // Full refresh every 30 seconds (stats, API usage, learning)
             setInterval(loadDashboardData, 30000);
+
+            // OAuth status
+            loadOAuthStatus();
+            setInterval(loadOAuthStatus, 60000);
         });
     </script>
 </body>

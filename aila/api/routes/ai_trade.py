@@ -1588,3 +1588,68 @@ async def get_trades_history(agent: str = "trader", limit: int = 50):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/oauth/status")
+async def get_oauth_status():
+    """Get OAuth token status and expiry info."""
+    creds_path = Path("/opt/aila/.claude/.credentials.json")
+    log_path = Path("/opt/aila/logs/ai_trade/oauth_check.log")
+    result = {
+        "connected": False,
+        "expires_at": None,
+        "remaining_seconds": 0,
+        "remaining_human": "EXPIRED",
+        "last_check": None,
+        "last_check_result": "NO_CREDENTIALS",
+    }
+
+    # Read credentials
+    try:
+        if creds_path.exists():
+            data = json.loads(creds_path.read_text())
+            oauth = data.get("claudeAiOauth", {})
+            expires_ms = oauth.get("expiresAt", 0)
+            if expires_ms:
+                from datetime import timezone
+                expires_dt = datetime.fromtimestamp(
+                    expires_ms / 1000, tz=timezone.utc
+                )
+                now = datetime.now(tz=timezone.utc)
+                remaining = max(0, (expires_dt - now).total_seconds())
+
+                hours = int(remaining // 3600)
+                minutes = int((remaining % 3600) // 60)
+
+                result["connected"] = remaining > 0
+                result["expires_at"] = expires_dt.isoformat()
+                result["remaining_seconds"] = int(remaining)
+                result["remaining_human"] = (
+                    f"{hours}ч {minutes:02d}м" if remaining > 0 else "EXPIRED"
+                )
+                result["last_check_result"] = (
+                    "OK" if remaining > 0 else "EXPIRED"
+                )
+    except Exception:
+        pass
+
+    # Read last check from log
+    try:
+        if log_path.exists():
+            lines = log_path.read_text().strip().splitlines()
+            if lines:
+                last_line = lines[-1]
+                colon_idx = last_line.find(": ", 4)
+                if colon_idx > 0:
+                    result["last_check"] = last_line[:colon_idx].strip()
+                    status_part = last_line[colon_idx + 2:].upper()
+                    if "EXPIRED" in status_part:
+                        result["last_check_result"] = "EXPIRED"
+                    elif "OK" in status_part:
+                        result["last_check_result"] = "OK"
+                    elif "WARNING" in status_part:
+                        result["last_check_result"] = "WARNING"
+    except Exception:
+        pass
+
+    return result
