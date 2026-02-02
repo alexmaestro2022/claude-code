@@ -3237,6 +3237,8 @@ User → Chat (план + подтверждение) → "да" (auto_confirmed
 - R:R: VETO <1.0 (было <0.5), warning <1.5 — единообразно везде
 - Reviewer prompt: добавлены новые индикаторы для лучшего ревью
 
+- **Sniper market_data fix** — SNIPER сигналы не содержали market_data, REVIEWER отклонял всё из-за `Price=None`. Фикс: `autopilot_mode.py` вызывает `scanner.get_market_data(pair)` перед добавлением в очередь.
+
 ### Исправления 2026-02-01:
 - **Sniper log spam** — добавлена дедупликация логов `_last_opportunity_log` (5 мин на пару) в `scan_for_snipes`
 - **BaseAgent logger** — `_setup_file_handler()`: проверка директории, дедупликация хэндлеров, init-лог при старте
