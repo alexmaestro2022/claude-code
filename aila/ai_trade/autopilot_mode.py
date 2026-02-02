@@ -612,8 +612,13 @@ class AutopilotMode:
             if not require_confirmations:
                 logger.info(f"[{agent}][STAGE 4] Confirmations disabled in settings, skipping")
             else:
-                logger.info(f"[{agent}][STAGE 4] Getting market confirmations for {pair}")
-                context = await self._orchestrator.get_market_context(pair)
+                # Reuse context from Stage 1 enrichment if available (saves 6 API calls)
+                context = signal.get("_market_context")
+                if context:
+                    logger.info(f"[{agent}][STAGE 4] Reusing market context from Stage 1 for {pair}")
+                else:
+                    logger.info(f"[{agent}][STAGE 4] Fetching market confirmations for {pair}")
+                    context = await self._orchestrator.get_market_context(pair)
 
                 confirmations = 0
                 whale_signal = context.get('whale', {}).get('signal', '')

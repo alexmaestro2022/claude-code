@@ -276,10 +276,11 @@ class TraderAgent(BaseAgent):
                         opportunity["decision"] = "WAIT"
                         return opportunity
 
-            # Add context to opportunity
+            # Add context to opportunity (also used by Stage 4 to avoid re-fetching)
             opportunity["whale_signal"] = context.get("whale", {})
             opportunity["news_sentiment"] = context.get("news", {})
             opportunity["market_sentiment"] = context.get("market", {})
+            opportunity["_market_context"] = context  # Full context for Stage 4 reuse
 
             # Adjust confidence based on whale/news alignment
             whale_sig = context.get("whale", {}).get("whale_signal", "neutral")
