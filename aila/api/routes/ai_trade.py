@@ -1041,6 +1041,46 @@ async def reset_agent_settings(agent: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/agent/{agent}/toggle")
+async def toggle_agent(agent: str):
+    """Toggle agent on/off. Does NOT close open positions — position_monitor keeps working."""
+    import logging
+    _logger = logging.getLogger("ai_trade.autopilot")
+    try:
+        from ...ai_trade.agent_settings import get_agent_settings
+        settings_mgr = get_agent_settings()
+        agent_upper = agent.upper()
+
+        if agent_upper not in ("TRADER", "SNIPER"):
+            raise HTTPException(status_code=400, detail="Invalid agent. Use TRADER or SNIPER")
+
+        # Toggle: read current → flip
+        currently_enabled = settings_mgr.is_enabled(agent_upper)
+        new_state = not currently_enabled
+        result = settings_mgr.set_enabled(agent_upper, new_state)
+
+        # Apply to autopilot config
+        orch = await get_orchestrator()
+        if hasattr(orch, 'autopilot'):
+            config_key = 'trader_enabled' if agent_upper == "TRADER" else 'sniper_enabled'
+            orch.autopilot._config[config_key] = new_state
+
+            # If enabling, also clear pause so it can resume immediately
+            if new_state:
+                orch.autopilot._agent_stats.clear_pause(agent_upper)
+                _logger.warning(f"[{agent_upper}] Enabled by user (pause cleared)")
+            else:
+                _logger.warning(f"[{agent_upper}] Disabled by user (positions remain open)")
+
+        result["enabled"] = new_state
+        result["agent"] = agent_upper
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/agent/{agent}/enable")
 async def enable_agent(agent: str):
     """Enable an agent."""
