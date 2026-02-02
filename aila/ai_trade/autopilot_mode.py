@@ -11,6 +11,7 @@ from typing import Any, Optional
 from .signal_queue import SignalQueue, SignalPriority
 from .agent_stats import AgentStatsManager
 from .config import AGENT_COOLDOWNS, PERFORMANCE_LIMITS
+from .position_monitor import PositionMonitor
 
 logger = logging.getLogger("ai_trade.autopilot")
 logger.setLevel(logging.INFO)
@@ -33,7 +34,7 @@ class AutopilotMode:
         '_last_scan_time', '_currently_scanning', '_current_pair', '_pairs_count',
         '_signal_queue', '_agent_stats', '_sniper_scan_counter',
         '_last_sniper_scan', '_current_agent', '_cascade_stats',
-        '_last_position_sync'
+        '_last_position_sync', '_position_monitor',
     ]
 
     def __init__(self, orchestrator: Any) -> None:
@@ -68,6 +69,13 @@ class AutopilotMode:
 
         # Position sync tracking
         self._last_position_sync: Optional[datetime] = None
+
+        # Active position management
+        self._position_monitor = PositionMonitor(
+            exchange=self._orchestrator.exchanges.primary,
+            trader_agent=self._orchestrator.trader,
+            position_manager=self._orchestrator.position_manager,
+        )
 
         self._config = {
             'scan_interval_seconds': 60,       # TRADER scan interval
@@ -201,6 +209,9 @@ class AutopilotMode:
 
                 # Sync closed positions (every 30 seconds)
                 await self._sync_closed_positions()
+
+                # Active position management (every 15 seconds internally)
+                await self._position_monitor.check_positions()
 
                 await asyncio.sleep(10)  # Base loop interval
 
