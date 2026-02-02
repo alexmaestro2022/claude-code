@@ -3089,11 +3089,36 @@ User → Chat (план + подтверждение) → "да" (auto_confirmed
 
 ---
 
-**Последнее обновление:** 2026-02-02 (feat: active position management)
+**Последнее обновление:** 2026-02-02 (feat: Max subscription CLI + enrichment dedup)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `stable-working`
 
 ### Исправления 2026-02-02:
+
+#### ЭТАП 4: Max subscription + enrichment dedup (ЗАВЕРШЁН)
+- **ClaudeMaxClient** — новый клиент `claude_max_client.py`:
+  - Вместо платного API (`anthropic.AsyncAnthropic`) → бесплатный CLI (`claude --print`)
+  - Модель: всегда Opus 4.5 (Max subscription)
+  - OAuth авторизация через `/home/aila/.claude/.credentials.json`
+  - Совместимый интерфейс: `analyze()`, `batch_analyze_market()`, `analyze_trade_result()`
+  - Retry: 3 попытки с exponential backoff, таймаут 120с
+  - Лог: `/opt/aila/logs/ai_trade/cli_usage.log`
+- **Orchestrator переключен**: `ClaudeClient()` → `ClaudeMaxClient()` (все 16 агентов)
+  - Старый `claude_client.py` сохранён как fallback
+- **Enrichment dedup** — Stage 1 context переиспользуется в Stage 4:
+  - `_enrich_with_context()` сохраняет `_market_context` в signal
+  - Stage 4 читает из signal, не вызывает `get_market_context()` повторно
+  - Экономия: 6 API вызовов на каждый сигнал (whale, news x3, predictor x2)
+
+#### Сравнение: было vs стало
+| Параметр | Было (API) | Стало (Max CLI) |
+|----------|-----------|-----------------|
+| Клиент | `anthropic.AsyncAnthropic` | `claude --print` subprocess |
+| Модели | Sonnet + Haiku | Opus 4.5 (всегда) |
+| Стоимость | $3-15/1M tokens | Бесплатно (Max) |
+| Auth | API key из .env | OAuth из ~/.claude/ |
+| Enrichment | 2x per signal | 1x per signal |
+| Лог | api_usage.log | cli_usage.log |
 
 #### ЭТАП 1: Knowledge Base unified (ЗАВЕРШЁН)
 - **Knowledge Base unified** — КРИТИЧЕСКИЙ фикс: TRADER теперь видит свой опыт
