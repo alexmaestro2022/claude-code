@@ -1098,6 +1098,9 @@ Trades today: {stats['trades_today']}
         # 4. Update knowledge base
         await self._update_knowledge_base(source, symbol, position_data, closed_pnl, grade)
 
+        # 4.5 AI analysis via ANALYST (Claude Haiku - non-critical)
+        await self._run_analyst(source, symbol, trade_data, pnl_usdt, pnl_pct)
+
         # 5. Send Telegram notification
         await self._send_trade_closed_notification(
             source, symbol, position_data, closed_pnl, grade, result
@@ -1109,6 +1112,33 @@ Trades today: {stats['trades_today']}
         # 7. Check for level up
         if result.get("xp_result", {}).get("leveled_up"):
             await self._send_level_up_notification(source, result["xp_result"])
+
+    async def _run_analyst(
+        self,
+        agent: str,
+        symbol: str,
+        trade_data: dict[str, Any],
+        pnl_usdt: float,
+        pnl_pct: float,
+    ) -> None:
+        """Run ANALYST on closed trade for AI-powered learning."""
+        try:
+            analyst = self._orchestrator.analyst
+            trade_for_analysis = {
+                **trade_data,
+                "pair": symbol,
+                "pnl": pnl_usdt,
+                "pnl_pct": pnl_pct,
+                "source_agent": agent,
+            }
+            result = await analyst.analyze(trade_for_analysis)
+            ai_grade = result.get("grade", "?")
+            lesson = result.get("lesson", "")
+            logger.info(
+                f"[{agent}][ANALYST] AI grade={ai_grade} | {lesson[:80]}"
+            )
+        except Exception as e:
+            logger.error(f"[{agent}][ANALYST] Analysis failed: {e}")
 
     async def _evaluate_trade_grade(
         self,
