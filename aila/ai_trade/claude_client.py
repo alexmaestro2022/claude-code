@@ -703,6 +703,7 @@ class ClaudeClient:
         """Build batch market analysis prompt for all pairs."""
         setups = knowledge.get("successful_setups", [])[-5:]
         mistakes = knowledge.get("mistakes_to_avoid", [])[-5:]
+        rules = knowledge.get("learned_rules", [])[-5:]
 
         # Format pairs data compactly
         pairs_summary = []
@@ -730,6 +731,9 @@ class ClaudeClient:
 
 ## MISTAKES TO AVOID
 {json.dumps(mistakes, indent=2)}
+
+## LEARNED RULES FROM EXPERIENCE
+{json.dumps(rules, indent=2) if rules else "No rules learned yet."}
 
 ## RISK MANAGEMENT RULES (MANDATORY)
 1. Risk/Reward ratio MUST be >= 1.5:1
@@ -779,6 +783,7 @@ CRITICAL:
         pair_perf = knowledge.get("pair_performance", {}).get(pair, {})
         setups = knowledge.get("successful_setups", [])[-5:]
         mistakes = knowledge.get("mistakes_to_avoid", [])[-5:]
+        rules = knowledge.get("learned_rules", [])[-5:]
 
         return f"""You are an expert cryptocurrency trader. Analyze the market.
 
@@ -803,6 +808,9 @@ Indicators:
 
 ## MISTAKES TO AVOID
 {json.dumps(mistakes, indent=2)}
+
+## LEARNED RULES FROM EXPERIENCE
+{json.dumps(rules, indent=2) if rules else "No rules learned yet."}
 
 ## RISK MANAGEMENT RULES (MANDATORY)
 1. Risk/Reward ratio MUST be >= 1.5:1 (take_profit distance / stop_loss distance)
