@@ -96,7 +96,8 @@ Find patterns and respond in JSON:
 }}
 """
         result = await self.claude_client.analyze(
-            prompt, use_haiku=True, agent="ANALYST", action="patterns", context=f"trades={len(recent_trades)}"
+            prompt, use_haiku=True, agent="ANALYST", action="patterns",
+            context=f"trades={len(successful) + len(failed)}",
         )
 
         if "error" not in result:
