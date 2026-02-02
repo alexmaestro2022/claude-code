@@ -3089,9 +3089,18 @@ User → Chat (план + подтверждение) → "да" (auto_confirmed
 
 ---
 
-**Последнее обновление:** 2026-02-01 (fix: sniper log spam + base_agent logger init)
+**Последнее обновление:** 2026-02-02 (fix: unified Knowledge Base)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `stable-working`
+
+### Исправления 2026-02-02:
+- **Knowledge Base unified** — КРИТИЧЕСКИЙ фикс: TRADER теперь видит свой опыт
+  - `KNOWLEDGE_BASE_PATH` переключен с `data/ai_knowledge.json` (был пустой) на `data/ai_trade/knowledge_base.json` (реальные данные)
+  - `_load()` / `save()` обновлены для поддержки формата `{"data": {...}, "saved_at": ...}`
+  - `get_context_for_analysis()` объединяет данные из `trader_learning`/`sniper_learning` + верхний уровень
+  - Параметр `agent="TRADER"` по умолчанию, SNIPER передаёт `agent="SNIPER"`
+  - TRADER видит: 4 successful setups (SUI x3, PTB), 4 mistakes (HYPE, 1000RATS, XAUT, PIPPIN)
+  - Старый пустой `data/ai_knowledge.json` → `data/ai_knowledge.json.bak`
 
 ### Исправления 2026-02-01:
 - **Sniper log spam** — добавлена дедупликация логов `_last_opportunity_log` (5 мин на пару) в `scan_for_snipes`
