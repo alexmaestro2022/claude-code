@@ -1069,12 +1069,17 @@ def _get_mode_instructions(mode: str, auto_confirmed: bool = False) -> str:
         )
     if auto_confirmed:
         return (
-            "РЕЖИМ: AUTO (выполнение)\n\n"
+            "РЕЖИМ: AUTO (выполнение) — ЗАДАЧА ПОДТВЕРЖДЕНА\n\n"
             f"{planner_rule}\n"
-            "Задача подтверждена. Сразу формируй команду:\n"
-            "[COMMAND_FOR_CODE]команда[/COMMAND_FOR_CODE]\n\n"
-            "После выполнения — кратко \"Готово\" + результат.\n"
-            "Фокусируйся ТОЛЬКО на задаче, НЕ предлагай лишнее."
+            "Сформируй команду в ТЕКСТОВОМ формате:\n"
+            "[COMMAND_FOR_CODE]твоя команда здесь[/COMMAND_FOR_CODE]\n\n"
+            "ВАЖНО:\n"
+            "- Используй ТОЛЬКО тег [COMMAND_FOR_CODE], НЕ JSON\n"
+            "- НЕ используй {{\"name\": \"Bash\", ...}} — это НЕ работает\n"
+            "- После выполнения напиши \"Готово\" и краткий итог\n"
+            "- Фокусируйся ТОЛЬКО на текущей задаче\n\n"
+            "ПРИМЕР ПРАВИЛЬНОГО ОТВЕТА:\n"
+            "[COMMAND_FOR_CODE]sudo systemctl status aila[/COMMAND_FOR_CODE]"
         )
     return (
         "РЕЖИМ: AUTO (новая задача) — СТРОГИЙ ПОРЯДОК!\n\n"
