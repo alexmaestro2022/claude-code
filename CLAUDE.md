@@ -52,8 +52,6 @@
 
 После изменения Python кода бота автоматически перезапускай его:
 ```bash
-pm2 restart aila
-# или
 sudo systemctl restart aila
 ```
 
@@ -446,25 +444,35 @@ Claude Code **ДОЛЖЕН** обновлять этот файл (`CLAUDE.md`) 
 
 ### Исправленные проблемы
 - OAuth credentials не синхронизировались между `/home/aila/.claude/` и `/opt/aila/.claude/` из-за `ProtectHome=true` в systemd. Решение: cron `*/5` + `_sync_claude_credentials()` в коде.
+- OAuth токен истекал каждые ~8ч без уведомлений. Решение: авто-refresh через `refresh_token` grant + cron + Telegram алерты.
 
 ### Функционал
 - **Admin Panel Chat/Code** — двойной режим: Chat (с сессиями, KB) + Code (одноразовые команды)
 - **Security Settings** — 4 вкладки защиты AI Trade (Protection, Permissions, Critical, Limits)
 - **Session Management** — initialize, status, clear с архивацией истории
 - **Knowledge Base** — RULES.md + AILA_SESSION_MEMORY.md, обновление через `[UPDATE_KNOWLEDGE]` теги
+- **OAuth мониторинг** — авто-refresh токена + UI виджеты + Telegram алерты + cron каждые 2ч
 
 ### Структура
-- `aila/api/routes/admin.py` — бэкенд Admin Panel (~2300 строк)
+- `aila/api/routes/admin.py` — бэкенд Admin Panel
+- `aila/api/routes/ai_trade.py` — API AI Trade (55+ endpoints включая `/oauth/status`)
 - `aila/api/templates/admin.html` — UI Admin Panel (CSS + HTML + JS)
+- `aila/api/templates/ai_trade.html` — UI AI Trade с OAuth виджетом
+- `aila/ai_trade/autopilot_mode.py` — автопилот с OAuth проверкой в loop
+- `aila/utils/oauth_refresh.py` — OAuthRefresher (авто-refresh через platform.claude.com)
+- `scripts/check_oauth.sh` — cron скрипт проверки + авто-refresh + Telegram
 - `claude_chat/knowledge/` — база знаний для Claude Chat
 - `claude_chat/history/` — история чата (current.json + архивы)
 - `data/admin/settings.json` — настройки безопасности
+- `logs/ai_trade/oauth_refresh.json` — лог refresh попыток (счётчики, время, ошибки)
 
 ### Решения и паттерны
 - **OAuth auth**: `_get_claude_env()` удаляет `ANTHROPIC_API_KEY` и `CLAUDE_API_KEY`, использует OAuth Max через `/opt/aila/.claude/.credentials.json`
+- **OAuth auto-refresh**: POST `platform.claude.com/v1/oauth/token` с `grant_type=refresh_token`, client_id `9d1c250a-...`. Credentials: `claudeAiOauth.expiresAt` (ms timestamp)
 - **Chat vs Code сессии**: Chat без `--no-session-persistence` (сохраняет контекст), Code с `--no-session-persistence` (одноразовые)
 - **SSE streaming**: `asyncio.create_subprocess_exec` + `StreamingResponse` для real-time вывода Code
 - **Knowledge в промпте**: приоритетный порядок (RULES.md первый), max 50KB на файл
+- **Перезапуск**: только `sudo systemctl restart aila` (pm2 не установлен)
 
 ---
 
