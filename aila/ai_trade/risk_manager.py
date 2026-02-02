@@ -4,7 +4,7 @@ import logging
 from datetime import date
 from typing import Any
 
-from .config import RISK_LIMITS
+from .config import MIN_ORDER_SIZE_USDT, RISK_LIMITS
 
 logger = logging.getLogger("ai_trade")
 
@@ -44,9 +44,9 @@ class RiskManager:
         # Check minimum balance considering leverage
         # With leverage, we only need margin = min_order_size / leverage
         leverage = signal.get("leverage", 5)
-        min_margin_needed = self._limits["min_balance_usdt"] / leverage
+        min_margin_needed = MIN_ORDER_SIZE_USDT / leverage
         if balance < min_margin_needed:
-            return {"approved": False, "reason": f"Balance ${balance:.2f} below min margin ${min_margin_needed:.2f} (for ${self._limits['min_balance_usdt']} order with {leverage}x)"}
+            return {"approved": False, "reason": f"Balance ${balance:.2f} below min margin ${min_margin_needed:.2f} (for ${MIN_ORDER_SIZE_USDT} order with {leverage}x)"}
 
         # Check max open positions
         if self.open_positions_count >= self._limits["max_open_positions"]:

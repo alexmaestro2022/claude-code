@@ -11,7 +11,7 @@ RISK_LIMITS = {
     "max_position_size_pct": 10,      # Max 10% of deposit per trade
     "max_daily_loss_pct": 5,          # Stop trading at -5% daily loss
     "max_drawdown_pct": 15,           # Max drawdown
-    "min_balance_usdt": 10,           # Minimum balance
+    "min_balance_usdt": 5,            # Minimum balance (with leverage, $5 is enough)
     "max_open_positions": 3,          # Max concurrent positions
     "default_risk_per_trade_pct": 2,  # Default risk per trade
 }

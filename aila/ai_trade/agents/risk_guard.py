@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Any
 
 from .base_agent import BaseAgent
-from ..config import RISK_LIMITS
+from ..config import MIN_ORDER_SIZE_USDT, RISK_LIMITS
 
 
 class RiskGuardAgent(BaseAgent):
@@ -59,7 +59,7 @@ class RiskGuardAgent(BaseAgent):
 
         # 2. Balance checks (with leverage consideration)
         # With leverage, we need less margin: min_margin = min_order_size / leverage
-        min_order_size = RISK_LIMITS["min_balance_usdt"]  # $10 min order size (Bybit limit)
+        min_order_size = MIN_ORDER_SIZE_USDT  # $10 Bybit minimum notional order size
         min_margin_needed = min_order_size / max(leverage, 1)
         if balance < min_margin_needed:
             self.log(f"VETO: Balance ${balance:.2f} below min margin ${min_margin_needed:.2f}", "warning")
