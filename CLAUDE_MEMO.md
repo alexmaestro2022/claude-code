@@ -3297,3 +3297,9 @@ Chat(follow-up + анализ) → [COMMAND_FOR_CODE] → Code → ... → "Го
 - **Проблема:** `trigger_liquidation: false` в sniper_settings.json не проверялась в коде. Все триггеры всегда активны.
 - **Фикс:** Добавлена фильтрация `self._triggers` по настройкам `trigger_breakout/breakdown/liquidation`
 - **Файл:** `agents/sniper.py:288` + включил `trigger_liquidation: true` в настройках
+
+### Баг 4: get_balance() возвращает float, код ожидал dict
+- **Проблема:** position_manager.py:85-86 вызывал balance.get("free", 0) на float — AttributeError (26+ раз)
+- **Следствие:** Проверка баланса падала, ордера шли без проверки
+- **Фикс:** available_balance = await self._exchange.get_balance("USDT") — убран .get()
+- **Файл:** position_manager.py:85
