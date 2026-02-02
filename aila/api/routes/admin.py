@@ -1028,47 +1028,61 @@ def _format_history_compact(
 
 
 def _get_mode_instructions(mode: str, auto_confirmed: bool = False) -> str:
-    """Get mode-specific instructions for Chat+Code mode."""
+    """Get mode-specific instructions for Chat+Code mode.
+
+    Chat runs with --tools "" (no tools). Claude cannot execute
+    commands itself — it must output [COMMAND_FOR_CODE] tags.
+    """
+    planner_rule = (
+        "ТЫ — ПЛАНИРОВЩИК, НЕ ИСПОЛНИТЕЛЬ.\n"
+        "У тебя НЕТ инструментов. Ты НЕ можешь читать файлы, "
+        "выполнять bash, редактировать код.\n"
+        "Единственный способ выполнить действие на сервере — "
+        "сформировать [COMMAND_FOR_CODE]команда[/COMMAND_FOR_CODE].\n"
+    )
     if mode == "manual":
         return (
-            "РЕЖИМ: MANUAL — ОБЯЗАТЕЛЬНО УТОЧНЯЙ!\n\n"
-            "ПЕРЕД ЛЮБЫМ ДЕЙСТВИЕМ:\n"
-            "1. Напиши: \"Понял задачу: [1-2 предложения как понял]\"\n"
-            "2. Спроси: \"Всё верно? Выполняю?\"\n"
-            "3. ЖДИ ответа пользователя\n"
-            "4. ТОЛЬКО после \"да/верно\" — формируй [COMMAND_FOR_CODE]\n\n"
-            "ЗАПРЕЩЕНО:\n"
-            "- Сразу выполнять без подтверждения\n"
-            "- Сразу просить доступ к файлам\n"
-            "- Формировать [COMMAND_FOR_CODE] без подтверждения\n\n"
+            "РЕЖИМ: MANUAL — СТРОГИЙ ПОРЯДОК!\n\n"
+            f"{planner_rule}\n"
+            "ШАГ 1: Напиши \"Понял задачу: [что будешь делать]\"\n"
+            "        Покажи команду которую предлагаешь выполнить\n"
+            "        Спроси \"Всё верно? Выполняю?\"\n"
+            "        СТОП — ЖДИ ОТВЕТА.\n\n"
+            "ШАГ 2 (только после \"да/верно\"):\n"
+            "        Сформируй [COMMAND_FOR_CODE]команда[/COMMAND_FOR_CODE]\n\n"
             "ПРИМЕР:\n"
-            "User: \"удали индикатор в шапке\"\n"
-            "Assistant: \"Понял задачу: удалить индикатор статуса из шапки. Всё верно?\"\n"
+            "User: \"покажи статус бота\"\n"
+            "Assistant: \"Понял задачу: проверить статус сервиса AILA.\n"
+            "Команда: `sudo systemctl status aila | head -10`\n"
+            "Всё верно?\"\n"
             "User: \"да\"\n"
-            "Assistant: \"Выполняю. [COMMAND_FOR_CODE]...\""
+            "Assistant: \"[COMMAND_FOR_CODE]sudo systemctl status aila | head -10"
+            "[/COMMAND_FOR_CODE]\""
         )
     if mode == "scheduled":
         return (
-            "РЕЖИМ: SCHEDULED (автозадача)\n"
-            "Это запланированная автоматическая задача. Выполняй без вопросов и подтверждений.\n"
-            "Сразу формируй [COMMAND_FOR_CODE]. Фокусируйся только на задаче.\n"
+            "РЕЖИМ: SCHEDULED (автозадача)\n\n"
+            f"{planner_rule}\n"
+            "Сразу формируй [COMMAND_FOR_CODE]. Без вопросов.\n"
             "Когда завершено — напиши \"Готово\" и краткий итог.\n"
             "НЕ предлагай улучшения, НЕ начинай новые задачи."
         )
     if auto_confirmed:
         return (
-            "РЕЖИМ: AUTO (выполнение)\n"
-            "Выполняй текущую задачу автоматически. Сразу формируй [COMMAND_FOR_CODE] без вопросов.\n\n"
+            "РЕЖИМ: AUTO (выполнение)\n\n"
+            f"{planner_rule}\n"
+            "Сразу формируй [COMMAND_FOR_CODE] без вопросов.\n\n"
             "ВАЖНО:\n"
             "- Фокусируйся ТОЛЬКО на текущей задаче\n"
-            "- НЕ предлагай улучшения, оптимизации или рефакторинг не связанные с задачей\n"
-            "- Если видишь другие проблемы — НЕ исправляй их, только упомяни в конце отчёта\n"
-            "- Когда задача выполнена — напиши \"Готово\" и краткий итог, НЕ начинай новые улучшения"
+            "- НЕ предлагай улучшения и рефакторинг\n"
+            "- Когда задача выполнена — напиши \"Готово\" и краткий итог"
         )
     return (
-        "РЕЖИМ: AUTO (новая задача)\n"
-        "Кратко опиши как понял задачу и спроси: \"Подтверждаете?\"\n"
-        "НЕ выполняй и НЕ формируй [COMMAND_FOR_CODE] пока пользователь не подтвердит."
+        "РЕЖИМ: AUTO (новая задача)\n\n"
+        f"{planner_rule}\n"
+        "Кратко опиши как понял задачу и покажи команду.\n"
+        "Спроси: \"Подтверждаете?\"\n"
+        "НЕ формируй [COMMAND_FOR_CODE] пока пользователь не подтвердит."
     )
 
 
@@ -1274,7 +1288,11 @@ async def chat_message(request: Request):
         )
         result = await asyncio.to_thread(
             subprocess.run,
-            ["claude", "--print", "--model", CLAUDE_MODEL, prompt],
+            [
+                "claude", "--print", "--model", CLAUDE_MODEL,
+                "--tools", "",  # No tools — planner only
+                "--", prompt,
+            ],
             cwd="/opt/aila",
             capture_output=True,
             text=True,
@@ -2680,11 +2698,15 @@ _SCHEDULED_CODE_TIMEOUT = 300
 
 
 async def _call_claude_cli(prompt: str, timeout: int = 120) -> tuple[str, str]:
-    """Call Claude CLI with prompt, return (stdout, stderr)."""
+    """Call Claude CLI with prompt for Chat (planner only, no tools)."""
     claude_env = _get_claude_env()
     result = await asyncio.to_thread(
         subprocess.run,
-        ["claude", "--print", "--model", CLAUDE_MODEL, prompt],
+        [
+            "claude", "--print", "--model", CLAUDE_MODEL,
+            "--tools", "",  # No tools — planner only
+            "--", prompt,
+        ],
         cwd="/opt/aila",
         capture_output=True,
         text=True,
