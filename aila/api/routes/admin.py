@@ -1041,6 +1041,14 @@ def _get_mode_instructions(mode: str, auto_confirmed: bool = False) -> str:
             "User: \"да\"\n"
             "Assistant: \"Выполняю. [COMMAND_FOR_CODE]...\""
         )
+    if mode == "scheduled":
+        return (
+            "РЕЖИМ: SCHEDULED (автозадача)\n"
+            "Это запланированная автоматическая задача. Выполняй без вопросов и подтверждений.\n"
+            "Сразу формируй [COMMAND_FOR_CODE]. Фокусируйся только на задаче.\n"
+            "Когда завершено — напиши \"Готово\" и краткий итог.\n"
+            "НЕ предлагай улучшения, НЕ начинай новые задачи."
+        )
     if auto_confirmed:
         return (
             "РЕЖИМ: AUTO (выполнение)\n"
@@ -2658,8 +2666,181 @@ async def _check_scheduled_tasks() -> None:
         _save_json(DATA_DIR / "scheduled.json", scheduled)
 
 
+_SCHEDULED_CMD_RE = re.compile(
+    r"\[COMMAND_FOR_CODE\](.*?)\[/COMMAND_FOR_CODE\]", re.DOTALL,
+)
+_SCHEDULED_MAX_ITERATIONS = 10
+_SCHEDULED_CODE_TIMEOUT = 300
+
+
+async def _call_claude_cli(prompt: str, timeout: int = 120) -> tuple[str, str]:
+    """Call Claude CLI with prompt, return (stdout, stderr)."""
+    claude_env = _get_claude_env()
+    result = await asyncio.to_thread(
+        subprocess.run,
+        ["claude", "--print", "--model", CLAUDE_MODEL, prompt],
+        cwd="/opt/aila",
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+        env=claude_env,
+    )
+    stdout = result.stdout.strip() if result.stdout else ""
+    stderr = result.stderr.strip() if result.stderr else ""
+    return stdout, stderr
+
+
+async def _execute_code_cli(command: str, timeout: int = 300) -> tuple[str, bool]:
+    """Execute command via Claude Code CLI, return (output, success)."""
+    claude_env = _get_claude_env()
+    result = await asyncio.to_thread(
+        subprocess.run,
+        [
+            "claude", "--print", "--model", CLAUDE_MODEL,
+            "--no-session-persistence", "--dangerously-skip-permissions",
+            command,
+        ],
+        cwd="/opt/aila",
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+        env=claude_env,
+    )
+    stdout = result.stdout.strip() if result.stdout else ""
+    stderr = result.stderr.strip() if result.stderr else ""
+    output = stdout or stderr or "No output"
+    return output, result.returncode == 0
+
+
+async def _execute_scheduled_with_chat(task: dict) -> dict:
+    """Execute scheduled task via Chat+Code cycle with KB.
+
+    Flow: Chat(task.command) → [COMMAND_FOR_CODE] → Code → result →
+          Chat analysis → loop until "Готово" or max iterations.
+    """
+    task_name = task.get("name", "unknown")
+    history: list[dict] = []
+
+    # First prompt — full KB
+    knowledge = _load_knowledge_base()
+    first_prompt = _build_first_prompt(
+        task["command"], knowledge, "", "scheduled",
+    )
+
+    logger.info(
+        f"[SCHEDULER] Starting chat cycle for '{task_name}' "
+        f"(prompt {len(first_prompt)} chars)"
+    )
+
+    prompt = first_prompt
+    for iteration in range(1, _SCHEDULED_MAX_ITERATIONS + 1):
+        # --- Chat step ---
+        chat_out, chat_err = await _call_claude_cli(prompt)
+
+        # Rate limit check
+        if _is_rate_limit_error(chat_err):
+            return {
+                "status": "rate_limited",
+                "iterations": iteration,
+                "summary": f"Rate limit on iteration {iteration}",
+                "rate_limited": True,
+            }
+
+        response = chat_out or f"Error: {chat_err[:300]}"
+        history.append({"role": "chat", "content": response[:2000]})
+
+        logger.info(
+            f"[SCHEDULER] '{task_name}' iter={iteration} "
+            f"chat={len(response)} chars"
+        )
+
+        # Process knowledge updates
+        _process_knowledge_updates(response)
+        response = re.sub(
+            r"\[UPDATE_KNOWLEDGE\].*?\[/UPDATE_KNOWLEDGE\]", "", response,
+        ).strip() or response
+
+        # Extract command
+        cmd_match = _SCHEDULED_CMD_RE.search(response)
+        if not cmd_match:
+            # No command — check if task is complete
+            if _is_task_complete(response):
+                logger.info(
+                    f"[SCHEDULER] '{task_name}' complete at iter={iteration}"
+                )
+                return {
+                    "status": "complete",
+                    "iterations": iteration,
+                    "summary": response[:1000],
+                }
+            # No command and not complete — return as-is
+            logger.warning(
+                f"[SCHEDULER] '{task_name}' no command at iter={iteration}"
+            )
+            return {
+                "status": "no_command",
+                "iterations": iteration,
+                "summary": response[:1000],
+            }
+
+        command = cmd_match.group(1).strip()
+        logger.info(
+            f"[SCHEDULER] '{task_name}' iter={iteration} "
+            f"executing: {command[:100]}"
+        )
+
+        # --- Code step ---
+        code_output, code_success = await _execute_code_cli(
+            command, timeout=_SCHEDULED_CODE_TIMEOUT,
+        )
+        history.append({"role": "code", "content": code_output[:2000]})
+
+        logger.info(
+            f"[SCHEDULER] '{task_name}' iter={iteration} "
+            f"code={'OK' if code_success else 'FAIL'} "
+            f"{len(code_output)} chars"
+        )
+
+        # Check if task is complete after code (response said "Готово" AND had command)
+        if _is_task_complete(response):
+            logger.info(
+                f"[SCHEDULER] '{task_name}' complete at iter={iteration} "
+                f"(after code)"
+            )
+            return {
+                "status": "complete",
+                "iterations": iteration,
+                "summary": response[:500] + f"\n\nCode: {code_output[:500]}",
+            }
+
+        # --- Build follow-up prompt with code result ---
+        history_text = "\n".join(
+            f"[{h['role']}]: {h['content'][:500]}"
+            for h in history[-4:]
+        )
+        truncated = code_output[:3000]
+        prompt = _build_followup_prompt(
+            f"Результат выполнения команды:\n```\n{truncated}\n```\n"
+            "Проанализируй и продолжи задачу или напиши 'Готово' "
+            "если задача завершена.",
+            history_text,
+            "scheduled",
+        )
+
+    # Max iterations reached
+    logger.warning(
+        f"[SCHEDULER] '{task_name}' reached max {_SCHEDULED_MAX_ITERATIONS} "
+        f"iterations"
+    )
+    return {
+        "status": "max_iterations",
+        "iterations": _SCHEDULED_MAX_ITERATIONS,
+        "summary": "Достигнут лимит итераций",
+    }
+
+
 async def _process_queue() -> None:
-    """Process one task from the queue."""
+    """Process one task from the queue via Chat+Code cycle."""
     global _queue_running
     if _task_queue.empty() or _queue_running:
         return
@@ -2667,80 +2848,76 @@ async def _process_queue() -> None:
     _queue_running = True
     try:
         task = await asyncio.wait_for(_task_queue.get(), timeout=1)
-        logger.info(f"Executing scheduled task: {task['name']}")
+        task_name = task.get("name", "unknown")
+        logger.info(f"[SCHEDULER] Starting task: {task_name}")
 
-        # Execute via Claude Code
         try:
-            claude_env = _get_claude_env()
-            result = await asyncio.to_thread(
-                subprocess.run,
-                ["claude", "--print", "--model", CLAUDE_MODEL, "--no-session-persistence", "--dangerously-skip-permissions", task["command"]],
-                cwd="/opt/aila",
-                capture_output=True,
-                text=True,
-                timeout=300,
-                env=claude_env,
-            )
-            output = result.stdout.strip() if result.stdout else ""
-            stderr = result.stderr.strip() if result.stderr else ""
-
-            # Check for rate limit in stderr only
-            if _is_rate_limit_error(stderr):
-                await _handle_rate_limit("scheduled", stderr[:300])
-                # Postpone task by RATE_LIMIT_COOLDOWN seconds
-                scheduled = _load_json(DATA_DIR / "scheduled.json", [])
-                if isinstance(scheduled, list):
-                    for t in scheduled:
-                        if t["id"] == task["id"]:
-                            t["next_run"] = time.time() + RATE_LIMIT_COOLDOWN
-                            t["last_run"] = datetime.now().isoformat()
-                            t["last_result"] = "rate_limited"
-                            break
-                    _save_json(DATA_DIR / "scheduled.json", scheduled)
-                logger.warning(
-                    f"[SCHEDULER] Rate limit for task '{task['name']}', "
-                    f"postponed {RATE_LIMIT_COOLDOWN}s"
-                )
-                _audit_log(
-                    "scheduler", "RATE_LIMIT_PAUSE",
-                    task["name"], f"postponed {RATE_LIMIT_COOLDOWN}s"
-                )
-                return
-
-            output = output or stderr or "No output"
-            success = result.returncode == 0
+            result = await _execute_scheduled_with_chat(task)
         except Exception as e:
-            output = f"Error: {e}"
-            success = False
+            result = {
+                "status": "error",
+                "iterations": 0,
+                "summary": f"Error: {e}",
+            }
+            logger.error(f"[SCHEDULER] Task '{task_name}' error: {e}")
 
-        # Update task last_run
+        status = result.get("status", "error")
+        iterations = result.get("iterations", 0)
+        summary = result.get("summary", "")
+
+        # Handle rate limit — postpone task
+        if result.get("rate_limited"):
+            scheduled = _load_json(DATA_DIR / "scheduled.json", [])
+            if isinstance(scheduled, list):
+                for t in scheduled:
+                    if t["id"] == task["id"]:
+                        t["next_run"] = time.time() + RATE_LIMIT_COOLDOWN
+                        t["last_run"] = datetime.now().isoformat()
+                        t["last_result"] = "rate_limited"
+                        break
+                _save_json(DATA_DIR / "scheduled.json", scheduled)
+            await _handle_rate_limit("scheduled", summary[:300])
+            logger.warning(
+                f"[SCHEDULER] Rate limit for '{task_name}', "
+                f"postponed {RATE_LIMIT_COOLDOWN}s"
+            )
+            _audit_log(
+                "scheduler", "RATE_LIMIT_PAUSE",
+                task_name, f"postponed {RATE_LIMIT_COOLDOWN}s",
+            )
+            return
+
+        # Update task in scheduled.json
+        success = status == "complete"
         scheduled = _load_json(DATA_DIR / "scheduled.json", [])
         if isinstance(scheduled, list):
             for t in scheduled:
                 if t["id"] == task["id"]:
                     t["last_run"] = datetime.now().isoformat()
-                    t["last_result"] = "success" if success else "error"
+                    t["last_result"] = "success" if success else status
                     break
             _save_json(DATA_DIR / "scheduled.json", scheduled)
 
-        # Send Telegram notification
-        summary = output[:300] if len(output) > 300 else output
+        # Telegram notification
+        tg_summary = summary[:500] if len(summary) > 500 else summary
         if success:
             await _send_telegram(
-                f"⏰ Задача выполнена: <b>{task['name']}</b>\n"
-                f"Результат:\n<pre>{summary}</pre>"
+                f"⏰ Задача выполнена: <b>{task_name}</b>\n"
+                f"Итераций: {iterations}\n"
+                f"<pre>{tg_summary}</pre>"
             )
         else:
             await _send_telegram(
-                f"❌ Ошибка задачи: <b>{task['name']}</b>\n"
-                f"<pre>{summary}</pre>"
+                f"⚠️ Задача завершена ({status}): <b>{task_name}</b>\n"
+                f"Итераций: {iterations}\n"
+                f"<pre>{tg_summary}</pre>"
             )
 
-        _audit_log("scheduler", "TASK_DONE", task["name"], output[:200])
+        _audit_log("scheduler", "TASK_DONE", task_name, summary[:200])
 
     except asyncio.TimeoutError:
         pass
     except Exception as e:
-        logger.error(f"Queue processing error: {e}")
+        logger.error(f"[SCHEDULER] Queue error: {e}")
     finally:
         _queue_running = False
