@@ -272,68 +272,115 @@ class ClaudeMaxClient:
     def _build_batch_market_prompt(
         pairs_data: list[dict[str, Any]], knowledge: dict[str, Any]
     ) -> str:
-        """Build batch market analysis prompt for all pairs."""
-        setups = knowledge.get("successful_setups", [])[-5:]
-        mistakes = knowledge.get("mistakes_to_avoid", [])[-5:]
+        """Build structured batch market analysis prompt."""
+        setups = knowledge.get("successful_setups", [])[-3:]
+        mistakes = knowledge.get("mistakes_to_avoid", [])[-3:]
         rules = knowledge.get("learned_rules", [])[-5:]
+        recent_trades = knowledge.get("recent_trades", [])[-3:]
+        btc_data = knowledge.get("btc_context", {})
+        market_sentiment = knowledge.get("market_sentiment", {})
 
+        # Build compact pairs data with all indicators
         pairs_summary = []
         for p in pairs_data:
             md = p.get("market_data", {})
-            pairs_summary.append({
+            entry = {
                 "symbol": p["symbol"],
                 "price": md.get("price"),
                 "change_24h": md.get("change_24h"),
                 "volume_24h": md.get("volume_24h"),
-                "rsi": md.get("rsi"),
                 "trend": md.get("trend"),
+                "rsi": md.get("rsi"),
                 "ema50": md.get("ema50"),
                 "ema200": md.get("ema200"),
                 "atr": md.get("atr"),
-            })
+            }
+            # Add new indicators (compact)
+            macd = md.get("macd")
+            if macd:
+                entry["macd_hist"] = macd.get("histogram")
+                entry["macd_signal"] = "bullish" if (macd.get("histogram") or 0) > 0 else "bearish"
+            bb = md.get("bollinger")
+            if bb:
+                entry["bb_pct_b"] = bb.get("pct_b")
+                entry["bb_width_pct"] = bb.get("width_pct")
+            vp = md.get("volume_profile")
+            if vp:
+                entry["vol_ratio"] = vp.get("ratio")
+            srsi = md.get("stoch_rsi")
+            if srsi:
+                entry["stoch_rsi_k"] = srsi.get("k")
+                entry["stoch_rsi_d"] = srsi.get("d")
+            entry["support"] = md.get("support")
+            entry["resistance"] = md.get("resistance")
+            pairs_summary.append(entry)
 
-        return f"""You are an expert cryptocurrency trader. Analyze ALL {len(pairs_data)} pairs and select the SINGLE BEST trading opportunity.
+        # BTC context section
+        btc_section = ""
+        if btc_data:
+            btc_section = f"""
+## MARKET CONTEXT
+- BTC price: ${btc_data.get('price', 'N/A')}, trend: {btc_data.get('trend', 'N/A')}, 24h: {btc_data.get('change_24h', 'N/A')}%
+- BTC RSI: {btc_data.get('rsi', 'N/A')}, MACD: {btc_data.get('macd_signal', 'N/A')}
+- Market sentiment: {market_sentiment.get('health', 'N/A')} ({market_sentiment.get('bullish_pct', 50)}% bullish)
+- RULE: When BTC is bearish, reduce confidence by 10-20% for altcoin LONG trades"""
+        else:
+            btc_section = "\n## MARKET CONTEXT\n- BTC data unavailable — be more conservative"
 
-## ALL PAIRS DATA
+        # Trading history section
+        trades_section = ""
+        if recent_trades:
+            trades_lines = []
+            for t in recent_trades:
+                trades_lines.append(
+                    f"  - {t.get('symbol', '?')} {t.get('side', '?')}: "
+                    f"PnL {t.get('pnl_pct', 0):.1f}%, reason: {t.get('close_reason', '?')}"
+                )
+            trades_section = "\n## YOUR RECENT TRADES\n" + "\n".join(trades_lines)
+
+        return f"""## ROLE
+You are an expert cryptocurrency futures trader. You analyze technical indicators across multiple pairs to find the single highest-probability trade setup.
+
+## MARKET DATA ({len(pairs_data)} pairs)
 {json.dumps(pairs_summary, indent=1)}
+{btc_section}
+{trades_section}
 
-## RECENT SUCCESSFUL TRADES
-{json.dumps(setups, indent=2)}
+## YOUR EXPERIENCE
+- Recent winning setups: {json.dumps(setups, indent=2) if setups else "None yet"}
+- Mistakes to avoid: {json.dumps(mistakes, indent=2) if mistakes else "None yet"}
+- Learned rules: {json.dumps(rules, indent=2) if rules else "No rules yet"}
 
-## MISTAKES TO AVOID
-{json.dumps(mistakes, indent=2)}
-
-## LEARNED RULES FROM EXPERIENCE
-{json.dumps(rules, indent=2) if rules else "No rules learned yet."}
-
-## RISK MANAGEMENT RULES (MANDATORY)
-1. Risk/Reward ratio MUST be >= 1.5:1
-2. Stop loss: min 3% for volatile coins, 2% for stable (BTC, ETH)
-3. Leverage: max 2x for meme/volatile, max 3x for majors
+## RISK RULES (MANDATORY — violations will be rejected)
+1. R:R ratio >= 1.5:1 (stop_loss and take_profit REQUIRED)
+2. Stop loss: min 2% for majors (BTC, ETH), min 3% for altcoins/meme
+3. Leverage: max 3x for majors, max 2x for altcoins
 4. Position size: 2-4% of capital
-5. NEVER go LONG in BEARISH trend, NEVER go SHORT in BULLISH trend
+5. NEVER LONG in BEARISH trend, NEVER SHORT in BULLISH trend
+6. If RSI > 75 do not LONG (overbought), if RSI < 25 do not SHORT (oversold)
 
-## ANALYSIS CRITERIA
-- Look for strong trends with RSI confirmation
-- Prefer pairs with high volume (>$10M daily)
-- Check for trend alignment (price vs EMA50 vs EMA200)
-- Consider volatility (ATR) for stop loss calculation
-- LONG: price > EMA50 > EMA200, RSI 40-70, trend=BULLISH
-- SHORT: price < EMA50 < EMA200, RSI 30-60, trend=BEARISH (SHORT is SELLING, profit when price DROPS)
+## INDICATOR GUIDE
+- Trend: BULLISH = price > EMA50 > EMA200, BEARISH = opposite
+- RSI: 40-70 for LONG, 30-60 for SHORT. Extremes = reversal risk
+- MACD histogram > 0 = bullish momentum, < 0 = bearish
+- Bollinger %B: >0.8 = near upper band (overbought), <0.2 = near lower (oversold)
+- Volume ratio > 1.5 = unusual activity (confirm breakout), < 0.5 = low interest
+- StochRSI: K > 80 = overbought, K < 20 = oversold. K crossing D = signal
+- Support/Resistance: entry near support (LONG) or resistance (SHORT) = better R:R
 
 ## TASK
-Analyze all pairs and respond STRICTLY in JSON:
+Select ONE best trade or WAIT. Respond STRICTLY in JSON:
 {{
     "decision": "LONG" | "SHORT" | "WAIT",
     "pair": "SYMBOL/USDT or null if WAIT",
     "confidence": 0-100,
-    "strategy": "strategy name",
+    "strategy": "brief strategy description",
     "entry_price": number or null,
     "stop_loss": number or null,
     "take_profit": number or null,
     "leverage": 1-3,
     "position_size_pct": 2-4,
-    "reasoning": "why this pair is the best choice",
+    "reasoning": "2-3 sentences: why this is the best setup right now",
     "risks": ["risk1", "risk2"],
     "expected_duration": "5m" | "1h" | "4h" | "1d",
     "pairs_analyzed": {len(pairs_data)},
@@ -341,10 +388,10 @@ Analyze all pairs and respond STRICTLY in JSON:
 }}
 
 CRITICAL:
-- If NO pair has a good setup, choose "WAIT"
-- Better to miss a trade than lose money
-- Only choose LONG/SHORT if confidence >= 70%
-- Consider SHORT for BEARISH trends (downtrending pairs can be profitable!)"""
+- If NO pair has R:R >= 1.5 with clear trend, choose WAIT
+- Better to WAIT than take a mediocre setup
+- Confidence >= 70% required for LONG/SHORT
+- SHORT is valid for BEARISH trends — profit when price drops"""
 
     @staticmethod
     def _build_market_prompt(

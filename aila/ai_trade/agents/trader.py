@@ -58,8 +58,8 @@ class TraderAgent(BaseAgent):
 
         self.log(f"Batch analyzing {len(pairs_data)} pairs in single API call...")
 
-        # Get knowledge context
-        knowledge = self.knowledge_base.get_context_for_analysis("")
+        # Get knowledge context enriched with BTC and trades history
+        knowledge = self._build_enriched_knowledge(pairs_data)
 
         # Single Claude API call for all pairs
         analysis = await self.claude_client.batch_analyze_market(pairs_data, knowledge)
@@ -158,8 +158,8 @@ class TraderAgent(BaseAgent):
 
         self.log(f"Cascade: Analyzing {len(pairs_data)} pairs...")
 
-        # Get knowledge context
-        knowledge = self.knowledge_base.get_context_for_analysis("")
+        # Get knowledge context enriched with BTC and trades history
+        knowledge = self._build_enriched_knowledge(pairs_data)
 
         # Single Claude API call for all pairs
         analysis = await self.claude_client.batch_analyze_market(pairs_data, knowledge)
@@ -232,6 +232,47 @@ class TraderAgent(BaseAgent):
             return None
 
         return opportunity
+
+    def _build_enriched_knowledge(
+        self, pairs_data: list[dict[str, Any]]
+    ) -> dict[str, Any]:
+        """Build knowledge dict enriched with BTC context and recent trades."""
+        knowledge = self.knowledge_base.get_context_for_analysis("", agent="TRADER")
+
+        # Extract BTC data from pairs_data if available
+        btc_entry = next(
+            (p for p in pairs_data if p["symbol"] in ("BTC/USDT", "BTCUSDT")), None
+        )
+        if btc_entry:
+            md = btc_entry.get("market_data", {})
+            macd = md.get("macd", {})
+            knowledge["btc_context"] = {
+                "price": md.get("price"),
+                "trend": md.get("trend"),
+                "change_24h": md.get("change_24h"),
+                "rsi": md.get("rsi"),
+                "macd_signal": "bullish" if (macd.get("histogram") or 0) > 0 else "bearish",
+            }
+
+        # Add market sentiment from scanner if available
+        if self.orchestrator and hasattr(self.orchestrator, "scanner"):
+            try:
+                overview = self.scanner._cache.get("market_overview")
+                if overview:
+                    knowledge["market_sentiment"] = overview
+            except Exception:
+                pass
+
+        # Add recent trades from agent_stats
+        if self.orchestrator and hasattr(self.orchestrator, "autopilot"):
+            try:
+                stats = self.orchestrator.autopilot._agent_stats.get_stats("TRADER")
+                history = stats.get("trades_history", [])
+                knowledge["recent_trades"] = history[:3]
+            except Exception:
+                pass
+
+        return knowledge
 
     async def _fetch_all_market_data(
         self, pairs: list[dict[str, Any]]

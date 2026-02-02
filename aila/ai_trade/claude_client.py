@@ -700,80 +700,10 @@ class ClaudeClient:
     def _build_batch_market_prompt(
         pairs_data: list[dict[str, Any]], knowledge: dict[str, Any]
     ) -> str:
-        """Build batch market analysis prompt for all pairs."""
-        setups = knowledge.get("successful_setups", [])[-5:]
-        mistakes = knowledge.get("mistakes_to_avoid", [])[-5:]
-        rules = knowledge.get("learned_rules", [])[-5:]
-
-        # Format pairs data compactly
-        pairs_summary = []
-        for p in pairs_data:
-            md = p.get("market_data", {})
-            pairs_summary.append({
-                "symbol": p["symbol"],
-                "price": md.get("price"),
-                "change_24h": md.get("change_24h"),
-                "volume_24h": md.get("volume_24h"),
-                "rsi": md.get("rsi"),
-                "trend": md.get("trend"),
-                "ema50": md.get("ema50"),
-                "ema200": md.get("ema200"),
-                "atr": md.get("atr"),
-            })
-
-        return f"""You are an expert cryptocurrency trader. Analyze ALL {len(pairs_data)} pairs and select the SINGLE BEST trading opportunity.
-
-## ALL PAIRS DATA
-{json.dumps(pairs_summary, indent=1)}
-
-## RECENT SUCCESSFUL TRADES
-{json.dumps(setups, indent=2)}
-
-## MISTAKES TO AVOID
-{json.dumps(mistakes, indent=2)}
-
-## LEARNED RULES FROM EXPERIENCE
-{json.dumps(rules, indent=2) if rules else "No rules learned yet."}
-
-## RISK MANAGEMENT RULES (MANDATORY)
-1. Risk/Reward ratio MUST be >= 1.5:1
-2. Stop loss: min 3% for volatile coins, 2% for stable (BTC, ETH)
-3. Leverage: max 2x for meme/volatile, max 3x for majors
-4. Position size: 2-4% of capital
-5. NEVER go LONG in BEARISH trend, NEVER go SHORT in BULLISH trend
-
-## ANALYSIS CRITERIA
-- Look for strong trends with RSI confirmation
-- Prefer pairs with high volume (>$10M daily)
-- Check for trend alignment (price vs EMA50 vs EMA200)
-- Consider volatility (ATR) for stop loss calculation
-- LONG: price > EMA50 > EMA200, RSI 40-70, trend=BULLISH
-- SHORT: price < EMA50 < EMA200, RSI 30-60, trend=BEARISH (SHORT is SELLING, profit when price DROPS)
-
-## TASK
-Analyze all pairs and respond STRICTLY in JSON:
-{{
-    "decision": "LONG" | "SHORT" | "WAIT",
-    "pair": "SYMBOL/USDT or null if WAIT",
-    "confidence": 0-100,
-    "strategy": "strategy name",
-    "entry_price": number or null,
-    "stop_loss": number or null,
-    "take_profit": number or null,
-    "leverage": 1-3,
-    "position_size_pct": 2-4,
-    "reasoning": "why this pair is the best choice",
-    "risks": ["risk1", "risk2"],
-    "expected_duration": "5m" | "1h" | "4h" | "1d",
-    "pairs_analyzed": {len(pairs_data)},
-    "runner_up": "second best pair or null"
-}}
-
-CRITICAL:
-- If NO pair has a good setup, choose "WAIT"
-- Better to miss a trade than lose money
-- Only choose LONG/SHORT if confidence >= 70%
-- Consider SHORT for BEARISH trends (downtrending pairs can be profitable!)"""
+        """Build structured batch market analysis prompt."""
+        # Delegate to shared implementation in ClaudeMaxClient
+        from .claude_max_client import ClaudeMaxClient
+        return ClaudeMaxClient._build_batch_market_prompt(pairs_data, knowledge)
 
     @staticmethod
     def _build_market_prompt(
