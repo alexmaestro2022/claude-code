@@ -154,13 +154,15 @@ MAX_FILE_SIZE = 1_000_000  # 1MB
 RATE_LIMIT_COOLDOWN = 120  # 2 min pause for scheduled tasks on rate limit
 
 # Rate limit detection patterns
-RATE_LIMIT_PATTERNS = [
+RATE_LIMIT_PATTERNS = (
     "rate limit",
     "rate_limit",
-    "too many requests",
+    "ratelimit",
     "429",
+    "too many requests",
     "overloaded",
-]
+    "request limit exceeded",
+)
 
 
 # =============================================
@@ -258,12 +260,16 @@ def _get_client_ip(request: Request) -> str:
 # Rate limit detection
 # =============================================
 
-def _is_rate_limit_error(output: str) -> bool:
-    """Check if Claude output indicates a rate limit error."""
-    if not output:
+def _is_rate_limit_error(stderr: str) -> bool:
+    """Check if stderr indicates a rate limit error.
+
+    Only pass stderr here, never stdout — stdout contains Claude's
+    response text which may include words like 'overloaded' in context.
+    """
+    if not stderr:
         return False
-    output_lower = output.lower()
-    return any(p in output_lower for p in RATE_LIMIT_PATTERNS)
+    stderr_lower = stderr.lower()
+    return any(p in stderr_lower for p in RATE_LIMIT_PATTERNS)
 
 
 
