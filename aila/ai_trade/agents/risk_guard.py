@@ -111,12 +111,12 @@ class RiskGuardAgent(BaseAgent):
             reward = abs(take_profit - entry_price)
             rr_ratio = reward / risk if risk > 0 else 0
 
-            if rr_ratio < 1.0:
-                issues.append(f"Poor R:R ratio ({rr_ratio:.2f}:1)")
-                if rr_ratio < 0.5:
+            if rr_ratio < 1.5:
+                issues.append(f"Poor R:R ratio ({rr_ratio:.2f}:1, min 1.5:1)")
+                if rr_ratio < 1.0:
                     self.log(f"VETO: R:R ratio {rr_ratio:.2f} unacceptable", "warning")
-                    self._record_veto(opportunity, f"R:R {rr_ratio:.2f} < 0.5")
-                    return {"approved": False, "reason": f"Risk/Reward {rr_ratio:.2f}:1 unacceptable (min 0.5:1)"}
+                    self._record_veto(opportunity, f"R:R {rr_ratio:.2f} < 1.0")
+                    return {"approved": False, "reason": f"Risk/Reward {rr_ratio:.2f}:1 unacceptable (min 1.0:1)"}
 
         # 7. Validate via risk_manager
         signal_copy = opportunity.copy()

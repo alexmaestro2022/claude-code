@@ -50,8 +50,14 @@ Risks identified: {json.dumps(opportunity.get('risks', []))}
 
 ## MARKET DATA
 Price: {opportunity.get('market_data', {}).get('price')}
-RSI: {opportunity.get('market_data', {}).get('rsi')}
 Trend: {opportunity.get('market_data', {}).get('trend')}
+RSI: {opportunity.get('market_data', {}).get('rsi')}
+MACD: {'bullish' if (opportunity.get('market_data', {}).get('macd', {}).get('histogram') or 0) > 0 else 'bearish'}
+Bollinger %B: {opportunity.get('market_data', {}).get('bollinger', {}).get('pct_b', 'N/A') if opportunity.get('market_data', {}).get('bollinger') else 'N/A'}
+Volume ratio: {opportunity.get('market_data', {}).get('volume_profile', {}).get('ratio', 'N/A') if opportunity.get('market_data', {}).get('volume_profile') else 'N/A'}
+StochRSI K: {opportunity.get('market_data', {}).get('stoch_rsi', {}).get('k', 'N/A') if opportunity.get('market_data', {}).get('stoch_rsi') else 'N/A'}
+Support: {opportunity.get('market_data', {}).get('support', 'N/A')}
+Resistance: {opportunity.get('market_data', {}).get('resistance', 'N/A')}
 
 ## HISTORICAL PERFORMANCE ON THIS PAIR
 {json.dumps(pair_stats, indent=2)}
