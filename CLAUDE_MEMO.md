@@ -3089,11 +3089,13 @@ User → Chat (план + подтверждение) → "да" (auto_confirmed
 
 ---
 
-**Последнее обновление:** 2026-02-02 (fix: unified Knowledge Base)
+**Последнее обновление:** 2026-02-02 (fix: learning chain complete)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `stable-working`
 
 ### Исправления 2026-02-02:
+
+#### ЭТАП 1: Knowledge Base unified (ЗАВЕРШЁН)
 - **Knowledge Base unified** — КРИТИЧЕСКИЙ фикс: TRADER теперь видит свой опыт
   - `KNOWLEDGE_BASE_PATH` переключен с `data/ai_knowledge.json` (был пустой) на `data/ai_trade/knowledge_base.json` (реальные данные)
   - `_load()` / `save()` обновлены для поддержки формата `{"data": {...}, "saved_at": ...}`
@@ -3101,6 +3103,29 @@ User → Chat (план + подтверждение) → "да" (auto_confirmed
   - Параметр `agent="TRADER"` по умолчанию, SNIPER передаёт `agent="SNIPER"`
   - TRADER видит: 4 successful setups (SUI x3, PTB), 4 mistakes (HYPE, 1000RATS, XAUT, PIPPIN)
   - Старый пустой `data/ai_knowledge.json` → `data/ai_knowledge.json.bak`
+
+#### ЭТАП 2: Learning chain fixed (ЗАВЕРШЁН)
+- **Autopilot → ANALYST** — после закрытия позиции автоматически вызывается `_run_analyst()` для AI-анализа сделки (Claude Haiku)
+  - Файл: `autopilot_mode.py` — добавлен метод `_run_analyst()`, вызывается в `_on_position_closed()` после обновления KB
+- **ANALYST.find_patterns() NameError** — исправлена ошибка `len(recent_trades)` → `len(successful) + len(failed)` (строка 72)
+- **MENTOR applies results** — результаты AI-ревью теперь применяются:
+  - `confidence_adjustment` → обновляет `min_confidence` в AgentSettings TRADER (диапазон 50-95)
+  - `risk_adjustment` → обновляет `min_rr_ratio` в AgentSettings TRADER (increase/decrease)
+  - `xp_penalty` → применяется через `knowledge_base.add_xp()` к соответствующему навыку
+  - Файл: `agents/mentor.py` — добавлены `_apply_confidence_adjustment()`, `_apply_risk_adjustment()`
+- **learned_rules в промпте TRADER** — секция "LEARNED RULES FROM EXPERIENCE" добавлена в оба промпта:
+  - `_build_batch_market_prompt()` (batch анализ всех пар)
+  - `_build_market_prompt()` (анализ одной пары)
+  - Файл: `claude_client.py`
+
+#### Полная цепочка обучения (теперь работает):
+```
+Позиция закрыта → _on_position_closed()
+  → _update_knowledge_base() (сохраняет в KB)
+  → _run_analyst() (Claude Haiku анализ → grade + lesson → KB)
+  → MENTOR.daily_review() (ежедневно → правила, XP, настройки)
+  → learned_rules попадают в промпт TRADER через get_context_for_analysis()
+```
 
 ### Исправления 2026-02-01:
 - **Sniper log spam** — добавлена дедупликация логов `_last_opportunity_log` (5 мин на пару) в `scan_for_snipes`
