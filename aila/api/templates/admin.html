@@ -145,16 +145,6 @@
         }
         .top-btn:hover { border-color: var(--accent-dim); color: var(--accent); }
         .top-btn.danger:hover { border-color: rgba(239,68,68,0.3); color: var(--red); }
-        .oauth-badge-admin {
-            display: flex; align-items: center; gap: 6px;
-            padding: 4px 10px; border-radius: 8px; cursor: pointer;
-            border: 1px solid var(--border); font-size: 0.75rem;
-            transition: all 0.3s;
-        }
-        .oauth-badge-admin.ok { border-color: rgba(0,255,136,0.3); color: #00ff88; }
-        .oauth-badge-admin.warn { border-color: rgba(251,191,36,0.3); color: #fbbf24; animation: oauthBlink 1.5s infinite; }
-        .oauth-badge-admin.expired { border-color: rgba(239,68,68,0.3); color: #ef4444; animation: oauthBlink 1s infinite; }
-        @keyframes oauthBlink { 50% { opacity: 0.5; } }
         .status-indicator {
             display: flex; align-items: center; gap: 6px;
             padding: 6px 12px;
@@ -1057,10 +1047,6 @@
                 <span style="font-size:0.75rem;color:var(--text-secondary);" data-i18n="today_label">Today:</span>
                 <span id="subTodayCount" style="font-size:0.75rem;font-weight:600;">0</span>
             </div>
-        </div>
-        <div id="oauthBadgeAdmin" class="oauth-badge-admin ok" title="Claude OAuth" style="margin-right:4px;">
-            <span id="oauthDotAdmin" style="width:7px;height:7px;border-radius:50%;background:#00ff88;display:inline-block;"></span>
-            <span>Claude: <span id="oauthTimerAdmin">--</span></span>
         </div>
         <div class="top-bar-right">
             <button class="top-btn" onclick="newSession()" data-i18n-title="new_session" title="New Session">
@@ -3775,65 +3761,11 @@ function formatNumber(n) {
 }
 
 // =============================================
-// OAuth status for Admin
-// =============================================
-let _oauthRemainAdmin = 0;
-let _oauthStatusAdmin = 'expired';
-let _oauthRefreshedAdmin = 0;
-async function loadOAuthAdmin() {
-    try {
-        const r = await fetch('/api/ai-trade/oauth/status');
-        const d = await r.json();
-        const prev = _oauthRemainAdmin;
-        _oauthRemainAdmin = d.remaining_seconds || 0;
-        _oauthStatusAdmin = d.status || 'expired';
-        if (_oauthRemainAdmin > prev + 600 && prev > 0) _oauthRefreshedAdmin = Date.now();
-        updateOAuthAdmin();
-    } catch(e) {}
-}
-function updateOAuthAdmin() {
-    const badge = document.getElementById('oauthBadgeAdmin');
-    const dot = document.getElementById('oauthDotAdmin');
-    const timer = document.getElementById('oauthTimerAdmin');
-    if (!badge) return;
-    const s = _oauthRemainAdmin;
-    const h = Math.floor(s / 3600);
-    const m = Math.floor((s % 3600) / 60);
-    if (_oauthRefreshedAdmin && Date.now() - _oauthRefreshedAdmin < 10000) {
-        badge.className = 'oauth-badge-admin ok';
-        dot.style.background = '#00ff88';
-        timer.textContent = 'refreshed \u2713';
-        return;
-    }
-    _oauthRefreshedAdmin = 0;
-    if (s <= 0) {
-        badge.className = 'oauth-badge-admin expired';
-        dot.style.background = '#ef4444';
-        timer.textContent = 'OFFLINE';
-    } else if (_oauthStatusAdmin === 'warning') {
-        badge.className = 'oauth-badge-admin warn';
-        dot.style.background = '#fbbf24';
-        timer.textContent = h + 'ч ' + String(m).padStart(2,'0') + 'м \u26a0';
-    } else if (s < 7200) {
-        badge.className = 'oauth-badge-admin warn';
-        dot.style.background = '#fbbf24';
-        timer.textContent = h + 'ч ' + String(m).padStart(2,'0') + 'м';
-    } else {
-        badge.className = 'oauth-badge-admin ok';
-        dot.style.background = '#00ff88';
-        timer.textContent = h + 'ч ' + String(m).padStart(2,'0') + 'м';
-    }
-}
-setInterval(() => { if (_oauthRemainAdmin > 0) _oauthRemainAdmin--; updateOAuthAdmin(); }, 1000);
-
-// =============================================
 // Init
 // =============================================
 document.addEventListener('DOMContentLoaded', () => {
     applyLanguage();
     checkSession();
-    loadOAuthAdmin();
-    setInterval(loadOAuthAdmin, 60000);
 });
 </script>
 </body>
