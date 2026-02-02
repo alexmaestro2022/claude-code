@@ -2577,14 +2577,15 @@ DELETE /api/admin/knowledge/{fn} — удалить файл
 - Stats sync: cron `*/5 * * * *` копирует `~/.claude/stats-cache.json` → `/opt/aila/.claude/`
 
 ### Rate limit обработка (без блокировки — Max подписка):
-- `RATE_LIMIT_PATTERNS` — паттерны для обнаружения rate limit в stdout/stderr Claude CLI
-- `_is_rate_limit_error(output)` — проверка наличия паттерна
+- `RATE_LIMIT_PATTERNS` — 5 паттернов: `rate limit`, `rate_limit`, `too many requests`, `429`, `overloaded`
+- `_is_rate_limit_error(output)` — проверяет ТОЛЬКО stderr (не stdout!) на наличие паттерна
 - `_handle_rate_limit(source, error_msg)` — логирование + telegram + обновление stats (без блокировки UI)
 - При rate limit в Chat/Code — показывает предупреждение, пользователь может сразу повторить запрос
 - При rate limit в Scheduled tasks — задача откладывается на 120 сек, статус `rate_limited`
 - **Нет cooldown/блокировки UI** — подписка Max не имеет искусственных ограничений
 - Stats: `admin_stats.json` → `rate_limits.hits_today`, `rate_limits.hits_total`, `rate_limits.last_hit`
 - Модалка Usage: секция Rate Limits (сегодня, всё время, последний, статус OK/Warning)
+- **FIX 2026-02-02:** Убраны ложные срабатывания — `_is_rate_limit_error()` проверяла combined stdout+stderr, слова из ответа Claude ("capacity", "try again later") матчились как rate limit. Теперь проверяет только stderr во всех 6 вызовах.
 
 ---
 
