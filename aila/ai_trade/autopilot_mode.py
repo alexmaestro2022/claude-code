@@ -653,10 +653,12 @@ class AutopilotMode:
                 self._signal_queue.mark_processed(pair, agent, success=True)
                 logger.info(f"[{agent}] Cooldown activated after successful trade")
             else:
-                # Trade execution failed - no cooldown
+                # Trade execution failed - clean processed_pairs so pair can be retried
+                self._signal_queue.mark_processed(pair, agent, success=False)
                 logger.info(f"[{agent}] Trade execution failed for {pair} - no cooldown")
         else:
-            # Validation failed - no cooldown
+            # Validation failed - clean processed_pairs so pair can be retried
+            self._signal_queue.mark_processed(pair, agent, success=False)
             logger.info(f"[{agent}] Signal rejected for {pair} - no cooldown")
 
     async def _validate_signal(self, signal: dict[str, Any], agent: str) -> Optional[dict[str, Any]]:
@@ -711,28 +713,45 @@ class AutopilotMode:
                     context = await self._orchestrator.get_market_context(pair)
 
                 confirmations = 0
+                available_checks = 0
                 whale_signal = context.get('whale', {}).get('signal', '')
                 prediction_dir = context.get('prediction', {}).get('direction', '')
                 sentiment = context.get('market', {}).get('sentiment', '')
+                decision = signal['decision']
 
-                if whale_signal in ['buy', 'strong_buy'] and signal['decision'] == 'LONG':
-                    confirmations += 1
-                if whale_signal in ['sell', 'strong_sell'] and signal['decision'] == 'SHORT':
-                    confirmations += 1
-                if prediction_dir == 'up' and signal['decision'] == 'LONG':
-                    confirmations += 1
-                if prediction_dir == 'down' and signal['decision'] == 'SHORT':
-                    confirmations += 1
-                if sentiment not in ['extreme_fear', 'extreme_greed']:
-                    confirmations += 1
+                # Whale confirmation (only count if data available)
+                if whale_signal:
+                    available_checks += 1
+                    if whale_signal in ['buy', 'strong_buy'] and decision == 'LONG':
+                        confirmations += 1
+                    elif whale_signal in ['sell', 'strong_sell'] and decision == 'SHORT':
+                        confirmations += 1
+
+                # Prediction confirmation (only count if data available)
+                if prediction_dir:
+                    available_checks += 1
+                    if prediction_dir == 'up' and decision == 'LONG':
+                        confirmations += 1
+                    elif prediction_dir == 'down' and decision == 'SHORT':
+                        confirmations += 1
+
+                # Sentiment confirmation (only count if data available)
+                if sentiment:
+                    available_checks += 1
+                    if sentiment not in ['extreme_fear', 'extreme_greed']:
+                        confirmations += 1
+
+                # Adjust min_confirmations based on available data
+                effective_min = min(min_confirmations, max(1, available_checks))
 
                 logger.info(
-                    f"[{agent}][STAGE 4] Confirmations: {confirmations}/{min_confirmations} "
-                    f"(whale={whale_signal}, pred={prediction_dir}, sent={sentiment})"
+                    f"[{agent}][STAGE 4] Confirmations: {confirmations}/{effective_min} "
+                    f"(available={available_checks}, whale={whale_signal}, "
+                    f"pred={prediction_dir}, sent={sentiment})"
                 )
 
-                if confirmations < min_confirmations:
-                    logger.info(f"[{agent}][STAGE 4] Not enough confirmations: {confirmations}/{min_confirmations}")
+                if confirmations < effective_min:
+                    logger.info(f"[{agent}][STAGE 4] Not enough confirmations: {confirmations}/{effective_min}")
                     return None
 
         logger.info(f"[{agent}][STAGE 5] All validations passed for {pair}")

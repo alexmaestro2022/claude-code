@@ -3265,3 +3265,22 @@ User → Chat (план + подтверждение) → "да" (auto_confirmed
   - Ошибка в логах: `Capital manager rejected: Min order risk X% > max 0.0%`
 - **Fix: CLI exit code 1 debug** — при пустом stderr теперь читается stdout для диагностики
   - Файл: `claude_max_client.py:287-291`
+
+## 46. ИСПРАВЛЕНИЕ 2026-02-02: Pipeline блокирует ВСЕ сделки (3 бага)
+
+### Баг 1: `_processed_pairs` не очищается после отказа (КРИТИЧНЫЙ)
+- **Проблема:** Когда REVIEWER/Stage4 отклоняет сигнал, `_processed_pairs` не очищается. Пара навсегда застревает — все повторные сигналы тихо отклоняются очередью.
+- **Доказательство:** HYPE/USDT 85% не дошёл до Stage 2 после предыдущего отказа HYPE 75%
+- **Фикс:** Добавлен `mark_processed(pair, agent, success=False)` в ветки rejection/failure в `_process_queue()`
+- **Файл:** `autopilot_mode.py:655-660`
+
+### Баг 2: Stage 4 Confirmations блокирует при пустых данных
+- **Проблема:** Пустые whale/prediction/sentiment считались "нет подтверждения". При 3 пустых из 5 — гарантированный отказ (max 1/2 confirmations).
+- **Доказательство:** XMR/USDT SHORT 77%: `whale=, pred=up, sent=` → 1/2 → отказ
+- **Фикс:** Проверки учитывают только доступные данные. `effective_min = min(min_confirmations, available_checks)`
+- **Файл:** `autopilot_mode.py:715-738`
+
+### Баг 3: SNIPER игнорировал настройки trigger_*
+- **Проблема:** `trigger_liquidation: false` в sniper_settings.json не проверялась в коде. Все триггеры всегда активны.
+- **Фикс:** Добавлена фильтрация `self._triggers` по настройкам `trigger_breakout/breakdown/liquidation`
+- **Файл:** `agents/sniper.py:288` + включил `trigger_liquidation: true` в настройках

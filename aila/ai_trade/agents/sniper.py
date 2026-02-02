@@ -285,7 +285,18 @@ Respond in JSON only:
                 )
                 return {"snipe_ready": False}
 
+        # Filter triggers by settings
+        from ..agent_settings import get_agent_settings
+        sniper_settings = get_agent_settings().get_settings("SNIPER")
+        trigger_filter = {
+            "breakout": sniper_settings.get("trigger_breakout", True),
+            "breakdown": sniper_settings.get("trigger_breakdown", True),
+            "liquidation_cascade": sniper_settings.get("trigger_liquidation", False),
+        }
+
         for trigger_name, trigger_func in self._triggers.items():
+            if not trigger_filter.get(trigger_name, True):
+                continue
             try:
                 result = await trigger_func(pair)
                 if result and result.get("triggered"):

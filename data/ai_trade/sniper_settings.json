@@ -4,7 +4,7 @@
   "pairs_to_scan": 20,
   "trigger_breakout": true,
   "trigger_breakdown": true,
-  "trigger_liquidation": false,
+  "trigger_liquidation": true,
   "breakout_threshold_pct": 0.1,
   "rsi_breakout_min": 55,
   "rsi_breakout_max": 80,
