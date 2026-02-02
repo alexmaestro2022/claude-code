@@ -159,11 +159,7 @@ RATE_LIMIT_PATTERNS = [
     "rate_limit",
     "too many requests",
     "429",
-    "quota exceeded",
-    "limit exceeded",
-    "try again later",
     "overloaded",
-    "capacity",
 ]
 
 
@@ -1255,10 +1251,9 @@ async def chat_message(request: Request):
         response = result.stdout.strip() if result.stdout else ""
         stderr = result.stderr.strip() if result.stderr else ""
 
-        # Check for rate limit in stdout or stderr
-        combined = f"{response} {stderr}"
-        if _is_rate_limit_error(combined):
-            rl_result = await _handle_rate_limit("chat", combined[:300])
+        # Check for rate limit in stderr only (stdout contains Claude response text)
+        if _is_rate_limit_error(stderr):
+            rl_result = await _handle_rate_limit("chat", stderr[:300])
             _increment_admin_stats("chat")
             return rl_result
 
@@ -1410,10 +1405,9 @@ async def execute_code(request: Request):
             output = result.stdout.strip() if result.stdout else ""
             error = result.stderr.strip() if result.stderr else ""
 
-            # Check for rate limit
-            combined = f"{output} {error}"
-            if _is_rate_limit_error(combined):
-                rl_result = await _handle_rate_limit("code", combined[:300])
+            # Check for rate limit in stderr only
+            if _is_rate_limit_error(error):
+                rl_result = await _handle_rate_limit("code", error[:300])
                 _increment_admin_stats("code")
                 return rl_result
 
@@ -1574,10 +1568,9 @@ async def execute_code_stream(request: Request):
         full_output = "\n".join(output_lines)
         full_error = "\n".join(error_lines)
 
-        # Check for rate limit
-        combined = f"{full_output} {full_error}"
-        if _is_rate_limit_error(combined):
-            await _handle_rate_limit("code_stream", combined[:300])
+        # Check for rate limit in stderr only
+        if _is_rate_limit_error(full_error):
+            await _handle_rate_limit("code_stream", full_error[:300])
             _increment_admin_stats("code")
             yield f"data: {json.dumps({'status': 'error', 'message': 'Rate limit hit', 'rate_limit': True})}\n\n"
             return
@@ -1710,10 +1703,9 @@ async def confirm_send_to_code(request: Request):
 
         full_output = "\n".join(output_lines)
         full_error = "\n".join(error_lines)
-        combined = f"{full_output} {full_error}"
 
-        if _is_rate_limit_error(combined):
-            await _handle_rate_limit("confirm_code", combined[:300])
+        if _is_rate_limit_error(full_error):
+            await _handle_rate_limit("confirm_code", full_error[:300])
             _increment_admin_stats("code")
             yield f"data: {json.dumps({'status': 'error', 'message': 'Rate limit', 'rate_limit': True})}\n\n"
             return
@@ -1797,9 +1789,8 @@ async def confirm_send_to_chat(request: Request):
         response = result.stdout.strip() if result.stdout else ""
         stderr = result.stderr.strip() if result.stderr else ""
 
-        combined = f"{response} {stderr}"
-        if _is_rate_limit_error(combined):
-            rl_result = await _handle_rate_limit("confirm_chat", combined[:300])
+        if _is_rate_limit_error(stderr):
+            rl_result = await _handle_rate_limit("confirm_chat", stderr[:300])
             _increment_admin_stats("chat")
             return rl_result
 
@@ -2673,11 +2664,10 @@ async def _process_queue() -> None:
             )
             output = result.stdout.strip() if result.stdout else ""
             stderr = result.stderr.strip() if result.stderr else ""
-            combined = f"{output} {stderr}"
 
-            # Check for rate limit in scheduled task output
-            if _is_rate_limit_error(combined):
-                await _handle_rate_limit("scheduled", combined[:300])
+            # Check for rate limit in stderr only
+            if _is_rate_limit_error(stderr):
+                await _handle_rate_limit("scheduled", stderr[:300])
                 # Postpone task by RATE_LIMIT_COOLDOWN seconds
                 scheduled = _load_json(DATA_DIR / "scheduled.json", [])
                 if isinstance(scheduled, list):
