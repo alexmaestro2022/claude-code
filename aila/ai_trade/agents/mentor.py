@@ -80,6 +80,16 @@ ANALYZE AND RESPOND IN JSON:
                         "grade": result.get("grade"),
                     })
 
+            # Apply confidence adjustment to trader settings
+            conf_adj = result.get("confidence_adjustment", 0)
+            if isinstance(conf_adj, (int, float)) and conf_adj != 0:
+                self._apply_confidence_adjustment(int(conf_adj))
+
+            # Apply risk adjustment to trader settings
+            risk_adj = result.get("risk_adjustment", "maintain")
+            if risk_adj in ("increase", "decrease"):
+                self._apply_risk_adjustment(risk_adj)
+
             # Log repeated mistakes
             repeated = result.get("repeated_mistakes", [])
             if repeated:
@@ -137,6 +147,13 @@ Explain briefly and respond in JSON:
             profile["mistakes_history"] = mistakes_history[-50:]
             self.knowledge_base.data["trader_profile"] = profile
             self.knowledge_base.save()
+
+            # Apply XP penalty
+            xp_penalty = result.get("xp_penalty", 0)
+            if isinstance(xp_penalty, (int, float)) and xp_penalty < 0:
+                skill = result.get("skill_affected", "")
+                self.knowledge_base.add_xp(int(xp_penalty), skill or None)
+                self.log(f"XP penalty: {xp_penalty} (skill={skill})")
 
             self.log(f"Correction applied: {result.get('explanation', '')[:80]}")
 
@@ -214,6 +231,39 @@ Respond in JSON:
             self.knowledge_base.save()
 
         return result
+
+    def _apply_confidence_adjustment(self, adjustment: int) -> None:
+        """Apply confidence adjustment to TRADER settings."""
+        try:
+            from ..agent_settings import get_agent_settings
+            settings = get_agent_settings()
+            current = settings.get_settings("TRADER")
+            old_conf = current.get("min_confidence", 70)
+            new_conf = max(50, min(95, old_conf + adjustment))
+            if new_conf != old_conf:
+                settings.update_settings("TRADER", {"min_confidence": new_conf})
+                self.log(f"Confidence adjusted: {old_conf} -> {new_conf} ({adjustment:+d})")
+        except Exception as e:
+            self.log(f"Failed to apply confidence adjustment: {e}", "error")
+
+    def _apply_risk_adjustment(self, direction: str) -> None:
+        """Apply risk adjustment to TRADER settings."""
+        try:
+            from ..agent_settings import get_agent_settings
+            settings = get_agent_settings()
+            current = settings.get_settings("TRADER")
+            old_rr = current.get("min_rr_ratio", 1.5)
+            # Decrease risk tolerance = raise R:R requirement
+            # Increase risk tolerance = lower R:R requirement (min 1.2)
+            if direction == "decrease":
+                new_rr = min(5.0, round(old_rr + 0.2, 1))
+            else:
+                new_rr = max(1.2, round(old_rr - 0.1, 1))
+            if new_rr != old_rr:
+                settings.update_settings("TRADER", {"min_rr_ratio": new_rr})
+                self.log(f"Risk R:R adjusted: {old_rr} -> {new_rr} ({direction})")
+        except Exception as e:
+            self.log(f"Failed to apply risk adjustment: {e}", "error")
 
     async def evaluate_decision_quality(self, opportunity: dict, market_context: dict) -> dict:
         """Evaluate the quality of a trading decision before execution."""
