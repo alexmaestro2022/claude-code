@@ -3154,7 +3154,7 @@ let currentCommand = '';
 let isEditingCommand = false;
 let pendingCodeResult = '';
 let autoSendTimer = null;
-let autoSendCountdown = 3;
+let autoSendCountdown = 5;
 let commandHistory = [];
 let autoIterationCount = 0;  // Track auto mode iterations
 
@@ -3267,7 +3267,7 @@ function cancelCommand() {
 }
 
 function startAutoCountdown() {
-    autoSendCountdown = 3;
+    autoSendCountdown = 5;
     const el = document.getElementById('autoCountdown');
     const text = document.getElementById('countdownText');
     el.style.display = 'flex';
