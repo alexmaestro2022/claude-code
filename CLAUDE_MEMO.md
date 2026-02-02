@@ -3257,3 +3257,6 @@ User → Chat (план + подтверждение) → "да" (auto_confirmed
   - Autopilot: при <2ч вызывает `ensure_valid_token()`, останавливается только если refresh тоже не сработал
   - `check_oauth.sh`: пробует `try_refresh()` перед отправкой Telegram алертов
   - Client ID: `9d1c250a-e61b-44d9-88ed-5944d1962f5e`, scopes: inference/mcp/profile/sessions
+  - Refresh log: `/opt/aila/logs/ai_trade/oauth_refresh.json` (count/failures/last time)
+  - API `/api/ai-trade/oauth/status` → status: `healthy`/`refreshing`/`warning`/`expired`
+  - UI: "refreshed" flash на 10с при обнаружении refresh, OFFLINE при expired, warning icon при failed refresh
