@@ -167,6 +167,13 @@
         "added_at": "2026-01-30T10:35:00.996319"
       },
       {
+        "symbol": "AXSUSDT",
+        "pnl_usdt": -0.15392026,
+        "grade": "C",
+        "close_reason": "stop_loss",
+        "added_at": "2026-02-01T21:18:24.902595"
+      },
+      {
         "symbol": "XAUTUSDT",
         "pnl_usdt": -0.11934666,
         "grade": "D",
