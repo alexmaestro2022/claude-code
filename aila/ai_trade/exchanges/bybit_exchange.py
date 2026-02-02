@@ -592,6 +592,162 @@ class BybitExchange(BaseExchange):
         }
 
     @retry_async(max_attempts=2)
+    async def set_trading_stop(
+        self,
+        symbol: str,
+        trailing_stop: Optional[float] = None,
+        active_price: Optional[float] = None,
+        stop_loss: Optional[float] = None,
+        take_profit: Optional[float] = None,
+    ) -> dict:
+        """Set trading stop (trailing stop, SL, TP) for an open position.
+
+        Uses Bybit API v5: POST /v5/position/set-trading-stop.
+
+        Args:
+            symbol: Trading pair (e.g., "BTCUSDT" or "BTC/USDT")
+            trailing_stop: Trailing stop distance in price (e.g., 50.0 for $50)
+            active_price: Price at which trailing stop activates
+            stop_loss: New stop loss price
+            take_profit: New take profit price
+
+        Returns:
+            Dict with success status and message
+        """
+        bybit_symbol = self.normalize_symbol(symbol)
+        params: dict = {"category": "linear", "symbol": bybit_symbol}
+
+        if trailing_stop is not None:
+            params["trailingStop"] = str(trailing_stop)
+        if active_price is not None:
+            params["activePrice"] = str(active_price)
+        if stop_loss is not None:
+            params["stopLoss"] = str(stop_loss)
+        if take_profit is not None:
+            params["takeProfit"] = str(take_profit)
+
+        try:
+            result = self._client.set_trading_stop(**params)
+            success = result["retCode"] == 0
+            if success:
+                logger.info(
+                    f"Trading stop set for {bybit_symbol}: "
+                    f"trailing={trailing_stop}, active={active_price}, "
+                    f"sl={stop_loss}, tp={take_profit}"
+                )
+            else:
+                logger.warning(f"set_trading_stop failed: {result.get('retMsg')}")
+            return {
+                "success": success,
+                "message": result.get("retMsg", ""),
+            }
+        except Exception as e:
+            logger.error(f"set_trading_stop error for {bybit_symbol}: {e}")
+            return {"success": False, "message": str(e)}
+
+    @retry_async(max_attempts=2)
+    async def amend_order(
+        self,
+        order_id: str,
+        symbol: str,
+        new_price: Optional[float] = None,
+        new_qty: Optional[float] = None,
+        new_trigger_price: Optional[float] = None,
+    ) -> dict:
+        """Amend (modify) an existing order.
+
+        Uses Bybit API v5: POST /v5/order/amend.
+
+        Args:
+            order_id: The order ID to amend
+            symbol: Trading pair
+            new_price: New order price (for limit orders)
+            new_qty: New order quantity
+            new_trigger_price: New trigger price (for SL/TP orders)
+
+        Returns:
+            Dict with success status and message
+        """
+        bybit_symbol = self.normalize_symbol(symbol)
+        params: dict = {
+            "category": "linear",
+            "symbol": bybit_symbol,
+            "orderId": order_id,
+        }
+
+        if new_price is not None:
+            params["price"] = str(new_price)
+        if new_qty is not None:
+            params["qty"] = str(new_qty)
+        if new_trigger_price is not None:
+            params["triggerPrice"] = str(new_trigger_price)
+
+        try:
+            result = self._client.amend_order(**params)
+            success = result["retCode"] == 0
+            if success:
+                logger.info(
+                    f"Order amended: {order_id} on {bybit_symbol} "
+                    f"price={new_price}, qty={new_qty}, trigger={new_trigger_price}"
+                )
+            else:
+                logger.warning(f"amend_order failed: {result.get('retMsg')}")
+            return {
+                "success": success,
+                "order_id": order_id,
+                "message": result.get("retMsg", ""),
+            }
+        except Exception as e:
+            logger.error(f"amend_order error for {bybit_symbol}: {e}")
+            return {"success": False, "order_id": order_id, "message": str(e)}
+
+    @retry_async(max_attempts=2)
+    async def close_position_market(self, symbol: str) -> dict:
+        """Close position by placing opposite reduceOnly market order.
+
+        Fetches current position size and side, then places opposite order.
+
+        Args:
+            symbol: Trading pair
+
+        Returns:
+            Dict with success status, order_id, and message
+        """
+        bybit_symbol = self.normalize_symbol(symbol)
+        position = await self.get_position(bybit_symbol)
+
+        if not position or position.get("size", 0) == 0:
+            logger.warning(f"No open position to close for {bybit_symbol}")
+            return {"success": False, "message": "No open position"}
+
+        close_side = "Sell" if position["side"].lower() == "buy" else "Buy"
+        size = position["size"]
+
+        try:
+            result = self._client.place_order(
+                category="linear",
+                symbol=bybit_symbol,
+                side=close_side,
+                orderType="Market",
+                qty=str(size),
+                reduceOnly=True,
+            )
+            success = result["retCode"] == 0
+            order_id = result["result"].get("orderId") if success else None
+            if success:
+                logger.info(f"Position closed market: {bybit_symbol} {close_side} {size}")
+            else:
+                logger.error(f"close_position_market failed: {result.get('retMsg')}")
+            return {
+                "success": success,
+                "order_id": order_id,
+                "message": result.get("retMsg", ""),
+            }
+        except Exception as e:
+            logger.error(f"close_position_market error for {bybit_symbol}: {e}")
+            return {"success": False, "message": str(e)}
+
+    @retry_async(max_attempts=2)
     async def get_closed_pnl(
         self, symbol: Optional[str] = None, limit: int = 50
     ) -> list[dict]:
