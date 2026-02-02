@@ -2901,6 +2901,8 @@ async def _process_queue() -> None:
                 if t["id"] == task["id"]:
                     t["last_run"] = datetime.now().isoformat()
                     t["last_result"] = "success" if success else status
+                    t["last_output"] = summary[:1000]
+                    t["iterations"] = iterations
                     break
             _save_json(DATA_DIR / "scheduled.json", scheduled)
 
