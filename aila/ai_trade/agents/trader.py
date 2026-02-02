@@ -320,32 +320,76 @@ class TraderAgent(BaseAgent):
         return opportunity
 
     async def evaluate_exit(self, position: dict, market_data: dict) -> dict:
-        """Evaluate whether to exit an existing position."""
-        prompt = f"""You are monitoring an open position. Decide if it should be closed.
+        """Evaluate whether to exit or modify an existing position.
+
+        Args:
+            position: Current position data (symbol, direction, entry_price,
+                      current_price, unrealized_pnl_pct, duration, leverage,
+                      stop_loss, take_profit, peak_pnl_pct).
+            market_data: Current market data (price, rsi, trend, atr, news).
+
+        Returns:
+            Dict with action, new_sl, new_tp, close_pct, reason, urgency.
+        """
+        symbol = position.get("symbol", "unknown")
+        pnl_pct = position.get("unrealized_pnl_pct", 0)
+
+        prompt = f"""You are monitoring an open position. Decide what to do.
 
 ## POSITION
-Pair: {position['symbol']}
-Direction: {position['direction']}
-Entry: {position['entry_price']}
-Current: {market_data.get('price')}
-Unrealized PnL: {position.get('unrealized_pnl_pct', 0):.2f}%
+Pair: {symbol}
+Direction: {position.get('direction', 'LONG')}
+Leverage: {position.get('leverage', 1)}x
+Entry: {position.get('entry_price', 0)}
+Current: {position.get('current_price', market_data.get('price', 0))}
+Unrealized PnL: {pnl_pct:.2f}%
+Peak PnL: {position.get('peak_pnl_pct', 0):.2f}%
 Duration: {position.get('duration', 'unknown')}
+Stop Loss: {position.get('stop_loss', 'none')}
+Take Profit: {position.get('take_profit', 'none')}
 
 ## CURRENT MARKET
-RSI: {market_data.get('rsi')}
-Trend: {market_data.get('trend')}
-ATR: {market_data.get('atr')}
+Price: {market_data.get('price', 0)}
+RSI: {market_data.get('rsi', 'N/A')}
+Trend: {market_data.get('trend', 'N/A')}
+ATR: {market_data.get('atr', 'N/A')}
+News sentiment: {market_data.get('news_sentiment', 'N/A')}
+
+## RULES
+- If PnL is dropping from peak, consider tightening SL
+- If trend reversed against position, consider closing
+- If PnL > +5% and momentum fading, consider partial close
+- Never move SL further from entry (only tighten)
+- Partial close: 25-75% of position
 
 ## TASK
-Should this position be closed? Respond in JSON:
+Respond in JSON:
 
 {{
-    "action": "HOLD" | "CLOSE",
-    "reason": "explanation",
+    "action": "HOLD" | "CLOSE" | "MOVE_SL" | "MOVE_TP" | "PARTIAL_CLOSE",
+    "new_sl": null or price (only for MOVE_SL),
+    "new_tp": null or price (only for MOVE_TP),
+    "close_pct": null or 25-75 (only for PARTIAL_CLOSE),
+    "reason": "brief explanation",
     "urgency": "low" | "medium" | "high"
 }}
 """
-        result = await self.claude_client.analyze(prompt)
+        result = await self.claude_client.analyze(
+            prompt,
+            use_haiku=True,
+            agent="TRADER",
+            action="evaluate_exit",
+            context=f"pair={symbol},pnl={pnl_pct:.1f}%",
+        )
+
+        if "error" not in result:
+            action = result.get("action", "HOLD")
+            self.log(
+                f"Exit eval: {symbol} → {action} "
+                f"(urgency={result.get('urgency', '?')}) "
+                f"pnl={pnl_pct:.1f}%"
+            )
+
         return result
 
     def _validate_and_adjust_rr(
