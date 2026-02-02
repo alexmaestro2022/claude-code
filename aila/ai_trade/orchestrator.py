@@ -240,13 +240,19 @@ class AgentOrchestrator:
         self, entry_price: float, stop_loss: float,
         confidence: int = 50, leverage: int = 1
     ) -> dict:
-        """Calculate optimal trade size using Kelly Criterion adjusted by confidence."""
+        """Calculate optimal trade size using Kelly Criterion adjusted by confidence.
+
+        Uses a minimum risk floor (1%) when Kelly returns 0 (cold start / no trade history).
+        """
         stats = self.knowledge_base.data
         kelly = self.capital_manager.kelly_criterion(
             win_rate=stats.get('win_rate', 0.5),
             avg_win=stats.get('avg_win', 1),
             avg_loss=stats.get('avg_loss', 1)
         )
+        # Cold-start fallback: use config max_risk when no trade history
+        if kelly <= 0:
+            kelly = self.capital_manager._config['max_risk_per_trade_pct'] / 100
         adjusted_risk = kelly * (confidence / 100)
         return self.capital_manager.calculate_position_size(
             entry_price=entry_price,

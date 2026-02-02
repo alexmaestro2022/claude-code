@@ -286,6 +286,10 @@ class ClaudeMaxClient:
 
         if proc.returncode != 0:
             err_msg = stderr.decode("utf-8", errors="replace").strip()
+            # Also check stdout for error details (CLI may write errors there)
+            if not err_msg:
+                out_msg = stdout.decode("utf-8", errors="replace").strip()[:500]
+                err_msg = out_msg or "no output"
             return {"error": f"CLI exit code {proc.returncode}: {err_msg}"}
 
         raw_output = stdout.decode("utf-8", errors="replace").strip()
