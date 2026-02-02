@@ -3206,6 +3206,35 @@ User → Chat (план + подтверждение) → "да" (auto_confirmed
 | POST | `/api/ai-trade/agent/{agent}/toggle` | Toggle on/off |
 | POST | `/api/ai-trade/agent/{agent}/reset-pause` | Reset pause manually |
 
+### Этап 6: Улучшение анализа данных и оптимизация промптов (2026-02-02):
+
+#### 6.1 Новые индикаторы в market_scanner.py:
+- **MACD** (12,26,9): macd, signal, histogram
+- **Bollinger Bands** (20,2): upper, lower, %B, width_pct
+- **Volume Profile**: current vs 20-candle avg (ratio)
+- **Support/Resistance**: swing points за 50 свечей (ближайшие к цене)
+- **Stochastic RSI** (14,14,3,3): %K, %D
+- Все расчёты ЛОКАЛЬНЫЕ, чистый Python
+
+#### 6.2 Оптимизация промпта batch_analyze:
+- Структура: ROLE → MARKET DATA → MARKET CONTEXT → EXPERIENCE → RULES → TASK
+- Новые индикаторы: macd_signal, bb_pct_b, vol_ratio, stoch_rsi_k/d, support/resistance
+- BTC context: цена, тренд, RSI, MACD signal → влияет на altcoin confidence
+- Market sentiment: bullish/bearish/neutral с процентом
+- Recent trades: последние 3 сделки из agent_stats
+- Indicator guide: объяснение каждого индикатора для Claude
+- DRY: claude_client.py делегирует к claude_max_client.py
+
+#### 6.3 Оптимизация промпта evaluate_exit:
+- Все индикаторы: MACD, Bollinger %B, StochRSI, volume ratio, S/R
+- Momentum status (supporting/fading/neutral) вычисляется из комбинации индикаторов
+- Drawdown from peak: показывает сколько потеряно от пика PnL
+- Конкретные правила: >50% drawdown from peak → tighten, PnL>5%+fading → partial close
+
+#### 6.4 Согласование лимитов:
+- R:R: VETO <1.0 (было <0.5), warning <1.5 — единообразно везде
+- Reviewer prompt: добавлены новые индикаторы для лучшего ревью
+
 ### Исправления 2026-02-01:
 - **Sniper log spam** — добавлена дедупликация логов `_last_opportunity_log` (5 мин на пару) в `scan_for_snipes`
 - **BaseAgent logger** — `_setup_file_handler()`: проверка директории, дедупликация хэндлеров, init-лог при старте
