@@ -1,0 +1,475 @@
+"""Position Monitor — active management of open positions.
+
+Runs every 15 seconds, applies fast rules (breakeven, trailing stop,
+time-based warnings) without Claude API.  Every 2-3 minutes, calls
+TRADER.evaluate_exit() via Claude for deeper analysis.
+"""
+
+import asyncio
+import logging
+from datetime import datetime
+from typing import Any, Optional
+
+logger = logging.getLogger("ai_trade.position_monitor")
+logger.setLevel(logging.INFO)
+
+if not any(
+    isinstance(h, logging.FileHandler)
+    and getattr(h, "baseFilename", "").endswith("position_monitor.log")
+    for h in logger.handlers
+):
+    _handler = logging.FileHandler("/opt/aila/logs/ai_trade/position_monitor.log")
+    _handler.setFormatter(logging.Formatter(
+        "%(asctime)s [%(levelname)s] [%(name)s] %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    ))
+    logger.addHandler(_handler)
+
+# --- Configuration ---
+CHECK_INTERVAL_SECONDS = 15
+CLAUDE_EVAL_INTERVAL_SECONDS = 150  # 2.5 min between Claude evaluations
+
+# Breakeven: move SL to entry + 0.1% when PnL >= +1.5%
+BREAKEVEN_TRIGGER_PCT = 1.5
+BREAKEVEN_OFFSET_PCT = 0.1
+
+# Trailing stop: activate at +3%, trail 1.5% from peak
+TRAILING_TRIGGER_PCT = 3.0
+TRAILING_DISTANCE_PCT = 1.5
+
+# Time-based: warn if position open > expected_duration * 2
+TIME_WARNING_MULTIPLIER = 2
+
+
+class PositionMonitor:
+    """Actively manages open positions with fast rules and Claude analysis."""
+
+    __slots__ = (
+        "_exchange", "_trader_agent", "_position_manager",
+        "_running", "_tracking", "_last_claude_eval",
+    )
+
+    def __init__(
+        self,
+        exchange: Any,
+        trader_agent: Any,
+        position_manager: Any,
+    ) -> None:
+        self._exchange = exchange
+        self._trader_agent = trader_agent
+        self._position_manager = position_manager
+        self._running = False
+        # Per-symbol tracking state
+        self._tracking: dict[str, dict[str, Any]] = {}
+        # Last Claude evaluation time per symbol
+        self._last_claude_eval: dict[str, datetime] = {}
+
+    async def start(self) -> None:
+        """Start the position monitoring loop."""
+        if self._running:
+            return
+        self._running = True
+        logger.info("[MONITOR] Position monitor started")
+        asyncio.create_task(self._monitor_loop())
+
+    def stop(self) -> None:
+        """Stop the position monitoring loop."""
+        self._running = False
+        logger.info("[MONITOR] Position monitor stopped")
+
+    async def _monitor_loop(self) -> None:
+        """Main loop — runs every CHECK_INTERVAL_SECONDS."""
+        while self._running:
+            try:
+                await self.check_positions()
+            except Exception as e:
+                logger.error(f"[MONITOR] Loop error: {e}")
+            await asyncio.sleep(CHECK_INTERVAL_SECONDS)
+
+    async def check_positions(self) -> list[dict[str, Any]]:
+        """Check all open positions and apply management rules.
+
+        Returns list of actions taken.
+        """
+        actions: list[dict[str, Any]] = []
+
+        bot_positions = self._position_manager.get_bot_positions()
+        if not bot_positions:
+            return actions
+
+        # Fetch real positions from exchange
+        try:
+            exchange_positions = await self._exchange.get_positions()
+        except Exception as e:
+            logger.error(f"[MONITOR] Failed to fetch positions: {e}")
+            return actions
+
+        exchange_map = {p["symbol"]: p for p in exchange_positions}
+
+        # Clean up tracking for closed positions
+        tracked_symbols = set(self._tracking.keys())
+        active_symbols = set(bot_positions.keys())
+        for closed in tracked_symbols - active_symbols:
+            del self._tracking[closed]
+            self._last_claude_eval.pop(closed, None)
+
+        for symbol, bot_pos in bot_positions.items():
+            exchange_pos = exchange_map.get(symbol)
+            if not exchange_pos or exchange_pos.get("size", 0) == 0:
+                continue
+
+            # Initialize tracking state for new positions
+            if symbol not in self._tracking:
+                self._tracking[symbol] = {
+                    "peak_pnl_pct": 0.0,
+                    "breakeven_applied": False,
+                    "trailing_active": False,
+                    "trailing_sl": None,
+                    "time_warning_sent": False,
+                }
+
+            track = self._tracking[symbol]
+
+            # Calculate current PnL %
+            entry_price = bot_pos.get("entry_price", 0)
+            mark_price = exchange_pos.get("mark_price", 0)
+            side = bot_pos.get("side", "LONG")
+            leverage = int(bot_pos.get("leverage", 1))
+
+            if entry_price <= 0 or mark_price <= 0:
+                continue
+
+            if side == "LONG":
+                pnl_pct = ((mark_price - entry_price) / entry_price) * 100 * leverage
+            else:
+                pnl_pct = ((entry_price - mark_price) / entry_price) * 100 * leverage
+
+            # Update peak PnL
+            if pnl_pct > track["peak_pnl_pct"]:
+                track["peak_pnl_pct"] = pnl_pct
+
+            # --- Fast rules (no Claude) ---
+
+            # 1. Breakeven rule
+            action = await self._check_breakeven(
+                symbol, side, entry_price, pnl_pct, track
+            )
+            if action:
+                actions.append(action)
+
+            # 2. Trailing stop rule
+            action = await self._check_trailing_stop(
+                symbol, side, entry_price, mark_price, pnl_pct, track
+            )
+            if action:
+                actions.append(action)
+
+            # 3. Time-based warning
+            action = self._check_time_warning(symbol, bot_pos, track)
+            if action:
+                actions.append(action)
+
+            # --- Claude evaluation (throttled) ---
+            await self._maybe_claude_eval(
+                symbol, bot_pos, exchange_pos, pnl_pct, actions
+            )
+
+        return actions
+
+    async def _check_breakeven(
+        self,
+        symbol: str,
+        side: str,
+        entry_price: float,
+        pnl_pct: float,
+        track: dict[str, Any],
+    ) -> Optional[dict[str, Any]]:
+        """Move SL to breakeven when PnL >= BREAKEVEN_TRIGGER_PCT."""
+        if track["breakeven_applied"] or track["trailing_active"]:
+            return None
+
+        if pnl_pct < BREAKEVEN_TRIGGER_PCT:
+            return None
+
+        # Calculate breakeven SL: entry + 0.1% offset
+        if side == "LONG":
+            new_sl = entry_price * (1 + BREAKEVEN_OFFSET_PCT / 100)
+        else:
+            new_sl = entry_price * (1 - BREAKEVEN_OFFSET_PCT / 100)
+
+        new_sl = await self._exchange.round_price(symbol, new_sl)
+
+        logger.info(
+            f"[MONITOR][BREAKEVEN] {symbol} PnL={pnl_pct:.1f}% >= {BREAKEVEN_TRIGGER_PCT}% "
+            f"→ moving SL to breakeven @ {new_sl}"
+        )
+
+        result = await self._exchange.set_trading_stop(
+            symbol=symbol, stop_loss=new_sl
+        )
+
+        if result.get("success"):
+            track["breakeven_applied"] = True
+            return {
+                "symbol": symbol,
+                "action": "BREAKEVEN",
+                "new_sl": new_sl,
+                "pnl_pct": round(pnl_pct, 2),
+            }
+
+        logger.warning(f"[MONITOR][BREAKEVEN] Failed for {symbol}: {result.get('message')}")
+        return None
+
+    async def _check_trailing_stop(
+        self,
+        symbol: str,
+        side: str,
+        entry_price: float,
+        mark_price: float,
+        pnl_pct: float,
+        track: dict[str, Any],
+    ) -> Optional[dict[str, Any]]:
+        """Activate/update trailing stop when PnL >= TRAILING_TRIGGER_PCT."""
+        if pnl_pct < TRAILING_TRIGGER_PCT:
+            return None
+
+        # Calculate trailing SL: trail TRAILING_DISTANCE_PCT from current peak
+        if side == "LONG":
+            # Peak price is derived from peak PnL
+            trailing_sl = mark_price * (1 - TRAILING_DISTANCE_PCT / 100)
+        else:
+            trailing_sl = mark_price * (1 + TRAILING_DISTANCE_PCT / 100)
+
+        trailing_sl = await self._exchange.round_price(symbol, trailing_sl)
+
+        # Only update if new SL is better than current
+        current_trailing = track.get("trailing_sl")
+        if current_trailing is not None:
+            if side == "LONG" and trailing_sl <= current_trailing:
+                return None
+            if side == "SHORT" and trailing_sl >= current_trailing:
+                return None
+
+        if not track["trailing_active"]:
+            logger.info(
+                f"[MONITOR][TRAILING] {symbol} PnL={pnl_pct:.1f}% >= {TRAILING_TRIGGER_PCT}% "
+                f"→ activating trailing stop @ {trailing_sl}"
+            )
+        else:
+            logger.info(
+                f"[MONITOR][TRAILING] {symbol} updating SL: "
+                f"{current_trailing} → {trailing_sl} (PnL={pnl_pct:.1f}%)"
+            )
+
+        result = await self._exchange.set_trading_stop(
+            symbol=symbol, stop_loss=trailing_sl
+        )
+
+        if result.get("success"):
+            track["trailing_active"] = True
+            track["trailing_sl"] = trailing_sl
+            track["breakeven_applied"] = True  # Trailing supersedes breakeven
+            return {
+                "symbol": symbol,
+                "action": "TRAILING_STOP",
+                "new_sl": trailing_sl,
+                "pnl_pct": round(pnl_pct, 2),
+            }
+
+        logger.warning(f"[MONITOR][TRAILING] Failed for {symbol}: {result.get('message')}")
+        return None
+
+    def _check_time_warning(
+        self,
+        symbol: str,
+        bot_pos: dict[str, Any],
+        track: dict[str, Any],
+    ) -> Optional[dict[str, Any]]:
+        """Warn if position is open longer than expected."""
+        if track["time_warning_sent"]:
+            return None
+
+        opened_at = bot_pos.get("opened_at")
+        if not opened_at:
+            return None
+
+        try:
+            start = datetime.fromisoformat(opened_at)
+        except (ValueError, TypeError):
+            return None
+
+        duration_minutes = (datetime.now() - start).total_seconds() / 60
+
+        # Default expected duration: 4 hours (240 min)
+        expected_duration = 240
+        threshold = expected_duration * TIME_WARNING_MULTIPLIER
+
+        if duration_minutes < threshold:
+            return None
+
+        track["time_warning_sent"] = True
+        hours = int(duration_minutes // 60)
+        mins = int(duration_minutes % 60)
+        logger.warning(
+            f"[MONITOR][TIME] {symbol} open for {hours}h{mins}m "
+            f"(> {int(threshold)}min threshold) — needs Claude evaluation"
+        )
+        return {
+            "symbol": symbol,
+            "action": "TIME_WARNING",
+            "duration_minutes": round(duration_minutes),
+            "threshold_minutes": int(threshold),
+        }
+
+    async def _maybe_claude_eval(
+        self,
+        symbol: str,
+        bot_pos: dict[str, Any],
+        exchange_pos: dict[str, Any],
+        pnl_pct: float,
+        actions: list[dict[str, Any]],
+    ) -> None:
+        """Call TRADER.evaluate_exit() via Claude, throttled per symbol."""
+        now = datetime.now()
+        last_eval = self._last_claude_eval.get(symbol)
+
+        if last_eval:
+            elapsed = (now - last_eval).total_seconds()
+            if elapsed < CLAUDE_EVAL_INTERVAL_SECONDS:
+                return
+
+        self._last_claude_eval[symbol] = now
+
+        # Build position context
+        entry_price = bot_pos.get("entry_price", 0)
+        opened_at = bot_pos.get("opened_at", "")
+        duration = ""
+        if opened_at:
+            try:
+                start = datetime.fromisoformat(opened_at)
+                delta = now - start
+                hours = int(delta.total_seconds() // 3600)
+                mins = int((delta.total_seconds() % 3600) // 60)
+                duration = f"{hours}h {mins}m"
+            except (ValueError, TypeError):
+                duration = "unknown"
+
+        position_context = {
+            "symbol": symbol,
+            "direction": bot_pos.get("side", "LONG"),
+            "entry_price": entry_price,
+            "current_price": exchange_pos.get("mark_price", 0),
+            "unrealized_pnl_pct": round(pnl_pct, 2),
+            "duration": duration,
+            "leverage": int(bot_pos.get("leverage", 1)),
+            "stop_loss": bot_pos.get("stop_loss"),
+            "take_profit": bot_pos.get("take_profit"),
+            "peak_pnl_pct": round(
+                self._tracking.get(symbol, {}).get("peak_pnl_pct", 0), 2
+            ),
+        }
+
+        market_data = {
+            "price": exchange_pos.get("mark_price", 0),
+        }
+
+        try:
+            result = await self._trader_agent.evaluate_exit(
+                position_context, market_data
+            )
+
+            if "error" in result:
+                logger.warning(f"[MONITOR][CLAUDE] {symbol} eval error: {result['error']}")
+                return
+
+            action = result.get("action", "HOLD")
+            reason = result.get("reason", "")
+            urgency = result.get("urgency", "low")
+
+            logger.info(
+                f"[MONITOR][CLAUDE] {symbol} → {action} "
+                f"(urgency={urgency}) {reason[:80]}"
+            )
+
+            if action == "HOLD":
+                return
+
+            await self._execute_claude_action(symbol, bot_pos, result, actions)
+
+        except Exception as e:
+            logger.error(f"[MONITOR][CLAUDE] {symbol} eval failed: {e}")
+
+    async def _execute_claude_action(
+        self,
+        symbol: str,
+        bot_pos: dict[str, Any],
+        result: dict[str, Any],
+        actions: list[dict[str, Any]],
+    ) -> None:
+        """Execute action recommended by Claude evaluate_exit."""
+        action = result.get("action", "HOLD")
+        side = bot_pos.get("side", "LONG")
+
+        if action == "CLOSE":
+            logger.warning(f"[MONITOR][CLOSE] {symbol} — Claude says CLOSE: {result.get('reason', '')[:80]}")
+            close_result = await self._exchange.close_position_market(symbol)
+            if close_result.get("success"):
+                actions.append({
+                    "symbol": symbol,
+                    "action": "CLOSE",
+                    "reason": result.get("reason", ""),
+                })
+
+        elif action == "MOVE_SL":
+            new_sl = result.get("new_sl")
+            if new_sl:
+                new_sl = await self._exchange.round_price(symbol, float(new_sl))
+                logger.info(f"[MONITOR][MOVE_SL] {symbol} → SL={new_sl}")
+                sl_result = await self._exchange.set_trading_stop(
+                    symbol=symbol, stop_loss=new_sl
+                )
+                if sl_result.get("success"):
+                    actions.append({
+                        "symbol": symbol,
+                        "action": "MOVE_SL",
+                        "new_sl": new_sl,
+                    })
+
+        elif action == "MOVE_TP":
+            new_tp = result.get("new_tp")
+            if new_tp:
+                new_tp = await self._exchange.round_price(symbol, float(new_tp))
+                logger.info(f"[MONITOR][MOVE_TP] {symbol} → TP={new_tp}")
+                tp_result = await self._exchange.set_trading_stop(
+                    symbol=symbol, take_profit=new_tp
+                )
+                if tp_result.get("success"):
+                    actions.append({
+                        "symbol": symbol,
+                        "action": "MOVE_TP",
+                        "new_tp": new_tp,
+                    })
+
+        elif action == "PARTIAL_CLOSE":
+            close_pct = result.get("close_pct", 50)
+            pos = await self._exchange.get_position(symbol)
+            if pos and pos.get("size", 0) > 0:
+                partial_size = pos["size"] * (close_pct / 100)
+                partial_size = await self._exchange.round_qty(symbol, partial_size)
+                if partial_size > 0:
+                    close_side = "Sell" if side == "LONG" else "Buy"
+                    logger.info(
+                        f"[MONITOR][PARTIAL] {symbol} closing {close_pct}% "
+                        f"({partial_size} of {pos['size']})"
+                    )
+                    order = await self._exchange.create_market_order(
+                        symbol, close_side, partial_size,
+                        params={"reduceOnly": True},
+                    )
+                    if order and order.get("id"):
+                        actions.append({
+                            "symbol": symbol,
+                            "action": "PARTIAL_CLOSE",
+                            "close_pct": close_pct,
+                            "closed_size": partial_size,
+                        })
