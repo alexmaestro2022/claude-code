@@ -1139,25 +1139,40 @@ def _build_first_prompt(
 {message}"""
 
 
+def _get_compact_context() -> str:
+    """Compact context for follow-up prompts (~500 tokens instead of ~7000)."""
+    return (
+        "# КЛЮЧЕВОЙ КОНТЕКСТ\n"
+        "AILA AI Trade — автономная торговая система на Bybit Futures. РЕАЛЬНЫЕ ДЕНЬГИ.\n"
+        "Сервер: /opt/aila, ветка: claude/start-new-session-4XrKU\n\n"
+        "Критичные команды:\n"
+        "- Перезапуск: `sudo systemctl restart aila`\n"
+        "- Логи: `sudo journalctl -u aila -f`\n"
+        "- Статус: `sudo systemctl status aila`\n\n"
+        "Безопасность: НЕ менять risk лимиты, Kelly параметры, min_confidence без запроса.\n"
+        "RISK_GUARD — абсолютное VETO, защита капитала.\n\n"
+        "Агенты: TRADER (тренды) + SNIPER (пробои) → REVIEWER → RISK_GUARD → Execute\n"
+        "Все на Opus через Max подписку. Данные: /opt/aila/data/ai_trade/\n\n"
+        "Для команд: [COMMAND_FOR_CODE]команда[/COMMAND_FOR_CODE]\n"
+        "Для правил: [UPDATE_KNOWLEDGE]RULES.md|append|текст[/UPDATE_KNOWLEDGE]"
+    )
+
+
 def _build_followup_prompt(
     message: str, history_text: str, mode: str,
     chat_only: bool = False, auto_confirmed: bool = False,
 ) -> str:
-    """Follow-up — minimal prompt with history, no knowledge base."""
+    """Follow-up — compact context + history, no full knowledge base."""
     mode_instructions = _get_mode_instructions(mode, auto_confirmed)
     if chat_only:
         mode_instructions = "Только диалог, без команд."
 
-    server_hint = ""
-    if not chat_only:
-        server_hint = "\nДля команд на сервере: [COMMAND_FOR_CODE]команда[/COMMAND_FOR_CODE]"
+    compact = "" if chat_only else f"\n{_get_compact_context()}\n"
 
     return f"""# НАПОМИНАНИЕ
-Ты — Claude (Opus 4.5), умный ассистент для AILA AI Trade.
-Работай как Claude в claude.ai — умно, кратко, по делу.
-База знаний уже загружена в начале сессии.
-Режим: {mode_instructions}{server_hint}
-
+Ты — Claude (Opus 4.5), ассистент для AILA AI Trade. Отвечай на русском, кратко, по делу.
+Режим: {mode_instructions}
+{compact}
 # ИСТОРИЯ ДИАЛОГА
 {history_text}
 
