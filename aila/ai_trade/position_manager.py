@@ -82,8 +82,7 @@ class PositionManager:
             # position_size_usdt IS the margin; notional = margin * leverage
             logger.info(f"[POSITION] Checking available balance for {symbol}")
             try:
-                balance = await self._exchange.get_balance("USDT")
-                available_balance = balance.get("free", 0)
+                available_balance = await self._exchange.get_balance("USDT")
                 logger.info(f"[POSITION] Available balance: ${available_balance:.2f}")
 
                 # position_size_usdt is margin, required from wallet
