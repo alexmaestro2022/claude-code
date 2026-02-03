@@ -3274,6 +3274,7 @@ Chat(follow-up + анализ) → [COMMAND_FOR_CODE] → Code → ... → "Го
   - API `/api/ai-trade/oauth/status` → status: `healthy`/`refreshing`/`warning`/`expired`
   - UI: "refreshed" flash на 10с при обнаружении refresh, OFFLINE при expired, warning icon при failed refresh
 - **Fix: OAuth auto-refresh race condition** — CLI auto-refresh инвалидировал refresh_token, а `check_oauth.sh` использовал устаревший из `/opt/aila/`. Решение: sync из `/home/aila/` перед проверкой, убран дублирующий `*/5 cp` cron, интервал 2ч→1ч.
+- **Fix: OAuth SSL error in OAuthRefresher** — aiohttp без явного SSL контекста давал `SSLCertVerificationError: Hostname mismatch` при подключении к `platform.claude.com`. Решение: добавлен `ssl.create_default_context()` через `TCPConnector(ssl=ssl_ctx)`. Также добавлен `_sync_credentials()` — синхронизация из `/home/aila/` перед refresh (CLI может обновить токен раньше).
 - **Fix: Cold-start Kelly Criterion** — при `win_rate=0` (нет завершённых сделок) Kelly возвращал 0, делая `risk_pct=0%` и блокируя ВСЕ сделки. Добавлен fallback на `max_risk_per_trade_pct` из конфига (2%).
   - Файл: `orchestrator.py:250` — `if kelly <= 0: kelly = config['max_risk_per_trade_pct'] / 100`
   - Ошибка в логах: `Capital manager rejected: Min order risk X% > max 0.0%`
