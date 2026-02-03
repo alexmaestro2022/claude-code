@@ -3309,3 +3309,9 @@ Chat(follow-up + анализ) → [COMMAND_FOR_CODE] → Code → ... → "Го
 - **Следствие:** Проверка баланса падала, ордера шли без проверки
 - **Фикс:** available_balance = await self._exchange.get_balance("USDT") — убран .get()
 - **Файл:** position_manager.py:85
+
+### Баг 5: Admin Panel ломается через 2 сек после загрузки
+- **Проблема:** `_save_chat_message()` сохраняла ответы Claude без ограничения размера. Ответ с `tool_use` (25KB, содержимое admin.html) рендерился через `formatResponse()` → `innerHTML`, ломая DOM
+- **Симптомы:** на экране появлялся текст `\n4551`, `style="width:100%..."`, `Subscription Usage` — сырой HTML как текст
+- **Фикс:** Truncate сообщений > 5000 символов в `_save_chat_message()` + очистка current.json
+- **Файл:** `aila/api/routes/admin.py:1006`
