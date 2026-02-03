@@ -661,7 +661,7 @@ ALLOWED_TELEGRAM_IDS=123456789,987654321
 
 ### Файлы:
 - `aila/api/main.py` - функции `verify_telegram_auth()`, session storage
-- `static/` - иконки и manifest.json для PWA
+- `static/` - иконки, manifest.json для PWA, локальные JS/CSS (Tailwind, highlight.js)
 
 ### Видео фон на странице логина:
 - Видео файл: `/static/bg-video.mp4` (оригинал: `/static/bg-video-original.mp4`)
