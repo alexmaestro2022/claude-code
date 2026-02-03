@@ -25,9 +25,7 @@
         </div>
 
         <div id="authStep2" style="display:none;">
-            <input type="text" class="auth-input" id="codeInput" maxlength="6"
-                   placeholder="______" inputmode="numeric" pattern="[0-9]*"
-                   onkeydown="if(event.key==='Enter')verifyCode()">
+            <input type="text" class="auth-input" id="codeInput" maxlength="6" placeholder="______" inputmode="numeric" pattern="[0-9]*">
             <button class="auth-btn auth-btn-primary" onclick="verifyCode()">
                 <i class="fa-solid fa-check"></i> <span data-i18n="verify">Verify</span>
             </button>
@@ -2840,6 +2838,13 @@ function formatNumber(n) {
 document.addEventListener('DOMContentLoaded', () => {
     applyLanguage();
     checkSession();
+    // Enter key on code input
+    const codeInput = document.getElementById('codeInput');
+    if (codeInput) {
+        codeInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') verifyCode();
+        });
+    }
 });
 </script>
 </body>
