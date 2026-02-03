@@ -1097,6 +1097,7 @@ def _get_mode_instructions(mode: str, auto_confirmed: bool = False) -> str:
         "выполнять bash, редактировать код.\n"
         "Единственный способ выполнить действие на сервере — "
         "сформировать [COMMAND_FOR_CODE]команда[/COMMAND_FOR_CODE].\n"
+        "НИКОГДА не возвращай JSON tool_use формат. Только текстовый тег.\n"
     )
     if mode == "manual":
         return (
@@ -1133,14 +1134,16 @@ def _get_mode_instructions(mode: str, auto_confirmed: bool = False) -> str:
         return (
             "РЕЖИМ: AUTO (выполнение) — ЗАДАЧА ПОДТВЕРЖДЕНА\n\n"
             f"{planner_rule}\n"
-            "Сформируй команду в ТЕКСТОВОМ формате:\n"
+            "ФОРМАТ ОТВЕТА — ТОЛЬКО ТАК:\n"
             "[COMMAND_FOR_CODE]твоя команда здесь[/COMMAND_FOR_CODE]\n\n"
-            "ВАЖНО:\n"
-            "- Используй ТОЛЬКО тег [COMMAND_FOR_CODE], НЕ JSON\n"
-            "- НЕ используй {{\"name\": \"Bash\", ...}} — это НЕ работает\n"
-            "- После выполнения напиши \"Готово\" и краткий итог\n"
-            "- Фокусируйся ТОЛЬКО на текущей задаче\n\n"
-            "ПРИМЕР ПРАВИЛЬНОГО ОТВЕТА:\n"
+            "ЗАПРЕЩЕНО:\n"
+            "- JSON формат ({{\"name\": \"Bash\", \"arguments\": ...}})\n"
+            "- Markdown блоки ```bash ... ```\n"
+            "- tool_use, tool_result или любой другой формат\n"
+            "ЕДИНСТВЕННЫЙ допустимый формат: [COMMAND_FOR_CODE]...[/COMMAND_FOR_CODE]\n\n"
+            "После получения результата — напиши \"Готово\" и краткий итог.\n"
+            "Фокусируйся ТОЛЬКО на текущей задаче.\n\n"
+            "ПРИМЕР:\n"
             "[COMMAND_FOR_CODE]sudo systemctl status aila[/COMMAND_FOR_CODE]"
         )
     return (
@@ -1412,6 +1415,10 @@ async def chat_message(request: Request):
     ).strip()
     if clean_response:
         response = clean_response
+
+    # Fix tool_use JSON → [COMMAND_FOR_CODE] (Claude sometimes ignores --tools "")
+    if not chat_only:
+        response = _fix_tool_use_response(response)
 
     # In chat-only mode, never parse commands
     has_command = False if chat_only else "[COMMAND_FOR_CODE]" in response
@@ -2768,11 +2775,38 @@ async def _check_scheduled_tasks() -> None:
         _save_json(DATA_DIR / "scheduled.json", scheduled)
 
 
+_TOOL_USE_RE = re.compile(
+    r'\{\s*"name"\s*:\s*"Bash"\s*,\s*"arguments"\s*:\s*\{[^}]*"command"\s*:\s*"((?:[^"\\]|\\.)*)"\s*\}',
+    re.DOTALL,
+)
+
 _SCHEDULED_CMD_RE = re.compile(
     r"\[COMMAND_FOR_CODE\](.*?)\[/COMMAND_FOR_CODE\]", re.DOTALL,
 )
 _SCHEDULED_MAX_ITERATIONS = 10
 _SCHEDULED_CODE_TIMEOUT = 300
+
+
+def _fix_tool_use_response(response: str) -> str:
+    """Convert JSON tool_use format to [COMMAND_FOR_CODE] tags.
+
+    Claude sometimes returns {"name":"Bash","arguments":{"command":"..."}}
+    instead of [COMMAND_FOR_CODE] tags despite --tools "". This extracts
+    the command and wraps it properly.
+    """
+    if "[COMMAND_FOR_CODE]" in response:
+        return response
+    match = _TOOL_USE_RE.search(response)
+    if not match:
+        return response
+    command = match.group(1).replace('\\"', '"').replace("\\n", "\n")
+    # Replace the JSON block with proper tag
+    before = response[:match.start()].rstrip()
+    after = response[match.end():].lstrip()
+    parts = [p for p in [before, f"[COMMAND_FOR_CODE]{command}[/COMMAND_FOR_CODE]", after] if p]
+    fixed = "\n\n".join(parts)
+    logger.info(f"[ADMIN_CHAT] Fixed tool_use → [COMMAND_FOR_CODE]: {command[:80]}")
+    return fixed
 
 
 async def _call_claude_cli(prompt: str, timeout: int = 120) -> tuple[str, str]:
@@ -2865,6 +2899,9 @@ async def _execute_scheduled_with_chat(task: dict) -> dict:
         response = re.sub(
             r"\[UPDATE_KNOWLEDGE\].*?\[/UPDATE_KNOWLEDGE\]", "", response,
         ).strip() or response
+
+        # Fix tool_use JSON → [COMMAND_FOR_CODE] if needed
+        response = _fix_tool_use_response(response)
 
         # Extract command
         cmd_match = _SCHEDULED_CMD_RE.search(response)
