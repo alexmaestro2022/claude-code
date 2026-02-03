@@ -3315,3 +3315,8 @@ Chat(follow-up + анализ) → [COMMAND_FOR_CODE] → Code → ... → "Го
 - **Симптомы:** на экране появлялся текст `\n4551`, `style="width:100%..."`, `Subscription Usage` — сырой HTML как текст
 - **Фикс:** Truncate сообщений > 5000 символов в `_save_chat_message()` + очистка current.json
 - **Файл:** `aila/api/routes/admin.py:1006`
+
+### Баг 6: Auto режим Chat возвращает JSON tool_use вместо [COMMAND_FOR_CODE]
+- **Проблема:** Claude иногда возвращал `{"name":"Bash","arguments":{"command":"..."}}` вместо `[COMMAND_FOR_CODE]` тегов, несмотря на `--tools ""`. Команда не парсилась, сделка не выполнялась.
+- **Фикс:** Добавлен `_fix_tool_use_response()` — post-processor, который находит JSON tool_use и конвертирует в `[COMMAND_FOR_CODE]`. Усилен промпт planner_rule + auto_confirmed.
+- **Файл:** `aila/api/routes/admin.py` — `_TOOL_USE_RE`, `_fix_tool_use_response()`, применяется в chat handler и scheduled handler
