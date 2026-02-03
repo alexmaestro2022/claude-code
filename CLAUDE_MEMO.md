@@ -3320,3 +3320,9 @@ Chat(follow-up + анализ) → [COMMAND_FOR_CODE] → Code → ... → "Го
 - **Проблема:** Claude иногда возвращал `{"name":"Bash","arguments":{"command":"..."}}` вместо `[COMMAND_FOR_CODE]` тегов, несмотря на `--tools ""`. Команда не парсилась, сделка не выполнялась.
 - **Фикс:** Добавлен `_fix_tool_use_response()` — post-processor, который находит JSON tool_use и конвертирует в `[COMMAND_FOR_CODE]`. Усилен промпт planner_rule + auto_confirmed.
 - **Файл:** `aila/api/routes/admin.py` — `_TOOL_USE_RE`, `_fix_tool_use_response()`, применяется в chat handler и scheduled handler
+
+### Баг 7: Claude Code из admin панели не может выполнять bash/sudo команды
+- **Проблема:** `NoNewPrivileges=true` в systemd unit запрещает дочерним процессам (включая Claude CLI) получать повышенные привилегии. `sudo` внутри Claude Code, запущенного из admin панели, просто не работает.
+- **Доп. проблема:** `ReadWritePaths` не включал `/tmp` и `/run`, нужные для Claude CLI temp-файлов.
+- **Фикс:** Убран `NoNewPrivileges=true` из `/etc/systemd/system/aila.service`. Добавлен `/tmp /run` в `ReadWritePaths`.
+- **Файл:** `/etc/systemd/system/aila.service` (вне git, только на сервере)

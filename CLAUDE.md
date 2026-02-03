@@ -486,6 +486,8 @@ Claude Code **ДОЛЖЕН** обновлять этот файл (`CLAUDE.md`) 
 ### Исправленные проблемы
 - OAuth credentials не синхронизировались между `/home/aila/.claude/` и `/opt/aila/.claude/` из-за `ProtectHome=true` в systemd. Решение: cron `*/5` + `_sync_claude_credentials()` в коде.
 - OAuth токен истекал каждые ~8ч без уведомлений. Решение: авто-refresh через `refresh_token` grant + cron + Telegram алерты.
+- Claude Code из admin панели не мог выполнять sudo/bash из-за `NoNewPrivileges=true` в systemd. Решение: убран `NoNewPrivileges`, добавлен `/tmp /run` в `ReadWritePaths`.
+- Auto режим Chat возвращал JSON tool_use вместо `[COMMAND_FOR_CODE]`. Решение: `_fix_tool_use_response()` post-processor + усиленные промпты.
 
 ### Функционал
 - **Admin Panel Chat/Code** — двойной режим: Chat (с сессиями, KB) + Code (одноразовые команды)
