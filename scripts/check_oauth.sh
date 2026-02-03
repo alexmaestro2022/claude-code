@@ -32,6 +32,13 @@ print('REFRESHED' if ok else 'FAILED')
     echo "$REFRESH_RESULT"
 }
 
+# Sync fresh credentials from CLI home dir (prevents race with CLI auto-refresh)
+HOME_CREDS="/home/aila/.claude/.credentials.json"
+if [ -f "$HOME_CREDS" ]; then
+    cp "$HOME_CREDS" "$CREDS" 2>/dev/null && chmod 600 "$CREDS"
+    echo "$(date): Synced credentials from $HOME_CREDS" >> "$LOG"
+fi
+
 # Check credentials file exists
 if [ ! -f "$CREDS" ]; then
     echo "$(date): NO_CREDENTIALS - file not found" >> "$LOG"
