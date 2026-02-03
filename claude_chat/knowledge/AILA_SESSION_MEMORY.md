@@ -1,7 +1,7 @@
 ## AILA AI TRADE — ПАМЯТЬ СЕССИИ
 
 > **Загрузи этот файл в начале новой сессии для восстановления контекста**
-> **Последнее обновление:** 2026-02-02 20:00 UTC
+> **Последнее обновление:** 2026-02-03 UTC
 
 ---
 
@@ -322,6 +322,15 @@ TRADER, SNIPER, REVIEWER, RISK_GUARD, ANALYST, MENTOR, RESEARCHER, WHALE_TRACKER
 | 15 | False positive rate limit в admin chat | `_is_rate_limit_error()` проверяет только stderr, убраны broad patterns |
 | 16 | RULES.md устаревший (pm2, дубли CLAUDE.md) | Очищен с 186→62 строк (-82%), pm2→systemctl |
 
+### 2026-02-03 — Admin Panel стабилизация
+
+| # | Проблема | Решение |
+|---|----------|---------|
+| 17 | Chat history DOM crash при большом тексте | Truncate oversized messages в `current.json` |
+| 18 | Font Awesome CDN — внешняя зависимость | Все CSS/JS перенесены локально (zero external deps) |
+| 19 | codeInput multiline ломал UX | Сделан single-line, onkeydown через addEventListener |
+| 20 | Chat сессии не персистентные | Persistent sessions с архивацией истории |
+
 ---
 
 ## 📊 ПОЛЕЗНЫЕ API ENDPOINTS
@@ -421,7 +430,18 @@ sudo systemctl restart aila
 | Админ панель | ✅ Через подписку Max |
 | Rate Limit | ✅ Детекция только stderr (фикс false positive) |
 | Ветка | `claude/start-new-session-4XrKU` (единственная) |
+| Стабильный тег | `stable-admin-20260203` |
 
 ---
 
-**Последняя сессия:** Диагностика pipeline, 3 критических фикса сделок, Kelly cold-start, rate limit false positive, очистка RULES.md
+### Все теги:
+| Тег | Описание |
+|-----|----------|
+| `working-20260131` | Первая рабочая версия |
+| `stable-base-20260201` | Базовая стабильная |
+| `stable-reform-20260202` | Pipeline фиксы |
+| `stable-admin-20260203` | Admin panel: persistent sessions, local assets, DOM crash fix |
+
+---
+
+**Последняя сессия:** Admin panel стабилизация — persistent sessions, локальные CSS/JS (zero CDN), DOM crash fix, codeInput single-line
