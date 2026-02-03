@@ -1,0 +1,17 @@
+[
+  {
+    "content": "Fix get_balance() float.get() error in position_manager",
+    "status": "in_progress",
+    "activeForm": "Fixing get_balance() float.get() error"
+  },
+  {
+    "content": "Verify balance check logic before order placement",
+    "status": "pending",
+    "activeForm": "Verifying balance check logic"
+  },
+  {
+    "content": "Restart bot and verify fix",
+    "status": "pending",
+    "activeForm": "Restarting bot and verifying"
+  }
+]

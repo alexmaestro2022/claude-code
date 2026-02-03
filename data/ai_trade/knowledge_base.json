@@ -1,18 +1,47 @@
 {
   "data": {
     "created_at": "2026-01-24T00:00:00",
-    "total_trades": 0,
+    "total_trades": 1,
     "win_rate": 0.0,
-    "total_pnl": 0.0,
-    "pair_performance": {},
+    "total_pnl": -0.48336423,
+    "pair_performance": {
+      "SENTUSDT": {
+        "trades": 1,
+        "wins": 0,
+        "losses": 1,
+        "total_pnl": -0.48336423,
+        "avg_pnl": -0.48336423
+      }
+    },
     "successful_setups": [],
-    "failed_setups": [],
-    "mistakes_to_avoid": [],
+    "failed_setups": [
+      {
+        "pair": "SENTUSDT",
+        "strategy": null,
+        "direction": null,
+        "pnl": -0.48336423,
+        "pnl_pct": -4.617087440046391,
+        "duration": null,
+        "timestamp": "2026-02-02T23:58:35.305835"
+      }
+    ],
+    "mistakes_to_avoid": [
+      {
+        "mistake": "Avoid trading D-grade SNIPER signals on low-liquidity altcoins — poor signal quality combined with wide spreads and slippage leads to consistent stop-loss hits",
+        "added_at": "2026-02-02T23:58:35.306459"
+      }
+    ],
     "best_strategies": [],
     "market_patterns": [],
     "risk_adjustments": [],
     "daily_stats": {},
-    "learning_notes": [],
+    "learning_notes": [
+      {
+        "note": "Do not execute D-grade signals from SNIPER on low-cap altcoins — the risk/reward is poor and spread costs amplify losses on illiquid pairs",
+        "category": "trade_review",
+        "added_at": "2026-02-02T23:58:35.307378"
+      }
+    ],
     "market_regime": {},
     "daily_reviews": [],
     "weekly_trainings": [],
@@ -168,6 +197,13 @@
           "added_at": "2026-01-30T10:35:00.996319"
         },
         {
+          "symbol": "AXSUSDT",
+          "pnl_usdt": -0.15392026,
+          "grade": "C",
+          "close_reason": "stop_loss",
+          "added_at": "2026-02-01T21:18:24.902595"
+        },
+        {
           "symbol": "XAUTUSDT",
           "pnl_usdt": -0.11934666,
           "grade": "D",
@@ -235,6 +271,13 @@
       ],
       "worst_pairs": [
         {
+          "symbol": "SENTUSDT",
+          "pnl_usdt": -0.48336423,
+          "grade": "D",
+          "close_reason": "stop_loss",
+          "added_at": "2026-02-02T23:58:22.146497"
+        },
+        {
           "symbol": "BNBUSDT",
           "pnl_usdt": -0.191943,
           "grade": "D",
@@ -280,10 +323,18 @@
           "grade": "D",
           "lesson": "Avoid sniper_liquidation_cascade on BCHUSDT with conf=80%",
           "added_at": "2026-01-30T02:31:59.724162"
+        },
+        {
+          "symbol": "SENTUSDT",
+          "strategy": "sniper_liquidation_cascade",
+          "confidence": 90,
+          "grade": "D",
+          "lesson": "Avoid sniper_liquidation_cascade on SENTUSDT with conf=90%",
+          "added_at": "2026-02-02T23:58:22.146618"
         }
       ]
     }
   },
-  "saved_at": "2026-01-31T20:52:17.591544",
+  "saved_at": "2026-02-03T20:01:15.829073",
   "version": "2.0"
 }

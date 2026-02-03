@@ -1,0 +1,176 @@
+2026-02-02T21:11:21.985Z [DEBUG] Failed to check enabledPlatforms: TypeError: LK is not a function
+2026-02-02T21:11:22.075Z [DEBUG] Watching for changes in setting files /opt/aila/.claude...
+2026-02-02T21:11:22.084Z [DEBUG] [init] configureGlobalMTLS starting
+2026-02-02T21:11:22.084Z [DEBUG] [init] configureGlobalMTLS complete
+2026-02-02T21:11:22.084Z [DEBUG] [init] configureGlobalAgents starting
+2026-02-02T21:11:22.084Z [DEBUG] [init] configureGlobalAgents complete
+2026-02-02T21:11:22.103Z [DEBUG] Applying permission update: Adding 47 allow rule(s) to destination 'localSettings': ["Bash(curl:*)","Bash(python3:*)","Bash(pm2 restart:*)","Bash(/usr/local/bin/pm2 restart:*)","Bash(/home/*/.local/bin/pm2)","Bash(restart aila)","Bash(/root/.local/bin/pm2 restart:*)","Bash(~/.nvm/versions/node/*/bin/pm2)","Bash(sudo -u aila bash -c 'source ~/.bashrc && pm2 restart aila')","Bash(sudo -u aila /home/aila/.local/bin/pm2 restart:*)","Bash(su - aila -c \"pm2 restart aila\")","Bash(runuser -u aila -- bash -lc:*)","Bash(npm root:*)","Bash(/home/aila/.npm/_npx/5f7878ce38f1eb13/node_modules/pm2/bin/pm2 restart:*)","Bash(PM2_HOME=/home/aila/.pm2 /home/aila/.npm/_npx/5f7878ce38f1eb13/node_modules/pm2/bin/pm2 list:*)","Bash(systemctl:*)","Bash(git add:*)","Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: add visual AUTOPILOT activity indicator\n\n- Add pulsing status dot next to AUTOPILOT button \\(green=active, scanning animation, orange=warning\\)\n- Add status bar at bottom: shows running status, current pair being scanned, time since last scan\n- Add /api/ai-trade/autopilot/heartbeat endpoint with real-time scan tracking\n- Add JavaScript polling every 5 seconds for live updates\n- Add scan tracking in autopilot_mode.py \\(last_scan_time, currently_scanning, current_pair\\)\n- Add RU/EN translations for status bar labels\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")","Bash(git push:*)","Bash(sudo systemctl restart:*)","Bash(pkill:*)","Bash(/home/aila/.nvm/versions/node/*/bin/pm2)","Bash(npm exec pm2:*)","Bash(ls:*)","Bash(kill:*)","Bash(git commit:*)","Bash(journalctl:*)","Bash(pm2 logs:*)","Bash(sudo systemctl status:*)","Bash(pm2 status:*)","Bash(pgrep:*)","Bash(find:*)","Bash(grep:*)","Bash(/opt/aila/venv/bin/python:*)","Bash(netstat:*)","Bash(ss:*)","Bash(./start-claude.sh:*)","Bash(ps:*)","Bash(source ~/.nvm/nvm.sh)","Bash(/home/aila/.local/bin/pm2 restart:*)","Bash(export PATH=\"$PATH:/home/aila/.nvm/versions/node/v20.11.1/bin:/home/aila/.local/bin\")","Bash(supervisorctl status:*)","Bash(python -m pytest:*)","Bash(/usr/bin/python3 -m pytest:*)","Bash(pip3 list:*)","Bash(/opt/aila/venv/bin/pip list:*)","Bash(/opt/aila/venv/bin/pip install:*)"]
+2026-02-02T21:11:22.104Z [DEBUG] [STARTUP] Loading MCP configs...
+2026-02-02T21:11:22.107Z [DEBUG] Found 0 plugins (0 enabled, 0 disabled)
+2026-02-02T21:11:22.107Z [DEBUG] [claudeai-mcp] Checking gate (cached)...
+2026-02-02T21:11:22.108Z [DEBUG] [claudeai-mcp] Gate returned: false
+2026-02-02T21:11:22.108Z [DEBUG] [claudeai-mcp] Disabled via gate
+2026-02-02T21:11:22.143Z [DEBUG] [ToolSearch:optimistic] mode=tst-auto, ENABLE_TOOL_SEARCH=undefined, result=true
+2026-02-02T21:11:22.144Z [DEBUG] [STARTUP] Running setup()...
+2026-02-02T21:11:22.168Z [DEBUG] Loading skills from: managed=/etc/claude-code/.claude/skills, user=/opt/aila/.claude/skills, project=[]
+2026-02-02T21:11:22.171Z [DEBUG] Passes: Using fresh cached eligibility data
+2026-02-02T21:11:22.172Z [ERROR] TypeError: TypeError: Cannot read properties of undefined (reading 'safeParse')
+    at HU6 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5222:25476)
+    at ca2 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5223:1314)
+    at wv (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5223:1754)
+    at yq (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5223:1683)
+    at Object.xx8 [as isPlatformInEnabledList] (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:244:2532)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:4738:21551
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:848
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:4875:6409
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:848
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5142:1037
+2026-02-02T21:11:22.172Z [ERROR] Error: Error: ENOENT: no such file or directory, scandir '/etc/claude-code/.claude/skills'
+    at Module.readdirSync (node:fs:1525:3)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:9:1909
+    at BX (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:35431)
+    at Object.readdirSync (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:9:1879)
+    at fZ1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1873:369)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1873:4509
+    at q (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:6814)
+    at bo2 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:4875:4362)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:4875:6995
+    at q (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:6814)
+2026-02-02T21:11:22.172Z [ERROR] Error: Error: ENOENT: no such file or directory, scandir '/opt/aila/.claude/skills'
+    at Module.readdirSync (node:fs:1525:3)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:9:1909
+    at BX (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:35431)
+    at Object.readdirSync (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:9:1879)
+    at fZ1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1873:369)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1873:4552
+    at q (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:6814)
+    at bo2 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:4875:4362)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:4875:6995
+    at q (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:6814)
+2026-02-02T21:11:22.172Z [DEBUG] Error log sink initialized
+2026-02-02T21:11:22.174Z [DEBUG] getPluginSkills: Processing 0 enabled plugins
+2026-02-02T21:11:22.174Z [DEBUG] Total plugin skills loaded: 0
+2026-02-02T21:11:22.174Z [DEBUG] Total plugin commands loaded: 0
+2026-02-02T21:11:22.174Z [DEBUG] Registered 0 hooks from 0 plugins
+2026-02-02T21:11:22.208Z [DEBUG] [STARTUP] setup() completed in 64ms
+2026-02-02T21:11:22.208Z [DEBUG] [STARTUP] Loading commands and agents...
+2026-02-02T21:11:22.223Z [DEBUG] Total plugin agents loaded: 0
+2026-02-02T21:11:22.223Z [DEBUG] Loaded 0 unique skills (managed: 0, user: 0, project: 0, legacy commands: 0)
+2026-02-02T21:11:22.224Z [DEBUG] getSkills returning: 0 skill dir commands, 0 plugin skills, 1 bundled skills
+2026-02-02T21:11:22.232Z [DEBUG] [STARTUP] Commands and agents loaded in 24ms
+2026-02-02T21:11:22.232Z [DEBUG] [LSP MANAGER] initializeLspServerManager() called
+2026-02-02T21:11:22.232Z [DEBUG] [LSP MANAGER] Created manager instance, state=pending
+2026-02-02T21:11:22.232Z [DEBUG] [LSP MANAGER] Starting async initialization (generation 1)
+2026-02-02T21:11:22.234Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-02-02T21:11:22.234Z [DEBUG] [API:auth] OAuth token check starting
+2026-02-02T21:11:22.235Z [DEBUG] Passes: Using fresh cached eligibility data
+2026-02-02T21:11:22.235Z [DEBUG] Total LSP servers loaded: 0
+2026-02-02T21:11:22.236Z [DEBUG] [STARTUP] MCP configs loaded in 132ms
+2026-02-02T21:11:22.236Z [DEBUG] [LSP SERVER MANAGER] getAllLspServers returned 0 server(s)
+2026-02-02T21:11:22.236Z [DEBUG] LSP manager initialized with 0 servers
+2026-02-02T21:11:22.236Z [DEBUG] LSP server manager initialized successfully
+2026-02-02T21:11:22.236Z [DEBUG] LSP notification handlers registered successfully for all 0 server(s)
+2026-02-02T21:11:22.236Z [DEBUG] [API:auth] OAuth token check complete
+2026-02-02T21:11:22.289Z [DEBUG] installed_plugins.json doesn't exist, returning empty V2 object
+2026-02-02T21:11:22.289Z [DEBUG] Initialized versioned plugins system with 0 plugins
+2026-02-02T21:11:22.291Z [DEBUG] [Perfetto] initializePerfettoTracing called, env value: undefined
+2026-02-02T21:11:22.338Z [DEBUG] Writing to temp file: /opt/aila/.claude/todos/0ec80704-c15c-48f4-bbd7-cf40c11d3442-agent-0ec80704-c15c-48f4-bbd7-cf40c11d3442.json.tmp.1528458.1770066682338
+2026-02-02T21:11:22.338Z [DEBUG] Temp file written successfully, size: 2 bytes
+2026-02-02T21:11:22.338Z [DEBUG] Renaming /opt/aila/.claude/todos/0ec80704-c15c-48f4-bbd7-cf40c11d3442-agent-0ec80704-c15c-48f4-bbd7-cf40c11d3442.json.tmp.1528458.1770066682338 to /opt/aila/.claude/todos/0ec80704-c15c-48f4-bbd7-cf40c11d3442-agent-0ec80704-c15c-48f4-bbd7-cf40c11d3442.json
+2026-02-02T21:11:22.338Z [DEBUG] File /opt/aila/.claude/todos/0ec80704-c15c-48f4-bbd7-cf40c11d3442-agent-0ec80704-c15c-48f4-bbd7-cf40c11d3442.json written atomically
+2026-02-02T21:11:22.339Z [DEBUG] Grove: Using fresh cached config
+2026-02-02T21:11:23.592Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-02-02T21:11:23.592Z [DEBUG] [API:auth] OAuth token check starting
+2026-02-02T21:11:23.592Z [DEBUG] [API:auth] OAuth token check complete
+2026-02-02T21:11:23.688Z [DEBUG] Stats cache is up to date
+2026-02-02T21:11:23.730Z [DEBUG] Writing to temp file: /opt/aila/.claude.json.tmp.1528458.1770066683730
+2026-02-02T21:11:23.730Z [DEBUG] Preserving file permissions: 100600
+2026-02-02T21:11:23.730Z [DEBUG] Temp file written successfully, size: 3123 bytes
+2026-02-02T21:11:23.730Z [DEBUG] Applied original permissions to temp file
+2026-02-02T21:11:23.730Z [DEBUG] Renaming /opt/aila/.claude.json.tmp.1528458.1770066683730 to /opt/aila/.claude.json
+2026-02-02T21:11:23.730Z [DEBUG] File /opt/aila/.claude.json written atomically
+2026-02-02T21:11:23.732Z [DEBUG] Writing to temp file: /opt/aila/.claude.json.tmp.1528458.1770066683732
+2026-02-02T21:11:23.732Z [DEBUG] Preserving file permissions: 100600
+2026-02-02T21:11:23.732Z [DEBUG] Temp file written successfully, size: 3122 bytes
+2026-02-02T21:11:23.732Z [DEBUG] Applied original permissions to temp file
+2026-02-02T21:11:23.732Z [DEBUG] Renaming /opt/aila/.claude.json.tmp.1528458.1770066683732 to /opt/aila/.claude.json
+2026-02-02T21:11:23.732Z [DEBUG] File /opt/aila/.claude.json written atomically
+2026-02-02T21:11:23.734Z [DEBUG] Writing to temp file: /opt/aila/.claude.json.tmp.1528458.1770066683734
+2026-02-02T21:11:23.734Z [DEBUG] Preserving file permissions: 100600
+2026-02-02T21:11:23.734Z [DEBUG] Temp file written successfully, size: 3121 bytes
+2026-02-02T21:11:23.734Z [DEBUG] Applied original permissions to temp file
+2026-02-02T21:11:23.734Z [DEBUG] Renaming /opt/aila/.claude.json.tmp.1528458.1770066683734 to /opt/aila/.claude.json
+2026-02-02T21:11:23.734Z [DEBUG] File /opt/aila/.claude.json written atomically
+2026-02-02T21:11:23.735Z [DEBUG] Writing to temp file: /opt/aila/.claude.json.tmp.1528458.1770066683735
+2026-02-02T21:11:23.735Z [DEBUG] Preserving file permissions: 100600
+2026-02-02T21:11:23.736Z [DEBUG] Temp file written successfully, size: 3120 bytes
+2026-02-02T21:11:23.736Z [DEBUG] Applied original permissions to temp file
+2026-02-02T21:11:23.736Z [DEBUG] Renaming /opt/aila/.claude.json.tmp.1528458.1770066683735 to /opt/aila/.claude.json
+2026-02-02T21:11:23.736Z [DEBUG] File /opt/aila/.claude.json written atomically
+2026-02-02T21:11:23.737Z [DEBUG] Writing to temp file: /opt/aila/.claude.json.tmp.1528458.1770066683737
+2026-02-02T21:11:23.737Z [DEBUG] Preserving file permissions: 100600
+2026-02-02T21:11:23.737Z [DEBUG] Temp file written successfully, size: 3119 bytes
+2026-02-02T21:11:23.737Z [DEBUG] Applied original permissions to temp file
+2026-02-02T21:11:23.737Z [DEBUG] Renaming /opt/aila/.claude.json.tmp.1528458.1770066683737 to /opt/aila/.claude.json
+2026-02-02T21:11:23.737Z [DEBUG] File /opt/aila/.claude.json written atomically
+2026-02-02T21:11:23.739Z [DEBUG] Writing to temp file: /opt/aila/.claude.json.tmp.1528458.1770066683739
+2026-02-02T21:11:23.739Z [DEBUG] Preserving file permissions: 100600
+2026-02-02T21:11:23.740Z [DEBUG] Temp file written successfully, size: 3118 bytes
+2026-02-02T21:11:23.740Z [DEBUG] Applied original permissions to temp file
+2026-02-02T21:11:23.740Z [DEBUG] Renaming /opt/aila/.claude.json.tmp.1528458.1770066683739 to /opt/aila/.claude.json
+2026-02-02T21:11:23.740Z [DEBUG] File /opt/aila/.claude.json written atomically
+2026-02-02T21:11:23.741Z [DEBUG] Writing to temp file: /opt/aila/.claude.json.tmp.1528458.1770066683741
+2026-02-02T21:11:23.741Z [DEBUG] Preserving file permissions: 100600
+2026-02-02T21:11:23.741Z [DEBUG] Temp file written successfully, size: 3117 bytes
+2026-02-02T21:11:23.741Z [DEBUG] Applied original permissions to temp file
+2026-02-02T21:11:23.741Z [DEBUG] Renaming /opt/aila/.claude.json.tmp.1528458.1770066683741 to /opt/aila/.claude.json
+2026-02-02T21:11:23.741Z [DEBUG] File /opt/aila/.claude.json written atomically
+2026-02-02T21:11:23.745Z [DEBUG] Getting matching hook commands for SessionStart with query: startup
+2026-02-02T21:11:23.745Z [DEBUG] Found 0 hook matchers in settings
+2026-02-02T21:11:23.745Z [DEBUG] Matched 0 unique hooks for query "startup" (0 before deduplication)
+2026-02-02T21:11:23.763Z [DEBUG] Total plugin output styles loaded: 0
+2026-02-02T21:11:23.783Z [DEBUG] Writing to temp file: /opt/aila/.claude.json.tmp.1528458.1770066683782
+2026-02-02T21:11:23.783Z [DEBUG] Preserving file permissions: 100600
+2026-02-02T21:11:23.783Z [DEBUG] Temp file written successfully, size: 3116 bytes
+2026-02-02T21:11:23.783Z [DEBUG] Applied original permissions to temp file
+2026-02-02T21:11:23.783Z [DEBUG] Renaming /opt/aila/.claude.json.tmp.1528458.1770066683782 to /opt/aila/.claude.json
+2026-02-02T21:11:23.783Z [DEBUG] File /opt/aila/.claude.json written atomically
+2026-02-02T21:11:23.788Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-02-02T21:11:23.788Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-02-02T21:11:23.788Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-02-02T21:11:23.788Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-02-02T21:11:23.792Z [DEBUG] Getting matching hook commands for UserPromptSubmit with query: undefined
+2026-02-02T21:11:23.792Z [DEBUG] Found 0 hook matchers in settings
+2026-02-02T21:11:23.792Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2026-02-02T21:11:23.800Z [DEBUG] Writing to temp file: /opt/aila/.claude.json.tmp.1528458.1770066683800
+2026-02-02T21:11:23.800Z [DEBUG] Preserving file permissions: 100600
+2026-02-02T21:11:23.800Z [DEBUG] Temp file written successfully, size: 3115 bytes
+2026-02-02T21:11:23.801Z [DEBUG] Applied original permissions to temp file
+2026-02-02T21:11:23.801Z [DEBUG] Renaming /opt/aila/.claude.json.tmp.1528458.1770066683800 to /opt/aila/.claude.json
+2026-02-02T21:11:23.801Z [DEBUG] File /opt/aila/.claude.json written atomically
+2026-02-02T21:11:23.805Z [DEBUG] Writing to temp file: /opt/aila/.claude.json.tmp.1528458.1770066683805
+2026-02-02T21:11:23.805Z [DEBUG] Preserving file permissions: 100600
+2026-02-02T21:11:23.805Z [DEBUG] Temp file written successfully, size: 3114 bytes
+2026-02-02T21:11:23.805Z [DEBUG] Applied original permissions to temp file
+2026-02-02T21:11:23.805Z [DEBUG] Renaming /opt/aila/.claude.json.tmp.1528458.1770066683805 to /opt/aila/.claude.json
+2026-02-02T21:11:23.805Z [DEBUG] File /opt/aila/.claude.json written atomically
+2026-02-02T21:11:23.806Z [DEBUG] Writing to temp file: /opt/aila/.claude.json.tmp.1528458.1770066683806
+2026-02-02T21:11:23.806Z [DEBUG] Preserving file permissions: 100600
+2026-02-02T21:11:23.806Z [DEBUG] Temp file written successfully, size: 3131 bytes
+2026-02-02T21:11:23.806Z [DEBUG] Applied original permissions to temp file
+2026-02-02T21:11:23.806Z [DEBUG] Renaming /opt/aila/.claude.json.tmp.1528458.1770066683806 to /opt/aila/.claude.json
+2026-02-02T21:11:23.806Z [DEBUG] File /opt/aila/.claude.json written atomically
+2026-02-02T21:11:23.807Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-02-02T21:11:23.817Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.25.7f4; cc_entrypoint=sdk-cli;
+2026-02-02T21:11:23.820Z [ERROR] "ReferenceError: ReferenceError: Bun is not defined\n    at i57 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1447:3896)\n    at n57 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1447:4104)\n    at IvK (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5142:6790)\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\n    at async file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5142:4110\n    at async v_6 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1075:2007)\n    at async aMA (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5142:4080)\n    at async nf (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3143:5189)\n    at async PUK.submitMessage (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:6224:5312)\n    at async VUK (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:6224:9434)"
+2026-02-02T21:11:23.821Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-02-02T21:11:23.821Z [DEBUG] [API:auth] OAuth token check starting
+2026-02-02T21:11:23.825Z [DEBUG] [API:auth] OAuth token check complete
+2026-02-02T21:11:23.890Z [DEBUG] Session index: added 4, updated 0, removed 0, summaries generated 0 (total: 801)
+2026-02-02T21:11:27.087Z [DEBUG] Stream started - received first chunk
+2026-02-02T21:11:27.568Z [DEBUG] Getting matching hook commands for Stop with query: undefined
+2026-02-02T21:11:27.568Z [DEBUG] Found 0 hook matchers in settings
+2026-02-02T21:11:27.568Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2026-02-02T21:11:27.570Z [DEBUG] Getting matching hook commands for SessionEnd with query: other
+2026-02-02T21:11:27.570Z [DEBUG] Found 0 hook matchers in settings
+2026-02-02T21:11:27.570Z [DEBUG] Matched 0 unique hooks for query "other" (0 before deduplication)

@@ -1,0 +1,128 @@
+2026-02-02T14:35:52.949Z [DEBUG] Failed to check enabledPlatforms: TypeError: LK is not a function
+2026-02-02T14:35:53.054Z [DEBUG] Watching for changes in setting files /opt/aila/.claude...
+2026-02-02T14:35:53.080Z [DEBUG] [init] configureGlobalMTLS starting
+2026-02-02T14:35:53.081Z [DEBUG] [init] configureGlobalMTLS complete
+2026-02-02T14:35:53.081Z [DEBUG] [init] configureGlobalAgents starting
+2026-02-02T14:35:53.081Z [DEBUG] [init] configureGlobalAgents complete
+2026-02-02T14:35:53.120Z [DEBUG] Applying permission update: Adding 47 allow rule(s) to destination 'localSettings': ["Bash(curl:*)","Bash(python3:*)","Bash(pm2 restart:*)","Bash(/usr/local/bin/pm2 restart:*)","Bash(/home/*/.local/bin/pm2)","Bash(restart aila)","Bash(/root/.local/bin/pm2 restart:*)","Bash(~/.nvm/versions/node/*/bin/pm2)","Bash(sudo -u aila bash -c 'source ~/.bashrc && pm2 restart aila')","Bash(sudo -u aila /home/aila/.local/bin/pm2 restart:*)","Bash(su - aila -c \"pm2 restart aila\")","Bash(runuser -u aila -- bash -lc:*)","Bash(npm root:*)","Bash(/home/aila/.npm/_npx/5f7878ce38f1eb13/node_modules/pm2/bin/pm2 restart:*)","Bash(PM2_HOME=/home/aila/.pm2 /home/aila/.npm/_npx/5f7878ce38f1eb13/node_modules/pm2/bin/pm2 list:*)","Bash(systemctl:*)","Bash(git add:*)","Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: add visual AUTOPILOT activity indicator\n\n- Add pulsing status dot next to AUTOPILOT button \\(green=active, scanning animation, orange=warning\\)\n- Add status bar at bottom: shows running status, current pair being scanned, time since last scan\n- Add /api/ai-trade/autopilot/heartbeat endpoint with real-time scan tracking\n- Add JavaScript polling every 5 seconds for live updates\n- Add scan tracking in autopilot_mode.py \\(last_scan_time, currently_scanning, current_pair\\)\n- Add RU/EN translations for status bar labels\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")","Bash(git push:*)","Bash(sudo systemctl restart:*)","Bash(pkill:*)","Bash(/home/aila/.nvm/versions/node/*/bin/pm2)","Bash(npm exec pm2:*)","Bash(ls:*)","Bash(kill:*)","Bash(git commit:*)","Bash(journalctl:*)","Bash(pm2 logs:*)","Bash(sudo systemctl status:*)","Bash(pm2 status:*)","Bash(pgrep:*)","Bash(find:*)","Bash(grep:*)","Bash(/opt/aila/venv/bin/python:*)","Bash(netstat:*)","Bash(ss:*)","Bash(./start-claude.sh:*)","Bash(ps:*)","Bash(source ~/.nvm/nvm.sh)","Bash(/home/aila/.local/bin/pm2 restart:*)","Bash(export PATH=\"$PATH:/home/aila/.nvm/versions/node/v20.11.1/bin:/home/aila/.local/bin\")","Bash(supervisorctl status:*)","Bash(python -m pytest:*)","Bash(/usr/bin/python3 -m pytest:*)","Bash(pip3 list:*)","Bash(/opt/aila/venv/bin/pip list:*)","Bash(/opt/aila/venv/bin/pip install:*)"]
+2026-02-02T14:35:53.120Z [DEBUG] [STARTUP] Loading MCP configs...
+2026-02-02T14:35:53.125Z [DEBUG] Found 0 plugins (0 enabled, 0 disabled)
+2026-02-02T14:35:53.126Z [DEBUG] [claudeai-mcp] Checking gate (cached)...
+2026-02-02T14:35:53.127Z [DEBUG] [claudeai-mcp] Gate returned: false
+2026-02-02T14:35:53.127Z [DEBUG] [claudeai-mcp] Disabled via gate
+2026-02-02T14:35:53.190Z [DEBUG] [ToolSearch:optimistic] mode=tst-auto, ENABLE_TOOL_SEARCH=undefined, result=true
+2026-02-02T14:35:53.193Z [DEBUG] [STARTUP] Running setup()...
+2026-02-02T14:35:53.234Z [DEBUG] Loading skills from: managed=/etc/claude-code/.claude/skills, user=/opt/aila/.claude/skills, project=[]
+2026-02-02T14:35:53.238Z [DEBUG] Passes: Using fresh cached eligibility data
+2026-02-02T14:35:53.239Z [ERROR] TypeError: TypeError: Cannot read properties of undefined (reading 'safeParse')
+    at HU6 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5222:25476)
+    at ca2 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5223:1314)
+    at wv (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5223:1754)
+    at yq (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5223:1683)
+    at Object.xx8 [as isPlatformInEnabledList] (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:244:2532)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:4738:21551
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:848
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:4875:6409
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:848
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5142:1037
+2026-02-02T14:35:53.240Z [ERROR] Error: Error: ENOENT: no such file or directory, scandir '/etc/claude-code/.claude/skills'
+    at Module.readdirSync (node:fs:1525:3)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:9:1909
+    at BX (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:35431)
+    at Object.readdirSync (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:9:1879)
+    at fZ1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1873:369)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1873:4509
+    at q (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:6814)
+    at bo2 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:4875:4362)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:4875:6995
+    at q (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:6814)
+2026-02-02T14:35:53.240Z [ERROR] Error: Error: ENOENT: no such file or directory, scandir '/opt/aila/.claude/skills'
+    at Module.readdirSync (node:fs:1525:3)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:9:1909
+    at BX (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:35431)
+    at Object.readdirSync (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:9:1879)
+    at fZ1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1873:369)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1873:4552
+    at q (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:6814)
+    at bo2 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:4875:4362)
+    at file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:4875:6995
+    at q (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:8:6814)
+2026-02-02T14:35:53.240Z [DEBUG] Error log sink initialized
+2026-02-02T14:35:53.244Z [DEBUG] getPluginSkills: Processing 0 enabled plugins
+2026-02-02T14:35:53.244Z [DEBUG] Total plugin skills loaded: 0
+2026-02-02T14:35:53.244Z [DEBUG] Total plugin commands loaded: 0
+2026-02-02T14:35:53.244Z [DEBUG] Registered 0 hooks from 0 plugins
+2026-02-02T14:35:53.298Z [DEBUG] [STARTUP] setup() completed in 105ms
+2026-02-02T14:35:53.298Z [DEBUG] [STARTUP] Loading commands and agents...
+2026-02-02T14:35:53.323Z [DEBUG] Total plugin agents loaded: 0
+2026-02-02T14:35:53.324Z [DEBUG] Loaded 0 unique skills (managed: 0, user: 0, project: 0, legacy commands: 0)
+2026-02-02T14:35:53.324Z [DEBUG] getSkills returning: 0 skill dir commands, 0 plugin skills, 1 bundled skills
+2026-02-02T14:35:53.328Z [DEBUG] [STARTUP] Commands and agents loaded in 30ms
+2026-02-02T14:35:53.328Z [DEBUG] [LSP MANAGER] initializeLspServerManager() called
+2026-02-02T14:35:53.329Z [DEBUG] [LSP MANAGER] Created manager instance, state=pending
+2026-02-02T14:35:53.329Z [DEBUG] [LSP MANAGER] Starting async initialization (generation 1)
+2026-02-02T14:35:53.331Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-02-02T14:35:53.331Z [DEBUG] [API:auth] OAuth token check starting
+2026-02-02T14:35:53.334Z [DEBUG] Passes: Using fresh cached eligibility data
+2026-02-02T14:35:53.335Z [DEBUG] Total LSP servers loaded: 0
+2026-02-02T14:35:53.335Z [DEBUG] [STARTUP] MCP configs loaded in 215ms
+2026-02-02T14:35:53.336Z [DEBUG] [LSP SERVER MANAGER] getAllLspServers returned 0 server(s)
+2026-02-02T14:35:53.336Z [DEBUG] LSP manager initialized with 0 servers
+2026-02-02T14:35:53.338Z [DEBUG] LSP server manager initialized successfully
+2026-02-02T14:35:53.339Z [DEBUG] LSP notification handlers registered successfully for all 0 server(s)
+2026-02-02T14:35:53.420Z [DEBUG] installed_plugins.json doesn't exist, returning empty V2 object
+2026-02-02T14:35:53.420Z [DEBUG] Initialized versioned plugins system with 0 plugins
+2026-02-02T14:35:53.424Z [DEBUG] [Perfetto] initializePerfettoTracing called, env value: undefined
+2026-02-02T14:35:53.488Z [DEBUG] Writing to temp file: /opt/aila/.claude/todos/7b76d99a-28d6-4a3c-898d-aed2a9c48adb-agent-7b76d99a-28d6-4a3c-898d-aed2a9c48adb.json.tmp.1463692.1770042953488
+2026-02-02T14:35:53.488Z [DEBUG] Temp file written successfully, size: 2 bytes
+2026-02-02T14:35:53.488Z [DEBUG] Renaming /opt/aila/.claude/todos/7b76d99a-28d6-4a3c-898d-aed2a9c48adb-agent-7b76d99a-28d6-4a3c-898d-aed2a9c48adb.json.tmp.1463692.1770042953488 to /opt/aila/.claude/todos/7b76d99a-28d6-4a3c-898d-aed2a9c48adb-agent-7b76d99a-28d6-4a3c-898d-aed2a9c48adb.json
+2026-02-02T14:35:53.489Z [DEBUG] File /opt/aila/.claude/todos/7b76d99a-28d6-4a3c-898d-aed2a9c48adb-agent-7b76d99a-28d6-4a3c-898d-aed2a9c48adb.json written atomically
+2026-02-02T14:35:53.490Z [DEBUG] Grove: Using fresh cached config
+2026-02-02T14:35:53.816Z [DEBUG] Stats cache is up to date
+2026-02-02T14:35:55.383Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-02-02T14:35:55.383Z [DEBUG] [API:auth] OAuth token check starting
+2026-02-02T14:35:55.413Z [DEBUG] Session index: added 1, updated 0, removed 0, summaries generated 0 (total: 342)
+2026-02-02T14:35:55.972Z [ERROR] "AxiosError: AxiosError: Request failed with status code 400\n    at ih (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:39:1138)\n    at IncomingMessage.<anonymous> (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:44:9811)\n    at IncomingMessage.emit (node:events:529:35)\n    at IncomingMessage.emit (node:domain:489:12)\n    at endReadableNT (node:internal/streams/readable:1400:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)\n    at ZTA.request (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:46:2132)\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\n    at async k36 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:685:23575)\n    at async XU6 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5224:2821)"
+2026-02-02T14:35:55.990Z [DEBUG] [API:auth] OAuth token check complete
+2026-02-02T14:35:55.994Z [DEBUG] [API:auth] OAuth token check complete
+2026-02-02T14:35:56.293Z [ERROR] "Error: Error: 401 {\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"OAuth token has expired. Please obtain a new token or refresh your existing token.\"},\"request_id\":\"req_011CXjQjb9SyX9iU2kAg72EX\"}\n    at n7.generate (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:152:37642)\n    at pR.makeStatusError (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:169:2195)\n    at pR.makeRequest (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:169:5420)\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\n    at async file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1075:3349\n    at async file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1075:2232\n    at async s2Y (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1074:17216)\n    at async P57 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1075:2165)\n    at async jpA (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3291:1263)\n    at async cd (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3291:1959)"
+2026-02-02T14:35:56.293Z [DEBUG] countTokensWithFallback: API returned null, trying haiku fallback (18 tools)
+2026-02-02T14:35:56.294Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-02-02T14:35:56.294Z [DEBUG] [API:auth] OAuth token check starting
+2026-02-02T14:35:56.591Z [ERROR] "AxiosError: AxiosError: Request failed with status code 400\n    at ih (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:39:1138)\n    at IncomingMessage.<anonymous> (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:44:9811)\n    at IncomingMessage.emit (node:events:529:35)\n    at IncomingMessage.emit (node:domain:489:12)\n    at endReadableNT (node:internal/streams/readable:1400:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)\n    at ZTA.request (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:46:2132)\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\n    at async k36 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:685:23575)\n    at async XU6 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5224:2821)\n    at async ZI (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1074:14698)\n    at async v57 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1075:3895)\n    at async jpA (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3291:1535)\n    at async cd (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3291:1959)\n    at async awK (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3090:554)"
+2026-02-02T14:35:56.622Z [DEBUG] [API:auth] OAuth token check complete
+2026-02-02T14:35:56.830Z [DEBUG] countTokensWithFallback: haiku fallback failed: 401 {"type":"error","error":{"type":"authentication_error","message":"OAuth token has expired. Please obtain a new token or refresh your existing token."},"request_id":"req_011CXjQjdR7nvKEdrzDbPFai"}
+2026-02-02T14:35:56.830Z [ERROR] "Error: Error: 401 {\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"OAuth token has expired. Please obtain a new token or refresh your existing token.\"},\"request_id\":\"req_011CXjQjdR7nvKEdrzDbPFai\"}\n    at n7.generate (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:152:37642)\n    at pR.makeStatusError (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:169:2195)\n    at pR.makeRequest (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:169:5420)\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\n    at async v57 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1075:4041)\n    at async jpA (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3291:1535)\n    at async cd (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3291:1959)\n    at async awK (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3090:554)"
+2026-02-02T14:35:56.830Z [DEBUG] countToolDefinitionTokens returned null for 18 tools: Task, TaskOutput, Bash, Glob, Grep, ExitPlanMode, Read, Edit, Write, NotebookEdit, WebFetch, TodoWri...
+2026-02-02T14:35:57.561Z [ERROR] "AxiosError: AxiosError: Request failed with status code 400\n    at ih (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:39:1138)\n    at IncomingMessage.<anonymous> (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:44:9811)\n    at IncomingMessage.emit (node:events:529:35)\n    at IncomingMessage.emit (node:domain:489:12)\n    at endReadableNT (node:internal/streams/readable:1400:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)\n    at ZTA.request (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:46:2132)\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\n    at async k36 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:685:23575)\n    at async XU6 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5224:2821)\n    at async UW1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2026:91434)\n    at async file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2026:93057\n    at async Promise.all (index 1)\n    at async cVK (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:4588:19822)\n    at async bUK (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:6224:12019)"
+2026-02-02T14:35:57.790Z [DEBUG] Failed to fetch Grove notice config: AxiosError: Request failed with status code 401
+2026-02-02T14:35:58.712Z [ERROR] "AxiosError: AxiosError: Request failed with status code 400\n    at ih (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:39:1138)\n    at IncomingMessage.<anonymous> (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:44:9811)\n    at IncomingMessage.emit (node:events:529:35)\n    at IncomingMessage.emit (node:domain:489:12)\n    at endReadableNT (node:internal/streams/readable:1400:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)\n    at ZTA.request (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:46:2132)\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\n    at async k36 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:685:23575)\n    at async XU6 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5224:2821)\n    at async UW1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2026:91434)\n    at async gDA (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2026:91515)\n    at async Promise.all (index 0)\n    at async cVK (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:4588:19822)\n    at async bUK (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:6224:12019)"
+2026-02-02T14:35:58.948Z [ERROR] "AxiosError: AxiosError: Request failed with status code 401\n    at ih (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:39:1138)\n    at IncomingMessage.<anonymous> (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:44:9811)\n    at IncomingMessage.emit (node:events:529:35)\n    at IncomingMessage.emit (node:domain:489:12)\n    at endReadableNT (node:internal/streams/readable:1400:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)\n    at ZTA.request (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:46:2132)\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\n    at async UW1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2026:91447)\n    at async gDA (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:2026:91515)\n    at async Promise.all (index 0)\n    at async cVK (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:4588:19822)\n    at async bUK (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:6224:12019)"
+2026-02-02T14:35:58.951Z [DEBUG] Getting matching hook commands for SessionStart with query: startup
+2026-02-02T14:35:58.951Z [DEBUG] Found 0 hook matchers in settings
+2026-02-02T14:35:58.951Z [DEBUG] Matched 0 unique hooks for query "startup" (0 before deduplication)
+2026-02-02T14:35:58.980Z [DEBUG] Total plugin output styles loaded: 0
+2026-02-02T14:35:58.999Z [DEBUG] Hooks: Found 0 total hooks in registry
+2026-02-02T14:35:59.000Z [DEBUG] Hooks: checkForNewResponses returning 0 responses
+2026-02-02T14:35:59.001Z [DEBUG] Sending 1 skills via attachment (initial, 1 total sent)
+2026-02-02T14:35:59.003Z [DEBUG] LSP Diagnostics: getLSPDiagnosticAttachments called
+2026-02-02T14:35:59.003Z [DEBUG] LSP Diagnostics: Checking registry - 0 pending
+2026-02-02T14:35:59.021Z [DEBUG] Getting matching hook commands for UserPromptSubmit with query: undefined
+2026-02-02T14:35:59.021Z [DEBUG] Found 0 hook matchers in settings
+2026-02-02T14:35:59.021Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2026-02-02T14:35:59.044Z [DEBUG] Auto tool search disabled: 0 tokens (threshold: 20000, 10% of context) [source: query]
+2026-02-02T14:35:59.064Z [DEBUG] attribution header x-anthropic-billing-header: cc_version=2.1.25.525; cc_entrypoint=sdk-cli;
+2026-02-02T14:35:59.069Z [ERROR] "ReferenceError: ReferenceError: Bun is not defined\n    at i57 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1447:3896)\n    at n57 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1447:4104)\n    at IvK (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5142:6790)\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\n    at async file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5142:4110\n    at async v_6 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1075:2007)\n    at async aMA (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5142:4080)\n    at async nf (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:3143:5189)\n    at async PUK.submitMessage (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:6224:5312)\n    at async VUK (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:6224:9434)"
+2026-02-02T14:35:59.070Z [DEBUG] [API:request] Creating client, ANTHROPIC_CUSTOM_HEADERS present: false, has Authorization header: false
+2026-02-02T14:35:59.070Z [DEBUG] [API:auth] OAuth token check starting
+2026-02-02T14:35:59.313Z [ERROR] "AxiosError: AxiosError: Request failed with status code 400\n    at ih (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:39:1138)\n    at IncomingMessage.<anonymous> (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:44:9811)\n    at IncomingMessage.emit (node:events:529:35)\n    at IncomingMessage.emit (node:domain:489:12)\n    at endReadableNT (node:internal/streams/readable:1400:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)\n    at ZTA.request (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:46:2132)\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\n    at async k36 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:685:23575)\n    at async XU6 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5224:2821)\n    at async ZI (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1074:14698)\n    at async vG1 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1778:50366)\n    at async IvK (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5144:1816)\n    at async file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5142:4110\n    at async v_6 (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:1075:2007)\n    at async aMA (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:5142:4080)"
+2026-02-02T14:35:59.324Z [DEBUG] [API:auth] OAuth token check complete
+2026-02-02T14:35:59.546Z [ERROR] API error (attempt 1/11): 401 401 {"type":"error","error":{"type":"authentication_error","message":"OAuth token has expired. Please obtain a new token or refresh your existing token."},"request_id":"req_011CXjQjq2NTbRXcdTjxwNV9"}
+2026-02-02T14:35:59.547Z [ERROR] Error in non-streaming fallback: 401 {"type":"error","error":{"type":"authentication_error","message":"OAuth token has expired. Please obtain a new token or refresh your existing token."},"request_id":"req_011CXjQjq2NTbRXcdTjxwNV9"}
+2026-02-02T14:35:59.548Z [ERROR] "Error: Error: 401 {\"type\":\"error\",\"error\":{\"type\":\"authentication_error\",\"message\":\"OAuth token has expired. Please obtain a new token or refresh your existing token.\"},\"request_id\":\"req_011CXjQjq2NTbRXcdTjxwNV9\"}\n    at n7.generate (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:152:37642)\n    at pR.makeStatusError (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:169:2195)\n    at pR.makeRequest (file:///usr/local/lib/node_modules/@anthropic-ai/claude-code/cli.js:169:5420)\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)"
+2026-02-02T14:35:59.570Z [DEBUG] Getting matching hook commands for Stop with query: undefined
+2026-02-02T14:35:59.570Z [DEBUG] Found 0 hook matchers in settings
+2026-02-02T14:35:59.570Z [DEBUG] Matched 0 unique hooks for query "no match query" (0 before deduplication)
+2026-02-02T14:35:59.573Z [DEBUG] Getting matching hook commands for SessionEnd with query: other
+2026-02-02T14:35:59.573Z [DEBUG] Found 0 hook matchers in settings
+2026-02-02T14:35:59.573Z [DEBUG] Matched 0 unique hooks for query "other" (0 before deduplication)

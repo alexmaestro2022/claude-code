@@ -8,10 +8,10 @@
     "winning_trades": 1,
     "losing_trades": 4,
     "winrate": 20.0,
-    "total_pnl_usdt": -0.22049199999999997,
+    "total_pnl_usdt": -0.68069023,
     "total_pnl_percent": 0.0,
     "best_trade_usdt": 0.128189,
-    "worst_trade_usdt": -0.191943,
+    "worst_trade_usdt": -0.48336423,
     "avg_trade_duration_minutes": 0,
     "avg_rr_ratio": 0.0,
     "consecutive_wins": 0,
@@ -20,11 +20,11 @@
     "max_consecutive_losses": 2,
     "trades_today": 0,
     "pnl_today_usdt": 0.0,
-    "trades_this_week": 5,
-    "pnl_this_week_usdt": -0.22049199999999997,
-    "last_trade_time": "2026-01-30T11:45:25.466952",
+    "trades_this_week": 1,
+    "pnl_this_week_usdt": -0.48336423,
+    "last_trade_time": "2026-02-02T23:58:22.145586",
     "last_win_time": "2026-01-30T06:34:06.798295",
-    "last_loss_time": "2026-01-30T11:45:25.466941",
+    "last_loss_time": "2026-02-02T23:58:22.145568",
     "paused_until": null,
     "pause_reason": null,
     "trigger_stats": {
@@ -50,7 +50,7 @@
       },
       "stop_loss": {
         "trades": 4,
-        "pnl": -0.348681
+        "pnl": -0.8088792300000001
       },
       "take_profit": {
         "trades": 1,
@@ -74,23 +74,34 @@
         "pnl_usdt": 0.0,
         "api_calls": 0,
         "api_cost": 0.0
+      },
+      "2026-02-02": {
+        "trades": 0,
+        "pnl_usdt": 0.0,
+        "api_calls": 0,
+        "api_cost": 0.0
       }
     },
-    "weekly_history": {},
+    "weekly_history": {
+      "2026-W05": {
+        "trades": 0,
+        "pnl_usdt": 0.0
+      }
+    },
     "enabled": true,
     "cooldown_remaining": 0.0,
     "trades_history": [
       {
-        "symbol": "PAXGUSDT",
+        "symbol": "SENTUSDT",
         "side": "SHORT",
-        "pnl_usdt": -0.023166,
-        "pnl_pct": 0.1,
-        "entry_price": 5162.2,
-        "exit_price": 5159.7,
+        "pnl_usdt": -0.48336423,
+        "pnl_pct": -4.62,
+        "entry_price": 0.037946,
+        "exit_price": 0.038822,
         "close_reason": "stop_loss",
         "leverage": "2",
-        "grade": "C",
-        "closed_at": "2026-01-30T11:45:25.466927"
+        "grade": "D",
+        "closed_at": "2026-02-02T23:58:22.145493"
       },
       {
         "symbol": "BNBUSDT",
@@ -142,6 +153,6 @@
       }
     ]
   },
-  "saved_at": "2026-01-31T20:52:14.682821",
+  "saved_at": "2026-02-03T19:45:17.385695",
   "version": "2.0"
 }

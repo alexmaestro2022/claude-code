@@ -2,36 +2,36 @@
   "data": {
     "agent": "TRADER",
     "level": 1,
-    "xp": 65,
-    "xp_to_next_level": 35,
-    "total_trades": 11,
-    "winning_trades": 4,
+    "xp": -15,
+    "xp_to_next_level": 115,
+    "total_trades": 8,
+    "winning_trades": 1,
     "losing_trades": 7,
-    "winrate": 36.36363636363637,
-    "total_pnl_usdt": -0.3014937500000003,
+    "winrate": 12.5,
+    "total_pnl_usdt": -1.6408382100000003,
     "total_pnl_percent": 0.0,
-    "best_trade_usdt": 0.54708446,
+    "best_trade_usdt": 0.15709507,
     "worst_trade_usdt": -0.53769056,
     "avg_trade_duration_minutes": 0,
     "avg_rr_ratio": 0.0,
-    "consecutive_wins": 3,
+    "consecutive_wins": 0,
     "consecutive_losses": 0,
-    "max_consecutive_wins": 3,
+    "max_consecutive_wins": 1,
     "max_consecutive_losses": 4,
-    "trades_today": 3,
-    "pnl_today_usdt": 1.3393444600000002,
-    "trades_this_week": 11,
-    "pnl_this_week_usdt": -0.3014937500000003,
-    "last_trade_time": "2026-01-31T18:43:51.016222",
-    "last_win_time": "2026-01-31T18:43:51.016208",
-    "last_loss_time": "2026-01-30T10:35:00.995312",
+    "trades_today": 0,
+    "pnl_today_usdt": 0.0,
+    "trades_this_week": 0,
+    "pnl_this_week_usdt": 0.0,
+    "last_trade_time": "2026-02-01T21:18:24.899325",
+    "last_win_time": "2026-01-30T01:01:21.054036",
+    "last_loss_time": "2026-02-01T21:18:24.899315",
     "paused_until": null,
     "pause_reason": null,
     "api_usage": {
       "calls_today": 0,
       "tokens_in_today": 0,
       "tokens_out_today": 0,
-      "cost_today_usdt": 3.4006440000000007,
+      "cost_today_usdt": 0.0,
       "calls_total": 0,
       "tokens_in_total": 0,
       "tokens_out_total": 0,
@@ -48,49 +48,24 @@
         "trades": 0,
         "pnl_usdt": 0.0,
         "api_calls": 0,
+        "api_cost": 2.966070000000001
+      },
+      "2026-02-01": {
+        "trades": 0,
+        "pnl_usdt": 0.0,
+        "api_calls": 0,
         "api_cost": 0.0
       }
     },
-    "weekly_history": {},
+    "weekly_history": {
+      "2026-W05": {
+        "trades": 0,
+        "pnl_usdt": 0.0
+      }
+    },
     "enabled": true,
     "cooldown_remaining": 0.0,
     "trades_history": [
-      {
-        "symbol": "SUIUSDT",
-        "side": "SHORT",
-        "pnl_usdt": 0.288156,
-        "pnl_pct": 5.32,
-        "entry_price": 1.1061,
-        "exit_price": 1.0767,
-        "close_reason": "take_profit",
-        "leverage": "2",
-        "grade": "A",
-        "closed_at": "2026-01-31T18:43:51.016179"
-      },
-      {
-        "symbol": "SUIUSDT",
-        "side": "SHORT",
-        "pnl_usdt": 0.504104,
-        "pnl_pct": 8.65,
-        "entry_price": 1.2212,
-        "exit_price": 1.1684,
-        "close_reason": "take_profit",
-        "leverage": "2",
-        "grade": "A",
-        "closed_at": "2026-01-31T14:26:45.950671"
-      },
-      {
-        "symbol": "SUIUSDT",
-        "side": "SHORT",
-        "pnl_usdt": 0.54708446,
-        "pnl_pct": 8.89,
-        "entry_price": 1.2843,
-        "exit_price": 1.2272,
-        "close_reason": "take_profit",
-        "leverage": "2",
-        "grade": "A",
-        "closed_at": "2026-01-31T08:16:54.584229"
-      },
       {
         "symbol": "AXSUSDT",
         "side": "SHORT",
@@ -101,7 +76,7 @@
         "close_reason": "stop_loss",
         "leverage": "2",
         "grade": "C",
-        "closed_at": "2026-01-30T10:35:00.995300"
+        "closed_at": "2026-02-01T21:18:24.899298"
       },
       {
         "symbol": "FARTCOINUSDT",
@@ -187,8 +162,9 @@
         "grade": "D",
         "closed_at": "2026-01-29T00:05:25"
       }
-    ]
+    ],
+    "paused_at": null
   },
-  "saved_at": "2026-01-31T18:43:51.017815",
+  "saved_at": "2026-02-03T19:45:17.384996",
   "version": "2.0"
 }
