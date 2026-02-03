@@ -954,3 +954,6 @@
         }
         .cmd-history .hist-item:hover { background: rgba(255,255,255,0.05); }
         .cmd-history .hist-time { color: var(--text-secondary); font-size: 0.7rem; }
+
+        /* Utility: replaces Tailwind mr-2 */
+        .mr-2 { margin-right: 0.5rem; }
