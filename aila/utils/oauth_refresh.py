@@ -6,6 +6,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
 
+import ssl
+
 import aiohttp
 
 logger = logging.getLogger("oauth_refresh")
@@ -61,6 +63,25 @@ class OAuthRefresher:
     def __init__(self) -> None:
         self._last_refresh_attempt: Optional[datetime] = None
 
+    @staticmethod
+    def _sync_credentials() -> None:
+        """Sync credentials from home dir if newer."""
+        try:
+            if not HOME_CREDENTIALS.exists():
+                return
+            home_data = json.loads(HOME_CREDENTIALS.read_text())
+            home_exp = home_data.get("claudeAiOauth", {}).get("expiresAt", 0)
+            local_exp = 0
+            if CREDENTIALS_PATH.exists():
+                local_data = json.loads(CREDENTIALS_PATH.read_text())
+                local_exp = local_data.get("claudeAiOauth", {}).get("expiresAt", 0)
+            if home_exp > local_exp:
+                CREDENTIALS_PATH.parent.mkdir(parents=True, exist_ok=True)
+                CREDENTIALS_PATH.write_text(json.dumps(home_data))
+                logger.info("[OAUTH] Synced newer credentials from home dir")
+        except Exception as e:
+            logger.debug(f"[OAUTH] Sync skipped: {e}")
+
     def get_credentials(self) -> dict:
         """Read current credentials from file."""
         return json.loads(CREDENTIALS_PATH.read_text())
@@ -88,6 +109,8 @@ class OAuthRefresher:
         now_iso = datetime.now(tz=timezone.utc).isoformat()
 
         try:
+            # Sync from home dir first (CLI may have refreshed)
+            self._sync_credentials()
             data = self.get_credentials()
             oauth = data.get("claudeAiOauth", {})
             refresh_tok = oauth.get("refreshToken")
@@ -102,7 +125,9 @@ class OAuthRefresher:
 
             self._last_refresh_attempt = datetime.now(tz=timezone.utc)
 
-            async with aiohttp.ClientSession() as session:
+            ssl_ctx = ssl.create_default_context()
+            connector = aiohttp.TCPConnector(ssl=ssl_ctx)
+            async with aiohttp.ClientSession(connector=connector) as session:
                 async with session.post(
                     TOKEN_ENDPOINT,
                     data={
