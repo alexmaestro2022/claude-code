@@ -1005,6 +1005,10 @@ def _get_chat_history(limit: int = 20, for_prompt: bool = False) -> list[dict]:
 
 def _save_chat_message(role: str, content: str, msg_type: str = "text") -> None:
     """Save message to chat history."""
+    # Truncate oversized messages to prevent DOM rendering issues
+    MAX_MSG_LEN = 5000
+    if len(content) > MAX_MSG_LEN:
+        content = content[:MAX_MSG_LEN] + f"\n\n... (truncated, {len(content)} chars total)"
     history_file = HISTORY_DIR / "current.json"
     history = _load_json(history_file, [])
     if not isinstance(history, list):
