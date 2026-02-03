@@ -110,7 +110,11 @@ for d in [DATA_DIR, KNOWLEDGE_DIR, HISTORY_DIR]:
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 
-# Auth state (in-memory)
+# Persistence paths
+_SESSIONS_FILE = Path("/opt/aila/data/admin/sessions.json")
+_AUTH_CODES_FILE = Path("/opt/aila/data/admin/auth_codes.json")
+
+# Auth state (persisted to disk)
 _auth_codes: dict[str, dict] = {}  # code -> {expires, attempts}
 _admin_sessions: dict[str, dict] = {}  # token -> {created, last_active}
 _failed_attempts: dict[str, dict] = {}  # ip -> {count, blocked_until}
@@ -203,6 +207,51 @@ def _audit_log(user: str, action: str, command: str = "", result: str = "") -> N
         pass
 
 
+def _save_sessions() -> None:
+    """Persist admin sessions to disk."""
+    serializable = {}
+    for token, sess in _admin_sessions.items():
+        serializable[token] = {
+            k: v for k, v in sess.items()
+            if isinstance(v, (str, int, float, bool, type(None)))
+        }
+    _save_json(_SESSIONS_FILE, serializable)
+
+
+def _load_sessions() -> None:
+    """Load admin sessions from disk, filtering expired ones."""
+    global _admin_sessions
+    data = _load_json(_SESSIONS_FILE, {})
+    now = time.time()
+    for token, sess in data.items():
+        if now - sess.get("last_active", 0) < SESSION_TTL:
+            _admin_sessions[token] = sess
+    if _admin_sessions:
+        logger.info(f"[AUTH] Loaded {len(_admin_sessions)} active session(s) from disk")
+
+
+def _save_auth_codes() -> None:
+    """Persist auth codes to disk."""
+    _save_json(_AUTH_CODES_FILE, _auth_codes)
+
+
+def _load_auth_codes() -> None:
+    """Load auth codes from disk, filtering expired ones."""
+    global _auth_codes
+    data = _load_json(_AUTH_CODES_FILE, {})
+    now = time.time()
+    for code, info in data.items():
+        if info.get("expires", 0) > now:
+            _auth_codes[code] = info
+    if _auth_codes:
+        logger.info(f"[AUTH] Loaded {len(_auth_codes)} pending code(s) from disk")
+
+
+# Load persisted state on module import
+_load_sessions()
+_load_auth_codes()
+
+
 async def _send_telegram(text: str) -> bool:
     """Send message via Telegram bot."""
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
@@ -231,9 +280,11 @@ def _verify_admin_session(request: Request) -> bool:
     # Check session timeout (30 min inactivity)
     if time.time() - session["last_active"] > SESSION_TTL:
         del _admin_sessions[token]
+        _save_sessions()
         return False
     # Update last active
     session["last_active"] = time.time()
+    _save_sessions()
     return True
 
 
@@ -340,6 +391,7 @@ async def request_code(request: Request):
         "expires": time.time() + CODE_TTL,
         "ip": ip,
     }
+    _save_auth_codes()
 
     # Send to Telegram
     await _send_telegram(f"🔐 Код для входа в Админ: <b>{code}</b>\n⏱ Действителен 5 минут\n🌐 IP: {ip}")
@@ -388,6 +440,7 @@ async def verify_code(request: Request):
 
     # Code valid - create session
     del _auth_codes[code]
+    _save_auth_codes()
     if ip in _failed_attempts:
         del _failed_attempts[ip]
 
@@ -399,6 +452,7 @@ async def verify_code(request: Request):
         "session_context_sent": False,
         "auto_confirmed": False,
     }
+    _save_sessions()
 
     await _send_telegram(f"🔓 Вход в Админ панель\n🌐 IP: {ip}")
     _audit_log(ip, "LOGIN")
