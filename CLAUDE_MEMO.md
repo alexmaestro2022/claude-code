@@ -3259,7 +3259,7 @@ Chat(follow-up + анализ) → [COMMAND_FOR_CODE] → Code → ... → "Го
 
 ### Добавлено 2026-02-02:
 - **OAuth мониторинг** — полная система отслеживания OAuth токена Claude:
-  - `scripts/check_oauth.sh` — bash скрипт проверки + Telegram алерты (cron каждые 2ч)
+  - `scripts/check_oauth.sh` — bash скрипт проверки + Telegram алерты (cron каждый час)
   - `GET /api/ai-trade/oauth/status` — API endpoint со статусом токена и обратным отсчётом
   - OAuth badge в шапке AI Trade (зелёный/жёлтый/красный с countdown)
   - OAuth badge в Admin панели (top-bar)
@@ -3273,6 +3273,7 @@ Chat(follow-up + анализ) → [COMMAND_FOR_CODE] → Code → ... → "Го
   - Refresh log: `/opt/aila/logs/ai_trade/oauth_refresh.json` (count/failures/last time)
   - API `/api/ai-trade/oauth/status` → status: `healthy`/`refreshing`/`warning`/`expired`
   - UI: "refreshed" flash на 10с при обнаружении refresh, OFFLINE при expired, warning icon при failed refresh
+- **Fix: OAuth auto-refresh race condition** — CLI auto-refresh инвалидировал refresh_token, а `check_oauth.sh` использовал устаревший из `/opt/aila/`. Решение: sync из `/home/aila/` перед проверкой, убран дублирующий `*/5 cp` cron, интервал 2ч→1ч.
 - **Fix: Cold-start Kelly Criterion** — при `win_rate=0` (нет завершённых сделок) Kelly возвращал 0, делая `risk_pct=0%` и блокируя ВСЕ сделки. Добавлен fallback на `max_risk_per_trade_pct` из конфига (2%).
   - Файл: `orchestrator.py:250` — `if kelly <= 0: kelly = config['max_risk_per_trade_pct'] / 100`
   - Ошибка в логах: `Capital manager rejected: Min order risk X% > max 0.0%`
