@@ -2187,6 +2187,8 @@ def _get_commands() -> list[dict]:
          "command": "Очисти логи старше 7 дней"},
         {"id": "stats", "name": "Статистика", "icon": "fa-chart-pie", "category": "data",
          "command": "Покажи полную статистику торговли"},
+        {"id": "sys_check", "name": "Full System Check", "icon": "fa-rocket", "category": "monitoring",
+         "command": "Запусти полную диагностику системы: python3 /opt/aila/scripts/full_system_check.py и покажи результат. Если есть проблемы — предложи решения. Если автопилот не запущен и все системы OK — спроси нужно ли запустить."},
     ]
 
     # Load custom commands
