@@ -3104,9 +3104,19 @@ Chat(follow-up + анализ) → [COMMAND_FOR_CODE] → Code → ... → "Го
 
 ---
 
-**Последнее обновление:** 2026-02-02 (feat: scheduled tasks Chat+Code cycle)
+**Последнее обновление:** 2026-02-04 (fix: trading pipeline — min_trade 5, confidence 70, market data enrichment, signal TTL)
 **Текущая версия:** v2.5.0 (см. файл `/opt/aila/VERSION`)
 **Рабочая ветка:** `claude/start-new-session-4XrKU`
+
+### Исправления 2026-02-04 (Trading Pipeline):
+- **min_trade_size_usdt: 10 → 5** — баланс $9 теперь позволяет открывать сделки (capital_manager.py + capital.json)
+- **min_confidence: 75 → 70** — TRADER сигналы 72% теперь проходят (autopilot.json + trader_settings.json)
+- **Market data enrichment перед Reviewer** — `_validate_signal()` обновляет market_data перед отправкой в Reviewer (исправлен Price=None, RSI=None)
+- **Signal TTL: 120s → 300s** — SNIPER сигналы не теряются пока TRADER cascade работает 2-3 минуты
+- **SNIPER → Queue → Process сразу** — SNIPER сканирует первым, очередь обрабатывается сразу после (не ждёт TRADER cascade)
+- **UI Trading Parameters** — в scanModal добавлены настройки min_confidence и min_trade_size с кнопкой Save
+- **PUT /api/ai-trade/capital/config** — новый endpoint для обновления capital config из UI
+- **min_trade_size_usdt в /settings/full** — поле добавлено в ответ для UI
 
 ### Исправления 2026-02-02:
 

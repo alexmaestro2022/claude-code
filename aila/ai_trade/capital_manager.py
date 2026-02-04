@@ -36,7 +36,7 @@ class CapitalManager:
             'max_risk_per_trade_pct': 2,
             'withdrawal_pct': 30,
             'compound_pct': 50,
-            'min_trade_size_usdt': 10,
+            'min_trade_size_usdt': 5,
             'kelly_fraction': 0.5
         }
 

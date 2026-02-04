@@ -770,6 +770,39 @@
                     <span class="text-dim" data-i18n="token_savings">Token Savings</span>
                     <span class="accent font-bold" id="modalSavings">0%</span>
                 </div>
+
+                <!-- Trading Parameters -->
+                <h4 class="text-sm font-semibold mt-4 mb-2 text-dim"><i class="fa-solid fa-sliders mr-1"></i> Trading Parameters</h4>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center p-3 bg-black/30 rounded">
+                        <div>
+                            <div class="text-sm">Min Confidence</div>
+                            <div class="text-xs text-dim">TRADER signal threshold</div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="number" id="settingMinConfidence" min="50" max="95" step="5" value="70"
+                                style="width:60px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:4px 8px;color:white;text-align:center;font-size:0.85rem;">
+                            <span class="text-dim text-sm">%</span>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-black/30 rounded">
+                        <div>
+                            <div class="text-sm">Min Trade Size</div>
+                            <div class="text-xs text-dim">Minimum order in USDT</div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="number" id="settingMinTradeSize" min="1" max="100" step="1" value="5"
+                                style="width:60px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:4px 8px;color:white;text-align:center;font-size:0.85rem;">
+                            <span class="text-dim text-sm">$</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-accent btn-sm w-full" onclick="saveTradingParams()" id="saveTradingParamsBtn">
+                        <i class="fa-solid fa-save mr-1"></i> Save Parameters
+                    </button>
+                    <div id="tradingParamsSaved" style="display:none;text-align:center;color:#22c55e;font-size:0.8rem;margin-top:4px;">
+                        <i class="fa-solid fa-check"></i> Saved
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -1291,6 +1324,51 @@
             document.getElementById('modalPairsP2').textContent = data.pair_distribution?.p2 || 0;
             document.getElementById('modalPairsP3').textContent = data.pair_distribution?.p3 || 0;
             document.getElementById('modalSavings').textContent = (data.token_savings_pct || 0) + '%';
+
+            // Load trading parameters
+            const traderSettings = await fetchData('/agent/TRADER/settings');
+            if (traderSettings?.settings) {
+                document.getElementById('settingMinConfidence').value = traderSettings.settings.min_confidence ?? 70;
+            }
+            const fullSettings = await fetchData('/settings/full');
+            if (fullSettings?.capital) {
+                const minTrade = fullSettings.capital.min_trade_size_usdt ?? fullSettings.trading?.min_trade_size_usdt ?? 5;
+                document.getElementById('settingMinTradeSize').value = minTrade;
+            }
+        }
+
+        async function saveTradingParams() {
+            const btn = document.getElementById('saveTradingParamsBtn');
+            const savedMsg = document.getElementById('tradingParamsSaved');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Saving...';
+
+            try {
+                const minConf = parseInt(document.getElementById('settingMinConfidence').value);
+                const minTrade = parseFloat(document.getElementById('settingMinTradeSize').value);
+
+                // Update TRADER min_confidence
+                await fetch(`${API_BASE}/agent/TRADER/settings`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({min_confidence: minConf}),
+                });
+
+                // Update capital min_trade_size
+                await fetch(`${API_BASE}/capital/config`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({min_trade_size_usdt: minTrade}),
+                });
+
+                savedMsg.style.display = 'block';
+                setTimeout(() => { savedMsg.style.display = 'none'; }, 3000);
+            } catch (e) {
+                console.error('Save error:', e);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-save mr-1"></i> Save Parameters';
+            }
         }
 
         async function loadHistoryData(agent) {

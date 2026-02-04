@@ -553,6 +553,7 @@ async def get_full_settings():
                 "reserve_pct": capital_config.get("reserve_pct", 20),
                 "kelly_fraction": capital_config.get("kelly_fraction", 0.5),
                 "compound_pct": capital_config.get("compound_pct", 50),
+                "min_trade_size_usdt": capital_config.get("min_trade_size_usdt", 5),
                 "phase": phase.get("phase", "Starter"),
                 "recommended_leverage": phase.get("recommended_leverage", 10),
                 "recommended_risk_pct": phase.get("recommended_risk_pct", 2),
@@ -1037,6 +1038,23 @@ async def reset_agent_settings(agent: str):
         settings_mgr = get_agent_settings()
         result = settings_mgr.reset_to_defaults(agent)
         return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.put("/capital/config")
+async def update_capital_config(config: dict):
+    """Update capital manager config (min_trade_size_usdt, reserve_pct, etc.)."""
+    try:
+        orch = await get_orchestrator()
+        allowed_keys = {"min_trade_size_usdt", "reserve_pct", "max_risk_per_trade_pct", "kelly_fraction"}
+        updates = {k: v for k, v in config.items() if k in allowed_keys}
+        if not updates:
+            raise HTTPException(status_code=400, detail="No valid config keys provided")
+        orch.capital_manager._config.update(updates)
+        return {"success": True, "config": orch.capital_manager._config}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

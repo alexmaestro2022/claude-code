@@ -302,30 +302,32 @@ class AutopilotMode:
                 await asyncio.sleep(60)
 
     async def _run_scan_cycle(self) -> None:
-        """Run TRADER and SNIPER scans based on their intervals."""
+        """Run TRADER and SNIPER scans based on their intervals.
+
+        SNIPER runs first + queue processed immediately so signals
+        don't expire while waiting for TRADER cascade (2-3 min).
+        """
         now = datetime.utcnow()
-        tasks = []
 
-        # TRADER scan (every 60 seconds)
-        if self._config.get('trader_enabled', True):
-            should_scan_trader = (
-                self._last_scan_time is None or
-                (now - self._last_scan_time).total_seconds() >= self._config['scan_interval_seconds']
-            )
-            if should_scan_trader:
-                tasks.append(self._scan_trader())
-
-        # SNIPER scan (every 10 seconds)
+        # SNIPER scan first (fast, every 10 seconds)
         if self._config.get('sniper_enabled', True):
             should_scan_sniper = (
                 self._last_sniper_scan is None or
                 (now - self._last_sniper_scan).total_seconds() >= self._config['sniper_scan_interval_seconds']
             )
             if should_scan_sniper:
-                tasks.append(self._scan_sniper())
+                await self._scan_sniper()
+                # Process queue immediately after SNIPER finds signals
+                await self._process_queue()
 
-        if tasks:
-            await asyncio.gather(*tasks, return_exceptions=True)
+        # TRADER scan (slow cascade, every 60 seconds)
+        if self._config.get('trader_enabled', True):
+            should_scan_trader = (
+                self._last_scan_time is None or
+                (now - self._last_scan_time).total_seconds() >= self._config['scan_interval_seconds']
+            )
+            if should_scan_trader:
+                await self._scan_trader()
 
     async def _scan_trader(self) -> None:
         """Scan for TRADER opportunities with cascade analysis."""
@@ -664,6 +666,15 @@ class AutopilotMode:
     async def _validate_signal(self, signal: dict[str, Any], agent: str) -> Optional[dict[str, Any]]:
         """Validate signal through REVIEWER and RISK_GUARD."""
         pair = signal.get('pair', 'UNKNOWN')
+
+        # Refresh market data before review (may be stale from queue wait)
+        try:
+            fresh_data = await self._orchestrator.trader.scanner.get_market_data(pair)
+            if fresh_data:
+                signal['market_data'] = fresh_data
+                logger.info(f"[{agent}][STAGE 2] Refreshed market data for {pair}")
+        except Exception as e:
+            logger.warning(f"[{agent}][STAGE 2] Failed to refresh market data for {pair}: {e}")
 
         # STAGE 2: REVIEWER
         logger.info(f"[{agent}][STAGE 2] Sending to Reviewer: {pair}")

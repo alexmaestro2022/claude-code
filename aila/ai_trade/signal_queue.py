@@ -50,7 +50,7 @@ class SignalQueue:
             "trader_cooldown_seconds": 300,   # 5 min cooldown for TRADER
             "sniper_cooldown_seconds": 60,    # 1 min cooldown for SNIPER
             "max_queue_size": 50,
-            "signal_ttl_seconds": 120,        # Signal expires after 2 min
+            "signal_ttl_seconds": 300,        # Signal expires after 5 min
         }
         self._stats = {
             "total_queued": 0,
