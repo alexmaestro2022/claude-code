@@ -3353,9 +3353,11 @@ Chat(follow-up + анализ) → [COMMAND_FOR_CODE] → Code → ... → "Го
   - UI: "⏱️ Команда превысила таймаут и была остановлена"
 - **Read-only command bypass** — read-only команды (grep, cat, tail, head, journalctl и др.) не вызывают false-positive срабатывания keyword protection:
   - `_is_readonly_pipeline()` в `_check_command_security()` определяет read-only пайплайны
-  - Пропускает уровни 4 (keyword), 5 (always-confirm), 6 (risky patterns)
+  - Пропускает уровни 3 (protected paths), 4 (keyword), 5 (always-confirm), 6 (risky patterns)
   - Учитывает pipe в опасные команды (rm, tee, mv) и redirect `>`
+  - Script launchers (`python3`, `bash`, `node`) и `cd &&` chains также считаются read-only
   - Пример: `grep "trader|confidence" logs | tail -80` → low (раньше было high)
+  - Пример: `cd /opt/aila && python3 scripts/full_system_check.py` → low (раньше было high)
 - **Quick Command "Full System Check"** — кнопка в admin панели, запускает `full_system_check.py`
 - **Auto Backup** — ежедневный бэкап критических данных:
   - Скрипт: `scripts/backup_data.sh`, cron ежедневно в 3:00 UTC
