@@ -1508,18 +1508,27 @@ async def get_cascade_status():
         # Get pair distribution
         try:
             pairs_by_priority = await scanner.get_pairs_by_priority()
+            vip_list = pairs_by_priority.get("vip", [])
+            p1_list = pairs_by_priority.get("priority_1", [])
+            p2_list = pairs_by_priority.get("priority_2", [])
+            p3_list = pairs_by_priority.get("priority_3", [])
+            stats = pairs_by_priority.get("stats", {})
             pair_distribution = {
-                "vip": len(pairs_by_priority.get("vip", [])),
-                "p1": len(pairs_by_priority.get("p1", [])),
-                "p2": len(pairs_by_priority.get("p2", [])),
-                "p3": len(pairs_by_priority.get("p3", [])),
-                "filtered": pairs_by_priority.get("filtered_count", 0),
+                "vip": len(vip_list),
+                "p1": len(p1_list),
+                "p2": len(p2_list),
+                "p3": len(p3_list),
+                "filtered": stats.get("p1_total", 0) + stats.get("p2_total", 0) + stats.get("p3_total", 0),
+                "vip_pairs": [p["symbol"] for p in vip_list],
+                "p1_pairs": [p["symbol"] for p in p1_list[:5]],
+                "p2_pairs": [p["symbol"] for p in p2_list[:5]],
+                "p3_pairs": [p["symbol"] for p in p3_list[:5]],
             }
         except Exception:
             pair_distribution = {"vip": 0, "p1": 0, "p2": 0, "p3": 0, "filtered": 0}
 
         # Calculate token savings (estimate)
-        total_pairs = sum(pair_distribution.values())
+        total_pairs = pair_distribution["vip"] + pair_distribution["p1"] + pair_distribution["p2"] + pair_distribution["p3"]
         scanned_pairs = pair_distribution["vip"] + pair_distribution["p1"]
         if total_pairs > 0:
             savings_pct = ((total_pairs - scanned_pairs) / total_pairs) * 100

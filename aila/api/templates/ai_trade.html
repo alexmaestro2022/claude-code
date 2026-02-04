@@ -749,21 +749,25 @@
                 </div>
                 <h4 class="text-sm font-semibold mb-2 text-dim" data-i18n="pair_distribution">Pair Distribution</h4>
                 <div class="grid grid-cols-2 gap-2 mb-4">
-                    <div class="bg-black/30 rounded p-2 text-center">
+                    <div class="bg-black/30 rounded p-2 text-center" id="modalPairsVipBox" title="">
                         <div class="text-xs text-dim">VIP</div>
                         <div class="font-bold" id="modalPairsVip">0</div>
+                        <div class="text-xs text-dim mt-1" id="modalPairsVipNames" style="font-size:0.6rem;line-height:1.2;"></div>
                     </div>
-                    <div class="bg-black/30 rounded p-2 text-center">
-                        <div class="text-xs text-dim">P1</div>
+                    <div class="bg-black/30 rounded p-2 text-center" id="modalPairsP1Box" title="">
+                        <div class="text-xs text-dim">P1 <span style="font-size:0.55rem;opacity:0.6">5-20%</span></div>
                         <div class="font-bold" id="modalPairsP1">0</div>
+                        <div class="text-xs text-dim mt-1" id="modalPairsP1Names" style="font-size:0.6rem;line-height:1.2;"></div>
                     </div>
-                    <div class="bg-black/30 rounded p-2 text-center">
-                        <div class="text-xs text-dim">P2</div>
+                    <div class="bg-black/30 rounded p-2 text-center" id="modalPairsP2Box" title="">
+                        <div class="text-xs text-dim">P2 <span style="font-size:0.55rem;opacity:0.6">20-35%</span></div>
                         <div class="font-bold" id="modalPairsP2">0</div>
+                        <div class="text-xs text-dim mt-1" id="modalPairsP2Names" style="font-size:0.6rem;line-height:1.2;"></div>
                     </div>
-                    <div class="bg-black/30 rounded p-2 text-center">
-                        <div class="text-xs text-dim">P3</div>
+                    <div class="bg-black/30 rounded p-2 text-center" id="modalPairsP3Box" title="">
+                        <div class="text-xs text-dim">P3 <span style="font-size:0.55rem;opacity:0.6">35-50%</span></div>
                         <div class="font-bold" id="modalPairsP3">0</div>
+                        <div class="text-xs text-dim mt-1" id="modalPairsP3Names" style="font-size:0.6rem;line-height:1.2;"></div>
                     </div>
                 </div>
                 <div class="flex justify-between items-center p-3 bg-black/30 rounded">
@@ -1319,11 +1323,19 @@
             document.getElementById('modalScanMode').textContent = 'Cascade';
             document.getElementById('modalScanStage').textContent = data.current_stage || '-';
 
-            document.getElementById('modalPairsVip').textContent = data.pair_distribution?.vip || 0;
-            document.getElementById('modalPairsP1').textContent = data.pair_distribution?.p1 || 0;
-            document.getElementById('modalPairsP2').textContent = data.pair_distribution?.p2 || 0;
-            document.getElementById('modalPairsP3').textContent = data.pair_distribution?.p3 || 0;
+            const dist = data.pair_distribution || {};
+            document.getElementById('modalPairsVip').textContent = dist.vip || 0;
+            document.getElementById('modalPairsP1').textContent = dist.p1 || 0;
+            document.getElementById('modalPairsP2').textContent = dist.p2 || 0;
+            document.getElementById('modalPairsP3').textContent = dist.p3 || 0;
             document.getElementById('modalSavings').textContent = (data.token_savings_pct || 0) + '%';
+
+            // Populate pair name lists
+            const formatPairs = (pairs) => pairs ? pairs.map(p => p.replace('/USDT','')).join(', ') : '';
+            document.getElementById('modalPairsVipNames').textContent = formatPairs(dist.vip_pairs);
+            document.getElementById('modalPairsP1Names').textContent = formatPairs(dist.p1_pairs);
+            document.getElementById('modalPairsP2Names').textContent = formatPairs(dist.p2_pairs);
+            document.getElementById('modalPairsP3Names').textContent = formatPairs(dist.p3_pairs);
 
             // Load trading parameters
             const traderSettings = await fetchData('/agent/TRADER/settings');

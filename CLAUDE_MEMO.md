@@ -3117,6 +3117,7 @@ Chat(follow-up + анализ) → [COMMAND_FOR_CODE] → Code → ... → "Го
 - **UI Trading Parameters** — в scanModal добавлены настройки min_confidence и min_trade_size с кнопкой Save
 - **PUT /api/ai-trade/capital/config** — новый endpoint для обновления capital config из UI
 - **min_trade_size_usdt в /settings/full** — поле добавлено в ответ для UI
+- **UI Pair Distribution fix** — cascade/status использовал ключи "p1"/"p2"/"p3" вместо "priority_1"/"priority_2"/"priority_3" из get_pairs_by_priority(). Исправлено + добавлены имена пар (первые 5) и диапазоны изменения (5-20%, 20-35%, 35-50%)
 
 ### Исправления 2026-02-02:
 
