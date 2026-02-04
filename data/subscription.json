@@ -1,0 +1,9 @@
+{
+  "plan": "Claude Max",
+  "billing_cycle": "monthly",
+  "next_billing_date": "2026-02-27",
+  "remind_days_before": [7, 3, 1],
+  "auto_renew": true,
+  "price": "$100",
+  "notes": "Подписка Claude Max для AILA AI Trade"
+}

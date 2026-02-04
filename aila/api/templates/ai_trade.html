@@ -118,6 +118,24 @@
         .oauth-badge.expired { border-color: rgba(239,68,68,0.3); color: #ef4444; animation: blink 1s infinite; }
         @keyframes blink { 50% { opacity: 0.5; } }
 
+        /* Subscription badge */
+        .sub-badge {
+            display: flex; align-items: center; gap: 6px;
+            padding: 4px 12px; border-radius: 8px; cursor: pointer;
+            border: 1px solid var(--border); font-size: 0.8rem;
+            transition: all 0.3s;
+        }
+        .sub-badge.active { border-color: rgba(0,255,136,0.3); color: #00ff88; }
+        .sub-badge.warning { border-color: rgba(251,191,36,0.3); color: #fbbf24; }
+        .sub-badge.danger { border-color: rgba(239,68,68,0.3); color: #ef4444; animation: blink 1s infinite; }
+        .sub-progress-bar {
+            height: 4px; border-radius: 2px; background: rgba(255,255,255,0.1);
+            width: 60px; overflow: hidden;
+        }
+        .sub-progress-fill {
+            height: 100%; border-radius: 2px; transition: width 0.5s, background 0.5s;
+        }
+
         /* Position row */
         .position-row {
             display: flex;
@@ -356,6 +374,15 @@
                     <div id="oauthBadge" class="oauth-badge ok" onclick="openModal('oauthModal')" title="Claude OAuth Status">
                         <span id="oauthDot" style="width:8px;height:8px;border-radius:50%;background:#00ff88;display:inline-block;"></span>
                         <span>Claude: <span id="oauthTimer">--</span></span>
+                    </div>
+                    <div id="subBadge" class="sub-badge active" title="Claude Max Subscription">
+                        <i class="fa-solid fa-crown" style="font-size:0.7rem;"></i>
+                        <span id="subDaysText">--д</span>
+                        <div class="sub-progress-bar">
+                            <div id="subProgressFill" class="sub-progress-fill" style="width:100%;background:#00ff88;"></div>
+                        </div>
+                        <span id="subOAuthMini" style="font-size:0.7rem;opacity:0.7;">OAuth:--</span>
+                        <a href="https://claude.ai/settings" target="_blank" onclick="event.stopPropagation();" style="font-size:0.65rem;color:inherit;text-decoration:none;opacity:0.6;" title="Продлить">↗</a>
                     </div>
                 </div>
 
@@ -1624,6 +1651,41 @@
             updateOAuthBadge();
         }, 1000);
 
+        // Subscription status
+        async function loadSubscriptionStatus() {
+            try {
+                const r = await fetch('/api/ai-trade/subscription/status');
+                const d = await r.json();
+                const badge = document.getElementById('subBadge');
+                const text = document.getElementById('subDaysText');
+                const fill = document.getElementById('subProgressFill');
+                const oauth = document.getElementById('subOAuthMini');
+                if (!badge) return;
+
+                const days = d.days_remaining || 0;
+                const pct = Math.min(100, Math.round((days / 30) * 100));
+                text.textContent = days + 'д';
+
+                fill.style.width = pct + '%';
+                if (days > 7) {
+                    badge.className = 'sub-badge active';
+                    fill.style.background = '#00ff88';
+                } else if (days > 3) {
+                    badge.className = 'sub-badge warning';
+                    fill.style.background = '#fbbf24';
+                } else {
+                    badge.className = 'sub-badge danger';
+                    fill.style.background = '#ef4444';
+                }
+
+                const oh = d.oauth || {};
+                const oSt = oh.status || 'EXPIRED';
+                const oH = oh.remaining_hours || 0;
+                const oColor = oSt === 'OK' ? '#00ff88' : oSt === 'WARNING' ? '#fbbf24' : '#ef4444';
+                oauth.innerHTML = 'OAuth:<span style="color:' + oColor + '">' + oH + 'h</span>';
+            } catch (e) { /* silent */ }
+        }
+
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             applyLanguage();
@@ -1643,6 +1705,10 @@
             // OAuth status
             loadOAuthStatus();
             setInterval(loadOAuthStatus, 60000);
+
+            // Subscription status
+            loadSubscriptionStatus();
+            setInterval(loadSubscriptionStatus, 60000);
         });
     </script>
 </body>

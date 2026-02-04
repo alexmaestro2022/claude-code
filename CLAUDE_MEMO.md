@@ -3326,3 +3326,12 @@ Chat(follow-up + анализ) → [COMMAND_FOR_CODE] → Code → ... → "Го
 - **Доп. проблема:** `ReadWritePaths` не включал `/tmp` и `/run`, нужные для Claude CLI temp-файлов.
 - **Фикс:** Убран `NoNewPrivileges=true` из `/etc/systemd/system/aila.service`. Добавлен `/tmp /run` в `ReadWritePaths`.
 - **Файл:** `/etc/systemd/system/aila.service` (вне git, только на сервере)
+
+### Добавлено 2026-02-04:
+- **Subscription tracking** — трекинг подписки Claude Max с уведомлениями и UI:
+  - `GET /api/ai-trade/subscription/status` — статус подписки + OAuth (days_remaining, status: active/expiring_soon/expired)
+  - `POST /api/ai-trade/subscription/update` — обновление next_billing_date, сброс уведомлений
+  - `scripts/check_subscription.sh` — bash скрипт с Telegram алертами за 7/3/1/0 дней (cron ежедневно 10:00)
+  - Файл данных: `data/subscription.json`, трекинг уведомлений: `data/subscription_notified.json`
+  - Виджет в AI Trade dashboard: прогресс-бар, цвета (зелёный >7д, жёлтый 3-7д, красный <3д), OAuth статус
+  - Виджет в Admin panel: прогресс-бар + модалка с date picker для обновления даты продления

@@ -90,6 +90,13 @@
                 <span style="font-size:0.75rem;color:var(--text-secondary);" data-i18n="today_label">Today:</span>
                 <span id="subTodayCount" style="font-size:0.75rem;font-weight:600;">0</span>
             </div>
+            <div class="sub-widget" onclick="openModal('subscriptionModal')" title="Claude Max Subscription" id="adminSubWidget" style="cursor:pointer;">
+                <i class="fa-solid fa-calendar-check" style="font-size:0.7rem;"></i>
+                <span id="adminSubDays" style="font-size:0.75rem;font-weight:600;">--д</span>
+                <div style="height:4px;width:40px;border-radius:2px;background:rgba(255,255,255,0.1);overflow:hidden;">
+                    <div id="adminSubBar" style="height:100%;width:100%;background:#00ff88;border-radius:2px;transition:all 0.5s;"></div>
+                </div>
+            </div>
         </div>
         <div class="top-bar-right">
             <button class="top-btn" onclick="newSession()" data-i18n-title="new_session" title="New Session">
@@ -544,6 +551,37 @@
         <div class="modal-footer">
             <button class="btn btn-ghost" onclick="closeModal('commandModal')" data-i18n="cancel">Cancel</button>
             <button class="btn btn-primary" onclick="saveCommand()"><i class="fa-solid fa-check"></i> <span data-i18n="save">Save</span></button>
+        </div>
+    </div>
+</div>
+
+<!-- SUBSCRIPTION MODAL -->
+<div class="modal-overlay" id="subscriptionModal" onclick="closeModalOnOverlay(event)">
+    <div class="modal-content" style="max-width:400px;">
+        <div class="modal-header">
+            <h3 style="font-weight:600;"><i class="fa-solid fa-crown mr-2" style="color:#fbbf24;"></i> Claude Max Subscription</h3>
+            <button class="modal-close" onclick="closeModal('subscriptionModal')"><i class="fa-solid fa-times"></i></button>
+        </div>
+        <div class="modal-body">
+            <div id="subModalInfo" style="text-align:center;padding:12px 0;">
+                <div style="font-size:2rem;font-weight:700;" id="subModalDays">--</div>
+                <div style="font-size:0.85rem;color:var(--text-secondary);">дней до продления</div>
+                <div style="margin:12px auto;height:6px;width:80%;border-radius:3px;background:rgba(255,255,255,0.1);overflow:hidden;">
+                    <div id="subModalBar" style="height:100%;width:100%;background:#00ff88;border-radius:3px;transition:all 0.5s;"></div>
+                </div>
+                <div style="font-size:0.8rem;color:var(--text-secondary);">Дата: <span id="subModalDate">--</span></div>
+                <div style="font-size:0.8rem;margin-top:4px;">OAuth: <span id="subModalOAuth">--</span></div>
+            </div>
+            <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px;">
+                <div style="font-size:0.85rem;font-weight:600;margin-bottom:8px;">Обновить дату продления:</div>
+                <div style="display:flex;gap:8px;">
+                    <input type="date" id="subNewDate" style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--card-bg);color:var(--text-primary);font-size:0.85rem;">
+                    <button onclick="updateSubscriptionDate()" style="padding:8px 16px;border-radius:8px;background:var(--accent);color:#000;border:none;font-weight:600;cursor:pointer;font-size:0.85rem;">Сохранить</button>
+                </div>
+            </div>
+            <div style="text-align:center;margin-top:12px;">
+                <a href="https://claude.ai/settings" target="_blank" style="font-size:0.8rem;color:var(--accent);">Продлить на claude.ai →</a>
+            </div>
         </div>
     </div>
 </div>
@@ -2835,9 +2873,62 @@ function formatNumber(n) {
 // =============================================
 // Init
 // =============================================
+// Subscription tracking
+async function loadAdminSubscription() {
+    try {
+        const r = await fetch('/api/ai-trade/subscription/status');
+        const d = await r.json();
+        const days = d.days_remaining || 0;
+        const pct = Math.min(100, Math.round((days / 30) * 100));
+        const el = document.getElementById('adminSubDays');
+        const bar = document.getElementById('adminSubBar');
+        if (el) el.textContent = days + 'д';
+        if (bar) {
+            bar.style.width = pct + '%';
+            bar.style.background = days > 7 ? '#00ff88' : days > 3 ? '#fbbf24' : '#ef4444';
+        }
+        // Widget color
+        const w = document.getElementById('adminSubWidget');
+        if (w) w.style.color = days > 7 ? '#00ff88' : days > 3 ? '#fbbf24' : '#ef4444';
+        // Modal
+        const md = document.getElementById('subModalDays');
+        const mb = document.getElementById('subModalBar');
+        const mdt = document.getElementById('subModalDate');
+        const mo = document.getElementById('subModalOAuth');
+        if (md) md.textContent = days;
+        if (md) md.style.color = days > 7 ? '#00ff88' : days > 3 ? '#fbbf24' : '#ef4444';
+        if (mb) { mb.style.width = pct + '%'; mb.style.background = days > 7 ? '#00ff88' : days > 3 ? '#fbbf24' : '#ef4444'; }
+        if (mdt) mdt.textContent = d.next_billing_date || '--';
+        if (mo) {
+            const oh = d.oauth || {};
+            const c = oh.status === 'OK' ? '#00ff88' : oh.status === 'WARNING' ? '#fbbf24' : '#ef4444';
+            mo.innerHTML = '<span style="color:' + c + '">' + oh.status + ' (' + (oh.remaining_hours || 0) + 'h)</span>';
+        }
+    } catch (e) { /* silent */ }
+}
+
+async function updateSubscriptionDate() {
+    const input = document.getElementById('subNewDate');
+    if (!input || !input.value) return;
+    try {
+        const r = await fetch('/api/ai-trade/subscription/update', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({next_billing_date: input.value})
+        });
+        const d = await r.json();
+        if (d.ok) {
+            loadAdminSubscription();
+            input.value = '';
+        }
+    } catch (e) { /* silent */ }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     applyLanguage();
     checkSession();
+    loadAdminSubscription();
+    setInterval(loadAdminSubscription, 60000);
     // Enter key on code input
     const codeInput = document.getElementById('codeInput');
     if (codeInput) {

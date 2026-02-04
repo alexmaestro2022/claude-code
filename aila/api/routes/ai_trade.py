@@ -1661,3 +1661,107 @@ async def get_oauth_status():
         result["last_check_result"] = "OK"
 
     return result
+
+
+# =============================================
+# Subscription tracking
+# =============================================
+
+SUBSCRIPTION_PATH = Path("/opt/aila/data/subscription.json")
+SUBSCRIPTION_NOTIFIED_PATH = Path("/opt/aila/data/subscription_notified.json")
+CREDENTIALS_PATH = Path("/opt/aila/.claude/.credentials.json")
+
+
+@router.get("/subscription/status")
+async def get_subscription_status():
+    """Get Claude Max subscription status with OAuth info."""
+    from datetime import timezone as tz
+
+    result = {
+        "plan": "Claude Max",
+        "next_billing_date": None,
+        "days_remaining": 0,
+        "status": "expired",
+        "auto_renew": True,
+        "oauth": {
+            "connected": False,
+            "remaining_hours": 0,
+            "status": "EXPIRED",
+        },
+    }
+
+    # Read subscription config
+    try:
+        if SUBSCRIPTION_PATH.exists():
+            sub = json.loads(SUBSCRIPTION_PATH.read_text())
+            billing_date = sub.get("next_billing_date", "")
+            result["plan"] = sub.get("plan", "Claude Max")
+            result["next_billing_date"] = billing_date
+            result["auto_renew"] = sub.get("auto_renew", True)
+
+            if billing_date:
+                target = datetime.strptime(billing_date, "%Y-%m-%d").date()
+                today = datetime.now().date()
+                days = (target - today).days
+                result["days_remaining"] = max(0, days)
+
+                if days > 7:
+                    result["status"] = "active"
+                elif days > 0:
+                    result["status"] = "expiring_soon"
+                else:
+                    result["status"] = "expired"
+    except Exception:
+        pass
+
+    # Read OAuth credentials
+    try:
+        if CREDENTIALS_PATH.exists():
+            data = json.loads(CREDENTIALS_PATH.read_text())
+            expires_ms = data.get("claudeAiOauth", {}).get("expiresAt", 0)
+            if expires_ms:
+                now_ms = datetime.now(tz=tz.utc).timestamp() * 1000
+                remaining_h = max(0, (expires_ms - now_ms) / 3_600_000)
+                result["oauth"]["connected"] = remaining_h > 0
+                result["oauth"]["remaining_hours"] = round(remaining_h, 1)
+                if remaining_h <= 0:
+                    result["oauth"]["status"] = "EXPIRED"
+                elif remaining_h < 2:
+                    result["oauth"]["status"] = "WARNING"
+                else:
+                    result["oauth"]["status"] = "OK"
+    except Exception:
+        pass
+
+    return result
+
+
+@router.post("/subscription/update")
+async def update_subscription(data: dict):
+    """Update subscription billing date."""
+    new_date = data.get("next_billing_date")
+    if not new_date:
+        raise HTTPException(status_code=400, detail="next_billing_date required")
+
+    # Validate date format
+    try:
+        datetime.strptime(new_date, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format (YYYY-MM-DD)")
+
+    # Update subscription.json
+    sub = {}
+    try:
+        if SUBSCRIPTION_PATH.exists():
+            sub = json.loads(SUBSCRIPTION_PATH.read_text())
+    except Exception:
+        pass
+
+    sub["next_billing_date"] = new_date
+    SUBSCRIPTION_PATH.write_text(json.dumps(sub, indent=2, ensure_ascii=False))
+
+    # Reset notification tracking
+    if SUBSCRIPTION_NOTIFIED_PATH.exists():
+        SUBSCRIPTION_NOTIFIED_PATH.write_text("{}")
+
+    return {"ok": True, "next_billing_date": new_date}
