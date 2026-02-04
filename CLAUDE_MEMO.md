@@ -3356,3 +3356,8 @@ Chat(follow-up + анализ) → [COMMAND_FOR_CODE] → Code → ... → "Го
   - Пропускает уровни 4 (keyword), 5 (always-confirm), 6 (risky patterns)
   - Учитывает pipe в опасные команды (rm, tee, mv) и redirect `>`
   - Пример: `grep "trader|confidence" logs | tail -80` → low (раньше было high)
+- **Quick Command "Full System Check"** — кнопка в admin панели, запускает `full_system_check.py`
+- **Auto Backup** — ежедневный бэкап критических данных:
+  - Скрипт: `scripts/backup_data.sh`, cron ежедневно в 3:00 UTC
+  - Копирует: ai_trade data, admin data, subscription, .env, credentials, CLAUDE_MEMO
+  - Ротация: хранит 7 последних бэкапов в `/opt/aila/backups/`
