@@ -477,10 +477,10 @@
         </div>
         <div style="display:flex;gap:10px;padding:16px 24px 24px;justify-content:center;">
             <button class="btn btn-ghost" onclick="denyPermission()" style="min-width:100px;">
-                <i class="fa-solid fa-times"></i> Cancel
+                <i class="fa-solid fa-times"></i> <span data-i18n="permission_cancel">Cancel</span>
             </button>
             <button class="btn btn-primary" onclick="grantPermission()" style="min-width:140px;background:#f59e0b;border-color:#f59e0b;">
-                <i class="fa-solid fa-unlock"></i> Allow once
+                <i class="fa-solid fa-unlock"></i> <span data-i18n="permission_allow_once">Allow once</span>
             </button>
         </div>
     </div>
@@ -1037,6 +1037,39 @@ const translations = {
         human_desc: 'Пауза для подтверждения в Auto режиме',
         reset_defaults: 'Сбросить',
         settings_saved: 'Настройки сохранены',
+        // Risk panel
+        risk_blocked: '⛔ Команда заблокирована',
+        risk_blocked_reason: 'Причина',
+        risk_blocked_blacklist: 'Чёрный список',
+        risk_blocked_detail: 'Эта команда в чёрном списке и не может быть выполнена',
+        risk_dangerous: '🔴 Опасно — требует подтверждения',
+        risk_warning: '🟡 Внимание — изменение системы',
+        risk_safe: '🟢 Безопасно — только чтение',
+        risk_type: 'Тип',
+        risk_affects: 'Затрагивает',
+        risk_details: 'Детали',
+        risk_area: 'Область',
+        risk_required: 'Требуется',
+        risk_permission_for: 'разрешение',
+        risk_no_changes: 'Команда ничего не меняет',
+        risk_high_auto_stop: 'Высокий риск — автовыполнение остановлено, требуется подтверждение',
+        // Permission modal
+        permission_required: 'Требуется разрешение',
+        permission_allow_once: 'Разрешить однократно',
+        permission_cancel: 'Отмена',
+        permission_granted: 'Одноразовое разрешение выдано',
+        permission_cancelled: 'Операция отменена пользователем.',
+        // Permission reasons
+        perm_file_delete: 'Удаление файлов отключено',
+        perm_env_edit: 'Редактирование .env отключено',
+        perm_database_edit: 'Редактирование БД отключено',
+        perm_bot_restart: 'Перезапуск бота отключён',
+        perm_git_push: 'Git push отключён',
+        // Command types
+        cmd_type_readonly: 'Только чтение',
+        cmd_type_trading: 'Торговля',
+        cmd_type_system: 'Система',
+        cmd_type_modification: 'Изменение',
     },
     en: {}  // Falls back to HTML defaults (English)
 };
@@ -2356,10 +2389,10 @@ function _detectCommandType(cmd) {
     const ro = ['cat ','tail ','head ','grep ','ls ','find ','ps ','top','df ','du ','wc ','echo ','curl -s','curl ','python3 -c "print','journalctl','systemctl status','git log','git status','git diff'];
     const trade = ['position','trade','order','leverage','autopilot','balance','close_all','open_position'];
     const sys = ['systemctl restart','systemctl stop','service ','chmod ','chown ','pip ','npm ','apt ','git push','git commit','git add'];
-    if (trade.some(p => c.includes(p))) return {type:'trading', icon:'💰', label:'Торговля'};
-    if (sys.some(p => c.includes(p))) return {type:'system', icon:'⚙️', label:'Система'};
-    if (ro.some(p => c.includes(p))) return {type:'read-only', icon:'👁️', label:'Только чтение'};
-    return {type:'modification', icon:'✏️', label:'Изменение'};
+    if (trade.some(p => c.includes(p))) return {type:'trading', icon:'💰', label:t('cmd_type_trading')};
+    if (sys.some(p => c.includes(p))) return {type:'system', icon:'⚙️', label:t('cmd_type_system')};
+    if (ro.some(p => c.includes(p))) return {type:'read-only', icon:'👁️', label:t('cmd_type_readonly')};
+    return {type:'modification', icon:'✏️', label:t('cmd_type_modification')};
 }
 
 async function checkCommandRisk(command) {
@@ -2375,32 +2408,31 @@ async function checkCommandRisk(command) {
         panel.className = 'risk-panel ' + level;
 
         if (level === 'critical') {
-            title.innerHTML = '⛔ Команда заблокирована';
-            detail.innerHTML = '📋 Причина: ' + (data.block_reason || 'Чёрный список') + '<br>🚫 Эта команда в чёрном списке и не может быть выполнена';
+            title.innerHTML = t('risk_blocked');
+            detail.innerHTML = '📋 ' + t('risk_blocked_reason') + ': ' + (data.block_reason || t('risk_blocked_blacklist')) + '<br>🚫 ' + t('risk_blocked_detail');
         } else if (level === 'high') {
-            let lines = ['🔴 Опасно — требует подтверждения'];
-            title.innerHTML = lines[0];
-            let d = '📋 Тип: ' + ct.icon + ' ' + ct.label;
-            if (data.affected_areas && data.affected_areas.length) d += '<br>⚠️ Затрагивает: ' + data.affected_areas.join(', ');
+            title.innerHTML = t('risk_dangerous');
+            let d = '📋 ' + t('risk_type') + ': ' + ct.icon + ' ' + ct.label;
+            if (data.affected_areas && data.affected_areas.length) d += '<br>⚠️ ' + t('risk_affects') + ': ' + data.affected_areas.join(', ');
             if (data.warnings && data.warnings.length) d += '<br>⚠️ ' + data.warnings.join(', ');
-            if (data.needs_permission) d += '<br>🛡️ Требуется: разрешение (' + data.permission_type + ')';
+            if (data.needs_permission) d += '<br>🛡️ ' + t('risk_required') + ': ' + t('risk_permission_for') + ' (' + data.permission_type + ')';
             detail.innerHTML = d;
         } else if (level === 'medium') {
-            title.innerHTML = '🟡 Внимание — изменение системы';
-            let d = '📋 Тип: ' + ct.icon + ' ' + ct.label;
-            if (data.affected_areas && data.affected_areas.length) d += '<br>📋 Область: ' + data.affected_areas.join(', ');
-            if (data.warnings && data.warnings.length) d += '<br>⚠️ Детали: ' + data.warnings.join(', ');
+            title.innerHTML = t('risk_warning');
+            let d = '📋 ' + t('risk_type') + ': ' + ct.icon + ' ' + ct.label;
+            if (data.affected_areas && data.affected_areas.length) d += '<br>📋 ' + t('risk_area') + ': ' + data.affected_areas.join(', ');
+            if (data.warnings && data.warnings.length) d += '<br>⚠️ ' + t('risk_details') + ': ' + data.warnings.join(', ');
             detail.innerHTML = d;
         } else {
-            title.innerHTML = '🟢 Безопасно — только чтение';
-            detail.innerHTML = '📋 Тип: ' + ct.icon + ' ' + ct.label + '<br>💡 Команда ничего не меняет';
+            title.innerHTML = t('risk_safe');
+            detail.innerHTML = '📋 ' + t('risk_type') + ': ' + ct.icon + ' ' + ct.label + '<br>💡 ' + t('risk_no_changes');
         }
         panel.style.display = '';
 
         // In auto mode: stop countdown for high risk
         if (currentMode === 'auto' && level === 'high') {
             cancelAutoCountdown();
-            addMessage('system', '🔴 Высокий риск — автовыполнение остановлено, требуется подтверждение');
+            addMessage('system', '🔴 ' + t('risk_high_auto_stop'));
         }
     } catch {
         panel.style.display = 'none';
@@ -2796,9 +2828,18 @@ function openModal(id) {
 // One-time permission dialog
 // =============================================
 
+const _permI18nMap = {
+    allow_file_delete: 'perm_file_delete',
+    allow_env_edit: 'perm_env_edit',
+    allow_database_edit: 'perm_database_edit',
+    allow_bot_restart: 'perm_bot_restart',
+    allow_git_push: 'perm_git_push',
+};
+
 function showPermissionDialog(permType, reason, command, autoMode) {
     pendingPermission = { type: permType, reason, command, autoMode };
-    document.getElementById('permissionReason').textContent = reason || permType;
+    const i18nKey = _permI18nMap[permType];
+    document.getElementById('permissionReason').textContent = i18nKey ? t(i18nKey) : (reason || permType);
     document.getElementById('permissionCommand').textContent = command.length > 200 ? command.slice(0, 200) + '...' : command;
     document.getElementById('permissionModal').style.display = 'flex';
 }
@@ -2810,7 +2851,7 @@ async function grantPermission() {
 
     try {
         await api('/security/one-time-permission', 'POST', { permission_type: type });
-        addMessage('system', `One-time permission granted: ${type}`);
+        addMessage('system', `${t('permission_granted')}: ${type}`);
         // Retry the command
         await executeInCode(command, autoMode);
     } catch (e) {
@@ -2823,7 +2864,7 @@ async function grantPermission() {
 function denyPermission() {
     document.getElementById('permissionModal').style.display = 'none';
     if (pendingPermission) {
-        addMessage('system', 'Operation cancelled by user.');
+        addMessage('system', t('permission_cancelled'));
     }
     pendingPermission = null;
 }

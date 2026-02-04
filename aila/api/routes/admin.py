@@ -822,64 +822,9 @@ def _check_command_security(
             result["risk_level"] = "critical"
             return result
 
-    # Helper: check one-time permission in session
-    otp = (session or {}).get("one_time_permissions", {})
-
-    # 2. Permission checks — block or request one-time permission
-    perm_checks = [
-        ("allow_file_delete", ["rm ", "unlink", "remove"]),
-        ("allow_env_edit", [".env", "dotenv"]),
-        ("allow_database_edit", ["_stats.json", "_knowledge.json", "trading_state.json"]),
-    ]
-    for perm, patterns in perm_checks:
-        if not restrictions.get(perm, False):
-            for pat in patterns:
-                if pat in cmd_lower:
-                    # Check one-time permission
-                    if otp.get(perm):
-                        # Permission granted — allow and mark for consumption
-                        result["_consume_permission"] = perm
-                        break
-                    else:
-                        result["allowed"] = False
-                        result["needs_permission"] = True
-                        result["permission_type"] = perm
-                        result["permission_reason"] = _perm_reasons.get(perm, perm)
-                        result["block_reason"] = f"Blocked by setting: {perm}"
-                        result["risk_level"] = "high"
-                        return result
-            if result.get("_consume_permission"):
-                break
-
-    if not restrictions.get("allow_bot_restart", True):
-        if any(x in cmd_lower for x in ["restart", "systemctl"]):
-            if otp.get("allow_bot_restart"):
-                result["_consume_permission"] = "allow_bot_restart"
-            else:
-                result["allowed"] = False
-                result["needs_permission"] = True
-                result["permission_type"] = "allow_bot_restart"
-                result["permission_reason"] = _perm_reasons["allow_bot_restart"]
-                result["block_reason"] = "Bot restart is disabled"
-                result["risk_level"] = "high"
-                return result
-
-    if not restrictions.get("allow_git_push", True):
-        if "git push" in cmd_lower:
-            if otp.get("allow_git_push"):
-                result["_consume_permission"] = "allow_git_push"
-            else:
-                result["allowed"] = False
-                result["needs_permission"] = True
-                result["permission_type"] = "allow_git_push"
-                result["permission_reason"] = _perm_reasons["allow_git_push"]
-                result["block_reason"] = "Git push is disabled"
-                result["risk_level"] = "high"
-                return result
-
-    # 3-6: Determine if the primary command is read-only.
-    # Read-only commands should NOT trigger protected-path,
-    # keyword, always-confirm, or risky-pattern checks.
+    # Determine if the primary command is read-only (before Level 2).
+    # Read-only commands bypass permission, protected-path, keyword,
+    # always-confirm and risky-pattern checks.
     _READ_ONLY_CMDS = {
         "grep", "egrep", "fgrep", "rg", "cat", "tail", "head",
         "less", "more", "wc", "find", "ls", "du", "df", "ps",
@@ -957,6 +902,63 @@ def _check_command_security(
         return True
 
     is_readonly = _is_readonly_pipeline(command)
+
+    # Helper: check one-time permission in session
+    otp = (session or {}).get("one_time_permissions", {})
+
+    # 2. Permission checks — block or request one-time permission
+    #    (skip for read-only pipelines)
+    if not is_readonly:
+        perm_checks = [
+            ("allow_file_delete", ["rm ", "unlink", "remove"]),
+            ("allow_env_edit", [".env", "dotenv"]),
+            ("allow_database_edit", ["_stats.json", "_knowledge.json", "trading_state.json"]),
+        ]
+        for perm, patterns in perm_checks:
+            if not restrictions.get(perm, False):
+                for pat in patterns:
+                    if pat in cmd_lower:
+                        # Check one-time permission
+                        if otp.get(perm):
+                            # Permission granted — allow and mark for consumption
+                            result["_consume_permission"] = perm
+                            break
+                        else:
+                            result["allowed"] = False
+                            result["needs_permission"] = True
+                            result["permission_type"] = perm
+                            result["permission_reason"] = _perm_reasons.get(perm, perm)
+                            result["block_reason"] = f"Blocked by setting: {perm}"
+                            result["risk_level"] = "high"
+                            return result
+                if result.get("_consume_permission"):
+                    break
+
+        if not restrictions.get("allow_bot_restart", True):
+            if any(x in cmd_lower for x in ["restart", "systemctl"]):
+                if otp.get("allow_bot_restart"):
+                    result["_consume_permission"] = "allow_bot_restart"
+                else:
+                    result["allowed"] = False
+                    result["needs_permission"] = True
+                    result["permission_type"] = "allow_bot_restart"
+                    result["permission_reason"] = _perm_reasons["allow_bot_restart"]
+                    result["block_reason"] = "Bot restart is disabled"
+                    result["risk_level"] = "high"
+                    return result
+
+        if not restrictions.get("allow_git_push", True):
+            if "git push" in cmd_lower:
+                if otp.get("allow_git_push"):
+                    result["_consume_permission"] = "allow_git_push"
+                else:
+                    result["allowed"] = False
+                    result["needs_permission"] = True
+                    result["permission_type"] = "allow_git_push"
+                    result["permission_reason"] = _perm_reasons["allow_git_push"]
+                    result["block_reason"] = "Git push is disabled"
+                    result["risk_level"] = "high"
+                    return result
 
     # 3. Protected paths (skip for read-only pipelines)
     if not is_readonly:
