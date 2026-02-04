@@ -885,42 +885,106 @@ def _check_command_security(
             result["affected_areas"].append(f"Protected path: {path}")
             result["risk_level"] = "high"
 
-    # 4. Keyword-based protection
-    for protection, keywords in _PROTECTION_KEYWORDS.items():
-        if restrictions.get(protection, True):
-            for kw in keywords:
-                if kw in cmd_lower:
-                    result["needs_confirmation"] = True
-                    result["affected_areas"].append(f"{protection}: {kw}")
-                    if result["risk_level"] == "low":
-                        result["risk_level"] = "medium"
+    # 4-6: Determine if the primary command is read-only.
+    # Read-only pipes (grep "trader" log | tail) should NOT trigger
+    # keyword/always-confirm/risky checks for words in arguments.
+    _READ_ONLY_CMDS = {
+        "grep", "egrep", "fgrep", "rg", "cat", "tail", "head",
+        "less", "more", "wc", "find", "ls", "du", "df", "ps",
+        "top", "htop", "uptime", "free", "echo", "stat", "file",
+        "diff", "sort", "uniq", "cut", "tr", "awk", "sed",
+        "journalctl", "date", "whoami", "id", "hostname",
+    }
+    _DANGEROUS_PIPE_CMDS = {"rm", "tee", "mv", "cp", "dd", "truncate"}
 
-    # 5. Always-confirm operations
+    def _is_readonly_pipeline(cmd: str) -> bool:
+        """Check if command is a read-only pipeline."""
+        parts = [p.strip() for p in cmd.split("|")]
+        if not parts:
+            return False
+        # Extract base command from first segment
+        first_tokens = parts[0].split()
+        if not first_tokens:
+            return False
+        base = first_tokens[0].split("/")[-1]  # handle /usr/bin/grep
+        # sudo prefix — check next token
+        if base == "sudo" and len(first_tokens) > 1:
+            base = first_tokens[1].split("/")[-1]
+        # curl is read-only only for GET (no -X POST, no -d, no --data)
+        if base == "curl":
+            first_seg = parts[0].lower()
+            if any(x in first_seg for x in ["-x post", "-x put", "-x delete", "-d ", "--data"]):
+                return False
+            return True
+        # python3 -c "print..." is read-only
+        if base in ("python3", "python") and "-c" in parts[0]:
+            first_seg = parts[0].lower()
+            if "print" in first_seg and not any(
+                x in first_seg for x in ["open(", "write(", "os.system", "subprocess"]
+            ):
+                return True
+        if base not in _READ_ONLY_CMDS:
+            return False
+        # Redirect in first segment means writing — not read-only
+        if ">" in parts[0]:
+            return False
+        # sed -i is NOT read-only
+        if base == "sed" and ("-i" in first_tokens or any(t.startswith("-i") for t in first_tokens)):
+            return False
+        # Check piped commands — if any pipe target is dangerous, not read-only
+        for part in parts[1:]:
+            tokens = part.strip().split()
+            if not tokens:
+                continue
+            pipe_cmd = tokens[0].split("/")[-1]
+            if pipe_cmd in _DANGEROUS_PIPE_CMDS:
+                return False
+            # Redirect to file via tee or >
+            if ">" in part:
+                return False
+        return True
+
+    is_readonly = _is_readonly_pipeline(command)
+
+    # 4. Keyword-based protection (skip for read-only pipelines)
+    if not is_readonly:
+        for protection, keywords in _PROTECTION_KEYWORDS.items():
+            if restrictions.get(protection, True):
+                for kw in keywords:
+                    if kw in cmd_lower:
+                        result["needs_confirmation"] = True
+                        result["affected_areas"].append(f"{protection}: {kw}")
+                        if result["risk_level"] == "low":
+                            result["risk_level"] = "medium"
+
+    # 5. Always-confirm operations (skip for read-only pipelines)
     always_checks = [
         ("always_confirm_trade_open", ["open_position", "create_order"]),
         ("always_confirm_trade_close", ["close_position", "close_all", "cancel_order"]),
         ("always_confirm_autopilot_toggle", ["start_autopilot", "stop_autopilot", "autopilot"]),
         ("always_confirm_leverage_change", ["set_leverage"]),
     ]
-    for setting, patterns in always_checks:
-        if restrictions.get(setting, True):
-            for pat in patterns:
-                if pat in cmd_lower:
-                    result["needs_confirmation"] = True
-                    result["warnings"].append(f"Critical: {pat}")
-                    result["risk_level"] = "high"
+    if not is_readonly:
+        for setting, patterns in always_checks:
+            if restrictions.get(setting, True):
+                for pat in patterns:
+                    if pat in cmd_lower:
+                        result["needs_confirmation"] = True
+                        result["warnings"].append(f"Critical: {pat}")
+                        result["risk_level"] = "high"
 
-    # 6. Risky patterns — warnings
+    # 6. Risky patterns — warnings (skip for read-only pipelines)
     risky = [
         (r"rm\s+-", "File deletion"),
         (r"git\s+push\s+.*-f", "Force push"),
         (r"systemctl\s+(stop|restart)", "Service management"),
     ]
-    for pat, warn in risky:
-        if re.search(pat, cmd_lower):
-            result["warnings"].append(warn)
-            if result["risk_level"] == "low":
-                result["risk_level"] = "medium"
+    if not is_readonly:
+        for pat, warn in risky:
+            if re.search(pat, cmd_lower):
+                result["warnings"].append(warn)
+                if result["risk_level"] == "low":
+                    result["risk_level"] = "medium"
 
     return result
 
