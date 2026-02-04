@@ -2,29 +2,29 @@
   "data": {
     "agent": "TRADER",
     "level": 1,
-    "xp": -15,
-    "xp_to_next_level": 115,
-    "total_trades": 8,
+    "xp": -20,
+    "xp_to_next_level": 120,
+    "total_trades": 9,
     "winning_trades": 1,
-    "losing_trades": 7,
-    "winrate": 12.5,
-    "total_pnl_usdt": -1.6408382100000003,
+    "losing_trades": 8,
+    "winrate": 11.11111111111111,
+    "total_pnl_usdt": -1.8156222100000003,
     "total_pnl_percent": 0.0,
     "best_trade_usdt": 0.15709507,
     "worst_trade_usdt": -0.53769056,
     "avg_trade_duration_minutes": 0,
     "avg_rr_ratio": 0.0,
     "consecutive_wins": 0,
-    "consecutive_losses": 0,
+    "consecutive_losses": 1,
     "max_consecutive_wins": 1,
     "max_consecutive_losses": 4,
     "trades_today": 0,
     "pnl_today_usdt": 0.0,
-    "trades_this_week": 0,
-    "pnl_this_week_usdt": 0.0,
-    "last_trade_time": "2026-02-01T21:18:24.899325",
+    "trades_this_week": 1,
+    "pnl_this_week_usdt": -0.174784,
+    "last_trade_time": "2026-02-03T20:40:10.594314",
     "last_win_time": "2026-01-30T01:01:21.054036",
-    "last_loss_time": "2026-02-01T21:18:24.899315",
+    "last_loss_time": "2026-02-03T20:40:10.594306",
     "paused_until": null,
     "pause_reason": null,
     "api_usage": {
@@ -55,6 +55,12 @@
         "pnl_usdt": 0.0,
         "api_calls": 0,
         "api_cost": 0.0
+      },
+      "2026-02-03": {
+        "trades": 0,
+        "pnl_usdt": 0.0,
+        "api_calls": 0,
+        "api_cost": 3.8060850000000013
       }
     },
     "weekly_history": {
@@ -66,6 +72,18 @@
     "enabled": true,
     "cooldown_remaining": 0.0,
     "trades_history": [
+      {
+        "symbol": "SOLUSDT",
+        "side": "SHORT",
+        "pnl_usdt": -0.174784,
+        "pnl_pct": -2.99,
+        "entry_price": 103.15,
+        "exit_price": 104.69,
+        "close_reason": "stop_loss",
+        "leverage": "2",
+        "grade": "C",
+        "closed_at": "2026-02-03T20:40:10.594290"
+      },
       {
         "symbol": "AXSUSDT",
         "side": "SHORT",
@@ -165,6 +183,6 @@
     ],
     "paused_at": null
   },
-  "saved_at": "2026-02-03T19:45:17.384996",
+  "saved_at": "2026-02-04T07:50:49.503307",
   "version": "2.0"
 }

@@ -1,20 +1,4 @@
 {
-  "positions": {
-    "SOLUSDT": {
-      "symbol": "SOL/USDT",
-      "side": "SHORT",
-      "entry_price": 103.15,
-      "amount": 0.1,
-      "leverage": 2,
-      "stop_loss": 105.6,
-      "take_profit": 100.35,
-      "position_size_usdt": 9.24286577,
-      "source": "TRADER",
-      "strategy": "cascade_analysis",
-      "confidence": 77,
-      "opened_at": "2026-02-03T03:31:39.926905",
-      "opened_at_ts": 1770089499926
-    }
-  },
-  "updated_at": "2026-02-03T03:31:39.927158"
+  "positions": {},
+  "updated_at": "2026-02-03T20:40:26.653904"
 }

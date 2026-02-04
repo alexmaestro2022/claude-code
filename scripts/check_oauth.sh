@@ -3,6 +3,7 @@
 
 LOG="/opt/aila/logs/ai_trade/oauth_check.log"
 CREDS="/opt/aila/.claude/.credentials.json"
+HOME_CREDS="/home/aila/.claude/.credentials.json"
 ENV_FILE="/opt/aila/.env"
 
 TELEGRAM_BOT_TOKEN=$(grep "^TELEGRAM_BOT_TOKEN=" "$ENV_FILE" | tail -1 | cut -d= -f2)
@@ -10,7 +11,6 @@ TELEGRAM_CHAT_ID=$(grep "^TELEGRAM_CHAT_ID=" "$ENV_FILE" | tail -1 | cut -d= -f2
 
 send_telegram() {
     if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
-        echo "$(date): Telegram not configured" >> "$LOG"
         return 1
     fi
     curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
@@ -19,9 +19,20 @@ send_telegram() {
         -d parse_mode="HTML" > /dev/null 2>&1
 }
 
+get_remaining_hours() {
+    python3 -c "
+import json, time
+with open('$CREDS') as f:
+    data = json.load(f)
+exp = int(data.get('claudeAiOauth', {}).get('expiresAt', 0))
+remaining = (exp - int(time.time() * 1000)) / 3600000
+print(f'{remaining:.1f}')
+" 2>/dev/null
+}
+
 try_refresh() {
-    # Try auto-refresh via Python module
-    REFRESH_RESULT=$(cd /opt/aila && /opt/aila/venv/bin/python3 -c "
+    # Метод 1: Python OAuthRefresher
+    RESULT=$(cd /opt/aila && /opt/aila/venv/bin/python3 -c "
 import asyncio, sys
 sys.path.insert(0, '/opt/aila')
 from aila.utils.oauth_refresh import OAuthRefresher
@@ -29,82 +40,89 @@ r = OAuthRefresher()
 ok = asyncio.run(r.refresh_token())
 print('REFRESHED' if ok else 'FAILED')
 " 2>/dev/null)
-    echo "$REFRESH_RESULT"
+
+    if [ "$RESULT" = "REFRESHED" ]; then
+        echo "REFRESHED_PYTHON"
+        return 0
+    fi
+
+    # Метод 2: Claude CLI — запустить claude --version чтобы триггерить auto-refresh
+    echo "$(date): Python refresh failed, trying CLI refresh..." >> "$LOG"
+    su - aila -c "claude --version" >> "$LOG" 2>&1
+    sleep 3
+
+    # Синхронизировать обновлённые credentials
+    if [ -f "$HOME_CREDS" ]; then
+        cp "$HOME_CREDS" "$CREDS" 2>/dev/null && chmod 600 "$CREDS"
+    fi
+
+    # Проверить результат
+    NEW_HOURS=$(get_remaining_hours)
+    if [ "$(echo "$NEW_HOURS > 1" | bc -l 2>/dev/null)" = "1" ]; then
+        echo "REFRESHED_CLI"
+        return 0
+    fi
+
+    echo "FAILED"
+    return 1
 }
 
-# Sync fresh credentials from CLI home dir (prevents race with CLI auto-refresh)
-HOME_CREDS="/home/aila/.claude/.credentials.json"
+# === MAIN ===
+
+# 1. Синхронизировать credentials от CLI
 if [ -f "$HOME_CREDS" ]; then
     cp "$HOME_CREDS" "$CREDS" 2>/dev/null && chmod 600 "$CREDS"
     echo "$(date): Synced credentials from $HOME_CREDS" >> "$LOG"
 fi
 
-# Check credentials file exists
+# 2. Проверить файл
 if [ ! -f "$CREDS" ]; then
-    echo "$(date): NO_CREDENTIALS - file not found" >> "$LOG"
-    send_telegram "🔴 <b>AILA AI Trade</b>: OAuth credentials file not found!
+    echo "$(date): NO_CREDENTIALS" >> "$LOG"
+    send_telegram "🔴 <b>AILA AI Trade</b>: OAuth credentials not found!
 
-<code>$CREDS</code>
-
-Run:
-<code>su - aila -c 'claude auth login'</code>
-<code>cp /home/aila/.claude/.credentials.json /opt/aila/.claude/.credentials.json</code>"
+<code>su - aila -c 'claude /login'</code>"
     exit 1
 fi
 
-# Check token expiry from credentials
-EXPIRES_MS=$(python3 -c "
-import json
-with open('$CREDS') as f:
-    data = json.load(f)
-print(int(data.get('claudeAiOauth', {}).get('expiresAt', 0)))
-" 2>/dev/null)
+# 3. Проверить время жизни
+HOURS=$(get_remaining_hours)
+echo "$(date): Token expires in ${HOURS}h" >> "$LOG"
 
-NOW_MS=$(python3 -c "import time; print(int(time.time() * 1000))")
-REMAINING_MS=$((EXPIRES_MS - NOW_MS))
-REMAINING_HOURS=$((REMAINING_MS / 3600000))
-
-if [ "$REMAINING_MS" -le 0 ]; then
-    # Expired — try refresh first
-    echo "$(date): EXPIRED, attempting auto-refresh..." >> "$LOG"
+if [ "$(echo "$HOURS <= 0" | bc -l 2>/dev/null)" = "1" ]; then
+    # EXPIRED
+    echo "$(date): EXPIRED, attempting refresh..." >> "$LOG"
     RESULT=$(try_refresh)
-    if [ "$RESULT" = "REFRESHED" ]; then
-        echo "$(date): AUTO-REFRESHED after expiry" >> "$LOG"
-        send_telegram "🟢 <b>AILA AI Trade</b>: OAuth токен был истёкшим — автоматически обновлён!"
+    if [[ "$RESULT" == REFRESHED* ]]; then
+        NEW_HOURS=$(get_remaining_hours)
+        echo "$(date): $RESULT — now ${NEW_HOURS}h" >> "$LOG"
+        send_telegram "🟢 <b>AILA AI Trade</b>: OAuth обновлён ($RESULT, ${NEW_HOURS}h)"
         exit 0
     fi
-    echo "$(date): EXPIRED and refresh FAILED" >> "$LOG"
-    send_telegram "🔴 <b>AILA AI Trade</b>: OAuth токен ИСТЁК!
+    echo "$(date): ALL REFRESH METHODS FAILED" >> "$LOG"
+    send_telegram "🔴 <b>AILA AI Trade</b>: OAuth ИСТЁК! Все методы refresh не сработали!
 
-Auto-refresh FAILED. Бот НЕ может использовать Claude API!
-
-Зайди на сервер и выполни:
-<code>su - aila -c 'claude auth login'</code>
-Затем:
+<code>su - aila -c 'claude /login'</code>
 <code>cp /home/aila/.claude/.credentials.json /opt/aila/.claude/.credentials.json</code>
 <code>sudo systemctl restart aila</code>"
     exit 1
 
-elif [ "$REMAINING_MS" -le 7200000 ]; then
-    # Less than 2h — try refresh
-    echo "$(date): WARNING (${REMAINING_HOURS}h left), attempting auto-refresh..." >> "$LOG"
+elif [ "$(echo "$HOURS < 3" | bc -l 2>/dev/null)" = "1" ]; then
+    # < 3 hours — try refresh
+    echo "$(date): WARNING (${HOURS}h left), attempting refresh..." >> "$LOG"
     RESULT=$(try_refresh)
-    if [ "$RESULT" = "REFRESHED" ]; then
-        echo "$(date): AUTO-REFRESHED (was ${REMAINING_HOURS}h left)" >> "$LOG"
-        send_telegram "🟢 <b>AILA AI Trade</b>: OAuth токен автоматически обновлён (оставалось ~${REMAINING_HOURS}ч)"
+    if [[ "$RESULT" == REFRESHED* ]]; then
+        NEW_HOURS=$(get_remaining_hours)
+        echo "$(date): $RESULT — now ${NEW_HOURS}h" >> "$LOG"
+        send_telegram "🟢 <b>AILA AI Trade</b>: OAuth обновлён (${NEW_HOURS}h)"
         exit 0
     fi
-    echo "$(date): WARNING - refresh failed, expires in ${REMAINING_HOURS}h" >> "$LOG"
-    send_telegram "🟡 <b>AILA AI Trade</b>: OAuth токен истекает через ~${REMAINING_HOURS}ч!
+    echo "$(date): WARNING — refresh failed, ${HOURS}h left" >> "$LOG"
+    send_telegram "🟡 <b>AILA AI Trade</b>: OAuth истекает через ${HOURS}h! Refresh не удался.
 
-Auto-refresh не удался.
-
-Обнови вручную:
-<code>su - aila -c 'claude auth login'</code>
-<code>cp /home/aila/.claude/.credentials.json /opt/aila/.claude/.credentials.json</code>"
+<code>su - aila -c 'claude /login'</code>"
     exit 0
 
 else
-    echo "$(date): OK (expires in ${REMAINING_HOURS}h)" >> "$LOG"
+    echo "$(date): OK (${HOURS}h)" >> "$LOG"
     exit 0
 fi

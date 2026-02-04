@@ -1,9 +1,9 @@
 {
   "data": {
     "created_at": "2026-01-24T00:00:00",
-    "total_trades": 1,
+    "total_trades": 2,
     "win_rate": 0.0,
-    "total_pnl": -0.48336423,
+    "total_pnl": -0.65814823,
     "pair_performance": {
       "SENTUSDT": {
         "trades": 1,
@@ -11,6 +11,13 @@
         "losses": 1,
         "total_pnl": -0.48336423,
         "avg_pnl": -0.48336423
+      },
+      "SOLUSDT": {
+        "trades": 1,
+        "wins": 0,
+        "losses": 1,
+        "total_pnl": -0.174784,
+        "avg_pnl": -0.174784
       }
     },
     "successful_setups": [],
@@ -23,12 +30,25 @@
         "pnl_pct": -4.617087440046391,
         "duration": null,
         "timestamp": "2026-02-02T23:58:35.305835"
+      },
+      {
+        "pair": "SOLUSDT",
+        "strategy": null,
+        "direction": null,
+        "pnl": -0.174784,
+        "pnl_pct": -2.985942801745016,
+        "duration": null,
+        "timestamp": "2026-02-03T20:40:25.852840"
       }
     ],
     "mistakes_to_avoid": [
       {
         "mistake": "Avoid trading D-grade SNIPER signals on low-liquidity altcoins — poor signal quality combined with wide spreads and slippage leads to consistent stop-loss hits",
         "added_at": "2026-02-02T23:58:35.306459"
+      },
+      {
+        "mistake": "Opening SHORT positions on C-grade signals without strong bearish confirmation — SOL showed upward pressure and the weak signal led to a -3% stop-loss loss.",
+        "added_at": "2026-02-03T20:40:25.853658"
       }
     ],
     "best_strategies": [],
@@ -40,6 +60,11 @@
         "note": "Do not execute D-grade signals from SNIPER on low-cap altcoins — the risk/reward is poor and spread costs amplify losses on illiquid pairs",
         "category": "trade_review",
         "added_at": "2026-02-02T23:58:35.307378"
+      },
+      {
+        "note": "Do not open positions on C-grade signals. A weak signal combined with a SHORT against momentum leads to predictable stop-loss hits. Only trade A/B grade setups.",
+        "category": "trade_review",
+        "added_at": "2026-02-03T20:40:25.854735"
       }
     ],
     "market_regime": {},
@@ -190,6 +215,13 @@
           "added_at": "2026-01-29T02:51:52"
         },
         {
+          "symbol": "SOLUSDT",
+          "pnl_usdt": -0.174784,
+          "grade": "C",
+          "close_reason": "stop_loss",
+          "added_at": "2026-02-03T20:40:10.595826"
+        },
+        {
           "symbol": "AXSUSDT",
           "pnl_usdt": -0.15392026,
           "grade": "C",
@@ -335,6 +367,6 @@
       ]
     }
   },
-  "saved_at": "2026-02-03T20:01:15.829073",
+  "saved_at": "2026-02-04T07:50:51.468149",
   "version": "2.0"
 }
