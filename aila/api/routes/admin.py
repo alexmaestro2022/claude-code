@@ -877,17 +877,9 @@ def _check_command_security(
                 result["risk_level"] = "high"
                 return result
 
-    # 3. Protected paths
-    for path in protected_paths:
-        pattern = path.replace("*", ".*")
-        if re.search(pattern, command, re.IGNORECASE):
-            result["needs_confirmation"] = True
-            result["affected_areas"].append(f"Protected path: {path}")
-            result["risk_level"] = "high"
-
-    # 4-6: Determine if the primary command is read-only.
-    # Read-only pipes (grep "trader" log | tail) should NOT trigger
-    # keyword/always-confirm/risky checks for words in arguments.
+    # 3-6: Determine if the primary command is read-only.
+    # Read-only commands should NOT trigger protected-path,
+    # keyword, always-confirm, or risky-pattern checks.
     _READ_ONLY_CMDS = {
         "grep", "egrep", "fgrep", "rg", "cat", "tail", "head",
         "less", "more", "wc", "find", "ls", "du", "df", "ps",
@@ -895,14 +887,30 @@ def _check_command_security(
         "diff", "sort", "uniq", "cut", "tr", "awk", "sed",
         "journalctl", "date", "whoami", "id", "hostname",
     }
+    # Script launchers — running a .py/.sh/.js file is read-only
+    _SCRIPT_LAUNCHERS = {"python3", "python", "bash", "sh", "node"}
     _DANGEROUS_PIPE_CMDS = {"rm", "tee", "mv", "cp", "dd", "truncate"}
 
     def _is_readonly_pipeline(cmd: str) -> bool:
         """Check if command is a read-only pipeline."""
-        parts = [p.strip() for p in cmd.split("|")]
+        # Handle && chains: cd /opt/aila && python3 script.py
+        # Split by && and check the LAST meaningful command
+        chain_parts = [p.strip() for p in cmd.split("&&")]
+        # Skip leading cd/export — find the main command
+        main_cmd = cmd
+        for cp in chain_parts:
+            tokens_cp = cp.split()
+            if not tokens_cp:
+                continue
+            base_cp = tokens_cp[0].split("/")[-1]
+            if base_cp in ("cd", "export", "source"):
+                continue
+            main_cmd = cp
+            break
+
+        parts = [p.strip() for p in main_cmd.split("|")]
         if not parts:
             return False
-        # Extract base command from first segment
         first_tokens = parts[0].split()
         if not first_tokens:
             return False
@@ -916,13 +924,18 @@ def _check_command_security(
             if any(x in first_seg for x in ["-x post", "-x put", "-x delete", "-d ", "--data"]):
                 return False
             return True
-        # python3 -c "print..." is read-only
-        if base in ("python3", "python") and "-c" in parts[0]:
-            first_seg = parts[0].lower()
-            if "print" in first_seg and not any(
-                x in first_seg for x in ["open(", "write(", "os.system", "subprocess"]
-            ):
-                return True
+        # Script launchers: python3 script.py, bash script.sh
+        if base in _SCRIPT_LAUNCHERS:
+            # python3 -c "print..." is read-only
+            if "-c" in parts[0]:
+                first_seg = parts[0].lower()
+                if "print" in first_seg and not any(
+                    x in first_seg for x in ["open(", "write(", "os.system", "subprocess"]
+                ):
+                    return True
+                return False
+            # Running a script file — read-only execution
+            return True
         if base not in _READ_ONLY_CMDS:
             return False
         # Redirect in first segment means writing — not read-only
@@ -939,12 +952,20 @@ def _check_command_security(
             pipe_cmd = tokens[0].split("/")[-1]
             if pipe_cmd in _DANGEROUS_PIPE_CMDS:
                 return False
-            # Redirect to file via tee or >
             if ">" in part:
                 return False
         return True
 
     is_readonly = _is_readonly_pipeline(command)
+
+    # 3. Protected paths (skip for read-only pipelines)
+    if not is_readonly:
+        for path in protected_paths:
+            pattern = path.replace("*", ".*")
+            if re.search(pattern, command, re.IGNORECASE):
+                result["needs_confirmation"] = True
+                result["affected_areas"].append(f"Protected path: {path}")
+                result["risk_level"] = "high"
 
     # 4. Keyword-based protection (skip for read-only pipelines)
     if not is_readonly:
