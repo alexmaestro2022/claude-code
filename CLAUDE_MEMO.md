@@ -3351,3 +3351,8 @@ Chat(follow-up + анализ) → [COMMAND_FOR_CODE] → Code → ... → "Го
   - SIGTERM → 5s → SIGKILL при превышении таймаута
   - Запись в историю со статусом "timeout"
   - UI: "⏱️ Команда превысила таймаут и была остановлена"
+- **Read-only command bypass** — read-only команды (grep, cat, tail, head, journalctl и др.) не вызывают false-positive срабатывания keyword protection:
+  - `_is_readonly_pipeline()` в `_check_command_security()` определяет read-only пайплайны
+  - Пропускает уровни 4 (keyword), 5 (always-confirm), 6 (risky patterns)
+  - Учитывает pipe в опасные команды (rm, tee, mv) и redirect `>`
+  - Пример: `grep "trader|confidence" logs | tail -80` → low (раньше было high)
