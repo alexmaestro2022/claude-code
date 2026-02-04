@@ -1136,14 +1136,14 @@ def _get_chat_history(limit: int = 20, for_prompt: bool = False) -> list[dict]:
         return []
     if for_prompt:
         # Exclude code_result messages (can be very large) and trim content
-        filtered = [
-            m for m in history
-            if m.get("type") != "code_result"
-        ]
-        for m in filtered:
-            if len(m.get("content", "")) > 1000:
+        filtered = []
+        for m in history:
+            if m.get("type") == "code_result":
+                continue
+            if len(m.get("content", "")) > 1500:
                 m = dict(m)
-                m["content"] = m["content"][:1000] + "..."
+                m["content"] = m["content"][:1500] + "..."
+            filtered.append(m)
         return filtered[-limit:]
     return history[-limit:]
 
@@ -1218,14 +1218,14 @@ def _process_knowledge_updates(response: str) -> list[str]:
 
 
 def _format_history_compact(
-    history: list[dict], max_messages: int = 5
+    history: list[dict], max_messages: int = 10
 ) -> str:
     """Format chat history compactly — only recent messages, truncated."""
     recent = history[-max_messages:] if history else []
     lines: list[str] = []
     for msg in recent:
         role = "U" if msg.get("role") == "user" else "A"
-        content = msg.get("content", "")[:500]
+        content = msg.get("content", "")[:800]
         lines.append(f"{role}: {content}")
     return "\n".join(lines)
 
@@ -1315,16 +1315,16 @@ def _get_mode_instructions(mode: str, auto_confirmed: bool = False) -> str:
 _AUTO_CONFIRM_WORDS = frozenset([
     "да", "верно", "подтверждаю", "выполняй", "делай", "погнали",
     "продолжай", "ок", "окей", "yes", "ok", "go", "confirm", "давай",
+    "ага", "точно", "запускай", "поехали",
 ])
 
 
 def _is_auto_confirmation(message: str) -> bool:
     """Check if message is a confirmation for auto mode."""
-    msg = message.lower().strip().rstrip(".!,")
-    # Short messages with confirmation words
-    if len(message) <= 30:
-        return any(w in msg for w in _AUTO_CONFIRM_WORDS)
-    return False
+    if len(message) > 60:
+        return False
+    words = set(re.findall(r"\w+", message.lower()))
+    return bool(words & _AUTO_CONFIRM_WORDS)
 
 
 _TASK_COMPLETE_PATTERNS = (
@@ -1469,7 +1469,7 @@ async def chat_message(request: Request):
                 "[ADMIN_CHAT] Auto confirmed by user: %s", message[:50],
             )
         # New task (long message) — reset auto_confirmed, require new confirmation
-        elif len(message) > 30:
+        elif len(message) > 60:
             auto_confirmed = False
             _admin_sessions[token]["auto_confirmed"] = False
             logger.info("[ADMIN_CHAT] Auto mode — new task, awaiting confirmation")
@@ -1495,8 +1495,8 @@ async def chat_message(request: Request):
         prompt_type = "first (full context)"
     else:
         # FOLLOW-UP — minimal prompt, no knowledge
-        history = _get_chat_history(5, for_prompt=True)
-        history_text = _format_history_compact(history, 5)
+        history = _get_chat_history(10, for_prompt=True)
+        history_text = _format_history_compact(history, 10)
 
         prompt = _build_followup_prompt(
             message, history_text, mode, chat_only, auto_confirmed,
