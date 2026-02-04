@@ -1211,6 +1211,43 @@ async def get_levels_config():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/agent-levels")
+async def get_agent_levels():
+    """Get current level, XP, limits and stats for both agents."""
+    try:
+        from ...ai_trade.config import (
+            TRADER_LEVELS, SNIPER_LEVELS, AGENT_XP_THRESHOLDS,
+        )
+        orch = await get_orchestrator()
+        result = {}
+        for agent_name in ("TRADER", "SNIPER"):
+            stats = orch.autopilot._agent_stats.get_stats(agent_name)
+            limits = orch.autopilot._agent_stats.get_level_limits(agent_name)
+            level = stats.get("level", 1)
+            next_level = level + 1
+            levels_table = TRADER_LEVELS if agent_name == "TRADER" else SNIPER_LEVELS
+            next_limits = levels_table.get(next_level, {})
+            positions = orch.position_manager.get_open_count_by_agent(agent_name)
+            result[agent_name.lower()] = {
+                "level": level,
+                "xp": stats.get("xp", 0),
+                "xp_next": AGENT_XP_THRESHOLDS.get(next_level, 0),
+                "limits": limits,
+                "next_level_limits": next_limits,
+                "positions_open": positions,
+                "stats": {
+                    "total_trades": stats.get("total_trades", 0),
+                    "wins": stats.get("winning_trades", 0),
+                    "losses": stats.get("losing_trades", 0),
+                    "winrate": round(stats.get("winrate", 0), 1),
+                    "pnl": round(stats.get("total_pnl_usdt", 0), 2),
+                },
+            }
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # ==================== POSITIONS ====================
 
 

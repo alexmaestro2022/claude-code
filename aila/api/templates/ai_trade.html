@@ -423,6 +423,55 @@
             </div>
         </div>
 
+        <!-- AGENT LEVELS PANEL -->
+        <div class="card p-4 mb-4" id="agentLevelsPanel">
+            <div class="collapsible-header" onclick="toggleSection('agentLevelsContent')">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-trophy text-dim"></i>
+                    <span class="font-semibold" data-i18n="agent_levels">Agent Levels</span>
+                </div>
+                <i class="fa-solid fa-chevron-down text-dim text-sm"></i>
+            </div>
+            <div class="collapsible-content" id="agentLevelsContent">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+                    <!-- TRADER Level -->
+                    <div style="border:1px solid var(--border-color);border-radius:10px;padding:14px">
+                        <div style="font-weight:700;margin-bottom:8px"><i class="fa-solid fa-chart-line mr-1"></i> TRADER</div>
+                        <div class="flex items-center gap-2" style="margin-bottom:6px">
+                            <span style="font-size:1.5rem;font-weight:700" class="accent" id="alTraderLevel">1</span>
+                            <span style="font-size:0.75rem;color:var(--text-secondary)" data-i18n="level">Level</span>
+                        </div>
+                        <div class="progress-bar" style="margin-bottom:4px">
+                            <div class="progress-fill" id="alTraderXpBar" style="width:0%"></div>
+                        </div>
+                        <div style="font-size:0.7rem;color:var(--text-secondary);margin-bottom:8px">
+                            <span id="alTraderXp">0</span> / <span id="alTraderXpNext">100</span> XP
+                        </div>
+                        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px" id="alTraderLimits"></div>
+                        <div style="font-size:0.7rem;color:var(--text-secondary)" id="alTraderStats"></div>
+                        <div style="font-size:0.65rem;color:var(--text-secondary);margin-top:6px;opacity:0.7" id="alTraderNext"></div>
+                    </div>
+                    <!-- SNIPER Level -->
+                    <div style="border:1px solid var(--border-color);border-radius:10px;padding:14px">
+                        <div style="font-weight:700;margin-bottom:8px"><i class="fa-solid fa-crosshairs mr-1"></i> SNIPER</div>
+                        <div class="flex items-center gap-2" style="margin-bottom:6px">
+                            <span style="font-size:1.5rem;font-weight:700" class="accent" id="alSniperLevel">1</span>
+                            <span style="font-size:0.75rem;color:var(--text-secondary)" data-i18n="level">Level</span>
+                        </div>
+                        <div class="progress-bar" style="margin-bottom:4px">
+                            <div class="progress-fill" id="alSniperXpBar" style="width:0%"></div>
+                        </div>
+                        <div style="font-size:0.7rem;color:var(--text-secondary);margin-bottom:8px">
+                            <span id="alSniperXp">0</span> / <span id="alSniperXpNext">100</span> XP
+                        </div>
+                        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px" id="alSniperLimits"></div>
+                        <div style="font-size:0.7rem;color:var(--text-secondary)" id="alSniperStats"></div>
+                        <div style="font-size:0.65rem;color:var(--text-secondary);margin-top:6px;opacity:0.7" id="alSniperNext"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- AGENT TABS -->
         <div class="tabs mb-4">
             <div class="tab active" data-tab="trader" onclick="switchTab('trader')">
@@ -1003,8 +1052,27 @@
                 scanning: 'Сканирует',
                 paused: 'Пауза',
                 idle: 'Ожидание',
+                agent_levels: 'Уровни агентов',
+                level: 'Уровень',
+                leverage: 'Плечо',
+                max_positions: 'Макс. позиций',
+                risk_per_trade: 'Риск на сделку',
+                trades_per_day: 'Сделок/день',
+                next_level: 'След. уровень',
+                current_limits: 'Текущие лимиты',
+                positions_open: 'Открыто',
             },
-            en: {}
+            en: {
+                agent_levels: 'Agent Levels',
+                level: 'Level',
+                leverage: 'Leverage',
+                max_positions: 'Max Positions',
+                risk_per_trade: 'Risk/Trade',
+                trades_per_day: 'Trades/Day',
+                next_level: 'Next Level',
+                current_limits: 'Current Limits',
+                positions_open: 'Open',
+            }
         };
 
         function t(key) {
@@ -1776,6 +1844,49 @@
             } catch (e) { /* silent */ }
         }
 
+        // Agent Levels
+        async function loadAgentLevels() {
+            try {
+                const data = await fetchData('/agent-levels');
+                if (!data) return;
+                for (const agent of ['trader', 'sniper']) {
+                    const d = data[agent];
+                    if (!d) continue;
+                    const pfx = agent.charAt(0).toUpperCase() + agent.slice(1);
+                    document.getElementById('al' + pfx + 'Level').textContent = d.level;
+                    document.getElementById('al' + pfx + 'Xp').textContent = d.xp;
+                    const xpNext = d.xp_next || 100;
+                    document.getElementById('al' + pfx + 'XpNext').textContent = xpNext;
+                    const pct = xpNext > 0 ? Math.min(100, (d.xp / xpNext) * 100) : 0;
+                    const bar = document.getElementById('al' + pfx + 'XpBar');
+                    bar.style.width = pct + '%';
+                    bar.style.background = d.xp >= 0 ? 'var(--accent)' : '#ef4444';
+
+                    const lim = d.limits || {};
+                    const limEl = document.getElementById('al' + pfx + 'Limits');
+                    limEl.innerHTML =
+                        '<span class="badge badge-gray" style="font-size:0.65rem">' + t('leverage') + ' ' + (lim.max_leverage || '?') + 'x</span>' +
+                        '<span class="badge badge-gray" style="font-size:0.65rem">' + t('max_positions') + ' ' + (lim.max_positions || '?') + ' (' + t('positions_open') + ' ' + (d.positions_open || 0) + ')</span>' +
+                        '<span class="badge badge-gray" style="font-size:0.65rem">' + t('risk_per_trade') + ' ' + (lim.max_risk_pct || '?') + '%</span>' +
+                        '<span class="badge badge-gray" style="font-size:0.65rem">' + t('trades_per_day') + ' ' + (lim.max_daily_trades || '?') + '</span>';
+
+                    const s = d.stats || {};
+                    const pnl = s.pnl || 0;
+                    const pnlCls = pnl >= 0 ? 'pnl-positive' : 'pnl-negative';
+                    document.getElementById('al' + pfx + 'Stats').innerHTML =
+                        s.total_trades + ' ' + t('trades') + ' | WR ' + (s.winrate || 0) + '% | <span class="' + pnlCls + '">' + (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(2) + '</span>';
+
+                    const nl = d.next_level_limits || {};
+                    const nextEl = document.getElementById('al' + pfx + 'Next');
+                    if (Object.keys(nl).length > 0) {
+                        nextEl.innerHTML = t('next_level') + ': ' + (nl.max_leverage || '?') + 'x lev, ' + (nl.max_positions || '?') + ' pos, ' + (nl.max_risk_pct || '?') + '% risk';
+                    } else {
+                        nextEl.textContent = 'MAX LEVEL';
+                    }
+                }
+            } catch (e) { /* silent */ }
+        }
+
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             applyLanguage();
@@ -1791,6 +1902,10 @@
 
             // Full refresh every 30 seconds (stats, API usage, learning)
             setInterval(loadDashboardData, 30000);
+
+            // Agent levels
+            loadAgentLevels();
+            setInterval(loadAgentLevels, 30000);
 
             // OAuth status
             loadOAuthStatus();

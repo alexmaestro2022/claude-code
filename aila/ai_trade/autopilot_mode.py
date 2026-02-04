@@ -353,16 +353,19 @@ class AutopilotMode:
                 await self._scan_trader_standard()
                 return
 
-            # Check position limit before scanning
-            # Use REAL positions from exchange, not internal cache
+            # Check position limit before scanning (agent-specific)
             limits = self._agent_stats.get_level_limits("TRADER")
             max_positions = limits.get('max_positions', 1)
             try:
                 real_positions = await self._orchestrator.exchanges.primary.get_positions()
-                current_positions = len([p for p in real_positions if float(p.get('size', 0)) != 0])
+                all_exchange = len([p for p in real_positions if float(p.get('size', 0)) != 0])
+                current_positions = self._orchestrator.position_manager.get_open_count_by_agent("TRADER")
+                # Fallback: if bot_positions empty but exchange shows positions
+                if current_positions == 0 and all_exchange > 0:
+                    current_positions = all_exchange
             except Exception as e:
                 logger.warning(f"[TRADER][CASCADE] Error fetching positions: {e}, using cache")
-                current_positions = self._orchestrator.position_manager.get_open_count()
+                current_positions = self._orchestrator.position_manager.get_open_count_by_agent("TRADER")
 
             if current_positions >= max_positions and pause_on_position_limit:
                 self._cascade_stats['paused_reason'] = 'position_limit'
@@ -415,8 +418,9 @@ class AutopilotMode:
                     added = await self._add_opportunity_to_queue(opportunity)
                     if added:
                         self._cascade_stats['stages_completed']['vip_p1'] += 1
-                        # Check if position limit reached after adding signal
-                        if current_positions + 1 >= max_positions:
+                        # Re-check agent-specific position count
+                        trader_pos = self._orchestrator.position_manager.get_open_count_by_agent("TRADER")
+                        if trader_pos + 1 >= max_positions:
                             logger.info("[TRADER][CASCADE] Position limit will be reached, stopping cascade")
                             self._cascade_stats['last_cascade_at'] = datetime.utcnow()
                             return
@@ -431,7 +435,8 @@ class AutopilotMode:
                     added = await self._add_opportunity_to_queue(opportunity)
                     if added:
                         self._cascade_stats['stages_completed']['p2'] += 1
-                        if current_positions + 1 >= max_positions:
+                        trader_pos = self._orchestrator.position_manager.get_open_count_by_agent("TRADER")
+                        if trader_pos + 1 >= max_positions:
                             logger.info("[TRADER][CASCADE] Position limit will be reached, stopping cascade")
                             self._cascade_stats['last_cascade_at'] = datetime.utcnow()
                             return
@@ -638,6 +643,18 @@ class AutopilotMode:
         signal = queue_signal["signal"]
         agent = queue_signal["agent"]
         pair = signal.get("pair", "UNKNOWN")
+
+        # Check agent-specific position limit before processing
+        limits = self._agent_stats.get_level_limits(agent)
+        max_pos = limits.get('max_positions', 1)
+        agent_positions = self._orchestrator.position_manager.get_open_count_by_agent(agent)
+        if agent_positions >= max_pos:
+            logger.info(
+                f"[{agent}] Position limit reached ({agent_positions}/{max_pos}), "
+                f"skipping {pair}"
+            )
+            self._signal_queue.mark_processed(pair, agent, success=False)
+            return
 
         logger.info(f"[{agent}][STAGE 2] Processing queued signal: {pair}")
 

@@ -468,6 +468,20 @@ class PositionManager:
             return True
         return False
 
+    def get_open_count_by_agent(self, agent: str) -> int:
+        """Count open positions by source agent.
+
+        Args:
+            agent: Agent name (TRADER or SNIPER)
+
+        Returns:
+            Number of open positions for this agent
+        """
+        return sum(
+            1 for p in self._bot_positions.values()
+            if p.get("source", "TRADER").upper() == agent.upper()
+        )
+
     def has_bot_position(self, symbol: str) -> bool:
         """Check if symbol has bot-tracked position."""
         normalized = symbol.replace("/", "")

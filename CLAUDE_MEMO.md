@@ -3383,3 +3383,21 @@ Chat(follow-up + анализ) → [COMMAND_FOR_CODE] → Code → ... → "Го
   - Скрипт: `scripts/backup_data.sh`, cron ежедневно в 3:00 UTC
   - Копирует: ai_trade data, admin data, subscription, .env, credentials, CLAUDE_MEMO
   - Ротация: хранит 7 последних бэкапов в `/opt/aila/backups/`
+
+## 47. Раздельный подсчёт позиций TRADER/SNIPER + UI уровней (2026-02-04)
+
+### Проблема
+При `max_positions=1` (Level 1) считались ВСЕ позиции на бирже. Если SNIPER открыл позицию — TRADER не мог торговать и наоборот.
+
+### Решение
+- **`position_manager.py`** — новый метод `get_open_count_by_agent(agent)` считает позиции по `source` из `_bot_positions`
+- **`autopilot_mode.py`** — 3 места обновлены:
+  - Проверка перед cascade (строка ~356): `get_open_count_by_agent("TRADER")` вместо общего подсчёта + fallback если bot_positions пуст
+  - Cascade stop (stage 1, stage 2): re-check через `get_open_count_by_agent`
+  - `_process_queue()`: проверка agent-specific limit перед `_validate_signal()`
+- **`ai_trade.py`** — новый endpoint `GET /agent-levels` с level, xp, limits, positions_open, stats
+- **`ai_trade.html`** — UI панель уровней агентов:
+  - Collapsible card между positions и tabs
+  - 2 блока (TRADER / SNIPER) с XP прогресс-баром, лимитами, статистикой
+  - Локализация: ключи `agent_levels`, `level`, `leverage`, `max_positions`, `risk_per_trade`, `trades_per_day`, `next_level`, `positions_open`
+  - Обновление каждые 30 секунд через `loadAgentLevels()`
