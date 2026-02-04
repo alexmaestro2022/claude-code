@@ -1,1 +1,0 @@
-2026-01-30T12:37:15.236Z [DEBUG] Failed to check enabledPlatforms: TypeError: LK is not a function

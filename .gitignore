@@ -39,3 +39,9 @@ Thumbs.db
 .npm/
 .pm2/
 .claude.json*
+
+# Claude CLI artifacts
+.claude/debug/
+.claude/todos/
+.claude/telemetry/
+.claude/projects/
