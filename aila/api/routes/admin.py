@@ -156,6 +156,9 @@ BLOCK_DURATION = 600  # 10 minutes
 ALLOWED_EXTENSIONS = {".txt", ".md", ".json", ".py"}
 MAX_FILE_SIZE = 1_000_000  # 1MB
 RATE_LIMIT_COOLDOWN = 120  # 2 min pause for scheduled tasks on rate limit
+COMMAND_HISTORY_FILE = Path("/opt/aila/data/admin/command_history.json")
+COMMAND_HISTORY_MAX = 500
+COMMAND_TIMEOUT_DEFAULT = 300  # 5 minutes default execution timeout
 
 # Rate limit detection patterns
 RATE_LIMIT_PATTERNS = (
@@ -190,6 +193,60 @@ def _save_json(path: Path, data: Any) -> None:
         path.write_text(json.dumps(data, ensure_ascii=False, indent=2))
     except Exception as e:
         logger.error(f"Failed to save {path}: {e}")
+
+
+def _record_command_history(
+    command: str,
+    source: str,
+    risk_level: str,
+    command_type: str,
+    status: str,
+    duration: float,
+    output_preview: str = "",
+    error: str | None = None,
+) -> None:
+    """Record command execution to history (FIFO, max 500)."""
+    try:
+        history = _load_json(COMMAND_HISTORY_FILE, [])
+        if not isinstance(history, list):
+            history = []
+        entry = {
+            "id": f"cmd_{int(time.time() * 1000)}",
+            "timestamp": datetime.now().isoformat(),
+            "command": command,
+            "source": source,
+            "risk_level": risk_level,
+            "command_type": command_type,
+            "status": status,
+            "duration_seconds": round(duration, 1),
+            "output_preview": output_preview[:200] if output_preview else "",
+            "error": error,
+        }
+        history.insert(0, entry)
+        if len(history) > COMMAND_HISTORY_MAX:
+            history = history[:COMMAND_HISTORY_MAX]
+        _save_json(COMMAND_HISTORY_FILE, history)
+    except Exception as e:
+        logger.error(f"Failed to record command history: {e}")
+
+
+def _detect_command_type(command: str) -> str:
+    """Detect command type: read-only, system, trading, modification."""
+    c = command.lower()
+    ro = ["cat ", "tail ", "head ", "grep ", "ls ", "find ", "ps ", "top ",
+          "df ", "du ", "wc ", "echo ", "journalctl", "systemctl status",
+          "git log", "git status", "git diff", "curl -s"]
+    trade = ["position", "trade", "order", "leverage", "autopilot",
+             "balance", "close_all", "open_position"]
+    sys_cmds = ["systemctl restart", "systemctl stop", "service ", "chmod ",
+                "chown ", "pip ", "npm ", "apt ", "git push", "git commit"]
+    if any(p in c for p in trade):
+        return "trading"
+    if any(p in c for p in sys_cmds):
+        return "system"
+    if any(p in c for p in ro):
+        return "read-only"
+    return "modification"
 
 
 def _audit_log(user: str, action: str, command: str = "", result: str = "") -> None:
@@ -628,6 +685,7 @@ _DEFAULT_SETTINGS: dict[str, Any] = {
         "max_auto_iterations": 10,
         "auto_timeout_minutes": 30,
         "require_human_every_n_actions": 5,
+        "command_timeout_seconds": 300,
     },
     "protected_paths": [
         "/opt/aila/aila/ai_trade/agents/",
@@ -1558,6 +1616,17 @@ async def execute_code(request: Request):
             _save_chat_message("code_result", response, "code_result")
             _audit_log("admin", "EXECUTE_RESULT", command[:50], response[:200])
 
+            _record_command_history(
+                command=command,
+                source="manual",
+                risk_level=sec_check.get("risk_level", "low"),
+                command_type=_detect_command_type(command),
+                status="success" if result.returncode == 0 else "error",
+                duration=_code_elapsed,
+                output_preview=response[:200],
+                error=error[:200] if result.returncode != 0 and error else None,
+            )
+
             return {
                 "success": result.returncode == 0,
                 "output": response,
@@ -1627,10 +1696,14 @@ async def execute_code_stream(request: Request):
         _audit_log("admin", "ONE_TIME_PERMISSION_USED", consumed, command[:80])
 
     _audit_log("admin", "EXECUTE_STREAM", command)
+    _stream_cmd_type = _detect_command_type(command)
+    _stream_risk = sec_check.get("risk_level", "low")
+    _stream_source = body.get("source", "manual")
 
     async def event_stream():
         """Generate SSE events from Claude Code subprocess."""
         global _running_process
+        _stream_start = time.time()
 
         async with _process_lock:
             if _running_process and _running_process.returncode is None:
@@ -1661,6 +1734,13 @@ async def execute_code_stream(request: Request):
                 yield f"data: {json.dumps({'status': 'error', 'message': str(e)})}\n\n"
                 return
 
+        # Get timeout from settings
+        settings = _load_json(DATA_DIR / "settings.json", _DEFAULT_SETTINGS)
+        cmd_timeout = settings.get("restrictions", {}).get(
+            "command_timeout_seconds", COMMAND_TIMEOUT_DEFAULT
+        )
+        _timed_out = False
+
         # Send initial thinking state
         yield f"data: {json.dumps({'status': 'thinking', 'message': 'Claude is thinking...'})}\n\n"
 
@@ -1675,7 +1755,21 @@ async def execute_code_stream(request: Request):
                 if line:
                     error_lines.append(line)
 
+        async def timeout_watcher():
+            """Kill process if it exceeds timeout."""
+            nonlocal _timed_out
+            await asyncio.sleep(cmd_timeout)
+            if proc.returncode is None:
+                _timed_out = True
+                logger.warning(f"[ADMIN_CODE] Timeout ({cmd_timeout}s): {command[:80]}")
+                proc.terminate()
+                try:
+                    await asyncio.wait_for(proc.wait(), timeout=5)
+                except asyncio.TimeoutError:
+                    proc.kill()
+
         stderr_task = asyncio.create_task(read_stderr())
+        timeout_task = asyncio.create_task(timeout_watcher())
 
         try:
             assert proc.stdout is not None
@@ -1689,6 +1783,7 @@ async def execute_code_stream(request: Request):
 
         except asyncio.CancelledError:
             # Client disconnected — kill process
+            timeout_task.cancel()
             if proc.returncode is None:
                 proc.terminate()
                 try:
@@ -1697,12 +1792,27 @@ async def execute_code_stream(request: Request):
                     proc.kill()
             raise
 
+        timeout_task.cancel()
         await stderr_task
         await proc.wait()
 
         _running_process = None
         full_output = "\n".join(output_lines)
         full_error = "\n".join(error_lines)
+
+        # Handle timeout
+        if _timed_out:
+            _increment_admin_stats("code")
+            timeout_msg = f"Command timed out after {cmd_timeout}s"
+            _save_chat_message("code_result", timeout_msg, "code_result")
+            _audit_log("admin", "EXECUTE_STREAM_TIMEOUT", command[:50])
+            _record_command_history(
+                command=command, source=_stream_source, risk_level=_stream_risk,
+                command_type=_stream_cmd_type, status="timeout",
+                duration=cmd_timeout, output_preview=full_output[:200],
+            )
+            yield f"data: {json.dumps({'status': 'error', 'message': timeout_msg, 'timeout': True})}\n\n"
+            return
 
         # Check for rate limit in stderr only
         if _is_rate_limit_error(full_error):
@@ -1717,6 +1827,17 @@ async def execute_code_stream(request: Request):
         _increment_admin_stats("code")
         _save_chat_message("code_result", response, "code_result")
         _audit_log("admin", "EXECUTE_STREAM_RESULT", command[:50], response[:200])
+
+        _record_command_history(
+            command=command,
+            source=_stream_source,
+            risk_level=_stream_risk,
+            command_type=_stream_cmd_type,
+            status="success" if success else "error",
+            duration=time.time() - _stream_start,
+            output_preview=response[:200],
+            error=full_error[:200] if not success and full_error else None,
+        )
 
         yield f"data: {json.dumps({'status': 'done' if success else 'error', 'message': 'Done' if success else 'Error', 'output': response[-500:] if len(response) > 500 else '', 'return_code': proc.returncode})}\n\n"
 
@@ -1771,10 +1892,13 @@ async def confirm_send_to_code(request: Request):
 
     _audit_log("admin", "CONFIRM_CODE", command[:100])
 
+    _confirm_cmd_type = _detect_command_type(command)
+
     # Reuse streaming execution
     async def confirmed_stream():
         """Stream confirmed command execution."""
         global _running_process
+        _confirm_start = time.time()
 
         # Security check (final)
         check = _check_command_security(command, "manual")
@@ -1851,6 +1975,17 @@ async def confirm_send_to_code(request: Request):
         _increment_admin_stats("code")
         _save_chat_message("code_result", response, "code_result")
         _audit_log("admin", "CONFIRM_CODE_RESULT", command[:50], response[:200])
+
+        _record_command_history(
+            command=command,
+            source="manual",
+            risk_level=check.get("risk_level", "low"),
+            command_type=_confirm_cmd_type,
+            status="success" if success else "error",
+            duration=time.time() - _confirm_start,
+            output_preview=response[:200],
+            error=full_error[:200] if not success and full_error else None,
+        )
 
         yield f"data: {json.dumps({'status': 'done' if success else 'error', 'message': 'Done' if success else 'Error', 'output': response[-500:] if len(response) > 500 else '', 'return_code': proc.returncode})}\n\n"
 
@@ -2087,6 +2222,29 @@ async def delete_command(cmd_id: str, request: Request):
         _save_json(DATA_DIR / "scheduled.json", scheduled)
 
     _audit_log("admin", "DELETE_COMMAND", cmd_id)
+    return {"success": True}
+
+
+# =============================================
+# Command history
+# =============================================
+
+@router.get("/commands/history")
+async def get_command_history(request: Request, limit: int = 50):
+    """Get command execution history."""
+    _require_auth(request)
+    history = _load_json(COMMAND_HISTORY_FILE, [])
+    if not isinstance(history, list):
+        history = []
+    return {"history": history[:min(limit, COMMAND_HISTORY_MAX)]}
+
+
+@router.delete("/commands/history")
+async def clear_command_history(request: Request):
+    """Clear command execution history."""
+    _require_auth(request)
+    _save_json(COMMAND_HISTORY_FILE, [])
+    _audit_log("admin", "CLEAR_COMMAND_HISTORY")
     return {"success": True}
 
 

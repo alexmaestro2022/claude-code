@@ -111,6 +111,9 @@
             <button class="top-btn" onclick="openModal('knowledgeModal')" data-i18n-title="knowledge_base">
                 <i class="fa-solid fa-book"></i>
             </button>
+            <button class="top-btn" onclick="openModal('historyModal'); loadCommandHistory();" title="Command History">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+            </button>
             <button class="top-btn" id="updateClaudeBtn" onclick="checkClaudeUpdate()" data-i18n-title="claude_code_update" style="position:relative;">
                 <i class="fa-solid fa-cloud-arrow-down" id="updateBtnIcon"></i>
                 <span class="update-dot" id="updateDot" style="display:none;"></span>
@@ -169,9 +172,9 @@
             </div>
             <pre class="cmd-preview" id="cmdPreviewText"></pre>
             <textarea class="cmd-editor" id="cmdEditorText" rows="5"></textarea>
-            <div class="risk-indicator" id="riskIndicator" style="display:none;">
-                <span class="risk-dot" id="riskDot"></span>
-                <span id="riskText"></span>
+            <div class="risk-panel" id="riskPanel" style="display:none;">
+                <div class="risk-title" id="riskTitle"></div>
+                <div class="risk-detail" id="riskDetail"></div>
             </div>
             <div class="cmd-actions">
                 <button class="act-btn secondary" id="editCmdBtn" onclick="toggleEditCommand()">
@@ -451,6 +454,7 @@
                 <div class="sec-input"><label data-i18n="max_auto_iter">Max auto iterations:</label><input type="number" id="secMaxIter" value="10" min="1" max="50"><small data-i18n="max_iter_desc">Cycle stops after this many iterations</small></div>
                 <div class="sec-input"><label data-i18n="auto_timeout">Auto task timeout (min):</label><input type="number" id="secTimeout" value="30" min="5" max="120"><small data-i18n="timeout_desc">Maximum execution time per task</small></div>
                 <div class="sec-input"><label data-i18n="human_every_n">Require human every N actions:</label><input type="number" id="secHumanEvery" value="5" min="1" max="20"><small data-i18n="human_desc">Pause for confirmation in Auto mode</small></div>
+                <div class="sec-input"><label>Command timeout (sec):</label><input type="number" id="secCmdTimeout" value="300" min="30" max="1800"><small>SIGTERM → SIGKILL if exceeded</small></div>
             </div>
         </div>
         <div class="modal-footer">
@@ -551,6 +555,48 @@
         <div class="modal-footer">
             <button class="btn btn-ghost" onclick="closeModal('commandModal')" data-i18n="cancel">Cancel</button>
             <button class="btn btn-primary" onclick="saveCommand()"><i class="fa-solid fa-check"></i> <span data-i18n="save">Save</span></button>
+        </div>
+    </div>
+</div>
+
+<!-- COMMAND HISTORY MODAL -->
+<div class="modal-overlay" id="historyModal" onclick="closeModalOnOverlay(event)">
+    <div class="modal-content" style="max-width:700px;">
+        <div class="modal-header">
+            <h3 style="font-weight:600;"><i class="fa-solid fa-clock-rotate-left mr-2"></i> Command History</h3>
+            <button class="modal-close" onclick="closeModal('historyModal')"><i class="fa-solid fa-times"></i></button>
+        </div>
+        <div class="modal-body" style="padding:0;">
+            <div style="display:flex;gap:6px;padding:12px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center;">
+                <select id="histFilterType" onchange="renderHistory()" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--card-bg);color:var(--text-primary);font-size:0.75rem;">
+                    <option value="">Все типы</option>
+                    <option value="read-only">👁️ Read-only</option>
+                    <option value="system">⚙️ Система</option>
+                    <option value="trading">💰 Торговля</option>
+                    <option value="modification">✏️ Изменение</option>
+                </select>
+                <select id="histFilterRisk" onchange="renderHistory()" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--card-bg);color:var(--text-primary);font-size:0.75rem;">
+                    <option value="">Все риски</option>
+                    <option value="low">🟢 Low</option>
+                    <option value="medium">🟡 Medium</option>
+                    <option value="high">🔴 High</option>
+                </select>
+                <select id="histFilterStatus" onchange="renderHistory()" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--card-bg);color:var(--text-primary);font-size:0.75rem;">
+                    <option value="">Все статусы</option>
+                    <option value="success">✅ Success</option>
+                    <option value="error">❌ Error</option>
+                    <option value="timeout">⏱️ Timeout</option>
+                </select>
+                <div style="flex:1;"></div>
+                <button onclick="clearCommandHistory()" style="padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--red);font-size:0.75rem;cursor:pointer;">Очистить</button>
+            </div>
+            <div id="historyList" style="max-height:400px;overflow-y:auto;padding:8px 16px;"></div>
+            <div id="historyDetail" style="display:none;padding:12px 16px;border-top:1px solid var(--border);background:rgba(0,0,0,0.2);max-height:200px;overflow-y:auto;">
+                <div style="font-size:0.75rem;font-weight:600;margin-bottom:4px;">Полная команда:</div>
+                <pre id="histDetailCmd" style="font-size:0.75rem;color:var(--accent);white-space:pre-wrap;word-break:break-all;margin:0 0 8px;"></pre>
+                <div style="font-size:0.75rem;font-weight:600;margin-bottom:4px;">Вывод:</div>
+                <pre id="histDetailOutput" style="font-size:0.75rem;color:var(--text-secondary);white-space:pre-wrap;word-break:break-all;margin:0;"></pre>
+            </div>
         </div>
     </div>
 </div>
@@ -746,6 +792,7 @@ let autoConfirmed = false; // auto mode plan confirmed by user
 let isWorking = false;
 let chatModeActive = false;
 let commands = [];
+let _lastRiskCheck = null; // Last security check result
 // One-time permission state
 let pendingPermission = null; // {type, reason, command, autoMode}
 
@@ -1763,12 +1810,17 @@ async function executeInCode(command, autoMode) {
                     // Final events
                     if (event.status === 'done') {
                         showWorkingState('done');
-                    } else if (event.status === 'error' && (event.return_code !== undefined || event.message === 'Rate limit hit')) {
+                    } else if (event.status === 'error' && (event.return_code !== undefined || event.message === 'Rate limit hit' || event.timeout)) {
                         if (event.rate_limit) {
                             handleRateLimitResponse({ error: true, error_type: 'rate_limit_info', message: 'Rate limit' });
                             return;
                         }
-                        showWorkingState('error', event.message || t('status_error'));
+                        if (event.timeout) {
+                            showWorkingState('error', '⏱️ ' + event.message);
+                            addMessage('system', '⏱️ Команда превысила таймаут и была остановлена');
+                        } else {
+                            showWorkingState('error', event.message || t('status_error'));
+                        }
                     }
                 } catch {}
             }
@@ -2299,27 +2351,59 @@ function showCommandBlock(command, mode) {
     }
 }
 
+function _detectCommandType(cmd) {
+    const c = cmd.toLowerCase();
+    const ro = ['cat ','tail ','head ','grep ','ls ','find ','ps ','top','df ','du ','wc ','echo ','curl -s','curl ','python3 -c "print','journalctl','systemctl status','git log','git status','git diff'];
+    const trade = ['position','trade','order','leverage','autopilot','balance','close_all','open_position'];
+    const sys = ['systemctl restart','systemctl stop','service ','chmod ','chown ','pip ','npm ','apt ','git push','git commit','git add'];
+    if (trade.some(p => c.includes(p))) return {type:'trading', icon:'💰', label:'Торговля'};
+    if (sys.some(p => c.includes(p))) return {type:'system', icon:'⚙️', label:'Система'};
+    if (ro.some(p => c.includes(p))) return {type:'read-only', icon:'👁️', label:'Только чтение'};
+    return {type:'modification', icon:'✏️', label:'Изменение'};
+}
+
 async function checkCommandRisk(command) {
+    const panel = document.getElementById('riskPanel');
+    const title = document.getElementById('riskTitle');
+    const detail = document.getElementById('riskDetail');
+    const ct = _detectCommandType(command);
+
     try {
         const data = await api('/check-command', 'POST', { command, mode: currentMode });
-        const indicator = document.getElementById('riskIndicator');
-        const dot = document.getElementById('riskDot');
-        const text = document.getElementById('riskText');
+        _lastRiskCheck = data;
+        const level = data.risk_level || 'low';
+        panel.className = 'risk-panel ' + level;
 
-        if (data.risk_level && data.risk_level !== 'low') {
-            dot.className = 'risk-dot ' + data.risk_level;
-            const labels = { medium: t('risk_medium'), high: t('risk_high'), critical: t('risk_critical') };
-            let riskMsg = labels[data.risk_level] || data.risk_level;
-            if (data.affected_areas && data.affected_areas.length > 0) {
-                riskMsg += ' — ' + data.affected_areas.slice(0, 2).join(', ');
-            }
-            text.textContent = riskMsg;
-            indicator.style.display = 'flex';
+        if (level === 'critical') {
+            title.innerHTML = '⛔ Команда заблокирована';
+            detail.innerHTML = '📋 Причина: ' + (data.block_reason || 'Чёрный список') + '<br>🚫 Эта команда в чёрном списке и не может быть выполнена';
+        } else if (level === 'high') {
+            let lines = ['🔴 Опасно — требует подтверждения'];
+            title.innerHTML = lines[0];
+            let d = '📋 Тип: ' + ct.icon + ' ' + ct.label;
+            if (data.affected_areas && data.affected_areas.length) d += '<br>⚠️ Затрагивает: ' + data.affected_areas.join(', ');
+            if (data.warnings && data.warnings.length) d += '<br>⚠️ ' + data.warnings.join(', ');
+            if (data.needs_permission) d += '<br>🛡️ Требуется: разрешение (' + data.permission_type + ')';
+            detail.innerHTML = d;
+        } else if (level === 'medium') {
+            title.innerHTML = '🟡 Внимание — изменение системы';
+            let d = '📋 Тип: ' + ct.icon + ' ' + ct.label;
+            if (data.affected_areas && data.affected_areas.length) d += '<br>📋 Область: ' + data.affected_areas.join(', ');
+            if (data.warnings && data.warnings.length) d += '<br>⚠️ Детали: ' + data.warnings.join(', ');
+            detail.innerHTML = d;
         } else {
-            indicator.style.display = 'none';
+            title.innerHTML = '🟢 Безопасно — только чтение';
+            detail.innerHTML = '📋 Тип: ' + ct.icon + ' ' + ct.label + '<br>💡 Команда ничего не меняет';
+        }
+        panel.style.display = '';
+
+        // In auto mode: stop countdown for high risk
+        if (currentMode === 'auto' && level === 'high') {
+            cancelAutoCountdown();
+            addMessage('system', '🔴 Высокий риск — автовыполнение остановлено, требуется подтверждение');
         }
     } catch {
-        document.getElementById('riskIndicator').style.display = 'none';
+        panel.style.display = 'none';
     }
 }
 
@@ -2466,6 +2550,7 @@ async function loadSecuritySettings() {
         document.getElementById('secMaxIter').value = r.max_auto_iterations || 10;
         document.getElementById('secTimeout').value = r.auto_timeout_minutes || 30;
         document.getElementById('secHumanEvery').value = r.require_human_every_n_actions || 5;
+        document.getElementById('secCmdTimeout').value = r.command_timeout_seconds || 300;
     } catch {}
 }
 
@@ -2497,6 +2582,7 @@ async function saveSecuritySettings() {
             max_auto_iterations: parseInt(document.getElementById('secMaxIter').value) || 10,
             auto_timeout_minutes: parseInt(document.getElementById('secTimeout').value) || 30,
             require_human_every_n_actions: parseInt(document.getElementById('secHumanEvery').value) || 5,
+            command_timeout_seconds: parseInt(document.getElementById('secCmdTimeout').value) || 300,
         }
     };
 
@@ -2873,6 +2959,65 @@ function formatNumber(n) {
 // =============================================
 // Init
 // =============================================
+// Command history
+let _cmdHistory = [];
+async function loadCommandHistory() {
+    try {
+        const d = await api('/commands/history?limit=100');
+        _cmdHistory = d.history || [];
+        renderHistory();
+    } catch { _cmdHistory = []; renderHistory(); }
+}
+function renderHistory() {
+    const ft = document.getElementById('histFilterType').value;
+    const fr = document.getElementById('histFilterRisk').value;
+    const fs = document.getElementById('histFilterStatus').value;
+    let items = _cmdHistory;
+    if (ft) items = items.filter(h => h.command_type === ft);
+    if (fr) items = items.filter(h => h.risk_level === fr);
+    if (fs) items = items.filter(h => h.status === fs);
+    const el = document.getElementById('historyList');
+    document.getElementById('historyDetail').style.display = 'none';
+    if (!items.length) { el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-secondary);font-size:0.85rem;">Нет записей</div>'; return; }
+    const typeIcons = {'read-only':'👁️','system':'⚙️','trading':'💰','modification':'✏️'};
+    const riskColors = {low:'var(--accent)',medium:'#fbbf24',high:'#f97316',critical:'var(--red)'};
+    const statusIcons = {success:'✅',error:'❌',timeout:'⏱️',blocked:'🚫'};
+    el.innerHTML = items.map((h,i) => {
+        const ts = new Date(h.timestamp);
+        const time = ts.toLocaleTimeString('ru',{hour:'2-digit',minute:'2-digit'});
+        const date = ts.toLocaleDateString('ru',{day:'2-digit',month:'2-digit'});
+        const cmd = h.command.length > 50 ? h.command.slice(0,50)+'…' : h.command;
+        return `<div onclick="showHistDetail(${i})" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;font-size:0.78rem;transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
+            <span style="color:var(--text-secondary);min-width:70px;">${date} ${time}</span>
+            <span style="min-width:20px;">${typeIcons[h.command_type]||'❓'}</span>
+            <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${h.command}">${cmd}</span>
+            <span style="color:${riskColors[h.risk_level]||'inherit'};font-size:0.7rem;min-width:50px;">${h.risk_level}</span>
+            <span style="min-width:20px;">${statusIcons[h.status]||'❓'}</span>
+            <span style="color:var(--text-secondary);min-width:35px;text-align:right;">${h.duration_seconds}s</span>
+        </div>`;
+    }).join('');
+}
+function showHistDetail(idx) {
+    const ft = document.getElementById('histFilterType').value;
+    const fr = document.getElementById('histFilterRisk').value;
+    const fs = document.getElementById('histFilterStatus').value;
+    let items = _cmdHistory;
+    if (ft) items = items.filter(h => h.command_type === ft);
+    if (fr) items = items.filter(h => h.risk_level === fr);
+    if (fs) items = items.filter(h => h.status === fs);
+    const h = items[idx];
+    if (!h) return;
+    document.getElementById('histDetailCmd').textContent = h.command;
+    document.getElementById('histDetailOutput').textContent = h.output_preview || h.error || '(нет вывода)';
+    document.getElementById('historyDetail').style.display = '';
+}
+async function clearCommandHistory() {
+    if (!confirm('Очистить историю команд?')) return;
+    await api('/commands/history', 'DELETE');
+    _cmdHistory = [];
+    renderHistory();
+}
+
 // Subscription tracking
 async function loadAdminSubscription() {
     try {

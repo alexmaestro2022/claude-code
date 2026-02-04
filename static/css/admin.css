@@ -876,12 +876,17 @@
         .act-btn.warn { background: rgba(245,158,11,0.2); border: 1px solid #f59e0b; color: #f59e0b; }
 
         /* Risk indicator */
-        .risk-indicator { display: flex; align-items: center; gap: 8px; padding: 8px 14px; font-size: 0.8rem; }
-        .risk-dot { width: 8px; height: 8px; border-radius: 50%; }
-        .risk-dot.low { background: var(--accent); }
-        .risk-dot.medium { background: #fbbf24; }
-        .risk-dot.high { background: #f97316; }
-        .risk-dot.critical { background: var(--red); }
+        .risk-panel { padding: 10px 14px; font-size: 0.8rem; border-left: 4px solid var(--border); margin: 0 14px; border-radius: 0 6px 6px 0; background: rgba(255,255,255,0.02); }
+        .risk-panel.low { border-left-color: var(--accent); }
+        .risk-panel.medium { border-left-color: #fbbf24; background: rgba(251,191,36,0.05); }
+        .risk-panel.high { border-left-color: #f97316; background: rgba(249,115,22,0.07); }
+        .risk-panel.critical { border-left-color: var(--red); background: rgba(239,68,68,0.08); }
+        .risk-panel .risk-title { font-weight: 600; margin-bottom: 4px; display: flex; align-items: center; gap: 6px; }
+        .risk-panel .risk-detail { color: var(--text-secondary); line-height: 1.5; }
+        .risk-panel.low .risk-title { color: var(--accent); }
+        .risk-panel.medium .risk-title { color: #fbbf24; }
+        .risk-panel.high .risk-title { color: #f97316; }
+        .risk-panel.critical .risk-title { color: var(--red); }
 
         /* Code result block */
         .result-block {

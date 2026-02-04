@@ -3335,3 +3335,19 @@ Chat(follow-up + анализ) → [COMMAND_FOR_CODE] → Code → ... → "Го
   - Файл данных: `data/subscription.json`, трекинг уведомлений: `data/subscription_notified.json`
   - Виджет в AI Trade dashboard: прогресс-бар, цвета (зелёный >7д, жёлтый 3-7д, красный <3д), OAuth статус
   - Виджет в Admin panel: прогресс-бар + модалка с date picker для обновления даты продления
+- **Enhanced risk display** — подробное отображение уровня риска команд в command block:
+  - 4 уровня: 🟢 Безопасно, 🟡 Внимание, 🔴 Опасно, ⛔ Заблокировано
+  - Определение типа команды: 👁️ read-only, ⚙️ система, 💰 торговля, ✏️ изменение
+  - Цветная полоска слева (border-left), подробные описания причин и затрагиваемых областей
+  - В Auto режиме: 🔴 high risk останавливает countdown и требует подтверждения
+- **Command history** — история выполненных команд:
+  - `GET /api/admin/commands/history` + `DELETE /api/admin/commands/history`
+  - Хранение: `data/admin/command_history.json` (FIFO, max 500 записей)
+  - Запись при каждом execute/execute-stream/confirm-code с source, risk, type, status, duration
+  - Кнопка 📋 в header Admin панели, historyModal с фильтрами по типу/риску/статусу
+  - Клик по записи показывает полную команду и вывод
+- **Execution timeout** — таймаут для зависших команд:
+  - Настраиваемый в Security Settings → Limits → "Command timeout (sec)", default 300s
+  - SIGTERM → 5s → SIGKILL при превышении таймаута
+  - Запись в историю со статусом "timeout"
+  - UI: "⏱️ Команда превысила таймаут и была остановлена"
