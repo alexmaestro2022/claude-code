@@ -411,6 +411,12 @@ class ClaudeMaxClient:
             if md.get("support"):
                 entry["sup"] = md["support"]
                 entry["res"] = md.get("resistance")
+            # Funding rate and open interest
+            if md.get("funding_rate") is not None:
+                entry["fr"] = round(md["funding_rate"], 4)
+                entry["fs"] = md.get("funding_signal", "NEUTRAL")
+            if md.get("open_interest"):
+                entry["oi"] = md["open_interest"]
             pairs_summary.append(entry)
 
         # BTC context — one line
@@ -476,7 +482,9 @@ class ClaudeMaxClient:
             f"{btc_line}\n{trades_line}\n"
             f"{experience_section}"
             "Rules: R:R>=1.5, SL min 2% majors/3% alts, lev max 3x/2x, "
-            "no LONG if BEARISH/RSI>75, no SHORT if BULLISH/RSI<25.\n"
+            "no LONG if BEARISH/RSI>75, no SHORT if BULLISH/RSI<25. "
+            "fr=funding rate: >0.05%=overleveraged long (SHORT bias), <-0.05%=overleveraged short (LONG bias). "
+            "High OI + flat price = big move incoming.\n"
             'JSON: {"decision":"LONG|SHORT|WAIT","pair":"SYM/USDT","confidence":0-100,'
             '"strategy":"brief","entry_price":N,"stop_loss":N,"take_profit":N,'
             '"leverage":1-3,"position_size_pct":2-4,"reasoning":"why",'

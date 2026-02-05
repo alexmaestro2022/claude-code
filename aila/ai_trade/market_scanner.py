@@ -190,6 +190,19 @@ class MarketScanner:
 
             trend = self._determine_trend(current_price, ema50, ema200)
 
+            # Get funding rate and open interest
+            funding_info = await self._exchange.get_funding_info(symbol)
+            oi_info = await self._exchange.get_open_interest(symbol)
+
+            # Determine funding signal
+            funding_pct = funding_info.get("funding_rate_pct", 0)
+            if funding_pct > 0.05:
+                funding_signal = "SHORT_BIAS"  # Market overleveraged long
+            elif funding_pct < -0.05:
+                funding_signal = "LONG_BIAS"  # Market overleveraged short
+            else:
+                funding_signal = "NEUTRAL"
+
             result = {
                 "price": current_price,
                 "rsi": round(rsi, 2) if rsi else None,
@@ -205,6 +218,9 @@ class MarketScanner:
                 "bollinger": bb,
                 "volume_profile": vol_profile,
                 "stoch_rsi": stoch_rsi,
+                "funding_rate": funding_pct,
+                "funding_signal": funding_signal,
+                "open_interest": oi_info.get("open_interest", 0),
             }
             self._cache.set(cache_key, result)
             return result

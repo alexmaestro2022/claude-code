@@ -2,7 +2,7 @@
 
 import logging
 import math
-from typing import Optional
+from typing import Any, Optional
 
 from pybit.unified_trading import HTTP
 
@@ -371,6 +371,51 @@ class BybitExchange(BaseExchange):
         if result["retCode"] == 0 and result["result"]["list"]:
             return float(result["result"]["list"][0].get("fundingRate", 0))
         return 0.0
+
+    @retry_async(max_attempts=2)
+    async def get_funding_info(self, symbol: str) -> dict[str, Any]:
+        """Get detailed funding rate info for symbol.
+
+        Returns:
+            Dict with funding_rate, next_funding_time, predicted_rate
+        """
+        bybit_symbol = self.normalize_symbol(symbol)
+        try:
+            result = self._client.get_tickers(category="linear", symbol=bybit_symbol)
+            if result["retCode"] == 0 and result["result"]["list"]:
+                ticker = result["result"]["list"][0]
+                rate = float(ticker.get("fundingRate", 0))
+                return {
+                    "funding_rate": rate,
+                    "funding_rate_pct": round(rate * 100, 4),
+                    "next_funding_time": ticker.get("nextFundingTime", ""),
+                    "predicted_rate": float(ticker.get("predictedFundingRate", 0) or 0),
+                }
+        except Exception as e:
+            logger.error(f"Funding info error {symbol}: {e}")
+        return {"funding_rate": 0, "funding_rate_pct": 0, "next_funding_time": "", "predicted_rate": 0}
+
+    @retry_async(max_attempts=2)
+    async def get_open_interest(self, symbol: str) -> dict[str, Any]:
+        """Get open interest for symbol.
+
+        Returns:
+            Dict with open_interest value and timestamp
+        """
+        bybit_symbol = self.normalize_symbol(symbol)
+        try:
+            result = self._client.get_open_interest(
+                category="linear", symbol=bybit_symbol, intervalTime="5min", limit=1
+            )
+            if result["retCode"] == 0 and result["result"]["list"]:
+                oi_data = result["result"]["list"][0]
+                return {
+                    "open_interest": float(oi_data.get("openInterest", 0)),
+                    "timestamp": oi_data.get("timestamp", ""),
+                }
+        except Exception as e:
+            logger.error(f"Open interest error {symbol}: {e}")
+        return {"open_interest": 0, "timestamp": ""}
 
     @retry_async(max_attempts=2)
     async def set_leverage(self, leverage: int, symbol: str) -> bool:

@@ -58,6 +58,8 @@ Volume ratio: {opportunity.get('market_data', {}).get('volume_profile', {}).get(
 StochRSI K: {opportunity.get('market_data', {}).get('stoch_rsi', {}).get('k', 'N/A') if opportunity.get('market_data', {}).get('stoch_rsi') else 'N/A'}
 Support: {opportunity.get('market_data', {}).get('support', 'N/A')}
 Resistance: {opportunity.get('market_data', {}).get('resistance', 'N/A')}
+Funding Rate: {opportunity.get('market_data', {}).get('funding_rate', 0):.4f}% ({opportunity.get('market_data', {}).get('funding_signal', 'NEUTRAL')})
+Open Interest: {opportunity.get('market_data', {}).get('open_interest', 0):,.0f}
 
 ## HISTORICAL PERFORMANCE ON THIS PAIR
 {json.dumps(pair_stats, indent=2)}
@@ -73,6 +75,7 @@ Resistance: {opportunity.get('market_data', {}).get('resistance', 'N/A')}
 5. Is the position size within safe limits?
 6. Are there any of the known mistakes being repeated?
 7. Is the confidence level justified by the data?
+8. Funding rate alignment: REJECT LONG if funding >0.1% (market overheated), favor SHORT if funding >0.05%
 
 ## REQUIRED THRESHOLDS
 - R/R ratio >= 1.5:1 (REJECT if below)

@@ -182,6 +182,19 @@ class SniperAgent(BaseAgent):
         trigger_type = snipe.get("trigger_type", "")
         max_lev = self._get_max_leverage()
 
+        # Get funding and OI data
+        funding_line = ""
+        if self.scanner:
+            try:
+                md = await self.scanner.get_market_data(symbol, "5m")
+                if md:
+                    fr = md.get("funding_rate", 0)
+                    fs = md.get("funding_signal", "NEUTRAL")
+                    oi = md.get("open_interest", 0)
+                    funding_line = f"FUNDING: {fr:.4f}% ({fs}), OI: {oi:,.0f}\n"
+            except Exception:
+                pass
+
         # Get experience from knowledge base
         sniper_kb = self.knowledge_base.data.get("sniper_learning", {})
         mistakes = sniper_kb.get("mistakes_to_avoid", [])[-3:]
@@ -210,8 +223,8 @@ PAIR: {symbol}
 DIRECTION: {snipe.get('direction')}
 ENTRY PRICE: {snipe.get('entry_price')}
 MAX LEVERAGE: {max_lev}
-{experience_section}
-Calculate optimal parameters.
+{funding_line}{experience_section}
+Calculate optimal parameters. Funding >0.05% = overleveraged long (SHORT bias), <-0.05% = overleveraged short (LONG bias).
 
 Respond in JSON only:
 {{"entry_type": "market"|"limit", "entry_price": number,
