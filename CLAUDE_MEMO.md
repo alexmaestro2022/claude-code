@@ -4114,3 +4114,68 @@ if current_positions == 0 and all_exchange > 0 and len(bot_positions) == 0:
 Теперь только 1 уведомление на каждое событие:
 - Открытие: `{emoji} {agent} TRADE OPENED` (с Level, WR, Trigger)
 - Закрытие: `{emoji} {agent} TRADE CLOSED` (с Grade, PnL, Lesson)
+
+---
+
+## 63. Post-Analysis: проверка цены после закрытия позиции (2026-02-05)
+
+### Цель
+Анализировать движение цены ПОСЛЕ закрытия позиции, чтобы понять:
+- Был ли выход оптимальным (цена пошла против нас = хорошо)
+- Упущенная прибыль если цена продолжила движение
+- Избежанный убыток если вышли вовремя
+
+### Реализация
+
+#### Очередь пост-анализа
+```python
+# __init__ в AutopilotMode
+self._post_analysis_queue: list[dict] = []
+
+# При закрытии позиции (_on_position_closed)
+check_delay = 10 if source == "SNIPER" else 30  # minutes
+self._post_analysis_queue.append({
+    "symbol": symbol,
+    "exit_price": exit_price,
+    "side": side,
+    "close_reason": close_reason,
+    "pnl_usdt": pnl_usdt,
+    "pnl_pct": pnl_pct,
+    "source": source,
+    "grade": grade,
+    "closed_at": datetime.now(),
+    "check_at": datetime.now() + timedelta(minutes=check_delay),
+})
+```
+
+#### Функция обработки (_process_post_analysis)
+- Вызывается в main loop после `check_positions()`
+- Проверяет текущую цену для позиций у которых прошло время
+- Логирует результат: `GOOD EXIT` или `EARLY EXIT`
+- Сохраняет в KB `{agent}_profile.post_analysis_history`
+
+### Данные в post_analysis_history
+```json
+{
+  "symbol": "BTCUSDT",
+  "side": "BUY",
+  "exit_price": 99000,
+  "close_reason": "tp_hit",
+  "original_pnl_pct": 1.5,
+  "original_grade": "A",
+  "current_price": 98500,
+  "price_change_pct": -0.51,
+  "was_good_exit": true,
+  "missed_profit_pct": 0,
+  "avoided_loss_pct": 0.51,
+  "minutes_after_close": 30,
+  "analyzed_at": "2026-02-05T..."
+}
+```
+
+### Логика определения качества выхода
+- **LONG (BUY)**: цена упала после выхода = `was_good_exit: true`
+- **SHORT (SELL)**: цена выросла после выхода = `was_good_exit: true`
+
+### Файл
+- `aila/ai_trade/autopilot_mode.py`
