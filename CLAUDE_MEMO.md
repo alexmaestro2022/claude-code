@@ -3778,3 +3778,102 @@ trade_data = {
 1. Если много HOLD перед убыточным закрытием → нужно было раньше выходить
 2. Если trailing/breakeven сработал → position management = good
 3. Если позиция закрылась быстро по SL без решений → entry quality плохой
+
+---
+
+## 56. Retrospective Decision Analysis + MENTOR Position Management Rules (2026-02-05)
+
+### Проблема
+1. ANALYST не оценивал правильность каждого решения в позиции
+2. MENTOR не генерировал правила для управления позицией
+3. TRADER/SNIPER не использовали накопленный опыт по position management
+
+### Решение
+
+**1. ANALYST** — ретроспективная оценка решений:
+```python
+# claude_max_client.py - ANALYST prompt
+## RETROSPECTIVE DECISION ANALYSIS
+For EACH decision in the log above, evaluate IN HINDSIGHT:
+1. Was the action CORRECT given the context at that moment?
+2. Was the TIMING right? (too early / perfect / too late)
+3. What happened AFTER? Did price continue in position's favor or reverse?
+4. Score: GOOD (correct), NEUTRAL (ok), BAD (wrong), PREMATURE (too early), LATE (too late)
+
+# ANALYST response:
+{
+    "decision_analysis": [
+        {"decision_index": 0, "action": "HOLD", "score": "GOOD", "reasoning": "..."}
+    ],
+    "management_lessons": [
+        "When RSI < 70 in uptrend, HOLD is better than early exit",
+        "Trailing stop at 0.5% distance locks profit without premature exit"
+    ]
+}
+```
+
+**2. MENTOR** — обработка management_lessons:
+```python
+# mentor.py - review_trade()
+management_lessons = analyst_result.get("management_lessons", [])
+for lesson in management_lessons[:3]:
+    mgmt_rule_entry = {
+        "rule": lesson,
+        "category": "position_management",  # NEW category
+        "source": "analyst_management_lesson",
+        ...
+    }
+    # Add to agent-specific management_rules (max 15)
+    agent_learning["management_rules"] = mgmt_rules[-15:]
+```
+
+**3. TRADER/SNIPER** — использование management_rules:
+```python
+# trader.py / sniper.py
+def _get_management_rules_text(self) -> str:
+    """Get position management rules from knowledge base for prompt."""
+    mgmt_rules = self.knowledge_base.data.get("trader_learning", {}).get("management_rules", [])
+    # Returns last 5 rules as text
+
+# evaluate_exit prompt:
+## LEARNED MANAGEMENT RULES
+{self._get_management_rules_text()}
+
+## DECISION RULES...
+```
+
+### Структура в knowledge_base.json
+```json
+{
+    "trader_learning": {
+        "learned_rules": [...],
+        "management_rules": [
+            {
+                "rule": "When RSI < 70 in uptrend, HOLD is better than early exit",
+                "category": "position_management",
+                "source": "analyst_management_lesson",
+                "grade": "B",
+                "symbol": "BTCUSDT"
+            }
+        ]
+    },
+    "sniper_learning": {
+        "management_rules": [...]
+    }
+}
+```
+
+### Цепочка обучения
+```
+Trade close → ANALYST (decision_analysis, management_lessons)
+           → autopilot logs lessons
+           → MENTOR.review_trade() saves to management_rules
+           → TRADER/SNIPER evaluate_exit uses rules in next positions
+```
+
+### Логи
+```
+[TRADER][ANALYST] AI grade=B mgmt=good | Held position well during consolidation
+[TRADER][ANALYST] Management lessons: ['When RSI < 70...']
+[TRADER][MENTOR] Added 2 rules: ['...', '...']
+```
