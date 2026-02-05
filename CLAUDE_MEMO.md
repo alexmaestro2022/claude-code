@@ -3401,3 +3401,22 @@ Chat(follow-up + анализ) → [COMMAND_FOR_CODE] → Code → ... → "Го
   - 2 блока (TRADER / SNIPER) с XP прогресс-баром, лимитами, статистикой
   - Локализация: ключи `agent_levels`, `level`, `leverage`, `max_positions`, `risk_per_trade`, `trades_per_day`, `next_level`, `positions_open`
   - Обновление каждые 30 секунд через `loadAgentLevels()`
+
+## 48. Position-linked TP/SL + cleanup orphan orders (2026-02-05)
+
+### Проблема
+1. **TP/SL создавались как отдельные ордера** через `create_order()` (stopOrderType=Stop), не привязанные к позиции
+2. Когда один из них срабатывал и закрывал позицию, **второй оставался висеть** как "осиротевший"
+3. При закрытии позиции биржей (SL/TP hit) ордера **не отменялись** — только удалялись из трекинга
+
+### Решение
+- **`position_manager.py`** — `_set_sl_tp()`:
+  - Заменён `create_order()` на `set_trading_stop()` (Bybit API `/v5/position/set-trading-stop`)
+  - TP/SL теперь **привязаны к позиции** — автоматически удаляются при закрытии
+- **`autopilot_mode.py`** — `_on_position_closed()`:
+  - Добавлен вызов `_cancel_open_orders(symbol)` после `remove_bot_position()`
+  - Очищает любые оставшиеся ордера при закрытии позиции биржей
+
+### Методы Bybit API
+- `set_trading_stop()` — привязывает TP/SL к позиции (авто-удаление)
+- `create_order(stop_market/take_profit_market)` — создаёт **отдельный** условный ордер (НЕ использовать для TP/SL!)
