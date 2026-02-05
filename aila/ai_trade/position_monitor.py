@@ -129,7 +129,7 @@ class PositionMonitor:
             pos["decision_log"].append(decision_entry)
             # Keep only last 50 decisions to avoid bloat
             pos["decision_log"] = pos["decision_log"][-50:]
-            self._position_manager.save_positions()
+            self._position_manager._save_bot_positions()
             logger.debug(f"[MONITOR] Decision logged for {symbol}: {action}")
 
     async def start(self) -> None:
