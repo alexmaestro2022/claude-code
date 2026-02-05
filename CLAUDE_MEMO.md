@@ -3420,3 +3420,24 @@ Chat(follow-up + анализ) → [COMMAND_FOR_CODE] → Code → ... → "Го
 ### Методы Bybit API
 - `set_trading_stop()` — привязывает TP/SL к позиции (авто-удаление)
 - `create_order(stop_market/take_profit_market)` — создаёт **отдельный** условный ордер (НЕ использовать для TP/SL!)
+
+## 49. Sync closed positions before cascade (2026-02-05)
+
+### Проблема
+В цикле autopilot порядок был:
+1. TRADER cascade проверял `bot_positions` → видел старую позицию (уже закрыта на бирже)
+2. `_sync_closed_positions()` обнаруживала закрытие → удаляла
+3. Один цикл cascade пропускался зря с ложным "position limit reached (1/1)"
+
+### Решение
+**`autopilot_mode.py`** — `_autopilot_loop()`:
+- Перенёс `_sync_closed_positions()` в НАЧАЛО цикла (до `_run_scan_cycle()`)
+- Теперь `bot_positions` синхронизируется с биржей ДО проверки лимитов
+
+### Порядок выполнения (после фикса)
+```
+1. _sync_closed_positions()   ← ПЕРВЫМ
+2. _run_scan_cycle()          (SNIPER → TRADER cascade)
+3. _process_queue()
+4. _position_monitor.check_positions()
+```
