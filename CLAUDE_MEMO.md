@@ -3543,3 +3543,56 @@ get_open_interest(symbol) # open_interest, timestamp
 - `aila/ai_trade/claude_max_client.py`
 - `aila/ai_trade/agents/sniper.py`
 - `aila/ai_trade/agents/reviewer.py`
+
+---
+
+## 52. Fear & Greed Index + Liquidation Pressure (2026-02-05)
+
+### Проблема
+Не учитывался общий рыночный сентимент (Fear & Greed) и давление ликвидаций.
+
+### Решение
+
+**1. `market_scanner.py`** — Fear & Greed Index:
+```python
+get_fear_greed_index()  # API alternative.me, кэш 1 час
+```
+Возвращает: `{"value": 12, "label": "Extreme Fear", "updated_at": timestamp}`
+
+**2. `bybit_exchange.py`** — Liquidation estimate:
+```python
+estimate_liquidations(symbol)  # OI change за 25 мин (5x5min)
+```
+Возвращает: `{"oi_change_pct": -2.5, "liquidation_pressure": "MEDIUM", ...}`
+
+**3. `market_scanner.py`** — в `get_market_data()`:
+- `fear_greed`, `fear_greed_label` — из API
+- `liquidation_pressure` (HIGH/MEDIUM/LOW)
+- `oi_change_pct` — изменение OI за 25 мин
+
+**4. `claude_max_client.py`** — TRADER:
+- Per-pair: `liq`, `oi_chg`
+- Global: `Fear&Greed: {value} ({label})`
+- Правила: "Fear&Greed <20 = best LONG, >80 = best SHORT. liq=HIGH after drop = reversal"
+
+**5. `sniper.py`** — `prepare_snipe()`:
+- Добавлены строки: Liquidation, OI change, Fear&Greed
+
+**6. `reviewer.py`** — MARKET DATA + checklist:
+- Данные: Liquidation Pressure, Fear & Greed
+- Checklist #9: "Fear&Greed >80 + LONG = extra scrutiny"
+- Checklist #10: "High liquidation = wait for cascade"
+
+### Логика сигналов
+
+| Индикатор | Значение | Сигнал |
+|-----------|----------|--------|
+| Fear&Greed | <20 (Extreme Fear) | Лучшее время для LONG |
+| Fear&Greed | >80 (Extreme Greed) | Лучшее время для SHORT |
+| OI change | <-3% за 25 мин | HIGH liquidation |
+| OI change | <-1% за 25 мин | MEDIUM liquidation |
+| OI change | >-1% | LOW liquidation |
+
+### API
+- Fear & Greed: `https://api.alternative.me/fng/?limit=1` (бесплатный, без ключа)
+- Liquidation: через Bybit OI history endpoint (5min intervals)
