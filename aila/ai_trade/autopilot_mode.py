@@ -283,14 +283,15 @@ class AutopilotMode:
                     await asyncio.sleep(300)
                     continue
 
+                # Sync closed positions FIRST (before cascade checks limits)
+                # This ensures bot_positions is up-to-date with exchange state
+                await self._sync_closed_positions()
+
                 # Run TRADER and SNIPER scans
                 await self._run_scan_cycle()
 
                 # Process signal queue
                 await self._process_queue()
-
-                # Sync closed positions (every 30 seconds)
-                await self._sync_closed_positions()
 
                 # Active position management (every 15 seconds internally)
                 await self._position_monitor.check_positions()
