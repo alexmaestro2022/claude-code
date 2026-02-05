@@ -3596,3 +3596,49 @@ estimate_liquidations(symbol)  # OI change за 25 мин (5x5min)
 ### API
 - Fear & Greed: `https://api.alternative.me/fng/?limit=1` (бесплатный, без ключа)
 - Liquidation: через Bybit OI history endpoint (5min intervals)
+
+---
+
+## 53. Full Market Context for Position Monitor (2026-02-05)
+
+### Проблема
+Position Monitor передавал в `evaluate_exit` только `{"price": X}` — без индикаторов, orderbook, funding, sentiment.
+
+### Решение
+
+**1. `bybit_exchange.py`** — анализ orderbook:
+```python
+get_orderbook_analysis(symbol, depth=25)
+# Returns: bid/ask_volume, imbalance, imbalance_signal, big_bid/ask_walls, spread_pct
+```
+- `imbalance > 0.15` = BUY_PRESSURE
+- `imbalance < -0.15` = SELL_PRESSURE
+- `big_*_walls` = уровни с >5% объёма стакана
+
+**2. `position_monitor.py`** — полный контекст:
+- Добавлен `_scanner` параметр в `__init__`
+- Новый метод `_get_full_market_context(symbol)` собирает ВСЁ:
+  - Scanner: price, trend, RSI, StochRSI, MACD, BB, Volume, ATR, S/R, EMA
+  - Scanner: funding_rate, oi_change_pct, liquidation_pressure, fear_greed
+  - Exchange: orderbook analysis (imbalance, walls, spread)
+- `_maybe_claude_eval()` теперь вызывает `_get_full_market_context()`
+
+**3. `autopilot_mode.py`**:
+- Передаёт `scanner=self._orchestrator.trader.scanner` в PositionMonitor
+
+**4. `trader.py`** — обновлённый промпт `evaluate_exit`:
+- CURRENT INDICATORS: полные данные (RSI, StochRSI, MACD, BB, Volume, ATR, EMA, S/R)
+- ORDERBOOK: imbalance, big walls, spread
+- MARKET SENTIMENT: funding, OI change, liquidation, Fear&Greed
+- DECISION RULES: +4 новых правила:
+  - #7: Orderbook imbalance против позиции → tighten SL
+  - #8: Funding extreme → extra caution
+  - #9: Fear&Greed alignment
+  - #10: High liquidation → tighten SL
+
+### Данные в evaluate_exit
+| Категория | Поля |
+|-----------|------|
+| Indicators | price, trend, rsi, stoch_rsi_k, macd_histogram, bollinger_pct_b, volume_ratio, atr, ema50, ema200, support, resistance |
+| Orderbook | orderbook_imbalance, orderbook_signal, big_bid_walls, big_ask_walls, spread_pct |
+| Sentiment | funding_rate, oi_change_pct, liquidation_pressure, fear_greed, fear_greed_label |
