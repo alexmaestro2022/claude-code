@@ -810,7 +810,8 @@ class AutopilotMode:
                 entry_price=opportunity['entry_price'],
                 stop_loss=opportunity['stop_loss'],
                 confidence=opportunity.get('confidence', 50),
-                leverage=trade_leverage
+                leverage=trade_leverage,
+                symbol=symbol
             )
 
             # Check if capital manager approved the trade

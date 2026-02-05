@@ -238,11 +238,13 @@ class AgentOrchestrator:
 
     async def calculate_trade_size(
         self, entry_price: float, stop_loss: float,
-        confidence: int = 50, leverage: int = 1
+        confidence: int = 50, leverage: int = 1,
+        symbol: Optional[str] = None
     ) -> dict:
         """Calculate optimal trade size using Kelly Criterion adjusted by confidence.
 
         Uses a minimum risk floor (1%) when Kelly returns 0 (cold start / no trade history).
+        Also checks instrument-specific min_qty requirements (e.g., BTC min 0.001 = ~$70).
         """
         stats = self.knowledge_base.data
         kelly = self.capital_manager.kelly_criterion(
@@ -254,12 +256,78 @@ class AgentOrchestrator:
         if kelly <= 0:
             kelly = self.capital_manager._config['max_risk_per_trade_pct'] / 100
         adjusted_risk = kelly * (confidence / 100)
-        return self.capital_manager.calculate_position_size(
+        result = self.capital_manager.calculate_position_size(
             entry_price=entry_price,
             stop_loss=stop_loss,
             risk_pct=adjusted_risk * 100,
             leverage=leverage
         )
+
+        # Check instrument-specific min_qty if symbol provided
+        if result.get('can_trade') and symbol:
+            result = await self._check_min_order_size(
+                result, symbol, entry_price, leverage
+            )
+
+        return result
+
+    async def _check_min_order_size(
+        self, sizing: dict, symbol: str, entry_price: float, leverage: int
+    ) -> dict:
+        """Check if position meets instrument-specific min order requirements.
+
+        BTC min_qty=0.001 (~$70), ETH min_qty=0.01 (~$25), etc.
+        """
+        try:
+            info = await self.exchange.get_instrument_info(symbol)
+            if not info:
+                return sizing  # No info — skip check
+
+            min_qty = float(info.get('minOrderQty', 0) or info.get('lotSizeFilter', {}).get('minOrderQty', 0))
+            if min_qty <= 0:
+                return sizing
+
+            min_notional = min_qty * entry_price
+            position_size = sizing.get('position_size_usdt', 0)
+
+            # If calculated size >= min_notional, OK
+            if position_size >= min_notional:
+                return sizing
+
+            # Need to bump to min_notional — check if affordable
+            min_margin = min_notional / leverage
+            available = self.capital_manager._allocation.trading
+
+            if min_margin > available:
+                return {
+                    'can_trade': False,
+                    'position_size_usdt': 0,
+                    'margin_required': round(min_margin, 2),
+                    'quantity': 0,
+                    'risk_amount': 0,
+                    'risk_pct': 0,
+                    'reason': f'{symbol} min order ${min_notional:.2f} needs margin ${min_margin:.2f} > available ${available:.2f}',
+                }
+
+            # Can afford min order — update sizing
+            stop_distance_pct = abs(entry_price - sizing.get('stop_loss', entry_price * 0.99)) / entry_price
+            if stop_distance_pct == 0:
+                stop_distance_pct = 0.01  # Default 1% if no SL
+            actual_risk = min_notional * stop_distance_pct
+            actual_risk_pct = (actual_risk / available) * 100 if available > 0 else 0
+
+            return {
+                'can_trade': True,
+                'position_size_usdt': round(min_notional, 2),
+                'margin_required': round(min_margin, 2),
+                'quantity': min_qty,
+                'risk_amount': round(actual_risk, 2),
+                'risk_pct': round(actual_risk_pct, 2),
+                'reason': f'Bumped to {symbol} min_qty={min_qty}',
+            }
+        except Exception as e:
+            logger.warning(f"[ORCHESTRATOR] Min order check failed for {symbol}: {e}")
+            return sizing  # On error — return original
 
     async def check_market_safety(self) -> dict[str, Any]:
         """Check market safety and activate emergency protocol if needed."""

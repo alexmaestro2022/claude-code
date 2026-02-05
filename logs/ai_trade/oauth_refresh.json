@@ -1,9 +1,9 @@
 {
-  "date": "2026-02-04",
-  "last_refresh_time": "2026-02-04T07:30:01.828699+00:00",
-  "last_refresh_success": false,
-  "last_refresh_new_expiry": "2026-02-04T06:12:02.331706+00:00",
-  "last_refresh_error": "HTTP 400",
-  "refresh_count_today": 0,
-  "refresh_failures_today": 18
+  "date": "2026-02-05",
+  "last_refresh_time": "2026-02-05T11:00:01.950824+00:00",
+  "last_refresh_success": true,
+  "last_refresh_new_expiry": "2026-02-05T19:00:02.474323+00:00",
+  "last_refresh_error": null,
+  "refresh_count_today": 3,
+  "refresh_failures_today": 0
 }

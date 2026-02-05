@@ -3932,3 +3932,53 @@ Trade close → ANALYST (decision_analysis, management_lessons)
 - 🟡 MEDIUM: до 8 правил
 - 🟢 LOW: до 5 правил
 - Max 15 правил в промпте
+
+---
+
+## 58. Pre-check минимального размера ордера (2026-02-05)
+
+### Проблема
+Ошибка `"not enough for new order" (ErrCode: 110007)` при попытке открыть BTC позицию:
+- Capital manager рассчитал $12.63 позицию
+- BTC min_qty = 0.001 (~$70 notional)
+- `round_qty()` округлил до 0.001 → margin $35 > available $15.78
+
+### Решение
+Добавлен pre-check в `orchestrator.calculate_trade_size()`:
+
+**1. Новый параметр `symbol`**:
+```python
+async def calculate_trade_size(
+    self, entry_price, stop_loss, confidence=50, leverage=1,
+    symbol=None  # NEW
+) -> dict:
+```
+
+**2. Проверка min_qty после расчёта**:
+```python
+async def _check_min_order_size(self, sizing, symbol, entry_price, leverage):
+    info = await self.exchange.get_instrument_info(symbol)
+    min_qty = info.get('minOrderQty', 0)
+    min_notional = min_qty * entry_price
+
+    if sizing['position_size_usdt'] < min_notional:
+        min_margin = min_notional / leverage
+        if min_margin > available:
+            return {'can_trade': False, 'reason': f'{symbol} min order ${min_notional} needs ${min_margin} margin'}
+```
+
+**3. Вызов с symbol в autopilot**:
+```python
+size = await self._orchestrator.calculate_trade_size(
+    ..., symbol=symbol  # передаём symbol для проверки
+)
+```
+
+### Результат
+- BTC/ETH с высокой ценой фильтруются ДО отправки на биржу
+- Ошибка 110007 больше не возникает
+- Логируется причина: `"BTCUSDT min order $70 needs margin $35 > available $15.78"`
+
+### Файлы
+- `aila/ai_trade/orchestrator.py` — `calculate_trade_size()`, `_check_min_order_size()`
+- `aila/ai_trade/autopilot_mode.py` — передача `symbol=symbol`
