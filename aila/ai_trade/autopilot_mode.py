@@ -6,7 +6,7 @@ Both agents work in parallel with smart signal queue.
 import asyncio
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -87,6 +87,9 @@ class AutopilotMode:
             scanner=self._orchestrator.trader.scanner,
             sniper_agent=self._orchestrator.sniper,
         )
+
+        # Post-analysis queue for delayed price check after position close
+        self._post_analysis_queue: list[dict] = []
 
         self._config = {
             'scan_interval_seconds': 60,       # TRADER scan interval
@@ -297,6 +300,9 @@ class AutopilotMode:
 
                 # Active position management (every 15 seconds internally)
                 await self._position_monitor.check_positions()
+
+                # Process post-analysis queue (delayed price checks)
+                await self._process_post_analysis()
 
                 await asyncio.sleep(10)  # Base loop interval
 
@@ -1286,6 +1292,143 @@ Trades today: {stats['trades_today']}
         # 7. Check for level up
         if result.get("xp_result", {}).get("leveled_up"):
             await self._send_level_up_notification(source, result["xp_result"])
+
+        # 8. Add to post-analysis queue for delayed price check
+        check_delay = 10 if source == "SNIPER" else 30  # minutes
+        self._post_analysis_queue.append({
+            "symbol": symbol,
+            "entry_price": entry_price,
+            "exit_price": exit_price,
+            "side": position_data.get("side", ""),
+            "close_reason": close_reason,
+            "pnl_usdt": pnl_usdt,
+            "pnl_pct": pnl_pct,
+            "source": source,
+            "grade": grade,
+            "closed_at": datetime.now(),
+            "check_at": datetime.now() + timedelta(minutes=check_delay),
+        })
+        logger.info(f"[POST-ANALYSIS] Added {symbol} to queue, check in {check_delay} min")
+
+    async def _process_post_analysis(self) -> None:
+        """Process post-analysis queue - check price movement after position close.
+
+        For each closed position, checks what happened to the price after exit:
+        - SNIPER: check after 10 minutes
+        - TRADER: check after 30 minutes
+
+        Results are logged and saved for learning analysis.
+        """
+        if not self._post_analysis_queue:
+            return
+
+        now = datetime.now()
+        processed_indices = []
+
+        for idx, item in enumerate(self._post_analysis_queue):
+            if now < item["check_at"]:
+                continue  # Not ready yet
+
+            symbol = item["symbol"]
+            try:
+                # Get current price
+                ticker = await self._orchestrator.exchange.get_ticker(symbol)
+                current_price = float(ticker.get("last", 0))
+
+                if not current_price:
+                    logger.warning(f"[POST-ANALYSIS] No price for {symbol}")
+                    processed_indices.append(idx)
+                    continue
+
+                # Calculate price movement since exit
+                exit_price = item["exit_price"]
+                side = item["side"]
+                price_change_pct = ((current_price - exit_price) / exit_price) * 100
+
+                # Determine if exit was optimal
+                # LONG: price dropped after exit = good exit
+                # SHORT: price rose after exit = good exit
+                if side.upper() == "BUY":
+                    was_good_exit = price_change_pct < 0
+                    missed_profit = max(0, price_change_pct)
+                    avoided_loss = max(0, -price_change_pct)
+                else:
+                    was_good_exit = price_change_pct > 0
+                    missed_profit = max(0, -price_change_pct)
+                    avoided_loss = max(0, price_change_pct)
+
+                minutes_elapsed = (now - item["closed_at"]).total_seconds() / 60
+
+                logger.info(
+                    f"[POST-ANALYSIS] {symbol} ({item['source']}): "
+                    f"exit={exit_price:.4f} -> now={current_price:.4f} "
+                    f"({price_change_pct:+.2f}% in {minutes_elapsed:.0f}min) "
+                    f"{'GOOD EXIT' if was_good_exit else 'EARLY EXIT'}"
+                )
+
+                # Save result for learning
+                await self._save_post_analysis_result(item, {
+                    "current_price": current_price,
+                    "price_change_pct": round(price_change_pct, 2),
+                    "was_good_exit": was_good_exit,
+                    "missed_profit_pct": round(missed_profit, 2),
+                    "avoided_loss_pct": round(avoided_loss, 2),
+                    "minutes_elapsed": round(minutes_elapsed, 1),
+                })
+
+            except Exception as e:
+                logger.error(f"[POST-ANALYSIS] Error processing {symbol}: {e}")
+
+            processed_indices.append(idx)
+
+        # Remove processed items (reverse order to maintain indices)
+        for idx in reversed(processed_indices):
+            self._post_analysis_queue.pop(idx)
+
+    async def _save_post_analysis_result(
+        self,
+        item: dict[str, Any],
+        analysis: dict[str, Any]
+    ) -> None:
+        """Save post-analysis result to knowledge base for learning.
+
+        Args:
+            item: Original queue item with trade data
+            analysis: Post-analysis results (price change, was_good_exit, etc.)
+        """
+        try:
+            kb = self._orchestrator.knowledge_base
+            source = item.get("source", "TRADER")
+            profile_key = f"{source.lower()}_profile"
+
+            profile = kb.data.setdefault(profile_key, {})
+            post_analysis_history = profile.setdefault("post_analysis_history", [])
+
+            post_analysis_history.append({
+                "symbol": item["symbol"],
+                "side": item["side"],
+                "exit_price": item["exit_price"],
+                "close_reason": item["close_reason"],
+                "original_pnl_pct": item["pnl_pct"],
+                "original_grade": item["grade"],
+                "current_price": analysis["current_price"],
+                "price_change_pct": analysis["price_change_pct"],
+                "was_good_exit": analysis["was_good_exit"],
+                "missed_profit_pct": analysis["missed_profit_pct"],
+                "avoided_loss_pct": analysis["avoided_loss_pct"],
+                "minutes_after_close": analysis["minutes_elapsed"],
+                "analyzed_at": datetime.now().isoformat(),
+            })
+
+            # Keep last 100 entries
+            if len(post_analysis_history) > 100:
+                post_analysis_history[:] = post_analysis_history[-100:]
+
+            kb.save()
+            logger.debug(f"[POST-ANALYSIS] Saved result for {item['symbol']}")
+
+        except Exception as e:
+            logger.error(f"[POST-ANALYSIS] Failed to save result: {e}")
 
     async def _run_analyst(
         self,
