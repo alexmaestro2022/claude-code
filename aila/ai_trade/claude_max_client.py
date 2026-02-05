@@ -598,12 +598,12 @@ CRITICAL: If R/R < 1.5 - choose WAIT. Better to miss a trade than lose money."""
 ## POSITION MANAGEMENT DECISIONS (chronological)
 {decision_summary if decision_summary else "No decisions logged (position closed quickly or by SL/TP)"}
 
-## ANALYSIS FOCUS
-1. Entry quality: Was the entry timing and price good?
-2. Position management: Were the HOLD/MOVE_SL/CLOSE decisions optimal?
-3. Exit quality: Was the exit too early, too late, or well-timed?
-4. If there were multiple HOLD decisions before a loss — should we have exited earlier?
-5. If trailing/breakeven was set — was it effective?
+## RETROSPECTIVE DECISION ANALYSIS
+For EACH decision in the log above, evaluate IN HINDSIGHT:
+1. Was the action CORRECT given the context at that moment?
+2. Was the TIMING right? (too early / perfect / too late)
+3. What happened AFTER? Did price continue in position's favor or reverse?
+4. Score: GOOD (correct), NEUTRAL (ok), BAD (wrong), PREMATURE (too early), LATE (too late)
 
 ## TASK
 Respond STRICTLY in JSON:
@@ -612,7 +612,17 @@ Respond STRICTLY in JSON:
     "what_went_right": ["point1", "point2"],
     "what_went_wrong": ["point1", "point2"],
     "position_management_score": "good" | "average" | "poor",
-    "lesson_learned": "main lesson",
+    "decision_analysis": [
+        {{"decision_index": 0, "action": "HOLD", "score": "GOOD", "reasoning": "RSI 55, trend UP — correct to hold"}},
+        {{"decision_index": 2, "action": "MOVE_SL", "score": "PREMATURE", "reasoning": "SL too tight, price went +2% after"}}
+    ],
+    "management_lessons": [
+        "When RSI < 70 in uptrend, HOLD is better than early exit",
+        "SNIPER: wait for +1% before moving SL to breakeven"
+    ],
+    "lesson_learned": "main lesson about entry/exit",
     "improvement_suggestion": "how to improve",
-    "add_to_mistakes_to_avoid": "if there was an error, what to add"
-}}"""
+    "add_to_mistakes_to_avoid": "if error, what to add to avoid list"
+}}
+
+NOTE: decision_analysis should evaluate 1-5 key decisions. management_lessons are SEPARATE rules about position management."""

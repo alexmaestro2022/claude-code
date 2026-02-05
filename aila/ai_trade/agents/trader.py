@@ -361,6 +361,22 @@ class TraderAgent(BaseAgent):
 
         return opportunity
 
+    def _get_management_rules_text(self) -> str:
+        """Get position management rules from knowledge base for prompt."""
+        try:
+            trader_learning = self.knowledge_base.data.get("trader_learning", {})
+            mgmt_rules = trader_learning.get("management_rules", [])
+            if not mgmt_rules:
+                return "No management rules learned yet."
+            # Get last 5 rules
+            rules_text = []
+            for r in mgmt_rules[-5:]:
+                rule = r.get("rule", str(r)) if isinstance(r, dict) else str(r)
+                rules_text.append(f"- {rule[:80]}")
+            return "\n".join(rules_text) if rules_text else "No management rules learned yet."
+        except Exception:
+            return "No management rules learned yet."
+
     async def evaluate_exit(self, position: dict, market_data: dict) -> dict:
         """Evaluate whether to exit or modify an existing position.
 
@@ -434,6 +450,9 @@ You are a position manager. Evaluate this open position and decide the best acti
 - OI change 25m: {market_data.get('oi_change_pct', 0):.2f}%
 - Liquidation pressure: {market_data.get('liquidation_pressure', 'LOW')}
 - Fear & Greed: {market_data.get('fear_greed', 50)} ({market_data.get('fear_greed_label', 'Neutral')})
+
+## LEARNED MANAGEMENT RULES (from past trades)
+{self._get_management_rules_text()}
 
 ## DECISION RULES
 1. PnL dropping from peak by >50% of peak → tighten SL or partial close

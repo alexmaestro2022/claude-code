@@ -1304,9 +1304,15 @@ Trades today: {stats['trades_today']}
             result = await analyst.analyze(trade_for_analysis)
             ai_grade = result.get("grade", "?")
             lesson = result.get("lesson_learned", result.get("lesson", ""))
+            mgmt_score = result.get("position_management_score", "?")
+            mgmt_lessons = result.get("management_lessons", [])
+
             logger.info(
-                f"[{agent}][ANALYST] AI grade={ai_grade} | {lesson[:80]}"
+                f"[{agent}][ANALYST] AI grade={ai_grade} mgmt={mgmt_score} | {lesson[:60]}"
             )
+            if mgmt_lessons:
+                logger.info(f"[{agent}][ANALYST] Management lessons: {mgmt_lessons[:2]}")
+
             return result
         except Exception as e:
             logger.error(f"[{agent}][ANALYST] Analysis failed: {e}")

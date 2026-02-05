@@ -324,6 +324,9 @@ SNIPER targets 5-30 minute holds. Be ready to exit fast on ANY warning sign.
 - Liquidation pressure: {market_data.get('liquidation_pressure', 'LOW')}
 - Fear & Greed: {market_data.get('fear_greed', 50)} ({market_data.get('fear_greed_label', 'Neutral')})
 
+## LEARNED MANAGEMENT RULES
+{self._get_management_rules_text()}
+
 ## SNIPER EXIT RULES (AGGRESSIVE)
 1. Duration > 60 min → CLOSE immediately (SNIPER max hold time exceeded)
 2. PnL > +1.5% in < 10 min → CLOSE (quick profit secured)
@@ -385,6 +388,20 @@ Respond STRICTLY in JSON:
                 if (datetime.utcnow() - ts).total_seconds() < 300
             ],
         }
+
+    def _get_management_rules_text(self) -> str:
+        """Get position management rules from knowledge base for prompt."""
+        sniper_learning = self.knowledge_base.data.get("sniper_learning", {})
+        mgmt_rules = sniper_learning.get("management_rules", [])
+        if not mgmt_rules:
+            return "No learned management rules yet."
+        # Get last 5 rules
+        recent_rules = mgmt_rules[-5:]
+        lines = []
+        for r in recent_rules:
+            rule_text = r.get("rule", str(r)) if isinstance(r, dict) else str(r)
+            lines.append(f"- {rule_text[:100]}")
+        return "\n".join(lines)
 
     async def _analyze_pair(self, pair: str) -> dict[str, Any]:
         """Analyze a pair for snipe opportunity."""

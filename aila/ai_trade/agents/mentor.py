@@ -388,15 +388,38 @@ JSON response:
             if isinstance(conf_adj, int) and conf_adj != 0:
                 self._apply_confidence_adjustment(conf_adj)
 
+            # Process management_lessons from ANALYST (position management rules)
+            management_lessons = analyst_result.get("management_lessons", [])
+            mgmt_rules_added = 0
+            for lesson in management_lessons[:3]:  # Max 3 management lessons per trade
+                if lesson and len(lesson) > 10:
+                    mgmt_rule_entry = {
+                        "rule": lesson,
+                        "category": "position_management",  # NEW category
+                        "source": "analyst_management_lesson",
+                        "grade": grade,
+                        "symbol": symbol,
+                        "agent": source,
+                    }
+                    # Add to agent-specific management rules
+                    learning_key = f"{source.lower()}_learning"
+                    agent_learning = self.knowledge_base.data.setdefault(learning_key, {})
+                    mgmt_rules = agent_learning.setdefault("management_rules", [])
+                    mgmt_rules.append(mgmt_rule_entry)
+                    agent_learning["management_rules"] = mgmt_rules[-15:]  # Keep last 15
+                    mgmt_rules_added += 1
+                    self.log(f"[{source}] Mgmt rule: {lesson[:50]}...")
+
             self.knowledge_base.save()
 
             self.log(
-                f"Trade review: {symbol} grade={grade} → {rules_added} rules added"
+                f"Trade review: {symbol} grade={grade} → {rules_added} rules, {mgmt_rules_added} mgmt rules"
             )
 
             return {
-                "rules_added": rules_added,
+                "rules_added": rules_added + mgmt_rules_added,
                 "new_rules": new_rules,
+                "management_rules_added": mgmt_rules_added,
                 "applies_to": applies_to,
                 "pattern_type": result.get("pattern_type", "neutral"),
             }
