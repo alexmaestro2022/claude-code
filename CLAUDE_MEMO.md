@@ -4062,3 +4062,33 @@ Autopilot error: 'PositionManager' object has no attribute 'save_positions'
 - HYPE/USDT: +$0.05 (+0.9%)
 - 1000PEPE/USDT: +$0.01 (+0.5%)
 - ETH/USDT: +$0.09 (+1.3%)
+
+---
+
+## 61. Fix: Position limit fallback counts only own agent positions (2026-02-05)
+
+### Проблема
+TRADER видел позиции SNIPER как свои из-за fallback логики:
+```python
+# Старый код (плохо):
+if current_positions == 0 and all_exchange > 0:
+    current_positions = all_exchange  # Считал ВСЕ позиции!
+```
+
+TRADER показывал (1/1) хотя открытая позиция была от SNIPER.
+
+### Решение
+```python
+# Новый код:
+bot_positions = self._orchestrator.position_manager.get_bot_positions()
+if current_positions == 0 and all_exchange > 0 and len(bot_positions) == 0:
+    current_positions = all_exchange  # Только когда совсем нет данных
+```
+
+### Файл
+- `aila/ai_trade/autopilot_mode.py:365-370`
+
+### Результат
+- TRADER и SNIPER считают позиции РАЗДЕЛЬНО по полю `source`
+- Каждый агент может открыть свою позицию независимо
+- На Level 1: возможно 1 TRADER + 1 SNIPER = 2 позиции одновременно
