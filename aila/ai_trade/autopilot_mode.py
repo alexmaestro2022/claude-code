@@ -363,9 +363,11 @@ class AutopilotMode:
                 real_positions = await self._orchestrator.exchanges.primary.get_positions()
                 all_exchange = len([p for p in real_positions if float(p.get('size', 0)) != 0])
                 current_positions = self._orchestrator.position_manager.get_open_count_by_agent("TRADER")
-                # Fallback: if bot_positions empty but exchange shows positions
-                if current_positions == 0 and all_exchange > 0:
-                    current_positions = all_exchange
+                # Fallback: only if bot_positions is completely empty (no tracking data)
+                # If bot_positions has data but no TRADER positions, don't count SNIPER positions
+                bot_positions = self._orchestrator.position_manager.get_bot_positions()
+                if current_positions == 0 and all_exchange > 0 and len(bot_positions) == 0:
+                    current_positions = all_exchange  # Full fallback only when no tracking data
             except Exception as e:
                 logger.warning(f"[TRADER][CASCADE] Error fetching positions: {e}, using cache")
                 current_positions = self._orchestrator.position_manager.get_open_count_by_agent("TRADER")
