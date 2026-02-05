@@ -80,6 +80,58 @@ class PositionMonitor:
         # Last Claude evaluation time per symbol
         self._last_claude_eval: dict[str, datetime] = {}
 
+    def _log_decision(
+        self,
+        symbol: str,
+        action: str,
+        reason: str,
+        source: str,
+        context: dict[str, Any],
+        opened_at: str = "",
+    ) -> None:
+        """Log a position management decision for later analysis.
+
+        Saves to bot_positions[symbol].decision_log array.
+        """
+        now = datetime.now()
+
+        # Calculate elapsed minutes since position opened
+        elapsed_min = 0
+        if opened_at:
+            try:
+                start = datetime.fromisoformat(opened_at)
+                elapsed_min = int((now - start).total_seconds() / 60)
+            except (ValueError, TypeError):
+                pass
+
+        decision_entry = {
+            "timestamp": now.isoformat(),
+            "elapsed_min": elapsed_min,
+            "action": action,
+            "reason": reason[:200] if reason else "",
+            "source": source,
+            "context_snapshot": {
+                "price": context.get("price", 0),
+                "pnl_pct": context.get("pnl_pct", 0),
+                "rsi": context.get("rsi"),
+                "trend": context.get("trend"),
+                "orderbook_signal": context.get("orderbook_signal"),
+                "funding_rate": context.get("funding_rate"),
+            },
+        }
+
+        # Get position and append to decision_log
+        positions = self._position_manager.get_bot_positions()
+        pos = positions.get(symbol)
+        if pos:
+            if "decision_log" not in pos:
+                pos["decision_log"] = []
+            pos["decision_log"].append(decision_entry)
+            # Keep only last 50 decisions to avoid bloat
+            pos["decision_log"] = pos["decision_log"][-50:]
+            self._position_manager.save_positions()
+            logger.debug(f"[MONITOR] Decision logged for {symbol}: {action}")
+
     async def start(self) -> None:
         """Start the position monitoring loop."""
         if self._running:
@@ -175,6 +227,15 @@ class PositionMonitor:
             )
             if action:
                 actions.append(action)
+                # Log breakeven decision
+                self._log_decision(
+                    symbol=symbol,
+                    action="BREAKEVEN_SET",
+                    reason=f"PnL {pnl_pct:.1f}% hit trigger, SL moved to {action.get('new_sl')}",
+                    source=source,
+                    context={"price": mark_price, "pnl_pct": pnl_pct},
+                    opened_at=bot_pos.get("opened_at", ""),
+                )
 
             # 2. Trailing stop rule (source-specific thresholds)
             action = await self._check_trailing_stop(
@@ -182,6 +243,16 @@ class PositionMonitor:
             )
             if action:
                 actions.append(action)
+                # Log trailing stop decision
+                action_type = "TRAILING_ACTIVATED" if not track.get("trailing_active") else "TRAILING_UPDATED"
+                self._log_decision(
+                    symbol=symbol,
+                    action=action_type,
+                    reason=f"PnL {pnl_pct:.1f}%, SL moved to {action.get('new_sl')}",
+                    source=source,
+                    context={"price": mark_price, "pnl_pct": pnl_pct},
+                    opened_at=bot_pos.get("opened_at", ""),
+                )
 
             # 3. Time-based warning
             action = self._check_time_warning(symbol, bot_pos, track)
@@ -486,6 +557,24 @@ class PositionMonitor:
             logger.info(
                 f"[MONITOR][{agent_name}] {symbol} → {action} "
                 f"(urgency={urgency}) {reason[:80]}"
+            )
+
+            # Log decision for learning (includes HOLD)
+            decision_context = {
+                "price": market_data.get("price", 0),
+                "pnl_pct": pnl_pct,
+                "rsi": market_data.get("rsi"),
+                "trend": market_data.get("trend"),
+                "orderbook_signal": market_data.get("orderbook_signal"),
+                "funding_rate": market_data.get("funding_rate"),
+            }
+            self._log_decision(
+                symbol=symbol,
+                action=action,
+                reason=f"{reason} (urgency={urgency})",
+                source=agent_name,
+                context=decision_context,
+                opened_at=bot_pos.get("opened_at", ""),
             )
 
             if action == "HOLD":

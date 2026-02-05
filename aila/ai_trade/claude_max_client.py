@@ -571,11 +571,39 @@ CRITICAL: If R/R < 1.5 - choose WAIT. Better to miss a trade than lose money."""
 
     @staticmethod
     def _build_trade_analysis_prompt(trade: dict[str, Any]) -> str:
-        """Build trade analysis prompt."""
+        """Build trade analysis prompt with decision history."""
+        # Extract decision_log for separate section
+        decision_log = trade.get("decision_log", [])
+
+        # Build compact decision summary
+        decision_summary = ""
+        if decision_log:
+            decisions = []
+            for d in decision_log[-10:]:  # Last 10 decisions max
+                decisions.append(
+                    f"- {d.get('elapsed_min', '?')}m: {d.get('action')} "
+                    f"(pnl={d.get('context_snapshot', {}).get('pnl_pct', '?'):.1f}%) "
+                    f"- {d.get('reason', '')[:50]}"
+                )
+            decision_summary = "\n".join(decisions)
+
+        # Remove decision_log from main trade data to avoid duplication
+        trade_copy = {k: v for k, v in trade.items() if k != "decision_log"}
+
         return f"""Analyze the completed trade and extract lessons.
 
-## TRADE
-{json.dumps(trade, indent=2)}
+## TRADE DATA
+{json.dumps(trade_copy, indent=2)}
+
+## POSITION MANAGEMENT DECISIONS (chronological)
+{decision_summary if decision_summary else "No decisions logged (position closed quickly or by SL/TP)"}
+
+## ANALYSIS FOCUS
+1. Entry quality: Was the entry timing and price good?
+2. Position management: Were the HOLD/MOVE_SL/CLOSE decisions optimal?
+3. Exit quality: Was the exit too early, too late, or well-timed?
+4. If there were multiple HOLD decisions before a loss — should we have exited earlier?
+5. If trailing/breakeven was set — was it effective?
 
 ## TASK
 Respond STRICTLY in JSON:
@@ -583,6 +611,7 @@ Respond STRICTLY in JSON:
     "grade": "A" | "B" | "C" | "D" | "F",
     "what_went_right": ["point1", "point2"],
     "what_went_wrong": ["point1", "point2"],
+    "position_management_score": "good" | "average" | "poor",
     "lesson_learned": "main lesson",
     "improvement_suggestion": "how to improve",
     "add_to_mistakes_to_avoid": "if there was an error, what to add"

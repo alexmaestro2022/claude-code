@@ -1236,6 +1236,9 @@ Trades today: {stats['trades_today']}
             "close_reason": close_reason,
             "leverage": str(leverage),
             "grade": grade,
+            "strategy": position_data.get("strategy", "unknown"),
+            "duration_minutes": duration_minutes,
+            "decision_log": position_data.get("decision_log", []),
         }
         result = self._agent_stats.record_trade(
             agent=source,
