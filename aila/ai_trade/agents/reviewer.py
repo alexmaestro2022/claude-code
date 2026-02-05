@@ -69,22 +69,52 @@ Fear & Greed: {opportunity.get('market_data', {}).get('fear_greed', 50)} ({oppor
 ## MISTAKES TO AVOID
 {json.dumps(mistakes[-5:], indent=2)}
 
-## REVIEW CHECKLIST
-1. Is the direction consistent with the trend?
-2. Is the risk/reward ratio acceptable (min 1.5:1)?
-3. Is the stop loss reasonable (not too tight, not too wide)?
-4. Is the leverage appropriate for the volatility?
-5. Is the position size within safe limits?
-6. Are there any of the known mistakes being repeated?
-7. Is the confidence level justified by the data?
-8. Funding rate alignment: REJECT LONG if funding >0.1% (market overheated), favor SHORT if funding >0.05%
-9. Fear & Greed >80 + LONG signal = extra scrutiny needed (market euphoria)
-10. High liquidation pressure = wait for cascade to complete before entry
+## DIRECTION RULES (CRITICAL!)
+- LONG in BEARISH trend → REJECT (counter-trend, unless RSI < 15 + volume spike)
+- SHORT in BEARISH trend → APPROVE (this IS the trend direction!)
+- SHORT in BULLISH trend → REJECT (counter-trend, unless RSI > 85 + reversal pattern)
+- LONG in BULLISH trend → APPROVE (this IS the trend direction!)
+- NEUTRAL trend → either direction OK if other criteria met
 
-## REQUIRED THRESHOLDS
-- R/R ratio >= 1.5:1 (REJECT if below)
-- Leverage: max 2x for meme/volatile coins, max 3x for majors
-- Stop loss: min 3% from entry for volatile, min 2% for majors
+## OVERSOLD/OVERBOUGHT (context, not veto!)
+For SHORT in BEARISH trend:
+- RSI 20-35 → OK (trend continuation)
+- RSI 10-20 → OK with caution (suggest tighter SL)
+- RSI < 10 → REJECT (extreme oversold, squeeze risk)
+For LONG in BULLISH trend:
+- RSI 65-80 → OK (trend continuation)
+- RSI 80-90 → OK with caution
+- RSI > 90 → REJECT (extreme overbought)
+
+## FEAR & GREED (context, NOT a veto!)
+- F&G is market sentiment indicator, not a trade blocker
+- F&G < 20 + BEARISH trend + SHORT = NORMAL, don't reject
+- F&G > 80 + BULLISH trend + LONG = NORMAL, don't reject
+- Only reject at extremes: F&G < 5 for LONG, F&G > 95 for SHORT
+
+## FUNDING RATE
+- Negative funding in bearish trend = NORMAL (market is short-biased)
+- Only reject SHORT if funding < -0.15% AND RSI < 10 (extreme conditions)
+- Positive funding in bullish trend = NORMAL
+- Reject LONG if funding > 0.15%
+
+## R:R RATIO (context-dependent!)
+- Trend-following (SHORT in bearish, LONG in bullish): R:R >= 1.3 is OK
+- Counter-trend trades: R:R >= 2.0 required
+- Never reject solely on R:R if >= 1.3 for trend-following
+
+## OTHER CHECKS
+1. Stop loss: min 3% for meme/volatile, min 2% for majors
+2. Leverage: max 2x for volatile, max 3x for majors
+3. Position size within safe limits?
+4. Known mistakes being repeated?
+5. Confidence justified by data?
+6. High liquidation pressure = wait for cascade to complete
+
+## APPROVAL BIAS
+When in doubt for TREND-FOLLOWING trades (SHORT in bearish, LONG in bullish):
+- Prefer MODIFY over REJECT
+- Prefer APPROVE over MODIFY if only minor issues
 
 ## TASK
 Respond STRICTLY in JSON:

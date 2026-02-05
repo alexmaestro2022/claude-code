@@ -283,7 +283,7 @@ class AgentOrchestrator:
             if not info:
                 return sizing  # No info — skip check
 
-            min_qty = float(info.get('minOrderQty', 0) or info.get('lotSizeFilter', {}).get('minOrderQty', 0))
+            min_qty = float(info.get('minQty', 0) or info.get('minOrderQty', 0) or 0)
             if min_qty <= 0:
                 return sizing
 
@@ -299,6 +299,10 @@ class AgentOrchestrator:
             available = self.capital_manager._allocation.trading
 
             if min_margin > available:
+                logger.warning(
+                    f"[ORCHESTRATOR] Min order reject: {symbol} min=${min_notional:.2f} "
+                    f"needs margin=${min_margin:.2f} > available=${available:.2f}"
+                )
                 return {
                     'can_trade': False,
                     'position_size_usdt': 0,

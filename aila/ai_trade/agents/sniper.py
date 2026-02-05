@@ -49,7 +49,7 @@ class SniperAgent(BaseAgent):
             "breakout": self._check_breakout,
             "breakdown": self._check_breakdown,
             "liquidation_cascade": self._check_liquidations,
-            # TODO: Implement funding_flip when exchange funding rate API is integrated
+            "trend_continuation": self._check_trend_continuation,
         }
         # Cooldown tracking: pair -> last_trigger_time
         self._snipe_cooldowns: dict[str, datetime] = {}
@@ -450,6 +450,7 @@ Respond STRICTLY in JSON:
             "breakout": sniper_settings.get("trigger_breakout", True),
             "breakdown": sniper_settings.get("trigger_breakdown", True),
             "liquidation_cascade": sniper_settings.get("trigger_liquidation", False),
+            "trend_continuation": sniper_settings.get("trigger_trend_continuation", True),
         }
 
         for trigger_name, trigger_func in self._triggers.items():
@@ -605,4 +606,73 @@ Respond STRICTLY in JSON:
                 }
         except Exception as e:
             self.log(f"Liquidation check error {pair}: {e}", "error")
+        return {"triggered": False}
+
+    async def _check_trend_continuation(self, pair: str) -> dict[str, Any]:
+        """Check for trend continuation opportunity (SHORT in bearish, LONG in bullish).
+
+        Unlike liquidation_cascade which looks for extreme RSI bounces,
+        this trigger looks for moderate moves with trend confirmation.
+        """
+        if not self.scanner:
+            return {"triggered": False}
+        try:
+            data = await self.scanner.get_market_data(pair, "5m")
+            if not data:
+                return {"triggered": False}
+
+            trend = data.get("trend", "NEUTRAL")
+            change_24h = data.get("change_24h", 0)
+            rsi = data.get("rsi", 50)
+            atr = data.get("atr", 0)
+            price = data.get("price", 0)
+            macd = data.get("macd", {})
+            macd_hist = macd.get("histogram", 0) if macd else 0
+
+            # Validate numeric
+            if not all(isinstance(v, (int, float)) for v in [change_24h, rsi, atr, price]):
+                return {"triggered": False}
+
+            if atr <= 0 or price <= 0:
+                return {"triggered": False}
+
+            change = abs(change_24h)
+            max_lev = self._get_max_leverage()
+
+            # BEARISH trend continuation SHORT
+            # Conditions: bearish trend, price falling (change > 3%), RSI 15-40, MACD bearish
+            if trend == "BEARISH" and change_24h < -3 and 15 < rsi < 40 and macd_hist < 0:
+                confidence = min(80, 60 + int(change))
+                sl, tp = self._calc_sl_tp(price, atr, "SHORT")
+                return {
+                    "triggered": True,
+                    "direction": "SHORT",
+                    "entry_price": price,
+                    "stop_loss": sl,
+                    "take_profit": tp,
+                    "confidence": confidence,
+                    "leverage": min(2, max_lev),
+                    "urgency": "medium",
+                    "reasoning": f"Trend continuation SHORT: {change_24h:.1f}% drop, RSI={rsi:.0f}, MACD bearish",
+                }
+
+            # BULLISH trend continuation LONG
+            # Conditions: bullish trend, price rising (change > 3%), RSI 60-85, MACD bullish
+            if trend == "BULLISH" and change_24h > 3 and 60 < rsi < 85 and macd_hist > 0:
+                confidence = min(80, 60 + int(change))
+                sl, tp = self._calc_sl_tp(price, atr, "LONG")
+                return {
+                    "triggered": True,
+                    "direction": "LONG",
+                    "entry_price": price,
+                    "stop_loss": sl,
+                    "take_profit": tp,
+                    "confidence": confidence,
+                    "leverage": min(2, max_lev),
+                    "urgency": "medium",
+                    "reasoning": f"Trend continuation LONG: +{change_24h:.1f}% rise, RSI={rsi:.0f}, MACD bullish",
+                }
+
+        except Exception as e:
+            self.log(f"Trend continuation check error {pair}: {e}", "error")
         return {"triggered": False}

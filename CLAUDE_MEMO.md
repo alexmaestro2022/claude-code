@@ -3982,3 +3982,59 @@ size = await self._orchestrator.calculate_trade_size(
 ### Файлы
 - `aila/ai_trade/orchestrator.py` — `calculate_trade_size()`, `_check_min_order_size()`
 - `aila/ai_trade/autopilot_mode.py` — передача `symbol=symbol`
+
+### Bugfix: поле minQty vs minOrderQty
+Bybit возвращает `minQty`, а не `minOrderQty`. Исправлено в orchestrator.py:
+```python
+min_qty = float(info.get('minQty', 0) or info.get('minOrderQty', 0) or 0)
+```
+
+---
+
+## 59. REVIEWER калибровка — убран парадокс "ничего не торгуется" (2026-02-05)
+
+### Проблема
+REVIEWER блокировал ВСЕ сигналы:
+- LONG → "against BEARISH trend" (правильно)
+- SHORT → "shorting into oversold, extreme fear = bottom" (слишком осторожно)
+- Парадокс: ни LONG ни SHORT не проходили
+
+### Решение
+
+**1. REVIEWER промпт v2** — умные правила направления:
+```
+## DIRECTION RULES (CRITICAL!)
+- SHORT in BEARISH trend → APPROVE (this IS the trend direction!)
+- LONG in BULLISH trend → APPROVE (this IS the trend direction!)
+- Counter-trend → REJECT unless strong confirmation
+
+## OVERSOLD/OVERBOUGHT (context, not veto!)
+- RSI 20-35 + BEARISH + SHORT = OK (trend continuation)
+- RSI < 10 → REJECT SHORT (extreme oversold, squeeze risk)
+
+## FEAR & GREED (context, NOT a veto!)
+- F&G < 20 + SHORT in bearish = NORMAL, don't reject
+- Only reject at extremes: F&G < 5 for LONG
+
+## R:R RATIO (context-dependent!)
+- Trend-following: R:R >= 1.3 is OK
+- Counter-trend: R:R >= 2.0 required
+```
+
+**2. SNIPER trigger `trend_continuation`**:
+```python
+# BEARISH trend + price falling + RSI 15-40 + MACD bearish
+if trend == "BEARISH" and change_24h < -3 and 15 < rsi < 40 and macd_hist < 0:
+    direction = "SHORT"
+    trigger_type = "trend_continuation"
+```
+
+### Результат
+- BCH/USDT SHORT @ 503.4 — **ОТКРЫТА** (раньше REJECT)
+- REVIEWER: APPROVE (trend-following)
+- Position hit SL (PnL -$0.02)
+- MENTOR learned: "wait for resistance rejection"
+
+### Файлы
+- `aila/ai_trade/agents/reviewer.py` — новый промпт с умными правилами
+- `aila/ai_trade/agents/sniper.py` — trigger `trend_continuation`
