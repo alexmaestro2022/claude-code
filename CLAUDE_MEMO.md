@@ -3695,3 +3695,86 @@ else:
 [MONITOR][TRADER][TRAILING] BTCUSDT PnL=3.5% >= 3.0% → activating trailing stop
 [MONITOR][SNIPER] ETHUSDT → CLOSE (urgency=high) Quick profit secured...
 ```
+
+---
+
+## 55. Decision Logging for Position Management Learning (2026-02-05)
+
+### Проблема
+ANALYST не знал какие решения принимались ВНУТРИ позиции. Невозможно обучиться на ошибках управления.
+
+### Решение
+
+**1. `position_monitor.py`** — метод `_log_decision()`:
+```python
+def _log_decision(symbol, action, reason, source, context, opened_at):
+    """Save decision to position's decision_log array."""
+    # Each decision entry:
+    {
+        "timestamp": "2026-02-05T12:30:00",
+        "elapsed_min": 15,
+        "action": "HOLD",  # HOLD/MOVE_SL/CLOSE/BREAKEVEN_SET/TRAILING_ACTIVATED
+        "reason": "trend strong, RSI 55",
+        "source": "TRADER",
+        "context_snapshot": {
+            "price": 97500,
+            "pnl_pct": 0.8,
+            "rsi": 55,
+            "trend": "UP",
+            "orderbook_signal": "BUY_PRESSURE",
+            "funding_rate": 0.01
+        }
+    }
+```
+
+**2. Когда логируется:**
+- После каждого Claude evaluate_exit (HOLD/CLOSE/MOVE_SL/PARTIAL_CLOSE)
+- После BREAKEVEN_SET (rule-based)
+- После TRAILING_ACTIVATED/TRAILING_UPDATED (rule-based)
+
+**3. `autopilot_mode.py`** — trade_data для ANALYST:
+```python
+trade_data = {
+    ...
+    "decision_log": position_data.get("decision_log", []),
+    "strategy": position_data.get("strategy", "unknown"),
+    "duration_minutes": duration_minutes,
+}
+```
+
+**4. ANALYST prompt** — новая секция:
+```
+## POSITION MANAGEMENT DECISIONS (chronological)
+- 5m: HOLD (pnl=0.5%) - trend strong
+- 15m: BREAKEVEN_SET (pnl=1.5%) - SL moved to breakeven
+- 30m: HOLD (pnl=2.0%) - momentum supporting
+```
+
+**5. ANALYST response** — новое поле:
+```json
+{
+    "grade": "B",
+    "position_management_score": "good",  // NEW
+    ...
+}
+```
+
+### Структура в bot_positions.json
+```json
+{
+    "BTCUSDT": {
+        "symbol": "BTC/USDT",
+        "side": "LONG",
+        ...
+        "decision_log": [
+            {"elapsed_min": 5, "action": "HOLD", ...},
+            {"elapsed_min": 15, "action": "BREAKEVEN_SET", ...}
+        ]
+    }
+}
+```
+
+### Логика анализа
+1. Если много HOLD перед убыточным закрытием → нужно было раньше выходить
+2. Если trailing/breakeven сработал → position management = good
+3. Если позиция закрылась быстро по SL без решений → entry quality плохой
