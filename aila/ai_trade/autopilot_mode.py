@@ -39,6 +39,7 @@ class AutopilotMode:
         '_last_sniper_scan', '_current_agent', '_cascade_stats',
         '_last_position_sync', '_position_monitor',
         '_oauth_refresher', '_oauth_warn_sent', '_oauth_expired_sent',
+        '_post_analysis_queue',
     ]
 
     def __init__(self, orchestrator: Any) -> None:
@@ -59,7 +60,7 @@ class AutopilotMode:
         self._agent_stats = AgentStatsManager()
 
         # Inject agent_stats into sniper for level-based leverage limits
-        if hasattr(self._orchestrator, 'sniper'):
+        if hasattr(self._orchestrator, 'sniper') and self._orchestrator.sniper is not None:
             self._orchestrator.sniper._agent_stats = self._agent_stats
 
         # Cascade analysis stats
@@ -80,11 +81,12 @@ class AutopilotMode:
         self._oauth_expired_sent: bool = False
 
         # Active position management
+        trader = self._orchestrator.trader
         self._position_monitor = PositionMonitor(
             exchange=self._orchestrator.exchanges.primary,
-            trader_agent=self._orchestrator.trader,
+            trader_agent=trader,
             position_manager=self._orchestrator.position_manager,
-            scanner=self._orchestrator.trader.scanner,
+            scanner=trader.scanner if trader else None,
             sniper_agent=self._orchestrator.sniper,
         )
 
