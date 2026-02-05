@@ -45,7 +45,7 @@ class PositionMonitor:
     """Actively manages open positions with fast rules and Claude analysis."""
 
     __slots__ = (
-        "_exchange", "_trader_agent", "_position_manager",
+        "_exchange", "_trader_agent", "_position_manager", "_scanner",
         "_running", "_tracking", "_last_claude_eval",
     )
 
@@ -54,10 +54,12 @@ class PositionMonitor:
         exchange: Any,
         trader_agent: Any,
         position_manager: Any,
+        scanner: Any = None,
     ) -> None:
         self._exchange = exchange
         self._trader_agent = trader_agent
         self._position_manager = position_manager
+        self._scanner = scanner
         self._running = False
         # Per-symbol tracking state
         self._tracking: dict[str, dict[str, Any]] = {}
@@ -321,6 +323,50 @@ class PositionMonitor:
             "threshold_minutes": int(threshold),
         }
 
+    async def _get_full_market_context(self, symbol: str) -> dict[str, Any]:
+        """Collect ALL available market data for position evaluation."""
+        result: dict[str, Any] = {"price": 0, "trend": "NEUTRAL", "rsi": 50}
+
+        try:
+            # 1. Scanner data (indicators, support/resistance, funding, etc.)
+            if self._scanner:
+                scanner_data = await self._scanner.get_market_data(symbol)
+                if scanner_data:
+                    result.update({
+                        "price": scanner_data.get("price", 0),
+                        "trend": scanner_data.get("trend", "NEUTRAL"),
+                        "rsi": scanner_data.get("rsi", 50),
+                        "stoch_rsi_k": scanner_data.get("stoch_rsi", {}).get("k", 50),
+                        "macd_histogram": scanner_data.get("macd", {}).get("histogram", 0),
+                        "bollinger_pct_b": scanner_data.get("bollinger", {}).get("pct_b", 0.5),
+                        "volume_ratio": scanner_data.get("volume_profile", {}).get("ratio", 1.0),
+                        "atr": scanner_data.get("atr", 0),
+                        "support": scanner_data.get("support", 0),
+                        "resistance": scanner_data.get("resistance", 0),
+                        "ema50": scanner_data.get("ema50", 0),
+                        "ema200": scanner_data.get("ema200", 0),
+                        "funding_rate": scanner_data.get("funding_rate", 0),
+                        "oi_change_pct": scanner_data.get("oi_change_pct", 0),
+                        "liquidation_pressure": scanner_data.get("liquidation_pressure", "LOW"),
+                        "fear_greed": scanner_data.get("fear_greed", 50),
+                        "fear_greed_label": scanner_data.get("fear_greed_label", "Neutral"),
+                    })
+
+            # 2. Orderbook analysis
+            orderbook = await self._exchange.get_orderbook_analysis(symbol)
+            result.update({
+                "orderbook_imbalance": orderbook.get("imbalance", 0),
+                "orderbook_signal": orderbook.get("imbalance_signal", "BALANCED"),
+                "big_bid_walls": len(orderbook.get("big_bid_walls", [])),
+                "big_ask_walls": len(orderbook.get("big_ask_walls", [])),
+                "spread_pct": orderbook.get("spread_pct", 0),
+            })
+
+        except Exception as e:
+            logger.error(f"[MONITOR] Error getting market context for {symbol}: {e}")
+
+        return result
+
     async def _maybe_claude_eval(
         self,
         symbol: str,
@@ -369,9 +415,11 @@ class PositionMonitor:
             ),
         }
 
-        market_data = {
-            "price": exchange_pos.get("mark_price", 0),
-        }
+        # Get FULL market context for Claude evaluation
+        market_data = await self._get_full_market_context(symbol)
+        # Ensure price from exchange is included
+        if not market_data.get("price"):
+            market_data["price"] = exchange_pos.get("mark_price", 0)
 
         try:
             result = await self._trader_agent.evaluate_exit(

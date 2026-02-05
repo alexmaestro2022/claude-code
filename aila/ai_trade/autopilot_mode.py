@@ -84,6 +84,7 @@ class AutopilotMode:
             exchange=self._orchestrator.exchanges.primary,
             trader_agent=self._orchestrator.trader,
             position_manager=self._orchestrator.position_manager,
+            scanner=self._orchestrator.trader.scanner,
         )
 
         self._config = {

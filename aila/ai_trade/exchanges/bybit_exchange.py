@@ -71,6 +71,62 @@ class BybitExchange(BaseExchange):
         """Alias for get_orderbook (ccxt-compatible name)."""
         return await self.get_orderbook(symbol, limit)
 
+    async def get_orderbook_analysis(self, symbol: str, depth: int = 25) -> dict[str, Any]:
+        """Analyze orderbook for large walls and buy/sell imbalance.
+
+        Returns:
+            Dict with bid/ask volumes, imbalance signal, big walls, spread
+        """
+        try:
+            ob = await self.get_orderbook(symbol, depth)
+            bids = ob.get("bids", [])
+            asks = ob.get("asks", [])
+
+            if not bids or not asks:
+                return self._empty_orderbook_result()
+
+            total_bid_vol = sum(b[1] for b in bids)
+            total_ask_vol = sum(a[1] for a in asks)
+            total_vol = total_bid_vol + total_ask_vol
+
+            imbalance = (total_bid_vol - total_ask_vol) / total_vol if total_vol > 0 else 0
+
+            # Big walls: >5% of total volume at single level
+            threshold = total_vol * 0.05
+            big_bids = [{"price": b[0], "size": b[1]} for b in bids if b[1] > threshold][:3]
+            big_asks = [{"price": a[0], "size": a[1]} for a in asks if a[1] > threshold][:3]
+
+            # Imbalance signal
+            if imbalance > 0.15:
+                signal = "BUY_PRESSURE"
+            elif imbalance < -0.15:
+                signal = "SELL_PRESSURE"
+            else:
+                signal = "BALANCED"
+
+            spread_pct = (asks[0][0] - bids[0][0]) / bids[0][0] * 100 if bids[0][0] > 0 else 0
+
+            return {
+                "bid_volume": round(total_bid_vol, 2),
+                "ask_volume": round(total_ask_vol, 2),
+                "imbalance": round(imbalance, 3),
+                "imbalance_signal": signal,
+                "big_bid_walls": big_bids,
+                "big_ask_walls": big_asks,
+                "spread_pct": round(spread_pct, 4),
+            }
+        except Exception as e:
+            logger.error(f"Orderbook analysis error {symbol}: {e}")
+            return self._empty_orderbook_result()
+
+    def _empty_orderbook_result(self) -> dict[str, Any]:
+        """Return empty orderbook analysis result."""
+        return {
+            "bid_volume": 0, "ask_volume": 0, "imbalance": 0,
+            "imbalance_signal": "BALANCED", "big_bid_walls": [],
+            "big_ask_walls": [], "spread_pct": 0,
+        }
+
     @retry_async(max_attempts=2)
     async def get_instrument_info(self, symbol: str) -> dict:
         """Get instrument info including qty precision (qtyStep)."""

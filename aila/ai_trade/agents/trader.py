@@ -415,14 +415,25 @@ You are a position manager. Evaluate this open position and decide the best acti
 
 ## CURRENT INDICATORS
 - Price: {current_price} | Trend: {market_data.get('trend', 'N/A')}
-- RSI: {market_data.get('rsi', 'N/A')} | StochRSI K: {srsi.get('k', 'N/A') if srsi else 'N/A'}
-- MACD: {macd_signal} (hist={macd.get('histogram', 'N/A')})
-- Bollinger %B: {bb.get('pct_b', 'N/A') if bb else 'N/A'}
-- Volume ratio: {vol_ratio} (>1.5=high, <0.5=low)
+- RSI: {market_data.get('rsi', 'N/A')} | StochRSI K: {market_data.get('stoch_rsi_k', srsi.get('k', 'N/A') if srsi else 'N/A')}
+- MACD: {macd_signal} (hist={market_data.get('macd_histogram', macd.get('histogram', 'N/A'))})
+- Bollinger %B: {market_data.get('bollinger_pct_b', bb.get('pct_b', 'N/A') if bb else 'N/A')} (>1=overbought, <0=oversold)
+- Volume ratio: {market_data.get('volume_ratio', vol_ratio)} (>1.5=high, <0.5=low)
 - ATR: {market_data.get('atr', 'N/A')}
-- Momentum: {momentum_status}
-- News sentiment: {market_data.get('news_sentiment', 'N/A')}
+- EMA50: {market_data.get('ema50', 'N/A')} | EMA200: {market_data.get('ema200', 'N/A')}
 - Support: {market_data.get('support', 'N/A')} | Resistance: {market_data.get('resistance', 'N/A')}
+- Momentum: {momentum_status}
+
+## ORDERBOOK
+- Imbalance: {market_data.get('orderbook_imbalance', 0):.3f} ({market_data.get('orderbook_signal', 'BALANCED')})
+- Big bid walls: {market_data.get('big_bid_walls', 0)} | Big ask walls: {market_data.get('big_ask_walls', 0)}
+- Spread: {market_data.get('spread_pct', 0):.4f}%
+
+## MARKET SENTIMENT
+- Funding rate: {market_data.get('funding_rate', 0):.4f}%
+- OI change 25m: {market_data.get('oi_change_pct', 0):.2f}%
+- Liquidation pressure: {market_data.get('liquidation_pressure', 'LOW')}
+- Fear & Greed: {market_data.get('fear_greed', 50)} ({market_data.get('fear_greed_label', 'Neutral')})
 
 ## DECISION RULES
 1. PnL dropping from peak by >50% of peak → tighten SL or partial close
@@ -431,7 +442,11 @@ You are a position manager. Evaluate this open position and decide the best acti
 4. PnL > +3% → move SL to breakeven+0.5%
 5. NEVER move SL further from entry (only tighten)
 6. If near S/R level that opposes position → consider closing
-7. Partial close: 25-75% of position
+7. Orderbook imbalance against position (SELL_PRESSURE for LONG) → tighten SL
+8. Funding extreme (>0.1% for LONG, <-0.1% for SHORT) → extra caution
+9. Fear&Greed <20 favors LONG, >80 favors SHORT — consider if aligned
+10. High liquidation pressure → volatile, tighten SL
+11. Partial close: 25-75% of position
 
 ## TASK
 Respond STRICTLY in JSON:
