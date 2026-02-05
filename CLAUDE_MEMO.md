@@ -4092,3 +4092,25 @@ if current_positions == 0 and all_exchange > 0 and len(bot_positions) == 0:
 - TRADER и SNIPER считают позиции РАЗДЕЛЬНО по полю `source`
 - Каждый агент может открыть свою позицию независимо
 - На Level 1: возможно 1 TRADER + 1 SNIPER = 2 позиции одновременно
+
+---
+
+## 62. Fix: Remove duplicate Telegram notifications (2026-02-05)
+
+### Проблема
+При открытии/закрытии позиции приходили 2 сообщения:
+1. `🎯 SNIPER TRADE OPENED` (из autopilot_mode.py — информативное)
+2. `AILA AI Trade - Position Opened` (из position_manager.py — дубль)
+
+### Решение
+Удалены вызовы из position_manager.py:
+- `asyncio.create_task(self._notify_position_opened(...))` — строка ~181
+- `asyncio.create_task(self._notify_position_closed(...))` — строка ~217
+
+### Файл
+- `aila/ai_trade/position_manager.py`
+
+### Результат
+Теперь только 1 уведомление на каждое событие:
+- Открытие: `{emoji} {agent} TRADE OPENED` (с Level, WR, Trigger)
+- Закрытие: `{emoji} {agent} TRADE CLOSED` (с Grade, PnL, Lesson)
