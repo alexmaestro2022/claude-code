@@ -3642,3 +3642,56 @@ get_orderbook_analysis(symbol, depth=25)
 | Indicators | price, trend, rsi, stoch_rsi_k, macd_histogram, bollinger_pct_b, volume_ratio, atr, ema50, ema200, support, resistance |
 | Orderbook | orderbook_imbalance, orderbook_signal, big_bid_walls, big_ask_walls, spread_pct |
 | Sentiment | funding_rate, oi_change_pct, liquidation_pressure, fear_greed, fear_greed_label |
+
+---
+
+## 54. Separate TRADER/SNIPER Position Management (2026-02-05)
+
+### Проблема
+Все позиции использовали одинаковый evaluate_exit и одинаковые пороги, хотя SNIPER и TRADER имеют разные цели.
+
+### Решение
+
+**1. SNIPER `evaluate_exit`** — `sniper.py`:
+Новый метод с агрессивными правилами для быстрых сделок:
+- Max hold time: 60 мин → CLOSE
+- Quick profit: PnL > +1.5% за < 10 мин → CLOSE
+- RSI extreme: >80 для LONG или <20 для SHORT → CLOSE
+- Volume spike: ratio > 3x против позиции → CLOSE
+- Orderbook shift: imbalance против позиции → CLOSE
+- Trailing distance: 0.3% (vs TRADER 0.5%)
+
+**2. Раздельные пороги** — `position_monitor.py`:
+
+| Параметр | TRADER | SNIPER |
+|----------|--------|--------|
+| Claude eval interval | 150 сек | 60 сек |
+| Breakeven trigger | 1.5% | 0.5% |
+| Breakeven offset | 0.1% | 0.05% |
+| Trailing trigger | 3.0% | 1.0% |
+| Trailing distance | 1.5% | 0.5% |
+
+**3. Роутинг по source** — `position_monitor.py`:
+```python
+source = bot_pos.get("source", "TRADER").upper()
+is_sniper = source == "SNIPER"
+
+# Claude eval interval
+eval_interval = SNIPER_CLAUDE_EVAL_INTERVAL if is_sniper else TRADER_CLAUDE_EVAL_INTERVAL
+
+# Route to appropriate agent
+if is_sniper and self._sniper_agent:
+    result = await self._sniper_agent.evaluate_exit(position_context, market_data)
+else:
+    result = await self._trader_agent.evaluate_exit(position_context, market_data)
+```
+
+**4. `autopilot_mode.py`**:
+- Передаёт `sniper_agent=self._orchestrator.sniper` в PositionMonitor
+
+### Логи
+```
+[MONITOR][SNIPER][BREAKEVEN] XRPUSDT PnL=0.6% >= 0.5% → moving SL to breakeven
+[MONITOR][TRADER][TRAILING] BTCUSDT PnL=3.5% >= 3.0% → activating trailing stop
+[MONITOR][SNIPER] ETHUSDT → CLOSE (urgency=high) Quick profit secured...
+```
