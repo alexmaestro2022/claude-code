@@ -266,6 +266,104 @@ Respond in JSON only:
             self.log(f"Snipe cancelled: {pair}")
         return cancelled
 
+    async def evaluate_exit(self, position: dict, market_data: dict) -> dict:
+        """Evaluate SNIPER position exit — aggressive rules for quick trades.
+
+        SNIPER positions target 5-30 min holding, quick profit capture.
+        """
+        symbol = position.get("symbol", "unknown")
+        pnl_pct = position.get("unrealized_pnl_pct", 0)
+        peak_pnl = position.get("peak_pnl_pct", 0)
+        direction = position.get("direction", "LONG")
+        leverage = position.get("leverage", 1)
+        entry_price = position.get("entry_price", 0)
+        current_price = position.get("current_price", market_data.get("price", 0))
+        duration = position.get("duration", "0h 0m")
+
+        # Parse duration to minutes
+        try:
+            parts = duration.replace("h", "").replace("m", "").split()
+            hours = int(parts[0]) if parts else 0
+            mins = int(parts[1]) if len(parts) > 1 else 0
+            duration_mins = hours * 60 + mins
+        except (ValueError, IndexError):
+            duration_mins = 0
+
+        rsi = market_data.get("rsi", 50)
+        vol_ratio = market_data.get("volume_ratio", 1.0)
+        ob_signal = market_data.get("orderbook_signal", "BALANCED")
+        ob_imbalance = market_data.get("orderbook_imbalance", 0)
+
+        prompt = f"""## ROLE
+You are a SNIPER position manager. Evaluate this quick-trade position aggressively.
+SNIPER targets 5-30 minute holds. Be ready to exit fast on ANY warning sign.
+
+## POSITION
+- Pair: {symbol} | Direction: {direction} | Leverage: {leverage}x
+- Entry: {entry_price} | Current: {current_price}
+- PnL: {pnl_pct:+.2f}% | Peak PnL: {peak_pnl:+.2f}% | Drawdown from peak: {peak_pnl - pnl_pct:.2f}%
+- Duration: {duration} ({duration_mins} minutes)
+- Stop Loss: {position.get('stop_loss', 'none')} | Take Profit: {position.get('take_profit', 'none')}
+
+## CURRENT INDICATORS
+- Price: {current_price} | Trend: {market_data.get('trend', 'N/A')}
+- RSI: {rsi} | StochRSI K: {market_data.get('stoch_rsi_k', 'N/A')}
+- MACD hist: {market_data.get('macd_histogram', 'N/A')}
+- Bollinger %B: {market_data.get('bollinger_pct_b', 'N/A')}
+- Volume ratio: {vol_ratio} (>3 against position = EXIT)
+- ATR: {market_data.get('atr', 'N/A')}
+- Support: {market_data.get('support', 'N/A')} | Resistance: {market_data.get('resistance', 'N/A')}
+
+## ORDERBOOK
+- Imbalance: {ob_imbalance:.3f} ({ob_signal})
+- Big bid walls: {market_data.get('big_bid_walls', 0)} | Big ask walls: {market_data.get('big_ask_walls', 0)}
+
+## MARKET SENTIMENT
+- Funding rate: {market_data.get('funding_rate', 0):.4f}%
+- OI change 25m: {market_data.get('oi_change_pct', 0):.2f}%
+- Liquidation pressure: {market_data.get('liquidation_pressure', 'LOW')}
+- Fear & Greed: {market_data.get('fear_greed', 50)} ({market_data.get('fear_greed_label', 'Neutral')})
+
+## SNIPER EXIT RULES (AGGRESSIVE)
+1. Duration > 60 min → CLOSE immediately (SNIPER max hold time exceeded)
+2. PnL > +1.5% in < 10 min → CLOSE (quick profit secured)
+3. PnL > +0.3% → move SL to breakeven (tighter than TRADER)
+4. RSI > 80 for LONG or RSI < 20 for SHORT → CLOSE (extreme reached)
+5. Volume ratio > 3x against position → CLOSE (momentum shift)
+6. Orderbook imbalance sharply against position (SELL_PRESSURE for LONG, BUY_PRESSURE for SHORT) → CLOSE
+7. Drawdown from peak > 40% of peak PnL → CLOSE (momentum lost)
+8. High liquidation pressure + duration > 15 min → CLOSE (overstayed)
+9. NEVER hold SNIPER position > 60 min — this is for quick trades only
+10. Trail SL at 0.3% from peak (tighter than TRADER's 0.5%)
+
+## TASK
+Respond STRICTLY in JSON:
+{{
+    "action": "HOLD" | "CLOSE" | "MOVE_SL" | "MOVE_TP" | "PARTIAL_CLOSE",
+    "new_sl": null or exact price (for MOVE_SL only),
+    "new_tp": null or exact price (for MOVE_TP only),
+    "close_pct": null or 25-75 (for PARTIAL_CLOSE only),
+    "reason": "1 sentence explaining why",
+    "urgency": "low" | "medium" | "high"
+}}"""
+        result = await self.claude_client.analyze(
+            prompt,
+            use_haiku=True,
+            agent="SNIPER",
+            action="evaluate_exit",
+            context=f"pair={symbol},pnl={pnl_pct:.1f}%,dur={duration_mins}m",
+        )
+
+        if "error" not in result:
+            action = result.get("action", "HOLD")
+            self.log(
+                f"Exit eval: {symbol} → {action} "
+                f"(urgency={result.get('urgency', '?')}) "
+                f"pnl={pnl_pct:.1f}% dur={duration_mins}m"
+            )
+
+        return result
+
     def get_duplicate_stats(self) -> dict[str, Any]:
         """Get statistics about blocked duplicate snipes."""
         active_cooldowns = sum(

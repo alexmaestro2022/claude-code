@@ -27,15 +27,27 @@ if not any(
 
 # --- Configuration ---
 CHECK_INTERVAL_SECONDS = 15
-CLAUDE_EVAL_INTERVAL_SECONDS = 150  # 2.5 min between Claude evaluations
 
-# Breakeven: move SL to entry + 0.1% when PnL >= +1.5%
-BREAKEVEN_TRIGGER_PCT = 1.5
-BREAKEVEN_OFFSET_PCT = 0.1
+# TRADER thresholds (longer holds, wider stops)
+TRADER_CLAUDE_EVAL_INTERVAL = 150  # 2.5 min
+TRADER_BREAKEVEN_TRIGGER_PCT = 1.5
+TRADER_BREAKEVEN_OFFSET_PCT = 0.1
+TRADER_TRAILING_TRIGGER_PCT = 3.0
+TRADER_TRAILING_DISTANCE_PCT = 1.5
 
-# Trailing stop: activate at +3%, trail 1.5% from peak
-TRAILING_TRIGGER_PCT = 3.0
-TRAILING_DISTANCE_PCT = 1.5
+# SNIPER thresholds (quick trades, tight stops)
+SNIPER_CLAUDE_EVAL_INTERVAL = 60  # 1 min — check more often
+SNIPER_BREAKEVEN_TRIGGER_PCT = 0.5
+SNIPER_BREAKEVEN_OFFSET_PCT = 0.05
+SNIPER_TRAILING_TRIGGER_PCT = 1.0
+SNIPER_TRAILING_DISTANCE_PCT = 0.5
+
+# Legacy defaults (for compatibility)
+CLAUDE_EVAL_INTERVAL_SECONDS = TRADER_CLAUDE_EVAL_INTERVAL
+BREAKEVEN_TRIGGER_PCT = TRADER_BREAKEVEN_TRIGGER_PCT
+BREAKEVEN_OFFSET_PCT = TRADER_BREAKEVEN_OFFSET_PCT
+TRAILING_TRIGGER_PCT = TRADER_TRAILING_TRIGGER_PCT
+TRAILING_DISTANCE_PCT = TRADER_TRAILING_DISTANCE_PCT
 
 # Time-based: warn if position open > expected_duration * 2
 TIME_WARNING_MULTIPLIER = 2
@@ -45,7 +57,7 @@ class PositionMonitor:
     """Actively manages open positions with fast rules and Claude analysis."""
 
     __slots__ = (
-        "_exchange", "_trader_agent", "_position_manager", "_scanner",
+        "_exchange", "_trader_agent", "_sniper_agent", "_position_manager", "_scanner",
         "_running", "_tracking", "_last_claude_eval",
     )
 
@@ -55,9 +67,11 @@ class PositionMonitor:
         trader_agent: Any,
         position_manager: Any,
         scanner: Any = None,
+        sniper_agent: Any = None,
     ) -> None:
         self._exchange = exchange
         self._trader_agent = trader_agent
+        self._sniper_agent = sniper_agent
         self._position_manager = position_manager
         self._scanner = scanner
         self._running = False
@@ -150,18 +164,21 @@ class PositionMonitor:
             if pnl_pct > track["peak_pnl_pct"]:
                 track["peak_pnl_pct"] = pnl_pct
 
+            # Determine source for threshold selection
+            source = bot_pos.get("source", "TRADER").upper()
+
             # --- Fast rules (no Claude) ---
 
-            # 1. Breakeven rule
+            # 1. Breakeven rule (source-specific thresholds)
             action = await self._check_breakeven(
-                symbol, side, entry_price, pnl_pct, track
+                symbol, side, entry_price, pnl_pct, track, source
             )
             if action:
                 actions.append(action)
 
-            # 2. Trailing stop rule
+            # 2. Trailing stop rule (source-specific thresholds)
             action = await self._check_trailing_stop(
-                symbol, side, entry_price, mark_price, pnl_pct, track
+                symbol, side, entry_price, mark_price, pnl_pct, track, source
             )
             if action:
                 actions.append(action)
@@ -185,24 +202,33 @@ class PositionMonitor:
         entry_price: float,
         pnl_pct: float,
         track: dict[str, Any],
+        source: str = "TRADER",
     ) -> Optional[dict[str, Any]]:
-        """Move SL to breakeven when PnL >= BREAKEVEN_TRIGGER_PCT."""
+        """Move SL to breakeven — thresholds depend on source (TRADER/SNIPER)."""
         if track["breakeven_applied"] or track["trailing_active"]:
             return None
 
-        if pnl_pct < BREAKEVEN_TRIGGER_PCT:
+        # Use source-specific thresholds
+        if source == "SNIPER":
+            trigger = SNIPER_BREAKEVEN_TRIGGER_PCT
+            offset = SNIPER_BREAKEVEN_OFFSET_PCT
+        else:
+            trigger = TRADER_BREAKEVEN_TRIGGER_PCT
+            offset = TRADER_BREAKEVEN_OFFSET_PCT
+
+        if pnl_pct < trigger:
             return None
 
-        # Calculate breakeven SL: entry + 0.1% offset
+        # Calculate breakeven SL: entry + offset
         if side == "LONG":
-            new_sl = entry_price * (1 + BREAKEVEN_OFFSET_PCT / 100)
+            new_sl = entry_price * (1 + offset / 100)
         else:
-            new_sl = entry_price * (1 - BREAKEVEN_OFFSET_PCT / 100)
+            new_sl = entry_price * (1 - offset / 100)
 
         new_sl = await self._exchange.round_price(symbol, new_sl)
 
         logger.info(
-            f"[MONITOR][BREAKEVEN] {symbol} PnL={pnl_pct:.1f}% >= {BREAKEVEN_TRIGGER_PCT}% "
+            f"[MONITOR][{source}][BREAKEVEN] {symbol} PnL={pnl_pct:.1f}% >= {trigger}% "
             f"→ moving SL to breakeven @ {new_sl}"
         )
 
@@ -230,17 +256,25 @@ class PositionMonitor:
         mark_price: float,
         pnl_pct: float,
         track: dict[str, Any],
+        source: str = "TRADER",
     ) -> Optional[dict[str, Any]]:
-        """Activate/update trailing stop when PnL >= TRAILING_TRIGGER_PCT."""
-        if pnl_pct < TRAILING_TRIGGER_PCT:
+        """Activate/update trailing stop — thresholds depend on source (TRADER/SNIPER)."""
+        # Use source-specific thresholds
+        if source == "SNIPER":
+            trigger = SNIPER_TRAILING_TRIGGER_PCT
+            distance = SNIPER_TRAILING_DISTANCE_PCT
+        else:
+            trigger = TRADER_TRAILING_TRIGGER_PCT
+            distance = TRADER_TRAILING_DISTANCE_PCT
+
+        if pnl_pct < trigger:
             return None
 
-        # Calculate trailing SL: trail TRAILING_DISTANCE_PCT from current peak
+        # Calculate trailing SL: trail distance% from current peak
         if side == "LONG":
-            # Peak price is derived from peak PnL
-            trailing_sl = mark_price * (1 - TRAILING_DISTANCE_PCT / 100)
+            trailing_sl = mark_price * (1 - distance / 100)
         else:
-            trailing_sl = mark_price * (1 + TRAILING_DISTANCE_PCT / 100)
+            trailing_sl = mark_price * (1 + distance / 100)
 
         trailing_sl = await self._exchange.round_price(symbol, trailing_sl)
 
@@ -254,12 +288,12 @@ class PositionMonitor:
 
         if not track["trailing_active"]:
             logger.info(
-                f"[MONITOR][TRAILING] {symbol} PnL={pnl_pct:.1f}% >= {TRAILING_TRIGGER_PCT}% "
-                f"→ activating trailing stop @ {trailing_sl}"
+                f"[MONITOR][{source}][TRAILING] {symbol} PnL={pnl_pct:.1f}% >= {trigger}% "
+                f"→ activating trailing stop @ {trailing_sl} (distance={distance}%)"
             )
         else:
             logger.info(
-                f"[MONITOR][TRAILING] {symbol} updating SL: "
+                f"[MONITOR][{source}][TRAILING] {symbol} updating SL: "
                 f"{current_trailing} → {trailing_sl} (PnL={pnl_pct:.1f}%)"
             )
 
@@ -375,13 +409,20 @@ class PositionMonitor:
         pnl_pct: float,
         actions: list[dict[str, Any]],
     ) -> None:
-        """Call TRADER.evaluate_exit() via Claude, throttled per symbol."""
+        """Call evaluate_exit() via Claude, routed by position source."""
         now = datetime.now()
         last_eval = self._last_claude_eval.get(symbol)
 
+        # Determine source (TRADER or SNIPER)
+        source = bot_pos.get("source", "TRADER").upper()
+        is_sniper = source == "SNIPER"
+
+        # Use source-specific eval interval
+        eval_interval = SNIPER_CLAUDE_EVAL_INTERVAL if is_sniper else TRADER_CLAUDE_EVAL_INTERVAL
+
         if last_eval:
             elapsed = (now - last_eval).total_seconds()
-            if elapsed < CLAUDE_EVAL_INTERVAL_SECONDS:
+            if elapsed < eval_interval:
                 return
 
         self._last_claude_eval[symbol] = now
@@ -422,12 +463,20 @@ class PositionMonitor:
             market_data["price"] = exchange_pos.get("mark_price", 0)
 
         try:
-            result = await self._trader_agent.evaluate_exit(
-                position_context, market_data
-            )
+            # Route to appropriate agent based on source
+            if is_sniper and self._sniper_agent:
+                result = await self._sniper_agent.evaluate_exit(
+                    position_context, market_data
+                )
+                agent_name = "SNIPER"
+            else:
+                result = await self._trader_agent.evaluate_exit(
+                    position_context, market_data
+                )
+                agent_name = "TRADER"
 
             if "error" in result:
-                logger.warning(f"[MONITOR][CLAUDE] {symbol} eval error: {result['error']}")
+                logger.warning(f"[MONITOR][{agent_name}] {symbol} eval error: {result['error']}")
                 return
 
             action = result.get("action", "HOLD")
@@ -435,7 +484,7 @@ class PositionMonitor:
             urgency = result.get("urgency", "low")
 
             logger.info(
-                f"[MONITOR][CLAUDE] {symbol} → {action} "
+                f"[MONITOR][{agent_name}] {symbol} → {action} "
                 f"(urgency={urgency}) {reason[:80]}"
             )
 
@@ -445,7 +494,7 @@ class PositionMonitor:
             await self._execute_claude_action(symbol, bot_pos, result, actions)
 
         except Exception as e:
-            logger.error(f"[MONITOR][CLAUDE] {symbol} eval failed: {e}")
+            logger.error(f"[MONITOR][{source}] {symbol} eval failed: {e}")
 
     async def _execute_claude_action(
         self,
