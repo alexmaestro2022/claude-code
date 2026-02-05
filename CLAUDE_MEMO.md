@@ -3877,3 +3877,58 @@ Trade close → ANALYST (decision_analysis, management_lessons)
 [TRADER][ANALYST] Management lessons: ['When RSI < 70...']
 [TRADER][MENTOR] Added 2 rules: ['...', '...']
 ```
+
+---
+
+## 57. ANALYST v2 + MENTOR v2 — система обучения с TTL и весами (2026-02-05)
+
+### Проблемы
+1. `learned_rules = 0` при 7+ сделках — MENTOR не генерировал правила
+2. Нет числовых критериев grade — Claude ставил произвольно
+3. Нет логов MENTOR — невозможно отладить
+4. MENTOR пропускал grade C
+
+### Решение
+
+**1. ANALYST v2** — числовые критерии grade:
+```
+- Grade A: PnL >= +2%
+- Grade B: PnL +0.5% to +2%
+- Grade C: PnL -0.5% to +0.5% (breakeven)
+- Grade D: PnL -2% to -0.5%
+- Grade F: PnL < -2%
+```
+
+**2. MENTOR v2** — полное логирование:
+```
+[MENTOR] Starting for BTCUSDT grade=B lesson_len=85
+[MENTOR] Claude returned 2 rules
+[MENTOR] Added 2 rules (1 mgmt)
+```
+
+**3. Knowledge Base v2** — правила с TTL:
+```json
+{
+    "rule": "Don't short at RSI < 25",
+    "confirmed_count": 3,
+    "importance": "high",
+    "created_at": "2026-02-01",
+    "last_confirmed_at": "2026-02-05"
+}
+```
+- Дедупликация: 50%+ слов = похожее правило
+- confirmed_count += 1 при похожем
+- importance: low → medium (2x) → high (3x)
+- TTL: 30 дней low, 60 дней high
+
+**4. MENTOR для всех grade**:
+```python
+# БЫЛО: grade in ("A", "B", "D", "F")
+# СТАЛО: grade in ("A", "B", "C", "D", "F")
+```
+
+**5. Приоритизация в промпте**:
+- 🔴 HIGH: все правила
+- 🟡 MEDIUM: до 8 правил
+- 🟢 LOW: до 5 правил
+- Max 15 правил в промпте
