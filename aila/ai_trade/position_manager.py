@@ -177,8 +177,8 @@ class PositionManager:
 
             logger.info(f"[POSITION] SUCCESS: {direction} {symbol} @ {price}, lev={leverage}x (source={source})")
 
-            # Send Telegram notification
-            asyncio.create_task(self._notify_position_opened(position, signal))
+            # Telegram notification is sent by autopilot_mode._send_trade_notification()
+            # to avoid duplicate messages (removed _notify_position_opened call)
 
             return position
 
@@ -213,8 +213,8 @@ class PositionManager:
             del self._open_positions[symbol]
             logger.info(f"Position closed: {symbol} PnL={trade_result['pnl']:.2f}")
 
-            # Send Telegram notification
-            asyncio.create_task(self._notify_position_closed(trade_result))
+            # Telegram notification is sent by autopilot_mode._send_trade_closed_notification()
+            # to avoid duplicate messages (removed _notify_position_closed call)
 
             return trade_result
 
