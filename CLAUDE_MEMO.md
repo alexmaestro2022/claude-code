@@ -4038,3 +4038,27 @@ if trend == "BEARISH" and change_24h < -3 and 15 < rsi < 40 and macd_hist < 0:
 ### Файлы
 - `aila/ai_trade/agents/reviewer.py` — новый промпт с умными правилами
 - `aila/ai_trade/agents/sniper.py` — trigger `trend_continuation`
+
+---
+
+## 60. Fix: PositionManager save_positions attribute error (2026-02-05)
+
+### Проблема
+```
+Autopilot error: 'PositionManager' object has no attribute 'save_positions'
+```
+
+### Причина
+`position_monitor.py:132` вызывал несуществующий метод `save_positions()`.
+
+### Решение
+Заменено на правильный метод `_save_bot_positions()`.
+
+### Файл
+- `aila/ai_trade/position_monitor.py:132`
+
+### Бонус — успешные сделки после калибровки
+После фикса REVIEWER + trend_continuation все 3 SHORT сделки закрылись по TP:
+- HYPE/USDT: +$0.05 (+0.9%)
+- 1000PEPE/USDT: +$0.01 (+0.5%)
+- ETH/USDT: +$0.09 (+1.3%)
