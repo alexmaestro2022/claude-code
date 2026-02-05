@@ -463,13 +463,20 @@ class ClaudeMaxClient:
                     mistake_strs.append(str(m)[:80])
             experience_lines.append("AVOID: " + "; ".join(mistake_strs))
 
-        # Learned rules (last 5)
-        rules = knowledge.get("learned_rules", [])[-5:]
+        # Learned rules (prioritized by importance)
+        rules = knowledge.get("learned_rules", [])
         if rules:
             rule_strs = []
-            for r in rules:
+            for r in rules[:10]:  # Max 10 in compact prompt
                 if isinstance(r, dict):
-                    rule_strs.append(r.get("rule", str(r))[:60])
+                    imp = r.get("importance", "low")
+                    conf = r.get("confirmed_count", 1)
+                    marker = "🔴" if imp == "high" else ("🟡" if imp == "medium" else "")
+                    rule_text = r.get("rule", str(r))[:55]
+                    if conf > 1:
+                        rule_strs.append(f"{marker}{rule_text} (x{conf})")
+                    else:
+                        rule_strs.append(f"{marker}{rule_text}")
                 else:
                     rule_strs.append(str(r)[:60])
             experience_lines.append("RULES: " + "; ".join(rule_strs))
@@ -605,24 +612,36 @@ For EACH decision in the log above, evaluate IN HINDSIGHT:
 3. What happened AFTER? Did price continue in position's favor or reverse?
 4. Score: GOOD (correct), NEUTRAL (ok), BAD (wrong), PREMATURE (too early), LATE (too late)
 
+## GRADING CRITERIA (strict thresholds - use PnL% as PRIMARY criteria):
+- Grade A: PnL >= +2% AND (R:R achieved >= 2.0 OR perfect timing/execution)
+- Grade B: PnL between +0.5% and +2% OR (small loss -0.5% to 0% with correct direction but bad luck)
+- Grade C: PnL between -0.5% and +0.5% — breakeven, small result, neither good nor bad
+- Grade D: PnL between -2% and -0.5% — clear mistake in entry, timing, or position management
+- Grade F: PnL < -2% OR hit max SL OR completely wrong direction/analysis
+
+ADJUSTMENTS (may shift grade +/- one level):
+- Volatile market conditions → more lenient
+- Excellent position management (good HOLD/MOVE_SL decisions) → +1 grade
+- Terrible timing (entered at worst possible moment) → -1 grade
+Always explain WHY you chose this grade with specific PnL numbers.
+
 ## TASK
 Respond STRICTLY in JSON:
 {{
     "grade": "A" | "B" | "C" | "D" | "F",
+    "grade_reasoning": "PnL was X%, which meets threshold for Y grade because...",
     "what_went_right": ["point1", "point2"],
     "what_went_wrong": ["point1", "point2"],
     "position_management_score": "good" | "average" | "poor",
     "decision_analysis": [
-        {{"decision_index": 0, "action": "HOLD", "score": "GOOD", "reasoning": "RSI 55, trend UP — correct to hold"}},
-        {{"decision_index": 2, "action": "MOVE_SL", "score": "PREMATURE", "reasoning": "SL too tight, price went +2% after"}}
+        {{"decision_index": 0, "action": "HOLD", "score": "GOOD", "reasoning": "RSI 55, trend UP — correct to hold"}}
     ],
     "management_lessons": [
-        "When RSI < 70 in uptrend, HOLD is better than early exit",
-        "SNIPER: wait for +1% before moving SL to breakeven"
+        "When RSI < 70 in uptrend, HOLD is better than early exit"
     ],
-    "lesson_learned": "main lesson about entry/exit",
-    "improvement_suggestion": "how to improve",
-    "add_to_mistakes_to_avoid": "if error, what to add to avoid list"
+    "lesson_learned": "main lesson about entry/exit - MUST be specific and actionable",
+    "improvement_suggestion": "how to improve next time",
+    "add_to_mistakes_to_avoid": "if grade D or F, what specific mistake to avoid"
 }}
 
-NOTE: decision_analysis should evaluate 1-5 key decisions. management_lessons are SEPARATE rules about position management."""
+NOTE: decision_analysis evaluates 1-5 key decisions. management_lessons are SEPARATE rules for position management. lesson_learned MUST NOT be empty."""

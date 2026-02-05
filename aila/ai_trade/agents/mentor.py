@@ -306,8 +306,11 @@ Respond in JSON:
         pnl = trade_data.get("pnl", trade_data.get("pnl_usdt", 0))
         source = trade_data.get("source_agent", "TRADER")
 
+        self.log(f"review_trade: {symbol} grade={grade} lesson_len={len(lesson) if lesson else 0}")
+
         # Skip if no meaningful lesson
         if not lesson or grade == "?":
+            self.log(f"Skipping: lesson empty or grade=?", "warning")
             return {"rules_added": 0, "skipped": True}
 
         prompt = f"""You are a trading mentor. Based on ANALYST feedback, create actionable rules.
@@ -340,6 +343,7 @@ JSON response:
 }}"""
 
         try:
+            self.log(f"Calling Claude for rule generation...")
             result = await self.claude_client.analyze(
                 prompt,
                 use_haiku=True,
@@ -351,6 +355,10 @@ JSON response:
             if "error" in result:
                 self.log(f"Review failed: {result.get('error')}", "error")
                 return {"rules_added": 0, "error": result.get("error")}
+
+            # Log Claude response
+            new_rules_raw = result.get("new_rules", [])
+            self.log(f"Claude returned {len(new_rules_raw)} rules: {new_rules_raw}")
 
             # Add new rules to knowledge base
             new_rules = result.get("new_rules", [])

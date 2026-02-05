@@ -141,6 +141,10 @@ class KnowledgeBase:
         # Merge learned rules from both sources
         all_rules = learned_rules + profile_rules
 
+        # Prioritize rules by importance: high first, then medium, then low
+        # Max 15 rules: all high, up to 8 medium, up to 5 low
+        prioritized_rules = self._prioritize_rules(all_rules, max_total=15)
+
         context: dict[str, Any] = {
             "total_trades": self.data.get("total_trades", 0),
             "win_rate": self.data.get("win_rate", 0.0),
@@ -148,11 +152,34 @@ class KnowledgeBase:
             "successful_setups": all_setups[-5:],
             "mistakes_to_avoid": all_mistakes[-5:],
             "best_strategies": self.data.get("best_strategies", [])[-3:],
-            "learned_rules": all_rules[-5:],
+            "learned_rules": prioritized_rules,
         }
         if pair:
             context["pair_performance"] = {pair: self.get_pair_stats(pair)}
         return context
+
+    def _prioritize_rules(self, rules: list, max_total: int = 15) -> list:
+        """Prioritize rules by importance for prompt inclusion.
+
+        Returns: all high-importance, up to 8 medium, up to 5 low.
+        Format for prompt: 🔴 HIGH, 🟡 MEDIUM, 🟢 LOW
+        """
+        high, medium, low = [], [], []
+        for r in rules:
+            if not isinstance(r, dict):
+                low.append({"rule": str(r), "importance": "low", "confirmed_count": 1})
+                continue
+            imp = r.get("importance", "low")
+            if imp == "high":
+                high.append(r)
+            elif imp == "medium":
+                medium.append(r)
+            else:
+                low.append(r)
+
+        # Take all high, up to 8 medium (most recent), up to 5 low (most recent)
+        result = high[-15:] + medium[-8:] + low[-5:]
+        return result[-max_total:]
 
     def update_daily_stats(self, date_str: str, stats: dict[str, Any]) -> None:
         """Update daily statistics."""
@@ -203,13 +230,118 @@ class KnowledgeBase:
         return leveled_up
 
     def add_rule(self, rule: dict[str, Any]) -> None:
-        """Add a learned rule."""
+        """Add or confirm a learned rule with deduplication and TTL.
+
+        New rule structure:
+        {
+            "rule": "text",
+            "category": "entry_timing|position_management|exit_timing|risk|general",
+            "source": "TRADER|SNIPER",
+            "confirmed_count": 1,
+            "created_at": "2026-02-05",
+            "last_confirmed_at": "2026-02-05",
+            "importance": "low|medium|high"
+        }
+        """
         profile = self.data.setdefault("trader_profile", self._default_structure()["trader_profile"])
         rules = profile.setdefault("learned_rules", [])
-        rule["added_at"] = datetime.now().isoformat()
-        rules.append(rule)
-        profile["learned_rules"] = rules[-50:]
+        now = datetime.now().isoformat()
+
+        # Normalize rule structure
+        rule_text = rule.get("rule", "")
+        if not rule_text or len(rule_text) < 10:
+            return
+
+        # Check for similar existing rule (simple keyword matching)
+        similar_idx = self._find_similar_rule(rules, rule_text)
+
+        if similar_idx >= 0:
+            # Confirm existing rule
+            existing = rules[similar_idx]
+            existing["confirmed_count"] = existing.get("confirmed_count", 1) + 1
+            existing["last_confirmed_at"] = now
+            # Upgrade importance if confirmed 3+ times
+            if existing["confirmed_count"] >= 3:
+                existing["importance"] = "high"
+            elif existing["confirmed_count"] >= 2:
+                existing["importance"] = "medium"
+        else:
+            # Add new rule with full structure
+            new_rule = {
+                "rule": rule_text,
+                "category": rule.get("category", "general"),
+                "source": rule.get("source", rule.get("agent", "TRADER")),
+                "grade": rule.get("grade", "C"),
+                "symbol": rule.get("symbol", ""),
+                "confirmed_count": 1,
+                "created_at": now,
+                "last_confirmed_at": now,
+                "importance": self._calc_importance(rule.get("grade", "C")),
+            }
+            rules.append(new_rule)
+
+        # Clean expired rules (30 days for low, 60 for high)
+        rules = self._cleanup_expired_rules(rules)
+
+        # Limit: max 30 rules, remove oldest low-importance first
+        rules = self._limit_rules(rules, max_rules=30)
+
+        profile["learned_rules"] = rules
         self.save()
+
+    def _find_similar_rule(self, rules: list, new_rule_text: str) -> int:
+        """Find index of similar rule by keyword matching."""
+        new_words = set(new_rule_text.lower().split())
+        for i, r in enumerate(rules):
+            existing_text = r.get("rule", "") if isinstance(r, dict) else str(r)
+            existing_words = set(existing_text.lower().split())
+            # If 50%+ words match, consider similar
+            common = len(new_words & existing_words)
+            total = min(len(new_words), len(existing_words))
+            if total > 0 and common / total > 0.5:
+                return i
+        return -1
+
+    def _calc_importance(self, grade: str) -> str:
+        """Calculate initial importance based on grade."""
+        if grade in ("A", "F"):
+            return "medium"  # Strong signals deserve attention
+        return "low"
+
+    def _cleanup_expired_rules(self, rules: list) -> list:
+        """Remove rules that haven't been confirmed in TTL period."""
+        now = datetime.now()
+        result = []
+        for r in rules:
+            if not isinstance(r, dict):
+                continue
+            last_confirmed = r.get("last_confirmed_at", r.get("created_at", ""))
+            importance = r.get("importance", "low")
+            ttl_days = 60 if importance == "high" else 30
+
+            try:
+                last_dt = datetime.fromisoformat(last_confirmed)
+                age_days = (now - last_dt).days
+                if age_days <= ttl_days:
+                    result.append(r)
+            except (ValueError, TypeError):
+                result.append(r)  # Keep if can't parse date
+        return result
+
+    def _limit_rules(self, rules: list, max_rules: int = 30) -> list:
+        """Limit rules count, removing oldest low-importance first."""
+        if len(rules) <= max_rules:
+            return rules
+
+        # Sort by importance (high first) then by last_confirmed (recent first)
+        def sort_key(r):
+            imp_order = {"high": 0, "medium": 1, "low": 2}
+            imp = imp_order.get(r.get("importance", "low"), 2)
+            last = r.get("last_confirmed_at", "")
+            return (imp, last)
+
+        rules.sort(key=sort_key, reverse=True)
+        return rules[:max_rules]
 
     def get_level_benefits(self) -> dict[str, Any]:
         """Get current limits based on trader level."""

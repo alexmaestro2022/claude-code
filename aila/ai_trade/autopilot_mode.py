@@ -1261,7 +1261,8 @@ Trades today: {stats['trades_today']}
         analyst_result = await self._run_analyst(source, symbol, trade_data, pnl_usdt, pnl_pct)
 
         # 4.6 MENTOR generates rules from ANALYST feedback
-        if analyst_result and analyst_result.get("grade") in ("A", "B", "D", "F"):
+        # MENTOR for ALL grades including C (breakeven = learning opportunity)
+        if analyst_result and analyst_result.get("grade") in ("A", "B", "C", "D", "F"):
             await self._run_mentor(source, symbol, trade_data, pnl_usdt, pnl_pct, analyst_result)
 
         # 5. Send Telegram notification
@@ -1328,6 +1329,12 @@ Trades today: {stats['trades_today']}
         analyst_result: dict[str, Any],
     ) -> None:
         """Run MENTOR to generate rules from ANALYST feedback."""
+        grade = analyst_result.get("grade", "?")
+        lesson = analyst_result.get("lesson_learned", analyst_result.get("lesson", ""))
+        logger.info(
+            f"[{agent}][MENTOR] Starting for {symbol} grade={grade} "
+            f"lesson_len={len(lesson) if lesson else 0}"
+        )
         try:
             mentor = self._orchestrator.mentor
             trade_for_mentor = {
@@ -1339,15 +1346,19 @@ Trades today: {stats['trades_today']}
             }
             result = await mentor.review_trade(trade_for_mentor, analyst_result)
             rules_added = result.get("rules_added", 0)
-            if rules_added > 0:
+            skipped = result.get("skipped", False)
+            if skipped:
+                logger.info(f"[{agent}][MENTOR] Skipped for {symbol}: no lesson or invalid grade")
+            elif rules_added > 0:
                 rules = result.get("new_rules", [])
+                mgmt_added = result.get("management_rules_added", 0)
                 logger.info(
-                    f"[{agent}][MENTOR] Added {rules_added} rules: {rules}"
+                    f"[{agent}][MENTOR] Added {rules_added} rules ({mgmt_added} mgmt): {rules}"
                 )
             else:
-                logger.debug(f"[{agent}][MENTOR] No new rules for {symbol}")
+                logger.info(f"[{agent}][MENTOR] No new rules for {symbol} (Claude returned empty)")
         except Exception as e:
-            logger.error(f"[{agent}][MENTOR] Rule generation failed: {e}")
+            logger.error(f"[{agent}][MENTOR] Rule generation failed: {e}", exc_info=True)
 
     async def _evaluate_trade_grade(
         self,
