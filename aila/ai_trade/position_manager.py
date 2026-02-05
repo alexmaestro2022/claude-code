@@ -261,26 +261,40 @@ class PositionManager:
     async def _set_sl_tp(
         self, symbol: str, signal: dict[str, Any], direction: str, amount: float
     ) -> None:
-        """Set stop loss and take profit orders."""
+        """Set stop loss and take profit using position-linked TP/SL.
+
+        Uses set_trading_stop() which binds TP/SL to position via Bybit API
+        /v5/position/set-trading-stop. These are automatically cancelled
+        when position closes (unlike standalone conditional orders).
+        """
         stop_loss = signal.get("stop_loss")
         take_profit = signal.get("take_profit")
-        sl_side = "sell" if direction == "LONG" else "buy"
+
+        if not stop_loss and not take_profit:
+            return
 
         # Round prices to valid precision
+        sl_rounded = None
+        tp_rounded = None
+
         if stop_loss:
-            stop_loss = await self._exchange.round_price(symbol, stop_loss)
-            logger.info(f"[POSITION] Setting SL @ {stop_loss}")
-            await self._exchange.create_order(
-                symbol, "stop_market", sl_side, amount,
-                params={"stopPrice": stop_loss, "reduceOnly": True},
-            )
+            sl_rounded = await self._exchange.round_price(symbol, stop_loss)
         if take_profit:
-            take_profit = await self._exchange.round_price(symbol, take_profit)
-            logger.info(f"[POSITION] Setting TP @ {take_profit}")
-            await self._exchange.create_order(
-                symbol, "take_profit_market", sl_side, amount,
-                params={"stopPrice": take_profit, "reduceOnly": True},
-            )
+            tp_rounded = await self._exchange.round_price(symbol, take_profit)
+
+        logger.info(
+            f"[POSITION] Setting position-linked TP/SL: "
+            f"SL={sl_rounded}, TP={tp_rounded}"
+        )
+
+        result = await self._exchange.set_trading_stop(
+            symbol=symbol,
+            stop_loss=sl_rounded,
+            take_profit=tp_rounded,
+        )
+
+        if not result.get("success"):
+            logger.warning(f"[POSITION] Failed to set TP/SL: {result.get('message')}")
 
     async def _cancel_open_orders(self, symbol: str) -> None:
         """Cancel all open orders for a symbol."""

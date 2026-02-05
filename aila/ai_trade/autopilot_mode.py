@@ -1259,8 +1259,15 @@ Trades today: {stats['trades_today']}
             source, symbol, position_data, closed_pnl, grade, result
         )
 
-        # 6. Remove from bot positions
+        # 6. Remove from bot positions and cancel orphan orders
         self._orchestrator.position_manager.remove_bot_position(symbol)
+
+        # 6.5 Cancel any remaining orders for this symbol (prevent orphans)
+        try:
+            await self._orchestrator.position_manager._cancel_open_orders(symbol)
+            logger.info(f"[SYNC] Cancelled orphan orders for {symbol}")
+        except Exception as e:
+            logger.warning(f"[SYNC] Failed to cancel orders for {symbol}: {e}")
 
         # 7. Check for level up
         if result.get("xp_result", {}).get("leveled_up"):
