@@ -418,6 +418,44 @@ class BybitExchange(BaseExchange):
         return {"open_interest": 0, "timestamp": ""}
 
     @retry_async(max_attempts=2)
+    async def estimate_liquidations(self, symbol: str) -> dict[str, Any]:
+        """Estimate liquidation pressure from OI changes over 25 min.
+
+        Sharp OI drops indicate mass liquidations.
+        Returns:
+            Dict with oi_change_pct, liquidation_pressure (HIGH/MEDIUM/LOW)
+        """
+        bybit_symbol = self.normalize_symbol(symbol)
+        try:
+            result = self._client.get_open_interest(
+                category="linear", symbol=bybit_symbol, intervalTime="5min", limit=5
+            )
+            if result["retCode"] == 0 and result["result"]["list"]:
+                oi_list = result["result"]["list"]
+                if len(oi_list) >= 2:
+                    current_oi = float(oi_list[0]["openInterest"])
+                    prev_oi = float(oi_list[-1]["openInterest"])
+                    oi_change_pct = ((current_oi - prev_oi) / prev_oi * 100) if prev_oi > 0 else 0
+
+                    # Sharp OI drop = mass liquidations
+                    if oi_change_pct < -3:
+                        liq_pressure = "HIGH"
+                    elif oi_change_pct < -1:
+                        liq_pressure = "MEDIUM"
+                    else:
+                        liq_pressure = "LOW"
+
+                    return {
+                        "oi_change_pct": round(oi_change_pct, 2),
+                        "liquidation_pressure": liq_pressure,
+                        "current_oi": current_oi,
+                        "prev_oi": prev_oi
+                    }
+        except Exception as e:
+            logger.error(f"Liquidation estimate error {symbol}: {e}")
+        return {"oi_change_pct": 0, "liquidation_pressure": "LOW", "current_oi": 0, "prev_oi": 0}
+
+    @retry_async(max_attempts=2)
     async def set_leverage(self, leverage: int, symbol: str) -> bool:
         """Set leverage for symbol on Bybit."""
         # Convert symbol from ccxt format (BTC/USDT) to Bybit format (BTCUSDT)

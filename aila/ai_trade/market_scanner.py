@@ -1,13 +1,44 @@
 """Market scanner for AI Trade module."""
 
 import logging
+import time
 from datetime import datetime
 from typing import Any, Optional
+
+import aiohttp
 
 from ..utils.common import TTLCache
 from .config import SCANNER_CONFIG
 
 logger = logging.getLogger("ai_trade")
+
+# Fear & Greed cache (updates once per hour, API updates once per day)
+_fear_greed_cache: dict[str, Any] = {"value": 50, "label": "Neutral", "updated_at": 0}
+
+
+async def get_fear_greed_index() -> dict[str, Any]:
+    """Get Fear & Greed Index from alternative.me (cached 1 hour)."""
+    global _fear_greed_cache
+    if time.time() - _fear_greed_cache["updated_at"] < 3600:
+        return _fear_greed_cache
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                "https://api.alternative.me/fng/?limit=1",
+                timeout=aiohttp.ClientTimeout(total=10)
+            ) as resp:
+                data = await resp.json()
+                entry = data["data"][0]
+                _fear_greed_cache = {
+                    "value": int(entry["value"]),
+                    "label": entry["value_classification"],
+                    "updated_at": time.time()
+                }
+                logger.info(f"Fear & Greed updated: {_fear_greed_cache['value']} ({_fear_greed_cache['label']})")
+                return _fear_greed_cache
+    except Exception as e:
+        logger.error(f"Fear & Greed API error: {e}")
+        return _fear_greed_cache
 
 
 class MarketScanner:
@@ -203,6 +234,12 @@ class MarketScanner:
             else:
                 funding_signal = "NEUTRAL"
 
+            # Get liquidation pressure estimate
+            liq_data = await self._exchange.estimate_liquidations(symbol)
+
+            # Get Fear & Greed (cached 1 hour, one API call per cycle)
+            fng = await get_fear_greed_index()
+
             result = {
                 "price": current_price,
                 "rsi": round(rsi, 2) if rsi else None,
@@ -221,6 +258,10 @@ class MarketScanner:
                 "funding_rate": funding_pct,
                 "funding_signal": funding_signal,
                 "open_interest": oi_info.get("open_interest", 0),
+                "liquidation_pressure": liq_data.get("liquidation_pressure", "LOW"),
+                "oi_change_pct": liq_data.get("oi_change_pct", 0),
+                "fear_greed": fng.get("value", 50),
+                "fear_greed_label": fng.get("label", "Neutral"),
             }
             self._cache.set(cache_key, result)
             return result

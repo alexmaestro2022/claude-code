@@ -60,6 +60,8 @@ Support: {opportunity.get('market_data', {}).get('support', 'N/A')}
 Resistance: {opportunity.get('market_data', {}).get('resistance', 'N/A')}
 Funding Rate: {opportunity.get('market_data', {}).get('funding_rate', 0):.4f}% ({opportunity.get('market_data', {}).get('funding_signal', 'NEUTRAL')})
 Open Interest: {opportunity.get('market_data', {}).get('open_interest', 0):,.0f}
+Liquidation Pressure: {opportunity.get('market_data', {}).get('liquidation_pressure', 'LOW')} (OI change 25m: {opportunity.get('market_data', {}).get('oi_change_pct', 0)}%)
+Fear & Greed: {opportunity.get('market_data', {}).get('fear_greed', 50)} ({opportunity.get('market_data', {}).get('fear_greed_label', 'Neutral')})
 
 ## HISTORICAL PERFORMANCE ON THIS PAIR
 {json.dumps(pair_stats, indent=2)}
@@ -76,6 +78,8 @@ Open Interest: {opportunity.get('market_data', {}).get('open_interest', 0):,.0f}
 6. Are there any of the known mistakes being repeated?
 7. Is the confidence level justified by the data?
 8. Funding rate alignment: REJECT LONG if funding >0.1% (market overheated), favor SHORT if funding >0.05%
+9. Fear & Greed >80 + LONG signal = extra scrutiny needed (market euphoria)
+10. High liquidation pressure = wait for cascade to complete before entry
 
 ## REQUIRED THRESHOLDS
 - R/R ratio >= 1.5:1 (REJECT if below)

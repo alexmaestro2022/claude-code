@@ -417,6 +417,11 @@ class ClaudeMaxClient:
                 entry["fs"] = md.get("funding_signal", "NEUTRAL")
             if md.get("open_interest"):
                 entry["oi"] = md["open_interest"]
+            # Liquidation pressure and OI change
+            if md.get("liquidation_pressure"):
+                entry["liq"] = md["liquidation_pressure"]
+            if md.get("oi_change_pct") is not None:
+                entry["oi_chg"] = md["oi_change_pct"]
             pairs_summary.append(entry)
 
         # BTC context — one line
@@ -426,6 +431,14 @@ class ClaudeMaxClient:
                 f"BTC: ${btc_data.get('price','?')} {btc_data.get('trend','?')} "
                 f"RSI={btc_data.get('rsi','?')} chg={btc_data.get('change_24h','?')}%"
             )
+
+        # Fear & Greed from first pair's data (same for all)
+        fng_line = ""
+        if pairs_data:
+            first_md = pairs_data[0].get("market_data", {})
+            fng_val = first_md.get("fear_greed", 50)
+            fng_label = first_md.get("fear_greed_label", "Neutral")
+            fng_line = f"Fear&Greed: {fng_val} ({fng_label})"
 
         # Recent trades — one line each
         trades_line = ""
@@ -479,12 +492,13 @@ class ClaudeMaxClient:
         return (
             f"Crypto futures trader. Pick ONE best trade or WAIT from {len(pairs_data)} pairs.\n"
             f"{json.dumps(pairs_summary, separators=(',',':'))}\n"
-            f"{btc_line}\n{trades_line}\n"
+            f"{btc_line}\n{fng_line}\n{trades_line}\n"
             f"{experience_section}"
             "Rules: R:R>=1.5, SL min 2% majors/3% alts, lev max 3x/2x, "
             "no LONG if BEARISH/RSI>75, no SHORT if BULLISH/RSI<25. "
             "fr=funding rate: >0.05%=overleveraged long (SHORT bias), <-0.05%=overleveraged short (LONG bias). "
-            "High OI + flat price = big move incoming.\n"
+            "Fear&Greed <20 (Extreme Fear) = best LONG, >80 (Extreme Greed) = best SHORT. "
+            "liq=HIGH after price drop = reversal potential (enter AFTER cascade, not before).\n"
             'JSON: {"decision":"LONG|SHORT|WAIT","pair":"SYM/USDT","confidence":0-100,'
             '"strategy":"brief","entry_price":N,"stop_loss":N,"take_profit":N,'
             '"leverage":1-3,"position_size_pct":2-4,"reasoning":"why",'

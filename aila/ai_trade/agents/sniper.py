@@ -182,8 +182,8 @@ class SniperAgent(BaseAgent):
         trigger_type = snipe.get("trigger_type", "")
         max_lev = self._get_max_leverage()
 
-        # Get funding and OI data
-        funding_line = ""
+        # Get funding, OI, liquidation and Fear & Greed data
+        market_context = ""
         if self.scanner:
             try:
                 md = await self.scanner.get_market_data(symbol, "5m")
@@ -191,7 +191,15 @@ class SniperAgent(BaseAgent):
                     fr = md.get("funding_rate", 0)
                     fs = md.get("funding_signal", "NEUTRAL")
                     oi = md.get("open_interest", 0)
-                    funding_line = f"FUNDING: {fr:.4f}% ({fs}), OI: {oi:,.0f}\n"
+                    liq = md.get("liquidation_pressure", "LOW")
+                    oi_chg = md.get("oi_change_pct", 0)
+                    fng = md.get("fear_greed", 50)
+                    fng_label = md.get("fear_greed_label", "Neutral")
+                    market_context = (
+                        f"FUNDING: {fr:.4f}% ({fs}), OI: {oi:,.0f}\n"
+                        f"Liquidation: {liq}, OI change 25m: {oi_chg}%\n"
+                        f"Fear&Greed: {fng} ({fng_label})\n"
+                    )
             except Exception:
                 pass
 
@@ -223,8 +231,9 @@ PAIR: {symbol}
 DIRECTION: {snipe.get('direction')}
 ENTRY PRICE: {snipe.get('entry_price')}
 MAX LEVERAGE: {max_lev}
-{funding_line}{experience_section}
-Calculate optimal parameters. Funding >0.05% = overleveraged long (SHORT bias), <-0.05% = overleveraged short (LONG bias).
+{market_context}{experience_section}
+Calculate optimal parameters. Funding >0.05% = overleveraged long (SHORT bias), <-0.05% = LONG bias.
+Fear&Greed <20 = best LONG opportunity, >80 = best SHORT. High liq pressure after drop = reversal potential.
 
 Respond in JSON only:
 {{"entry_type": "market"|"limit", "entry_price": number,
