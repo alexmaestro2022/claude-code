@@ -60,6 +60,7 @@ class AnalystAgent(BaseAgent):
                 "pnl": trade.get("pnl", 0),
                 "grade": grade,
                 "lesson": lesson[:100] if lesson else "",
+                "source": trade.get("source_agent", "UNKNOWN"),
             }
             setups = self.knowledge_base.data.setdefault("successful_setups", [])
             setups.append(setup_entry)
@@ -76,6 +77,7 @@ class AnalystAgent(BaseAgent):
                 "pnl": trade.get("pnl", 0),
                 "grade": grade,
                 "lesson": lesson[:100] if lesson else "",
+                "source": trade.get("source_agent", "UNKNOWN"),
             }
             setups = self.knowledge_base.data.setdefault("failed_setups", [])
             setups.append(setup_entry)

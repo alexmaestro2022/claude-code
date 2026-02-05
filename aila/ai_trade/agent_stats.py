@@ -191,6 +191,7 @@ class AgentStatsManager:
                 "leverage": trade_data.get("leverage", "1"),
                 "grade": trade_data.get("grade", "B" if is_win else "D"),
                 "closed_at": datetime.utcnow().isoformat(),
+                "decision_log": trade_data.get("decision_log", []),
             }
             stats["trades_history"].insert(0, trade_record)  # Latest first
             # Keep only last 100 trades

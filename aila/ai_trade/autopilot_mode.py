@@ -1465,6 +1465,26 @@ Trades today: {stats['trades_today']}
                     agent_data["mistakes_to_avoid"] = agent_data["mistakes_to_avoid"][-20:]
                     logger.info(f"[{agent}][LEARN] Added mistake: {mistake['lesson']}")
 
+            # Save to profile trade_history
+            profile_key = f"{agent.lower()}_profile"
+            profile = kb.data.setdefault(profile_key, {"trade_history": []})
+            trade_history = profile.setdefault("trade_history", [])
+            trade_history.append({
+                "symbol": symbol,
+                "side": position_data.get("side", ""),
+                "pnl_usdt": pnl_usdt,
+                "pnl_pct": closed_pnl.get("pnl_pct", 0),
+                "entry_price": position_data.get("entry_price", 0),
+                "exit_price": closed_pnl.get("exit_price", 0),
+                "close_reason": close_reason,
+                "grade": grade,
+                "decision_log": position_data.get("decision_log", []),
+                "closed_at": datetime.now().isoformat(),
+            })
+            # Keep last 100 trades
+            if len(trade_history) > 100:
+                trade_history[:] = trade_history[-100:]
+
             kb.save()
 
         except Exception as e:

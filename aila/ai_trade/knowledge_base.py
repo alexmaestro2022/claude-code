@@ -436,7 +436,19 @@ class KnowledgeBase:
                     ]
                 },
                 "learned_rules": [], "mistakes_history": [],
-                "strengths": [], "weaknesses": [],
+                "strengths": [], "weaknesses": [], "trade_history": [],
+            },
+            "sniper_profile": {
+                "level": 1, "experience_points": 0, "next_level_xp": 100,
+                "skills": {
+                    skill: {"level": 1, "xp": 0, "max_xp": 100}
+                    for skill in [
+                        "breakout_detection", "entry_timing", "quick_exit",
+                        "risk_management", "position_sizing", "patience", "scalping",
+                    ]
+                },
+                "learned_rules": [], "mistakes_history": [],
+                "strengths": [], "weaknesses": [], "trade_history": [],
             },
             "xp_config": {
                 "rewards": {
