@@ -3496,3 +3496,50 @@ Next Trade → TRADER batch prompt
 [ANALYST] AI grade=B | lesson...
 [MENTOR] Added 2 rules: ["rule1", "rule2"]
 ```
+
+---
+
+## 51. Funding Rate + Open Interest в торговом pipeline (2026-02-05)
+
+### Проблема
+Торговые агенты не учитывали funding rate и open interest — ключевые метрики для фьючерсов.
+
+### Решение
+Добавлен funding rate и open interest во весь торговый pipeline:
+
+**1. `bybit_exchange.py`** — новые методы:
+```python
+get_funding_info(symbol)  # funding_rate, funding_rate_pct, next_funding_time, predicted_rate
+get_open_interest(symbol) # open_interest, timestamp
+```
+
+**2. `market_scanner.py`** — в `get_market_data()`:
+- Получает funding_info и oi_info
+- Добавляет `funding_rate`, `funding_signal`, `open_interest` в результат
+- Определяет сигнал: >0.05% = SHORT_BIAS, <-0.05% = LONG_BIAS, иначе NEUTRAL
+
+**3. `claude_max_client.py`** — TRADER batch prompt:
+- Добавлены поля `fr` (funding rate), `fs` (funding signal), `oi` (open interest)
+- В правилах: "fr=funding rate: >0.05%=overleveraged long (SHORT bias), <-0.05%=overleveraged short (LONG bias)"
+
+**4. `sniper.py`** — `prepare_snipe()`:
+- Получает funding и OI через scanner
+- Добавляет строку `FUNDING: {rate}% ({signal}), OI: {value}` в промпт
+
+**5. `reviewer.py`** — в секции MARKET DATA:
+- Показывает `Funding Rate: X.XXXX% (SIGNAL)` и `Open Interest: N`
+- В чеклист добавлено: "REJECT LONG if funding >0.1% (market overheated), favor SHORT if funding >0.05%"
+
+### Логика funding сигналов
+| Funding Rate | Сигнал | Значение |
+|--------------|--------|----------|
+| >0.05% | SHORT_BIAS | Рынок перегрет лонгами — ждать откат |
+| <-0.05% | LONG_BIAS | Рынок перегрет шортами — потенциал роста |
+| -0.05%..0.05% | NEUTRAL | Сбалансированный рынок |
+
+### Файлы изменены
+- `aila/ai_trade/exchanges/bybit_exchange.py`
+- `aila/ai_trade/market_scanner.py`
+- `aila/ai_trade/claude_max_client.py`
+- `aila/ai_trade/agents/sniper.py`
+- `aila/ai_trade/agents/reviewer.py`
