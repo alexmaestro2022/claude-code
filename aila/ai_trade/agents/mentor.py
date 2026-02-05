@@ -287,3 +287,120 @@ Respond in JSON:
             "should_proceed": len(violations) == 0,
             "warnings": violations,
         }
+
+    async def review_trade(
+        self, trade_data: dict[str, Any], analyst_result: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Review single trade after ANALYST and generate learned rules.
+
+        Args:
+            trade_data: Trade details (symbol, side, pnl, etc.)
+            analyst_result: ANALYST grade and lesson
+
+        Returns:
+            Dict with generated rules and adjustments
+        """
+        symbol = trade_data.get("symbol", trade_data.get("pair", "unknown"))
+        grade = analyst_result.get("grade", "C")
+        lesson = analyst_result.get("lesson_learned", analyst_result.get("lesson", ""))
+        pnl = trade_data.get("pnl", trade_data.get("pnl_usdt", 0))
+        source = trade_data.get("source_agent", "TRADER")
+
+        # Skip if no meaningful lesson
+        if not lesson or grade == "?":
+            return {"rules_added": 0, "skipped": True}
+
+        prompt = f"""You are a trading mentor. Based on ANALYST feedback, create actionable rules.
+
+TRADE RESULT:
+- Symbol: {symbol}
+- Side: {trade_data.get('side', '?')}
+- PnL: ${pnl:.2f} ({trade_data.get('pnl_pct', 0):.1f}%)
+- Grade: {grade}
+- Agent: {source}
+
+ANALYST LESSON:
+{lesson}
+
+EXISTING RULES (don't duplicate):
+{json.dumps(self.knowledge_base.data.get('trader_profile', {}).get('learned_rules', [])[-5:], indent=2)}
+
+TASK: Extract 0-2 specific, actionable rules from this trade.
+Rules must be:
+- Specific (include numbers, conditions)
+- Actionable (what to DO or AVOID)
+- Not duplicating existing rules
+
+JSON response:
+{{
+    "new_rules": ["rule 1", "rule 2"] or [],
+    "applies_to": "TRADER" | "SNIPER" | "BOTH",
+    "confidence_adjustment": -5 to +5 (0 if neutral),
+    "pattern_type": "mistake" | "success" | "neutral"
+}}"""
+
+        try:
+            result = await self.claude_client.analyze(
+                prompt,
+                use_haiku=True,
+                agent="MENTOR",
+                action="review_trade",
+                context=f"pair={symbol},grade={grade}",
+            )
+
+            if "error" in result:
+                self.log(f"Review failed: {result.get('error')}", "error")
+                return {"rules_added": 0, "error": result.get("error")}
+
+            # Add new rules to knowledge base
+            new_rules = result.get("new_rules", [])
+            rules_added = 0
+            applies_to = result.get("applies_to", "BOTH")
+
+            for rule in new_rules:
+                if rule and len(rule) > 10:
+                    rule_entry = {
+                        "rule": rule,
+                        "source": "trade_review",
+                        "grade": grade,
+                        "symbol": symbol,
+                        "agent": source,
+                    }
+                    self.knowledge_base.add_rule(rule_entry)
+                    rules_added += 1
+                    self.log(f"New rule: {rule[:60]}...")
+
+                    # Also add to agent-specific learning
+                    if applies_to in ("TRADER", "BOTH"):
+                        tl = self.knowledge_base.data.setdefault("trader_learning", {})
+                        lr = tl.setdefault("learned_rules", [])
+                        lr.append(rule_entry)
+                        tl["learned_rules"] = lr[-30:]
+
+                    if applies_to in ("SNIPER", "BOTH"):
+                        sl = self.knowledge_base.data.setdefault("sniper_learning", {})
+                        lr = sl.setdefault("learned_rules", [])
+                        lr.append(rule_entry)
+                        sl["learned_rules"] = lr[-30:]
+
+            # Apply confidence adjustment
+            conf_adj = result.get("confidence_adjustment", 0)
+            if isinstance(conf_adj, int) and conf_adj != 0:
+                self._apply_confidence_adjustment(conf_adj)
+
+            self.knowledge_base.save()
+
+            self.log(
+                f"Trade review: {symbol} grade={grade} → {rules_added} rules added"
+            )
+
+            return {
+                "rules_added": rules_added,
+                "new_rules": new_rules,
+                "applies_to": applies_to,
+                "pattern_type": result.get("pattern_type", "neutral"),
+            }
+
+        except Exception as e:
+            self.log(f"Review trade error: {e}", "error")
+            return {"rules_added": 0, "error": str(e)}

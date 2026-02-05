@@ -182,6 +182,27 @@ class SniperAgent(BaseAgent):
         trigger_type = snipe.get("trigger_type", "")
         max_lev = self._get_max_leverage()
 
+        # Get experience from knowledge base
+        sniper_kb = self.knowledge_base.data.get("sniper_learning", {})
+        mistakes = sniper_kb.get("mistakes_to_avoid", [])[-3:]
+        rules = sniper_kb.get("learned_rules", [])[-3:]
+
+        # Build experience section
+        exp_lines = []
+        if mistakes:
+            mistake_strs = [
+                m.get("lesson", str(m))[:60] if isinstance(m, dict) else str(m)[:60]
+                for m in mistakes
+            ]
+            exp_lines.append("AVOID: " + "; ".join(mistake_strs))
+        if rules:
+            rule_strs = [
+                r.get("rule", str(r))[:50] if isinstance(r, dict) else str(r)[:50]
+                for r in rules
+            ]
+            exp_lines.append("RULES: " + "; ".join(rule_strs))
+        experience_section = "\n".join(exp_lines) + "\n" if exp_lines else ""
+
         prompt = f"""Prepare sniper entry:
 
 TRIGGER: {trigger_type}
@@ -189,7 +210,7 @@ PAIR: {symbol}
 DIRECTION: {snipe.get('direction')}
 ENTRY PRICE: {snipe.get('entry_price')}
 MAX LEVERAGE: {max_lev}
-
+{experience_section}
 Calculate optimal parameters.
 
 Respond in JSON only:

@@ -430,10 +430,51 @@ class ClaudeMaxClient:
             ]
             trades_line = "Recent: " + " | ".join(parts)
 
+        # Experience section — learned from past trades
+        experience_lines = []
+
+        # Mistakes to avoid (last 5)
+        mistakes = knowledge.get("mistakes_to_avoid", [])[-5:]
+        if mistakes:
+            mistake_strs = []
+            for m in mistakes:
+                if isinstance(m, dict):
+                    mistake_strs.append(m.get("mistake", m.get("lesson", str(m)))[:80])
+                else:
+                    mistake_strs.append(str(m)[:80])
+            experience_lines.append("AVOID: " + "; ".join(mistake_strs))
+
+        # Learned rules (last 5)
+        rules = knowledge.get("learned_rules", [])[-5:]
+        if rules:
+            rule_strs = []
+            for r in rules:
+                if isinstance(r, dict):
+                    rule_strs.append(r.get("rule", str(r))[:60])
+                else:
+                    rule_strs.append(str(r)[:60])
+            experience_lines.append("RULES: " + "; ".join(rule_strs))
+
+        # Successful setups (last 3)
+        setups = knowledge.get("successful_setups", [])[-3:]
+        if setups:
+            setup_strs = []
+            for s in setups:
+                if isinstance(s, dict):
+                    setup_strs.append(
+                        f"{s.get('pair', s.get('symbol', '?'))} "
+                        f"{s.get('strategy', '?')} grade={s.get('grade', '?')}"
+                    )
+            if setup_strs:
+                experience_lines.append("GOOD: " + "; ".join(setup_strs))
+
+        experience_section = "\n".join(experience_lines) + "\n" if experience_lines else ""
+
         return (
             f"Crypto futures trader. Pick ONE best trade or WAIT from {len(pairs_data)} pairs.\n"
             f"{json.dumps(pairs_summary, separators=(',',':'))}\n"
             f"{btc_line}\n{trades_line}\n"
+            f"{experience_section}"
             "Rules: R:R>=1.5, SL min 2% majors/3% alts, lev max 3x/2x, "
             "no LONG if BEARISH/RSI>75, no SHORT if BULLISH/RSI<25.\n"
             'JSON: {"decision":"LONG|SHORT|WAIT","pair":"SYM/USDT","confidence":0-100,'

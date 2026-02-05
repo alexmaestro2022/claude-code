@@ -50,9 +50,44 @@ class AnalystAgent(BaseAgent):
             self.knowledge_base.add_mistake(mistake)
             self.log(f"New mistake recorded: {mistake}")
 
+        # Add to successful_setups if grade A or B
+        if grade in ("A", "B"):
+            setup_entry = {
+                "pair": trade.get("symbol", trade.get("pair", "unknown")),
+                "symbol": trade.get("symbol", trade.get("pair", "unknown")),
+                "strategy": trade.get("strategy", "unknown"),
+                "side": trade.get("side", "unknown"),
+                "pnl": trade.get("pnl", 0),
+                "grade": grade,
+                "lesson": lesson[:100] if lesson else "",
+            }
+            setups = self.knowledge_base.data.setdefault("successful_setups", [])
+            setups.append(setup_entry)
+            self.knowledge_base.data["successful_setups"] = setups[-20:]
+            self.log(f"Added to successful_setups: {setup_entry['pair']} grade={grade}")
+
+        # Add to failed_setups if grade D or F
+        if grade in ("D", "F"):
+            setup_entry = {
+                "pair": trade.get("symbol", trade.get("pair", "unknown")),
+                "symbol": trade.get("symbol", trade.get("pair", "unknown")),
+                "strategy": trade.get("strategy", "unknown"),
+                "side": trade.get("side", "unknown"),
+                "pnl": trade.get("pnl", 0),
+                "grade": grade,
+                "lesson": lesson[:100] if lesson else "",
+            }
+            setups = self.knowledge_base.data.setdefault("failed_setups", [])
+            setups.append(setup_entry)
+            self.knowledge_base.data["failed_setups"] = setups[-20:]
+            self.log(f"Added to failed_setups: {setup_entry['pair']} grade={grade}")
+
         # Add learning note
         if lesson:
             self.knowledge_base.add_learning_note(lesson, category="trade_review")
+
+        # Save knowledge base
+        self.knowledge_base.save()
 
         self.log(f"Grade: {grade} | Lesson: {lesson}")
 

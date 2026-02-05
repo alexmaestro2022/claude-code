@@ -3441,3 +3441,58 @@ Chat(follow-up + анализ) → [COMMAND_FOR_CODE] → Code → ... → "Го
 3. _process_queue()
 4. _position_monitor.check_positions()
 ```
+
+## 50. Complete learning chain — MENTOR + knowledge in prompts (2026-02-05)
+
+### Проблема
+Система обучения TRADER и SNIPER была оборвана в 4 местах:
+1. **MENTOR не вызывался после ANALYST** — только инициализировался, `learned_rules` всегда пустой
+2. **Batch промпт TRADER не передавал знания** — использовал только `btc_context` и `recent_trades`
+3. **ANALYST не заполнял successful_setups** — записывал только `mistakes` и `learning_notes`
+4. **SNIPER не получал уроки в промпт** — использовал knowledge только для фильтрации пар
+
+### Решение
+
+**1. `mentor.py`** — новый метод `review_trade()`:
+- Принимает `trade_data` + `analyst_result`
+- Генерирует 0-2 `learned_rules` через Claude Haiku
+- Записывает в `trader_learning.learned_rules` и `sniper_learning.learned_rules`
+- Применяет `confidence_adjustment` если нужно
+
+**2. `autopilot_mode.py`** — интеграция MENTOR:
+- `_run_analyst()` теперь возвращает результат (было `None`)
+- Новый метод `_run_mentor()` — вызывается после ANALYST при grade A/B/D/F
+- Цепочка: `_on_position_closed()` → `_run_analyst()` → `_run_mentor()` → KB saved
+
+**3. `claude_max_client.py`** — experience в batch промпте:
+- Добавлены секции `AVOID:`, `RULES:`, `GOOD:` в `_build_batch_market_prompt()`
+- Берёт `mistakes_to_avoid[-5:]`, `learned_rules[-5:]`, `successful_setups[-3:]`
+- TRADER теперь видит свой опыт при анализе
+
+**4. `analyst.py`** — заполняет setups:
+- Grade A/B → добавляет в `successful_setups`
+- Grade D/F → добавляет в `failed_setups`
+- Вызывает `knowledge_base.save()` после каждого анализа
+
+**5. `sniper.py`** — experience в промпте:
+- `prepare_entry()` теперь включает `AVOID:` и `RULES:` секции
+- Берёт из `sniper_learning.mistakes_to_avoid` и `sniper_learning.learned_rules`
+
+### Цепочка обучения (после фикса)
+```
+Trade Closed → ANALYST (grade + lesson)
+           → adds to successful/failed_setups
+           → MENTOR (review_trade)
+           → generates learned_rules
+           → saves to KB
+
+Next Trade → TRADER batch prompt
+          → includes AVOID/RULES/GOOD sections
+          → AI makes better decisions
+```
+
+### Логи
+```
+[ANALYST] AI grade=B | lesson...
+[MENTOR] Added 2 rules: ["rule1", "rule2"]
+```

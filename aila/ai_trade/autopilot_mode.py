@@ -1253,7 +1253,11 @@ Trades today: {stats['trades_today']}
         await self._update_knowledge_base(source, symbol, position_data, closed_pnl, grade)
 
         # 4.5 AI analysis via ANALYST (Claude Haiku - non-critical)
-        await self._run_analyst(source, symbol, trade_data, pnl_usdt, pnl_pct)
+        analyst_result = await self._run_analyst(source, symbol, trade_data, pnl_usdt, pnl_pct)
+
+        # 4.6 MENTOR generates rules from ANALYST feedback
+        if analyst_result and analyst_result.get("grade") in ("A", "B", "D", "F"):
+            await self._run_mentor(source, symbol, trade_data, pnl_usdt, pnl_pct, analyst_result)
 
         # 5. Send Telegram notification
         await self._send_trade_closed_notification(
@@ -1281,7 +1285,7 @@ Trades today: {stats['trades_today']}
         trade_data: dict[str, Any],
         pnl_usdt: float,
         pnl_pct: float,
-    ) -> None:
+    ) -> dict[str, Any] | None:
         """Run ANALYST on closed trade for AI-powered learning."""
         try:
             analyst = self._orchestrator.analyst
@@ -1294,12 +1298,45 @@ Trades today: {stats['trades_today']}
             }
             result = await analyst.analyze(trade_for_analysis)
             ai_grade = result.get("grade", "?")
-            lesson = result.get("lesson", "")
+            lesson = result.get("lesson_learned", result.get("lesson", ""))
             logger.info(
                 f"[{agent}][ANALYST] AI grade={ai_grade} | {lesson[:80]}"
             )
+            return result
         except Exception as e:
             logger.error(f"[{agent}][ANALYST] Analysis failed: {e}")
+            return None
+
+    async def _run_mentor(
+        self,
+        agent: str,
+        symbol: str,
+        trade_data: dict[str, Any],
+        pnl_usdt: float,
+        pnl_pct: float,
+        analyst_result: dict[str, Any],
+    ) -> None:
+        """Run MENTOR to generate rules from ANALYST feedback."""
+        try:
+            mentor = self._orchestrator.mentor
+            trade_for_mentor = {
+                **trade_data,
+                "symbol": symbol,
+                "pnl": pnl_usdt,
+                "pnl_pct": pnl_pct,
+                "source_agent": agent,
+            }
+            result = await mentor.review_trade(trade_for_mentor, analyst_result)
+            rules_added = result.get("rules_added", 0)
+            if rules_added > 0:
+                rules = result.get("new_rules", [])
+                logger.info(
+                    f"[{agent}][MENTOR] Added {rules_added} rules: {rules}"
+                )
+            else:
+                logger.debug(f"[{agent}][MENTOR] No new rules for {symbol}")
+        except Exception as e:
+            logger.error(f"[{agent}][MENTOR] Rule generation failed: {e}")
 
     async def _evaluate_trade_grade(
         self,
