@@ -280,13 +280,30 @@ class AutopilotMode:
                     self._orchestrator.mode = "IDLE"
                     break
 
+                # ============================================================
+                # ALWAYS RUN: Position management (regardless of trade limits)
+                # ============================================================
+
+                # Sync closed positions FIRST
+                await self._sync_closed_positions()
+
+                # Monitor existing positions (breakeven, trailing, exit signals)
+                await self._position_monitor.check_positions()
+
+                # Process post-analysis queue (delayed price checks)
+                await self._process_post_analysis()
+
+                # ============================================================
+                # NEW TRADES: Only if limits allow
+                # ============================================================
+
                 if not await self._can_trade():
-                    # Log why we can't trade
+                    # Log why we can't trade (only skip new trade scanning)
                     if self._stats['trades_today'] >= self._config['max_trades_per_day']:
                         logger.info(f"[AUTOPILOT] Daily limit reached ({self._stats['trades_today']}/{self._config['max_trades_per_day']}), waiting for reset...")
                     elif self._stats['trades_this_hour'] >= self._config['max_trades_per_hour']:
                         logger.info(f"[AUTOPILOT] Hourly limit reached ({self._stats['trades_this_hour']}/{self._config['max_trades_per_hour']}), waiting...")
-                    await asyncio.sleep(60)  # Wait longer to reduce log spam
+                    await asyncio.sleep(60)
                     continue
 
                 market_safety = await self._orchestrator.check_market_safety()
@@ -295,21 +312,11 @@ class AutopilotMode:
                     await asyncio.sleep(300)
                     continue
 
-                # Sync closed positions FIRST (before cascade checks limits)
-                # This ensures bot_positions is up-to-date with exchange state
-                await self._sync_closed_positions()
-
-                # Run TRADER and SNIPER scans
+                # Scan for new trades
                 await self._run_scan_cycle()
 
                 # Process signal queue
                 await self._process_queue()
-
-                # Active position management (every 15 seconds internally)
-                await self._position_monitor.check_positions()
-
-                # Process post-analysis queue (delayed price checks)
-                await self._process_post_analysis()
 
                 await asyncio.sleep(10)  # Base loop interval
 
