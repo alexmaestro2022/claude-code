@@ -1271,7 +1271,7 @@ Trades today: {stats['trades_today']}
         self._signal_queue.set_position_closed(ccxt_symbol)
 
         # 4. Update knowledge base
-        await self._update_knowledge_base(source, symbol, position_data, closed_pnl, grade)
+        await self._update_knowledge_base(source, symbol, position_data, closed_pnl, grade, pnl_pct)
 
         # 4.5 AI analysis via ANALYST (Claude Haiku - non-critical)
         analyst_result = await self._run_analyst(source, symbol, trade_data, pnl_usdt, pnl_pct)
@@ -1552,6 +1552,7 @@ Trades today: {stats['trades_today']}
         position_data: dict[str, Any],
         closed_pnl: dict[str, Any],
         grade: str,
+        pnl_pct: float,
     ) -> None:
         """Update agent knowledge base with trade results."""
         try:
@@ -1623,7 +1624,7 @@ Trades today: {stats['trades_today']}
                 "symbol": symbol,
                 "side": position_data.get("side", ""),
                 "pnl_usdt": pnl_usdt,
-                "pnl_pct": closed_pnl.get("pnl_pct", 0),
+                "pnl_pct": pnl_pct,
                 "entry_price": position_data.get("entry_price", 0),
                 "exit_price": closed_pnl.get("exit_price", 0),
                 "close_reason": close_reason,

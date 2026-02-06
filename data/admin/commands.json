@@ -1,15 +1,1 @@
-[
-  {
-    "id": "custom_1770070678",
-    "name": "Проверка логов системы",
-    "icon": "fa-terminal",
-    "category": "custom",
-    "command": "проверить на ошибки логи системы",
-    "custom": true,
-    "schedule": {
-      "type": "once",
-      "value": 1,
-      "unit": "min"
-    }
-  }
-]
+[]

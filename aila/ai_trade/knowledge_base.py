@@ -126,8 +126,9 @@ class KnowledgeBase:
         agent_mistakes = agent_data.get("mistakes_to_avoid", [])
         learned_rules = agent_data.get("learned_rules", [])
 
-        # Also check trader_profile for mentor-written rules
-        profile_rules = self.data.get("trader_profile", {}).get("learned_rules", [])
+        # Also check agent-specific profile for mentor-written rules
+        profile_key = f"{agent.lower()}_profile"
+        profile_rules = self.data.get(profile_key, {}).get("learned_rules", [])
 
         # Merge: agent-specific data takes priority (most recent)
         all_setups = top_setups + [
@@ -243,7 +244,16 @@ class KnowledgeBase:
             "importance": "low|medium|high"
         }
         """
-        profile = self.data.setdefault("trader_profile", self._default_structure()["trader_profile"])
+        # Determine profile based on source (TRADER or SNIPER)
+        source = rule.get("source", rule.get("agent", "TRADER")).upper()
+        profile_key = "sniper_profile" if source == "SNIPER" else "trader_profile"
+        default_profile = {
+            "learned_rules": [],
+            "management_rules": [],
+            "trade_history": [],
+            "post_analysis_history": [],
+        }
+        profile = self.data.setdefault(profile_key, default_profile)
         rules = profile.setdefault("learned_rules", [])
         now = datetime.now().isoformat()
 
