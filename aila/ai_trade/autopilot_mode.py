@@ -281,7 +281,12 @@ class AutopilotMode:
                     break
 
                 if not await self._can_trade():
-                    await asyncio.sleep(10)
+                    # Log why we can't trade
+                    if self._stats['trades_today'] >= self._config['max_trades_per_day']:
+                        logger.info(f"[AUTOPILOT] Daily limit reached ({self._stats['trades_today']}/{self._config['max_trades_per_day']}), waiting for reset...")
+                    elif self._stats['trades_this_hour'] >= self._config['max_trades_per_hour']:
+                        logger.info(f"[AUTOPILOT] Hourly limit reached ({self._stats['trades_this_hour']}/{self._config['max_trades_per_hour']}), waiting...")
+                    await asyncio.sleep(60)  # Wait longer to reduce log spam
                     continue
 
                 market_safety = await self._orchestrator.check_market_safety()
