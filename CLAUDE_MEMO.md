@@ -4179,3 +4179,31 @@ self._post_analysis_queue.append({
 
 ### Файл
 - `aila/ai_trade/autopilot_mode.py`
+
+
+---
+
+## 64. Исправления системы обучения (2026-02-06)
+
+### Исправленные баги:
+
+#### 1. pnl_pct = 0 в trade_history
+**Проблема:** В `_update_knowledge_base()` использовалось `closed_pnl.get("pnl_pct", 0)`, но биржа не возвращает `pnl_pct` — только `pnl_usdt`.
+
+**Решение:** 
+- Добавлен параметр `pnl_pct: float` в сигнатуру `_update_knowledge_base()`
+- `pnl_pct` вычисляется в `_on_position_closed()` и передаётся явно
+- Файл: `aila/ai_trade/autopilot_mode.py`
+
+#### 2. SNIPER rules пишутся в trader_profile
+**Проблема:** `add_rule()` всегда записывал в `trader_profile`, игнорируя `source`.
+
+**Решение:**
+- `add_rule()` теперь определяет профиль по `source` (TRADER → trader_profile, SNIPER → sniper_profile)
+- `get_context_for_agent()` читает правила из соответствующего профиля
+- Файл: `aila/ai_trade/knowledge_base.py`
+
+### Коммит
+```
+41cd5c5 fix: learning data — pnl_pct in trade_history, SNIPER rules to sniper_profile
+```
