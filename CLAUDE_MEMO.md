@@ -4207,3 +4207,37 @@ self._post_analysis_queue.append({
 ```
 41cd5c5 fix: learning data — pnl_pct in trade_history, SNIPER rules to sniper_profile
 ```
+
+## 65. Fix: position_monitor работает независимо от лимита сделок (2026-02-06)
+
+### Проблема
+Критический баг: когда достигался дневной/часовой лимит сделок (`daily_limit 20/20`), цикл делал `continue` и **полностью пропускал** position_monitor:
+- Не двигался breakeven SL (при +0.5% для SNIPER)
+- Не работал trailing stop
+- Не синхронизировались закрытые позиции
+- Не обрабатывались exit signals
+
+Позиция PEPE была в профите +1.19% (выше порога 0.5%), но SL оставался на месте.
+
+### Решение
+Реорганизован порядок вызовов в `_autopilot_loop()`:
+
+```python
+# ALWAYS RUN (независимо от лимита):
+1. _sync_closed_positions()      # Синхронизация закрытых
+2. _position_monitor.check_positions()  # Breakeven, trailing, exit
+3. _process_post_analysis()      # Анализ после закрытия
+
+# ONLY IF CAN TRADE (блокируется лимитом):
+4. _can_trade() check            # Проверка лимитов
+5. _run_scan_cycle()             # Сканирование новых сигналов
+6. _process_queue()              # Обработка очереди
+```
+
+### Файл
+`aila/ai_trade/autopilot_mode.py` — строки 283-320
+
+### Коммит
+```
+fecd7af fix: position_monitor.check_positions() must run regardless of daily trade limit
+```
