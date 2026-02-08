@@ -4271,3 +4271,54 @@ if pos.get("takeProfit"):
 ```
 296b8a6 fix: get SL/TP from position object instead of orders
 ```
+
+## 67. Fix: min_confidence не сохранялся после перезапуска бота (2026-02-08)
+
+### Проблема
+Настройка `min_confidence` сбрасывалась на 70% после каждого перезапуска бота, хотя в UI было установлено другое значение (например, 53%).
+
+### Причина
+Двойная проблема:
+
+1. **AutopilotMode.__init__()** использовал захардкоженные дефолты:
+   ```python
+   self._config = {
+       'min_confidence': 70,  # hardcode!
+       ...
+   }
+   ```
+
+2. **orchestrator._restore_all_data()** перезаписывал настройки из `autopilot.json`, где хранилось старое значение 70.
+
+### Решение
+
+**Файл 1: `aila/ai_trade/autopilot_mode.py`**
+Добавлено чтение из agent_settings после инициализации _config:
+```python
+# Load saved TRADER settings
+try:
+    from .agent_settings import get_agent_settings
+    saved = get_agent_settings().get_settings("TRADER")
+    self._config['min_confidence'] = saved.get('min_confidence', 70)
+    self._config['scan_interval_seconds'] = saved.get('scan_interval_seconds', 60)
+    logger.info(f"[AUTOPILOT] Loaded settings: min_confidence={...}")
+except Exception as e:
+    logger.error(f"[AUTOPILOT] Failed to load agent_settings: {e}")
+```
+
+**Файл 2: `aila/ai_trade/orchestrator.py`**
+Исключены min_confidence и scan_interval_seconds из восстановления из persistence:
+```python
+saved_config = auto.get("config", {})
+saved_config.pop("min_confidence", None)
+saved_config.pop("scan_interval_seconds", None)
+self.autopilot._config.update(saved_config)
+```
+
+### Архитектура источников истины
+| Параметр | Источник истины | Файл |
+|----------|-----------------|------|
+| min_confidence | agent_settings | trader_settings.json |
+| scan_interval_seconds | agent_settings | trader_settings.json |
+| trades_today, stats | persistence | autopilot.json |
+| sniper_enabled, trader_enabled | persistence | autopilot.json |

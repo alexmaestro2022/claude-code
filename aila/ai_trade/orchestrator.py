@@ -636,7 +636,11 @@ class AgentOrchestrator:
                 if hasattr(self.autopilot, "_stats"):
                     self.autopilot._stats.update(auto.get("stats", {}))
                 if hasattr(self.autopilot, "_config"):
-                    self.autopilot._config.update(auto.get("config", {}))
+                    # Don't overwrite min_confidence and scan_interval - they come from agent_settings
+                    saved_config = auto.get("config", {})
+                    saved_config.pop("min_confidence", None)
+                    saved_config.pop("scan_interval_seconds", None)
+                    self.autopilot._config.update(saved_config)
                 restored += 1
 
             # War Room

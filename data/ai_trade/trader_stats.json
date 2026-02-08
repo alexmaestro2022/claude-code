@@ -2,29 +2,29 @@
   "data": {
     "agent": "TRADER",
     "level": 2,
-    "xp": 110,
-    "xp_to_next_level": 140,
-    "total_trades": 22,
+    "xp": 95,
+    "xp_to_next_level": 155,
+    "total_trades": 24,
     "winning_trades": 8,
-    "losing_trades": 14,
-    "winrate": 36.36363636363637,
-    "total_pnl_usdt": -1.7090798800000004,
+    "losing_trades": 16,
+    "winrate": 33.33333333333333,
+    "total_pnl_usdt": -2.2889693400000004,
     "total_pnl_percent": 0.0,
     "best_trade_usdt": 0.2958357,
     "worst_trade_usdt": -0.5614848,
     "avg_trade_duration_minutes": 0,
     "avg_rr_ratio": 0.0,
-    "consecutive_wins": 1,
-    "consecutive_losses": 0,
+    "consecutive_wins": 0,
+    "consecutive_losses": 2,
     "max_consecutive_wins": 4,
     "max_consecutive_losses": 4,
-    "trades_today": 3,
-    "pnl_today_usdt": 0.24369440999999997,
-    "trades_this_week": 14,
-    "pnl_this_week_usdt": -0.06824166999999998,
-    "last_trade_time": "2026-02-08T12:55:58.730718",
+    "trades_today": 5,
+    "pnl_today_usdt": -0.33619505000000005,
+    "trades_this_week": 16,
+    "pnl_this_week_usdt": -0.64813113,
+    "last_trade_time": "2026-02-08T16:50:33.856675",
     "last_win_time": "2026-02-08T12:55:58.730441",
-    "last_loss_time": "2026-02-08T10:22:47.940872",
+    "last_loss_time": "2026-02-08T16:50:33.856653",
     "paused_until": null,
     "pause_reason": null,
     "api_usage": {
@@ -78,6 +78,1174 @@
     "enabled": true,
     "cooldown_remaining": 0.0,
     "trades_history": [
+      {
+        "symbol": "SOLUSDT",
+        "side": "LONG",
+        "pnl_usdt": -0.55256916,
+        "pnl_pct": -5.85,
+        "entry_price": 88.5,
+        "exit_price": 85.91,
+        "close_reason": "stop_loss",
+        "leverage": "2",
+        "grade": "D",
+        "closed_at": "2026-02-08T16:50:33.856632",
+        "decision_log": [
+          {
+            "timestamp": "2026-02-08T15:12:23.424810",
+            "elapsed_min": 0,
+            "action": "HOLD",
+            "reason": "Position just opened with minimal profit (+0.06%), trend remains BULLISH, price above EMA50/200, and extreme fear sentiment (7) historically favors LONG positions; orderbook sell pressure noted but in",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 88.52,
+              "pnl_pct": 0.0632768361582052,
+              "rsi": 57.49,
+              "trend": "BULLISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0123
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:15:04.701790",
+            "elapsed_min": 3,
+            "action": "HOLD",
+            "reason": "Position just opened (2 min), trend is BULLISH, price above EMA50/200, RSI neutral, Fear&Greed=7 favors LONG, no reversal signals yet - allow trade to develop. (urgency=low)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 88.4,
+              "pnl_pct": -0.22598870056495893,
+              "rsi": 56.06,
+              "trend": "BULLISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0122
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:17:41.067346",
+            "elapsed_min": 5,
+            "action": "HOLD",
+            "reason": "Position just opened (5m), trend is BULLISH, price above both EMAs, Fear&Greed=7 favors LONG, minimal drawdown (0.19%) with SL intact at 85.9 — no conditions met for intervention. (urgency=low)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 88.45,
+              "pnl_pct": -0.1265536723163783,
+              "rsi": 53.74,
+              "trend": "BULLISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0122
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:20:22.875746",
+            "elapsed_min": 8,
+            "action": "HOLD",
+            "reason": "Position is young (8min), PnL +0.25% with no drawdown, trend is BULLISH aligned with LONG, Fear&Greed=7 favors LONG positions, no adverse signals yet - let the trade develop. (urgency=low)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 88.61,
+              "pnl_pct": 0.24858757062146764,
+              "rsi": 55.93,
+              "trend": "BULLISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.012
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:22:58.673772",
+            "elapsed_min": 10,
+            "action": "HOLD",
+            "reason": "Position just opened (10min), trend remains BULLISH, price above both EMAs, extreme Fear&Greed (7) favors LONG, small -0.25% PnL is normal noise with 0.50% drawdown from peak not triggering any exit r",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 88.39,
+              "pnl_pct": -0.24858757062146764,
+              "rsi": 52.82,
+              "trend": "BULLISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.012
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:25:35.811694",
+            "elapsed_min": 13,
+            "action": "HOLD",
+            "reason": "Position is slightly negative (-0.48%) but trend remains BULLISH, price above both EMAs, Fear&Greed=7 favors LONG positions, orderbook balanced, no reversal signals yet - allow trade to develop. (urge",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 88.28,
+              "pnl_pct": -0.476836158192087,
+              "rsi": 51.23,
+              "trend": "BULLISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0119
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:28:18.385669",
+            "elapsed_min": 16,
+            "action": "HOLD",
+            "reason": "Position is within normal drawdown (-2.08%), SL at 85.9 provides adequate protection, trend is neutral (not reversed), and Extreme Fear sentiment (7) historically favors LONG positions — no action nee",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 87.59,
+              "pnl_pct": -2.079096045197744,
+              "rsi": 43.09,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0121
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:31:01.524058",
+            "elapsed_min": 19,
+            "action": "HOLD",
+            "reason": "Position is within normal drawdown (-1.89%), trend is NEUTRAL not reversed, Fear&Greed=7 favors LONG, and current SL at 85.9 provides adequate protection below EMA200 (86.03); no trigger conditions me",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 87.66,
+              "pnl_pct": -1.8937853107344496,
+              "rsi": 48.12,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0121
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:33:34.255137",
+            "elapsed_min": 21,
+            "action": "HOLD",
+            "reason": "Position within normal drawdown (-1.82%), SL at 85.9 provides adequate protection, Fear&Greed=7 (Extreme Fear) historically favors LONG entries, and price is above EMA200 support (86.03) with neutral ",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 87.68,
+              "pnl_pct": -1.8214689265536665,
+              "rsi": 48.36,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0121
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:36:27.747992",
+            "elapsed_min": 24,
+            "action": "HOLD",
+            "reason": "Position is within normal drawdown (-1.88%), trend is NEUTRAL not reversed, Fear&Greed at 7 (Extreme Fear) favors LONG entries, and current SL at 85.9 provides adequate protection below EMA200 (86.03)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 87.67,
+              "pnl_pct": -1.8757062146892618,
+              "rsi": 48.24,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0123
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:39:08.536711",
+            "elapsed_min": 27,
+            "action": "HOLD",
+            "reason": "Position is within acceptable drawdown (-2.09%), trend is NEUTRAL not reversed, Fear&Greed=7 (Extreme Fear) favors LONG positions, and price is above EMA200 support at 86.03 with current SL at 85.9 pr",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 87.57,
+              "pnl_pct": -2.0949152542373035,
+              "rsi": 47.0,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0124
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:41:40.461030",
+            "elapsed_min": 29,
+            "action": "HOLD",
+            "reason": "Position is within normal drawdown range (-1.9%), trend is NEUTRAL (not reversed), Fear&Greed at 7 (Extreme Fear) historically favors LONG entries, and price remains above EMA200 support at 86.03; whi",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 87.63,
+              "pnl_pct": -1.89604519774011,
+              "rsi": 47.75,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0127
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:44:11.247548",
+            "elapsed_min": 32,
+            "action": "HOLD",
+            "reason": "Position is within normal drawdown (-1.74%), trend is NEUTRAL (not reversed against), Fear&Greed=7 favors LONG, orderbook balanced, no urgency to act - let trade develop toward SL/TP levels. (urgency=",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 87.73,
+              "pnl_pct": -1.7401129943502736,
+              "rsi": 48.96,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0128
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:46:44.701767",
+            "elapsed_min": 34,
+            "action": "HOLD",
+            "reason": "Position is within normal drawdown (-1.79%), SL at 85.9 provides adequate protection, trend is neutral (not reversed), and extreme Fear&Greed=7 favors LONG positions per rule 9. (urgency=low)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 87.71,
+              "pnl_pct": -1.7853107344632908,
+              "rsi": 45.37,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0129
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:49:34.864197",
+            "elapsed_min": 37,
+            "action": "HOLD",
+            "reason": "Position is within normal drawdown (-2.05%), SL at 85.9 is intact, trend is NEUTRAL (not reversed), Fear&Greed=7 favors LONG positions, and price is above EMA200 support at 86.06 — no immediate exit t",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 87.59,
+              "pnl_pct": -2.051977401129946,
+              "rsi": 44.08,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:51:53.094737",
+            "elapsed_min": 39,
+            "action": "HOLD",
+            "reason": "Despite -2.26% PnL and bearish MACD, extreme Fear&Greed=7 favors LONG, price is above EMA200 support (86.06), StochRSI=8.23 is deeply oversold suggesting potential bounce, and SL at 85.9 is still vali",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 87.5,
+              "pnl_pct": -2.2598870056497176,
+              "rsi": 43.16,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0131
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:54:24.855605",
+            "elapsed_min": 42,
+            "action": "HOLD",
+            "reason": "Despite sell pressure in orderbook and -1.97% PnL, trend is NEUTRAL (not reversed), price is above EMA200, Fear&Greed=7 favors LONG positions, and current SL at 85.9 (-2.94% from entry) provides adequ",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 87.63,
+              "pnl_pct": -1.9661016949152645,
+              "rsi": 44.5,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0131
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:56:59.779084",
+            "elapsed_min": 44,
+            "action": "HOLD",
+            "reason": "Despite -1.83% PnL and sell pressure, price is above EMA200 support (86.06), Fear&Greed at 7 (Extreme Fear) historically favors LONG positions, SL at 85.9 is well-placed below support, and position du",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 87.69,
+              "pnl_pct": -1.8305084745762763,
+              "rsi": 45.15,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0132
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:59:36.379982",
+            "elapsed_min": 47,
+            "action": "HOLD",
+            "reason": "Position is within normal drawdown (-1.94%), SL at 85.9 provides adequate protection, Fear&Greed at 7 (Extreme Fear) historically favors LONG positions, and price is above EMA200 support at 86.06 — no",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 87.64,
+              "pnl_pct": -1.9435028248587556,
+              "rsi": 44.6,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0132
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:02:18.275266",
+            "elapsed_min": 50,
+            "action": "HOLD",
+            "reason": "Despite -2.35% PnL and bearish short-term indicators, price is above SL (85.9), Fear&Greed=7 favors LONG positions, funding is negative (favorable for longs), trend is NEUTRAL not reversed, and price ",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 87.45,
+              "pnl_pct": -2.35028248587572,
+              "rsi": 46.62,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0124
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:04:50.773042",
+            "elapsed_min": 52,
+            "action": "HOLD",
+            "reason": "Trend remains BULLISH with price above EMA50/200, RSI neutral at 50, and Extreme Fear (7) historically favors LONG positions; despite short-term sell pressure and minor drawdown, no reversal signal ju",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 87.76,
+              "pnl_pct": -1.6451977401129816,
+              "rsi": 50.53,
+              "trend": "BULLISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0116
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:07:29.846999",
+            "elapsed_min": 55,
+            "action": "HOLD",
+            "reason": "Position is within normal drawdown (-2.19%), SL at 85.9 is intact, trend is NEUTRAL (not reversed), Fear&Greed at 7 (Extreme Fear) historically favors LONG entries, and price is above EMA200 support a",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 87.53,
+              "pnl_pct": -2.1875706214689346,
+              "rsi": 47.57,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.017
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:10:04.231901",
+            "elapsed_min": 58,
+            "action": "HOLD",
+            "reason": "Position is in drawdown but trend is NEUTRAL (not reversed), Fear&Greed at 7 (Extreme Fear) favors LONG positions, price is above EMA200 support (86.09), and SL at 85.9 is still protecting below key l",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 87.47,
+              "pnl_pct": -2.3276836158192116,
+              "rsi": 46.85,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0216
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:13:02.699498",
+            "elapsed_min": 61,
+            "action": "HOLD",
+            "reason": "Position is in drawdown but trend is NEUTRAL (not reversed), SL at 85.9 provides adequate protection, Fear&Greed at 7 (Extreme Fear) historically favors LONG entries, and price is above EMA200 support",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 87.5,
+              "pnl_pct": -2.2418079096045296,
+              "rsi": 47.21,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0228
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:16:11.379483",
+            "elapsed_min": 64,
+            "action": "HOLD",
+            "reason": "Despite -2.44% PnL and sell pressure, price is near oversold (StochRSI 9.42, BB%B 0.09), Extreme Fear (7) favors longs, negative funding (-0.023%) benefits long positions, and price remains above EMA2",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 87.43,
+              "pnl_pct": -2.440677966101691,
+              "rsi": 41.49,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0233
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:19:20.295166",
+            "elapsed_min": 67,
+            "action": "HOLD",
+            "reason": "Despite -2.19% PnL and bearish MACD, price is above EMA200 support (86.12), Fear&Greed at 7 (Extreme Fear) favors LONG positions, negative funding (-0.0243%) benefits longs, SL at 85.9 is below suppor",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 87.53,
+              "pnl_pct": -2.189830508474563,
+              "rsi": 42.96,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0243
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:21:53.427300",
+            "elapsed_min": 69,
+            "action": "HOLD",
+            "reason": "Position is within normal drawdown (-1.9%), trend is NEUTRAL not reversed, Fear&Greed at 7 (Extreme Fear) historically favors LONG entries, and current SL at 85.9 provides adequate protection below EM",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 87.65,
+              "pnl_pct": -1.8983050847457703,
+              "rsi": 44.63,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0271
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:24:25.005987",
+            "elapsed_min": 72,
+            "action": "HOLD",
+            "reason": "Position is in drawdown but Fear&Greed=7 (Extreme Fear) historically favors LONG entries, trend is NEUTRAL not reversed, SL at 85.9 is intact with price above EMA200 support at 86.12, and current -2% ",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 87.61,
+              "pnl_pct": -2.0338983050847586,
+              "rsi": 44.09,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0281
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:26:57.676148",
+            "elapsed_min": 74,
+            "action": "HOLD",
+            "reason": "Despite -1.88% PnL and sell pressure in orderbook, Fear&Greed=7 (Extreme Fear) historically favors LONG entries, price is above EMA200 support (86.12), current SL at 85.9 is below key support 87.63, a",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 87.67,
+              "pnl_pct": -1.8757062146892618,
+              "rsi": 44.9,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0264
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:29:28.071983",
+            "elapsed_min": 77,
+            "action": "HOLD",
+            "reason": "Despite sell pressure and -2.21% PnL, extreme Fear&Greed (7) favors LONG, trend is NEUTRAL not reversed, price holds above EMA200 support (86.12), and current SL (85.9) is below key support — no rule ",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 87.51,
+              "pnl_pct": -2.214689265536732,
+              "rsi": 42.68,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0265
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:32:08.955701",
+            "elapsed_min": 80,
+            "action": "HOLD",
+            "reason": "Despite sell pressure and -2.42% PnL, price is near oversold (StochRSI 9.38, BB%B 0.12), Fear&Greed 7 favors LONG, negative funding (-0.03%) benefits longs, and SL at 85.9 is still valid below EMA200 ",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 87.43,
+              "pnl_pct": -2.418079096045182,
+              "rsi": 43.51,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0259
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:34:43.287967",
+            "elapsed_min": 82,
+            "action": "HOLD",
+            "reason": "Despite sell pressure and 2.71% drawdown from peak, Fear&Greed at 7 (Extreme Fear) favors LONG positions, price is above EMA200 support (86.15), negative funding (-0.0254%) benefits longs, and SL at 8",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 87.4,
+              "pnl_pct": -2.4610169491525395,
+              "rsi": 43.18,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0254
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:37:30.971922",
+            "elapsed_min": 85,
+            "action": "HOLD",
+            "reason": "Despite current drawdown (-3.28%) and sell pressure, price remains above SL (85.9) and EMA200 support (86.14), with Extreme Fear (7) historically favoring LONG positions and oversold StochRSI (5.81) s",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 87.0,
+              "pnl_pct": -3.2768361581920966,
+              "rsi": 39.22,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0266
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:40:12.573792",
+            "elapsed_min": 88,
+            "action": "HOLD",
+            "reason": "Despite -3.75% PnL and bearish short-term indicators, price remains above SL (85.9) and EMA200 support (86.14), with extreme Fear&Greed (7) historically favoring LONG entries, and low liquidation pres",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 86.84,
+              "pnl_pct": -3.746892655367234,
+              "rsi": 37.83,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0277
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:43:02.058684",
+            "elapsed_min": 91,
+            "action": "HOLD",
+            "reason": "Despite -4.26% drawdown and sell pressure, price (86.617) remains above SL (85.9) and EMA200 support (86.14), RSI is oversold (35.48) with StochRSI at extreme low (5.81) suggesting potential bounce, a",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 86.54,
+              "pnl_pct": -4.255367231638408,
+              "rsi": 35.48,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0281
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:45:34.670556",
+            "elapsed_min": 93,
+            "action": "HOLD",
+            "reason": "Despite -4.09% PnL, price is near support (86.6) with extremely oversold RSI (27.76) and StochRSI (8.16), Fear&Greed at 7 (Extreme Fear) favors LONG reversal, SL at 85.9 is below EMA200 (86.16) provid",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 86.69,
+              "pnl_pct": -4.085875706214705,
+              "rsi": 27.76,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0301
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:48:18.782199",
+            "elapsed_min": 96,
+            "action": "HOLD",
+            "reason": "RSI=25 and StochRSI=5.8 indicate extreme oversold conditions near EMA200 support (86.16), with Fear&Greed=7 and negative funding (-0.03%) favoring LONG; price above SL (85.9) with balanced orderbook —",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 86.52,
+              "pnl_pct": -4.384180790960447,
+              "rsi": 25.48,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0303
+            }
+          }
+        ]
+      },
+      {
+        "symbol": "ETHUSDT",
+        "side": "LONG",
+        "pnl_usdt": -0.0273203,
+        "pnl_pct": 0.15,
+        "entry_price": 2120.23,
+        "exit_price": 2121.77,
+        "close_reason": "stop_loss",
+        "leverage": "2",
+        "grade": "C",
+        "closed_at": "2026-02-08T14:58:47.283147",
+        "decision_log": [
+          {
+            "timestamp": "2026-02-08T13:07:28.408653",
+            "elapsed_min": 0,
+            "action": "HOLD",
+            "reason": "Position just opened with minimal PnL (+0.01%), trend is BULLISH aligned with LONG direction, strong buy pressure in orderbook (0.798 imbalance), and extreme fear sentiment (F&G=7) historically favors",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2120.34,
+              "pnl_pct": 0.009432938879263952,
+              "rsi": 61.61,
+              "trend": "BULLISH",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.0012
+            }
+          },
+          {
+            "timestamp": "2026-02-08T13:10:07.089792",
+            "elapsed_min": 2,
+            "action": "HOLD",
+            "reason": "Position just opened (2m), trend bullish, strong buy pressure (0.792 imbalance), Fear&Greed=7 favors LONG, PnL +0.30% with minimal drawdown (0.05%) — let the trade develop. (urgency=low)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2123.23,
+              "pnl_pct": 0.30091075024879893,
+              "rsi": 63.45,
+              "trend": "BULLISH",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.0011
+            }
+          },
+          {
+            "timestamp": "2026-02-08T13:12:41.254705",
+            "elapsed_min": 5,
+            "action": "HOLD",
+            "reason": "Position is slightly profitable (+0.27%) with bullish trend intact, strong buy pressure in orderbook, extreme fear sentiment favoring longs, and drawdown from peak (0.18%) is minimal — no action trigg",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2123.53,
+              "pnl_pct": 0.2716686397230592,
+              "rsi": 63.65,
+              "trend": "BULLISH",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.0015
+            }
+          },
+          {
+            "timestamp": "2026-02-08T13:15:17.864784",
+            "elapsed_min": 8,
+            "action": "HOLD",
+            "reason": "Position is young (7m), in profit (+0.37%), trend is BULLISH, orderbook shows BUY_PRESSURE with bid walls, and Fear&Greed at 7 favors LONG positions — no criteria met for intervention. (urgency=low)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2124.05,
+              "pnl_pct": 0.3688279101795423,
+              "rsi": 63.25,
+              "trend": "BULLISH",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.0018
+            }
+          },
+          {
+            "timestamp": "2026-02-08T13:17:54.569458",
+            "elapsed_min": 10,
+            "action": "HOLD",
+            "reason": "Position is in profit (+0.68%) with bullish trend intact, price above both EMAs, and Fear&Greed at 7 (Extreme Fear) favors LONG; orderbook sell pressure and low volume suggest caution but no exit trig",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2127.49,
+              "pnl_pct": 0.6848313626351634,
+              "rsi": 64.55,
+              "trend": "BULLISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0019
+            }
+          },
+          {
+            "timestamp": "2026-02-08T13:20:30.383487",
+            "elapsed_min": 13,
+            "action": "HOLD",
+            "reason": "Position is healthy at +1% PnL with bullish trend, price below resistance (2137.64), extreme fear sentiment favors longs, and no drawdown from peak - wait for +3% to move SL to breakeven. (urgency=low",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2130.29,
+              "pnl_pct": 1.0017781089787325,
+              "rsi": 65.54,
+              "trend": "BULLISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0021
+            }
+          },
+          {
+            "timestamp": "2026-02-08T13:23:07.933140",
+            "elapsed_min": 15,
+            "action": "HOLD",
+            "reason": "Position is profitable (+1.10%) with bullish trend, strong buy pressure (0.787 imbalance), price below resistance (2137.64), and Extreme Fear sentiment favors LONG — no action needed yet, wait for +3%",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2131.91,
+              "pnl_pct": 1.1017672610990161,
+              "rsi": 66.09,
+              "trend": "BULLISH",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.0021
+            }
+          },
+          {
+            "timestamp": "2026-02-08T13:26:05.515061",
+            "elapsed_min": 18,
+            "action": "HOLD",
+            "reason": "Position is profitable (+1.25%) with bullish trend intact, strong buy pressure in orderbook (0.637), extreme fear sentiment favors longs, and drawdown from peak is minimal (0.17%) — no action needed y",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2133.15,
+              "pnl_pct": 1.2470345198398096,
+              "rsi": 66.49,
+              "trend": "BULLISH",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.0022
+            }
+          },
+          {
+            "timestamp": "2026-02-08T13:29:02.572535",
+            "elapsed_min": 21,
+            "action": "HOLD",
+            "reason": "Trend remains BULLISH with price above EMAs, PnL +1.11% not yet at threshold for SL adjustment (+3%), drawdown from peak only 0.31% (well under 50% rule), and Extreme Fear sentiment (7) favors LONG po",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2132.01,
+              "pnl_pct": 1.1112001999783232,
+              "rsi": 66.12,
+              "trend": "BULLISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0021
+            }
+          },
+          {
+            "timestamp": "2026-02-08T13:31:35.521880",
+            "elapsed_min": 24,
+            "action": "HOLD",
+            "reason": "Position is profitable (+0.77%) with bullish trend, buy pressure in orderbook, and Fear&Greed at 7 (Extreme Fear) favors LONG positions; drawdown from peak (0.65%) is acceptable and doesn't trigger th",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2128.41,
+              "pnl_pct": 0.7716144003244776,
+              "rsi": 61.48,
+              "trend": "BULLISH",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.002
+            }
+          },
+          {
+            "timestamp": "2026-02-08T13:34:06.841452",
+            "elapsed_min": 26,
+            "action": "HOLD",
+            "reason": "Position is profitable (+0.83%) with bullish trend, strong buy pressure in orderbook, extreme fear sentiment favoring longs, and drawdown from peak (0.59%) is within acceptable range — no action neede",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2129.01,
+              "pnl_pct": 0.8282120336001472,
+              "rsi": 61.86,
+              "trend": "BULLISH",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.0022
+            }
+          },
+          {
+            "timestamp": "2026-02-08T13:36:43.884251",
+            "elapsed_min": 29,
+            "action": "HOLD",
+            "reason": "Position is profitable (+0.63%) with bullish trend, strong buy pressure (0.885 imbalance), price above EMAs, and Extreme Fear sentiment favors LONG — no tightening needed yet as PnL hasn't reached +3%",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2126.91,
+              "pnl_pct": 0.6301203171353896,
+              "rsi": 60.56,
+              "trend": "BULLISH",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.0023
+            }
+          },
+          {
+            "timestamp": "2026-02-08T13:39:17.777096",
+            "elapsed_min": 32,
+            "action": "HOLD",
+            "reason": "Trend remains BULLISH with price above EMA50/200, RSI neutral at 57.85, and Fear&Greed at 7 (Extreme Fear) historically favors LONG; despite orderbook sell pressure and 1.28% drawdown from peak, the d",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2122.2,
+              "pnl_pct": 0.14055078930114012,
+              "rsi": 57.85,
+              "trend": "BULLISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0023
+            }
+          },
+          {
+            "timestamp": "2026-02-08T13:41:54.106122",
+            "elapsed_min": 34,
+            "action": "HOLD",
+            "reason": "Position is profitable (+0.54%) with bullish trend intact, drawdown from peak (0.88%) is well below 50% threshold, and Extreme Fear sentiment (7) favors LONG positions; orderbook sell pressure warrant",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2125.91,
+              "pnl_pct": 0.5395641038943699,
+              "rsi": 59.96,
+              "trend": "BULLISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0025
+            }
+          },
+          {
+            "timestamp": "2026-02-08T13:44:26.018093",
+            "elapsed_min": 37,
+            "action": "HOLD",
+            "reason": "Position is slightly profitable with bullish trend intact, strong buy pressure in orderbook (0.861 imbalance, 3 bid walls vs 0 ask walls), and Extreme Fear sentiment favors LONG — drawdown from peak (",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2122.39,
+              "pnl_pct": 0.21035453700777917,
+              "rsi": 57.95,
+              "trend": "BULLISH",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.0027
+            }
+          },
+          {
+            "timestamp": "2026-02-08T13:46:58.453539",
+            "elapsed_min": 39,
+            "action": "HOLD",
+            "reason": "Trend remains BULLISH with price above EMAs, drawdown from peak (1.20%) is within acceptable range (<50% of peak PnL), and Extreme Fear sentiment (7) historically favors LONG positions despite orderbo",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2122.54,
+              "pnl_pct": 0.22356065143874873,
+              "rsi": 67.14,
+              "trend": "BULLISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0026
+            }
+          },
+          {
+            "timestamp": "2026-02-08T13:49:32.413508",
+            "elapsed_min": 42,
+            "action": "HOLD",
+            "reason": "Position is slightly profitable with bullish trend intact, strong buy pressure in orderbook (0.775 imbalance, 3 bid walls vs 0 ask), and Extreme Fear sentiment favors LONG positions — drawdown from pe",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2121.93,
+              "pnl_pct": 0.16035996094761587,
+              "rsi": 66.93,
+              "trend": "BULLISH",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.0027
+            }
+          },
+          {
+            "timestamp": "2026-02-08T13:52:06.296786",
+            "elapsed_min": 44,
+            "action": "HOLD",
+            "reason": "Position is profitable (+0.38%), trend remains BULLISH with price above EMAs, and despite orderbook sell pressure and MACD turning bearish, the drawdown from peak (1.04%) is minimal and Fear&Greed at ",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2124.27,
+              "pnl_pct": 0.3820340246105547,
+              "rsi": 67.72,
+              "trend": "BULLISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0027
+            }
+          },
+          {
+            "timestamp": "2026-02-08T13:54:41.056926",
+            "elapsed_min": 47,
+            "action": "HOLD",
+            "reason": "Position is profitable (+0.19%) with bullish trend, price above EMAs, buy pressure in orderbook, and extreme fear sentiment favors LONG; drawdown from peak (1.23%) is well below 50% threshold, no need",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2122.27,
+              "pnl_pct": 0.194318540913009,
+              "rsi": 67.05,
+              "trend": "BULLISH",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.0028
+            }
+          },
+          {
+            "timestamp": "2026-02-08T13:57:27.762364",
+            "elapsed_min": 50,
+            "action": "HOLD",
+            "reason": "Trend remains BULLISH with strong buy pressure (imbalance 0.828), price above EMAs, Fear&Greed=7 favors LONG; drawdown 1.30% from peak is normal fluctuation, not yet 50% of peak PnL (1.42%); wait for ",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2121.56,
+              "pnl_pct": 0.11885502987881161,
+              "rsi": 66.8,
+              "trend": "BULLISH",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.0027
+            }
+          },
+          {
+            "timestamp": "2026-02-08T14:00:02.145405",
+            "elapsed_min": 52,
+            "action": "HOLD",
+            "reason": "Position is profitable (+0.44%), trend remains BULLISH with price above EMA50/EMA200, orderbook shows BUY_PRESSURE, and extreme Fear&Greed (7) favors LONG positions — no reason to exit yet despite min",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2124.93,
+              "pnl_pct": 0.4424048334378869,
+              "rsi": 67.94,
+              "trend": "BULLISH",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.0026
+            }
+          },
+          {
+            "timestamp": "2026-02-08T14:02:33.469455",
+            "elapsed_min": 55,
+            "action": "HOLD",
+            "reason": "Trend remains BULLISH with buy pressure in orderbook, Fear&Greed at 7 favors LONG, PnL +0.48% not yet at breakeven-move threshold (+3%), drawdown 0.94% is acceptable (<50% of peak 1.42%) (urgency=low)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2125.27,
+              "pnl_pct": 0.4754201195153322,
+              "rsi": 66.4,
+              "trend": "BULLISH",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.0025
+            }
+          },
+          {
+            "timestamp": "2026-02-08T14:05:19.109425",
+            "elapsed_min": 58,
+            "action": "HOLD",
+            "reason": "Position is slightly profitable (+0.16%), trend remains BULLISH with strong buy pressure (imbalance 0.737), extreme fear sentiment favors LONG, and drawdown from peak (1.26%) is within acceptable rang",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2121.88,
+              "pnl_pct": 0.1631898426114165,
+              "rsi": 64.12,
+              "trend": "BULLISH",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.0024
+            }
+          },
+          {
+            "timestamp": "2026-02-08T14:07:55.765255",
+            "elapsed_min": 60,
+            "action": "HOLD",
+            "reason": "PnL +0.34% is too small to tighten SL, trend still BULLISH with price above EMAs, Fear&Greed=7 favors LONG; despite sell pressure in orderbook and MACD bearish, position is within normal volatility an",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2123.83,
+              "pnl_pct": 0.3395857996538026,
+              "rsi": 65.41,
+              "trend": "BULLISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0025
+            }
+          },
+          {
+            "timestamp": "2026-02-08T14:10:38.042358",
+            "elapsed_min": 63,
+            "action": "HOLD",
+            "reason": "Position is slightly profitable (+0.14%), trend remains BULLISH with price above EMA50/200, orderbook shows BUY_PRESSURE, and extreme Fear&Greed (7) favors LONG positions; drawdown from peak (1.28%) i",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2121.67,
+              "pnl_pct": 0.1358343198615296,
+              "rsi": 63.98,
+              "trend": "BULLISH",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.0026
+            }
+          },
+          {
+            "timestamp": "2026-02-08T14:13:13.552249",
+            "elapsed_min": 66,
+            "action": "HOLD",
+            "reason": "Trend remains BULLISH with price above EMA50/200, orderbook shows BUY_PRESSURE, Fear&Greed at 7 (Extreme Fear) favors LONG positions, and drawdown from peak (1.45%) is still well under the 50% thresho",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2119.97,
+              "pnl_pct": -0.02735552274988691,
+              "rsi": 62.89,
+              "trend": "BULLISH",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.0025
+            }
+          },
+          {
+            "timestamp": "2026-02-08T14:15:51.024134",
+            "elapsed_min": 68,
+            "action": "HOLD",
+            "reason": "Trend remains BULLISH with price above EMA50/200, Fear&Greed at 7 (Extreme Fear) favors LONG positions, and despite minor drawdown from peak (1.25%), PnL is still positive with no trend reversal signa",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2122.03,
+              "pnl_pct": 0.1669630181631221,
+              "rsi": 63.26,
+              "trend": "BULLISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0024
+            }
+          },
+          {
+            "timestamp": "2026-02-08T14:18:57.550897",
+            "elapsed_min": 71,
+            "action": "HOLD",
+            "reason": "Position is near breakeven (+0.00%) with bullish trend intact, strong buy pressure in orderbook (0.336 imbalance), Extreme Fear sentiment (7) favors LONG, and price is above both EMA50/200 — no reason",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2120.14,
+              "pnl_pct": 0.002829881663800634,
+              "rsi": 62.57,
+              "trend": "BULLISH",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.0023
+            }
+          },
+          {
+            "timestamp": "2026-02-08T14:21:37.042208",
+            "elapsed_min": 74,
+            "action": "HOLD",
+            "reason": "Trend remains BULLISH with strong buy pressure (0.922 imbalance, 3 bid walls vs 0 ask walls), price above both EMAs, Fear&Greed at 7 favors LONG, and -0.17% PnL is minor with SL intact at 2063 — no re",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2118.48,
+              "pnl_pct": -0.16601972427521713,
+              "rsi": 61.73,
+              "trend": "BULLISH",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.0025
+            }
+          },
+          {
+            "timestamp": "2026-02-08T14:24:15.093195",
+            "elapsed_min": 77,
+            "action": "HOLD",
+            "reason": "Trend remains BULLISH with price above EMA50/EMA200, orderbook shows BUY_PRESSURE, Fear&Greed at 7 (Extreme Fear) favors LONG positions, and current -0.26% loss is minor with SL properly set at 2063.0",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2117.71,
+              "pnl_pct": -0.2594058191799946,
+              "rsi": 61.26,
+              "trend": "BULLISH",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.0026
+            }
+          },
+          {
+            "timestamp": "2026-02-08T14:26:49.069717",
+            "elapsed_min": 79,
+            "action": "HOLD",
+            "reason": "Trend remains BULLISH with price above EMA50/EMA200, orderbook shows BUY_PRESSURE, Fear&Greed at 7 favors LONG positions, and drawdown from peak (1.46%) is within acceptable range despite minor PnL di",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2119.24,
+              "pnl_pct": -0.036788461629150865,
+              "rsi": 62.2,
+              "trend": "BULLISH",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.0027
+            }
+          },
+          {
+            "timestamp": "2026-02-08T14:29:25.304752",
+            "elapsed_min": 82,
+            "action": "HOLD",
+            "reason": "Trend remains BULLISH with price above EMA50/200, strong buy pressure (0.821 imbalance, 3 bid walls), Extreme Fear (7) favors longs, and current -0.24% drawdown is minor with SL safely at 2063 — no ac",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2117.68,
+              "pnl_pct": -0.24053994142146673,
+              "rsi": 61.24,
+              "trend": "BULLISH",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.0028
+            }
+          },
+          {
+            "timestamp": "2026-02-08T14:32:01.321832",
+            "elapsed_min": 84,
+            "action": "HOLD",
+            "reason": "Position is slightly profitable (+0.09%), trend remains BULLISH with price above both EMAs, Fear&Greed at 7 (Extreme Fear) favors LONG positions, and orderbook is balanced — no trigger conditions met ",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2121.21,
+              "pnl_pct": 0.09432938879272532,
+              "rsi": 56.53,
+              "trend": "BULLISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0026
+            }
+          },
+          {
+            "timestamp": "2026-02-08T14:34:56.612454",
+            "elapsed_min": 87,
+            "action": "HOLD",
+            "reason": "Trend remains BULLISH with price above EMAs, orderbook shows BUY_PRESSURE, and Extreme Fear (7) favors LONG positions; drawdown from peak (1.08%) is within acceptable range and PnL (+0.34%) hasn't rea",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2123.83,
+              "pnl_pct": 0.34052909354175037,
+              "rsi": 57.81,
+              "trend": "BULLISH",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.0026
+            }
+          },
+          {
+            "timestamp": "2026-02-08T14:37:32.907531",
+            "elapsed_min": 90,
+            "action": "HOLD",
+            "reason": "Position is in profit (+0.28%), trend remains BULLISH, Fear&Greed at 7 (Extreme Fear) favors LONG positions, orderbook is balanced, and drawdown from peak (1.14%) is within acceptable limits — no acti",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2123.14,
+              "pnl_pct": 0.2829881663781759,
+              "rsi": 57.48,
+              "trend": "BULLISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0028
+            }
+          },
+          {
+            "timestamp": "2026-02-08T14:40:04.567564",
+            "elapsed_min": 92,
+            "action": "HOLD",
+            "reason": "Position is profitable (+0.38%) with bullish trend intact (price above EMA50/200), drawdown from peak (1.04%) is acceptable (<50% of 1.42% peak), and extreme fear sentiment (7) historically favors lon",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2124.44,
+              "pnl_pct": 0.38392061238640746,
+              "rsi": 58.09,
+              "trend": "BULLISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0027
+            }
+          },
+          {
+            "timestamp": "2026-02-08T14:42:44.264896",
+            "elapsed_min": 95,
+            "action": "HOLD",
+            "reason": "Trend remains BULLISH with price above EMA50/200, orderbook shows BUY_PRESSURE with bid walls, Fear&Greed at 7 favors LONG positions, and current -0.11% PnL with 1.53% drawdown from peak is within acc",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2118.98,
+              "pnl_pct": -0.10847879711164268,
+              "rsi": 55.33,
+              "trend": "BULLISH",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.0028
+            }
+          },
+          {
+            "timestamp": "2026-02-08T14:45:43.251483",
+            "elapsed_min": 98,
+            "action": "HOLD",
+            "reason": "PnL at +0.19% is too small to adjust SL; trend remains BULLISH with price above EMA50/200, and Fear&Greed at 7 favors LONG positions despite orderbook sell pressure. (urgency=low)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2122.21,
+              "pnl_pct": 0.18865877758545063,
+              "rsi": 55.33,
+              "trend": "BULLISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0028
+            }
+          },
+          {
+            "timestamp": "2026-02-08T14:48:18.927183",
+            "elapsed_min": 101,
+            "action": "HOLD",
+            "reason": "Position is in profit with bullish trend intact, strong buy pressure in orderbook, and extreme fear sentiment favors longs; drawdown from peak (1.28%) is within acceptable range and doesn't trigger th",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 2121.12,
+              "pnl_pct": 0.1396074954132352,
+              "rsi": 54.72,
+              "trend": "BULLISH",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.0027
+            }
+          }
+        ]
+      },
       {
         "symbol": "ETHUSDT",
         "side": "LONG",
@@ -346,6 +1514,6 @@
     ],
     "paused_at": null
   },
-  "saved_at": "2026-02-08T13:07:07.976152",
+  "saved_at": "2026-02-08T16:50:33.859755",
   "version": "2.0"
 }

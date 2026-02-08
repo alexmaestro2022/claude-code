@@ -104,6 +104,17 @@ class AutopilotMode:
             'sniper_enabled': True,            # Enable SNIPER
             'trader_enabled': True,            # Enable TRADER
         }
+
+        # Load saved TRADER settings
+        try:
+            from .agent_settings import get_agent_settings
+            saved = get_agent_settings().get_settings("TRADER")
+            self._config['min_confidence'] = saved.get('min_confidence', 70)
+            self._config['scan_interval_seconds'] = saved.get('scan_interval_seconds', 60)
+            logger.info(f"[AUTOPILOT] Loaded settings: min_confidence={self._config['min_confidence']}, scan_interval={self._config['scan_interval_seconds']}")
+        except Exception as e:
+            logger.error(f"[AUTOPILOT] Failed to load agent_settings: {e}")
+
         self._stats = {
             'trades_this_hour': 0,
             'trades_today': 0,

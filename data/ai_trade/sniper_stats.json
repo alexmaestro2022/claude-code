@@ -1,32 +1,32 @@
 {
   "data": {
     "agent": "SNIPER",
-    "level": 1,
-    "xp": 60,
-    "xp_to_next_level": 40,
-    "total_trades": 9,
-    "winning_trades": 3,
-    "losing_trades": 6,
-    "winrate": 33.33333333333333,
-    "total_pnl_usdt": 0.18577259,
+    "level": 2,
+    "xp": 95,
+    "xp_to_next_level": 155,
+    "total_trades": 17,
+    "winning_trades": 6,
+    "losing_trades": 11,
+    "winrate": 35.294117647058826,
+    "total_pnl_usdt": -0.12221366,
     "total_pnl_percent": 0.0,
     "best_trade_usdt": 0.5270712,
     "worst_trade_usdt": -0.48336423,
     "avg_trade_duration_minutes": 0,
     "avg_rr_ratio": 0.0,
     "consecutive_wins": 0,
-    "consecutive_losses": 1,
+    "consecutive_losses": 3,
     "max_consecutive_wins": 2,
     "max_consecutive_losses": 3,
-    "trades_today": 2,
-    "pnl_today_usdt": 0.37230622,
-    "trades_this_week": 5,
-    "pnl_this_week_usdt": 0.38309859,
-    "last_trade_time": "2026-02-08T13:09:12.641980",
-    "last_win_time": "2026-02-08T03:37:12.900089",
-    "last_loss_time": "2026-02-08T13:09:12.641962",
-    "paused_until": null,
-    "pause_reason": null,
+    "trades_today": 10,
+    "pnl_today_usdt": 0.06431997000000006,
+    "trades_this_week": 13,
+    "pnl_this_week_usdt": 0.07511234000000006,
+    "last_trade_time": "2026-02-08T19:12:40.026428",
+    "last_win_time": "2026-02-08T16:41:13.305048",
+    "last_loss_time": "2026-02-08T19:12:40.025918",
+    "paused_until": "2026-02-08T20:12:40.026545",
+    "pause_reason": "3 consecutive losses",
     "trigger_stats": {
       "breakout": {
         "trades": 0,
@@ -49,13 +49,13 @@
         "pnl": 0.0
       },
       "stop_loss": {
-        "trades": 6,
-        "pnl": -0.8742126100000001
+        "trades": 11,
+        "pnl": -1.37785644
       },
       "take_profit": {
-        "trades": 3,
-        "wins": 3,
-        "pnl": 1.0599851999999998
+        "trades": 6,
+        "wins": 6,
+        "pnl": 1.2556427799999998
       }
     },
     "api_usage": {
@@ -103,6 +103,1663 @@
     "enabled": true,
     "cooldown_remaining": 0.0,
     "trades_history": [
+      {
+        "symbol": "RESOLVUSDT",
+        "side": "SHORT",
+        "pnl_usdt": -0.06444732,
+        "pnl_pct": 0.0,
+        "entry_price": 0.07357,
+        "exit_price": 0.07357,
+        "close_reason": "stop_loss",
+        "leverage": "2",
+        "grade": "C",
+        "closed_at": "2026-02-08T19:12:40.025890",
+        "decision_log": [
+          {
+            "timestamp": "2026-02-08T19:06:07.747939",
+            "elapsed_min": 0,
+            "action": "HOLD",
+            "reason": "Position just opened (0 min), RSI at 38.83 not extreme, bearish trend intact, balanced orderbook with more ask walls supporting SHORT, and negative funding favoring shorts - no exit triggers met yet. ",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 0.0736,
+              "pnl_pct": -0.08155498165013524,
+              "rsi": 38.83,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.1366
+            }
+          },
+          {
+            "timestamp": "2026-02-08T19:06:23.138454",
+            "elapsed_min": 0,
+            "action": "BREAKEVEN_SET",
+            "reason": "PnL 0.8% hit trigger, SL moved to 0.07353",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 0.07327,
+              "pnl_pct": 0.815549816501277,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-08T19:06:53.531404",
+            "elapsed_min": 1,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 1.2%, SL moved to 0.0735",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 0.07313,
+              "pnl_pct": 1.1961397308685495,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-08T19:07:08.388760",
+            "elapsed_min": 1,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 1.3%, SL moved to 0.07348",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 0.07311,
+              "pnl_pct": 1.250509718635319,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-08T19:07:17.364652",
+            "elapsed_min": 1,
+            "action": "MOVE_SL",
+            "reason": "PnL > +0.3% — moving SL to breakeven entry price per SNIPER rule #3 to protect profit (urgency=medium)",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 0.07309,
+              "pnl_pct": 1.250509718635319,
+              "rsi": 34.89,
+              "trend": "BEARISH",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.1538
+            }
+          },
+          {
+            "timestamp": "2026-02-08T19:08:28.575088",
+            "elapsed_min": 2,
+            "action": "MOVE_SL",
+            "reason": "PnL > +0.3% — moving SL to breakeven to protect profit; orderbook shows BUY_PRESSURE against our SHORT position which is a warning sign (urgency=medium)",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 0.07322,
+              "pnl_pct": 0.9514747859181817,
+              "rsi": 35.63,
+              "trend": "BEARISH",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.1675
+            }
+          },
+          {
+            "timestamp": "2026-02-08T19:09:38.030488",
+            "elapsed_min": 3,
+            "action": "MOVE_SL",
+            "reason": "PnL > +0.3% достигнут (+0.87%), перемещаем SL на breakeven для защиты прибыли согласно правилу 3 (urgency=medium)",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 0.07325,
+              "pnl_pct": 0.8699198042680464,
+              "rsi": 35.81,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.1619
+            }
+          }
+        ]
+      },
+      {
+        "symbol": "RIVERUSDT",
+        "side": "SHORT",
+        "pnl_usdt": -0.00261131,
+        "pnl_pct": 0.44,
+        "entry_price": 12.371,
+        "exit_price": 12.344,
+        "close_reason": "stop_loss",
+        "leverage": "2",
+        "grade": "C",
+        "closed_at": "2026-02-08T17:15:57.595507",
+        "decision_log": [
+          {
+            "timestamp": "2026-02-08T16:57:23.921309",
+            "elapsed_min": 0,
+            "action": "HOLD",
+            "reason": "Position just opened (0 min), RSI at 27.14 not yet extreme (<20), PnL +0.19% below +0.3% threshold for SL move to breakeven, bearish trend confirmed with negative MACD, balanced orderbook - let the tr",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 12.356,
+              "pnl_pct": 0.1940021016894423,
+              "rsi": 27.14,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:58:36.809746",
+            "elapsed_min": 1,
+            "action": "HOLD",
+            "reason": "Position just opened (1 min), RSI 27.37 not yet at extreme <20, bearish trend intact with negative MACD, balanced orderbook, and drawdown from peak (1.02%) is acceptable - wait for either RSI extreme ",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 12.37,
+              "pnl_pct": 0.11316789265216512,
+              "rsi": 27.37,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:59:45.099604",
+            "elapsed_min": 2,
+            "action": "HOLD",
+            "reason": "Position is profitable (+0.18%), RSI at 27.26 is oversold but not extreme (<20), duration only 2 minutes which is well within SNIPER limits, orderbook balanced, and drawdown from peak (0.95%) is withi",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 12.363,
+              "pnl_pct": 0.17783525988199836,
+              "rsi": 27.26,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T17:04:03.729026",
+            "elapsed_min": 7,
+            "action": "HOLD",
+            "reason": "Position is in profit (+0.34%), RSI at 28.36 not yet at extreme <20, duration only 6 min within SNIPER window, drawdown from peak (0.79%) is acceptable, and orderbook shows ask wall pressure supportin",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 12.367,
+              "pnl_pct": 0.3395036779565241,
+              "rsi": 28.36,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T17:05:15.534487",
+            "elapsed_min": 8,
+            "action": "HOLD",
+            "reason": "Position is profitable (+0.16%), RSI at 28.36 is oversold but not extreme (<20), duration only 8 min within 60 min limit, orderbook balanced, and drawdown from peak (0.97%) is acceptable relative to p",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 12.367,
+              "pnl_pct": 0.16166841807452567,
+              "rsi": 28.36,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T17:06:23.253960",
+            "elapsed_min": 9,
+            "action": "HOLD",
+            "reason": "RSI at 29.15 is oversold but not extreme (<20), position is only 9 minutes old with minimal drawdown, bearish trend intact with negative MACD, and orderbook is balanced - no immediate exit triggers me",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 12.385,
+              "pnl_pct": -0.04850052542236057,
+              "rsi": 29.15,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T17:07:31.951459",
+            "elapsed_min": 10,
+            "action": "HOLD",
+            "reason": "RSI at 28.76 is oversold but not extreme (<20), position is only 10 min old with -0.10% loss, orderbook balanced, and bearish trend intact with negative MACD - wait for continuation of short momentum.",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 12.376,
+              "pnl_pct": -0.09700105084472115,
+              "rsi": 28.76,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T17:08:43.494721",
+            "elapsed_min": 11,
+            "action": "HOLD",
+            "reason": "Position is profitable (+0.21%), RSI at 28.36 is not yet extreme (<20), orderbook shows SELL_PRESSURE favoring SHORT, drawdown from peak (0.92%) is within acceptable range (40% of 1.13% = 0.45% thresh",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 12.367,
+              "pnl_pct": 0.21016894349688625,
+              "rsi": 28.36,
+              "trend": "BEARISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T17:11:51.252342",
+            "elapsed_min": 14,
+            "action": "HOLD",
+            "reason": "Position profitable at +0.71% with favorable conditions: RSI 27 not yet extreme (<20), strong sell pressure in orderbook (-0.424), bearish trend intact, and only 14 min duration well within 60 min lim",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 12.323,
+              "pnl_pct": 0.711341039527936,
+              "rsi": 27.17,
+              "trend": "BEARISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T17:13:05.049571",
+            "elapsed_min": 16,
+            "action": "MOVE_SL",
+            "reason": "PnL > +0.3% — moving SL to breakeven per SNIPER rule #3 to lock in profit floor (urgency=medium)",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 12.347,
+              "pnl_pct": 0.5011720960310497,
+              "rsi": 27.58,
+              "trend": "BEARISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T17:14:17.628372",
+            "elapsed_min": 17,
+            "action": "HOLD",
+            "reason": "Position profitable +0.68% with RSI at 27 approaching but not yet at extreme (<20), drawdown from peak 0.45% is within 40% threshold, duration 17 min within 60 min limit, and 2 ask walls support SHORT",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 12.315,
+              "pnl_pct": 0.6790073559130194,
+              "rsi": 27.04,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T17:15:27.924887",
+            "elapsed_min": 18,
+            "action": "CLOSE",
+            "reason": "RSI at 23.76 is below 20 threshold (extreme oversold) - SHORT position reached its target zone, time to secure +0.65% profit before reversal (urgency=high)",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 12.339,
+              "pnl_pct": 0.6466736722981314,
+              "rsi": 23.76,
+              "trend": "BEARISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          }
+        ]
+      },
+      {
+        "symbol": "RIVERUSDT",
+        "side": "SHORT",
+        "pnl_usdt": -0.021699,
+        "pnl_pct": 0.08,
+        "entry_price": 12.353,
+        "exit_price": 12.348,
+        "close_reason": "stop_loss",
+        "leverage": "2",
+        "grade": "C",
+        "closed_at": "2026-02-08T16:51:14.071984",
+        "decision_log": [
+          {
+            "timestamp": "2026-02-08T16:48:58.698845",
+            "elapsed_min": 0,
+            "action": "BREAKEVEN_SET",
+            "reason": "PnL 0.7% hit trigger, SL moved to 12.347",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 12.312,
+              "pnl_pct": 0.6638063628268497,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:49:10.251435",
+            "elapsed_min": 0,
+            "action": "HOLD",
+            "reason": "Position is profitable (+0.66%) with RSI at 26.49 (not yet extreme <20), balanced orderbook, low liquidation pressure, and only 0 minutes in - continue holding until RSI hits extreme or profit reaches",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 12.316,
+              "pnl_pct": 0.6638063628268497,
+              "rsi": 26.49,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:49:40.096832",
+            "elapsed_min": 0,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 1.1%, SL moved to 12.344",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 12.283,
+              "pnl_pct": 1.1333279365336402,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:50:20.016431",
+            "elapsed_min": 1,
+            "action": "HOLD",
+            "reason": "Position profitable at +0.83% with RSI at 26.35 (not yet extreme <20), duration only 1 min, drawdown from peak is acceptable at 0.30%, orderbook balanced - continue holding for target (urgency=low)",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 12.307,
+              "pnl_pct": 0.8257103537602226,
+              "rsi": 26.35,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          }
+        ]
+      },
+      {
+        "symbol": "AXSUSDT",
+        "side": "SHORT",
+        "pnl_usdt": 0.101704,
+        "pnl_pct": 1.39,
+        "entry_price": 1.2762,
+        "exit_price": 1.2673,
+        "close_reason": "take_profit",
+        "leverage": "2",
+        "grade": "B",
+        "closed_at": "2026-02-08T16:41:13.304706",
+        "decision_log": [
+          {
+            "timestamp": "2026-02-08T16:19:30.065257",
+            "elapsed_min": 0,
+            "action": "HOLD",
+            "reason": "Position just opened (0 min), minimal profit (+0.02%), RSI at 32 not yet at extreme <20, balanced orderbook, low liquidation pressure - allow trade to develop toward TP (urgency=low)",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2766,
+              "pnl_pct": 0.015671524839365143,
+              "rsi": 32.09,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:20:41.860757",
+            "elapsed_min": 1,
+            "action": "HOLD",
+            "reason": "Position just opened (1 min), indicators support SHORT (RSI 34, bearish trend, 2 ask walls, extreme fear sentiment), small drawdown within normal range - give trade time to develop. (urgency=low)",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2782,
+              "pnl_pct": -0.3134304967873377,
+              "rsi": 34.16,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:22:02.771815",
+            "elapsed_min": 3,
+            "action": "HOLD",
+            "reason": "Position is only 2 minutes old with minimal drawdown (-0.13%), bearish trend intact, RSI at 33 not yet oversold, orderbook shows SELL_PRESSURE favoring SHORT, and volume ratio 0.15 is not against posi",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2773,
+              "pnl_pct": -0.12537219871492114,
+              "rsi": 33.01,
+              "trend": "BEARISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:23:13.008795",
+            "elapsed_min": 4,
+            "action": "HOLD",
+            "reason": "Position is only 4 minutes old with minimal drawdown (-0.14%), RSI at 32.75 supports bearish bias without hitting extreme (<20), orderbook shows more ask walls (3) than bid walls (1) favoring shorts, ",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2771,
+              "pnl_pct": -0.1410437235542863,
+              "rsi": 32.75,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:24:34.732417",
+            "elapsed_min": 5,
+            "action": "HOLD",
+            "reason": "Position is only 5 minutes old with minimal drawdown (-0.22%), RSI at 32.49 supports SHORT bias, orderbook balanced, volume ratio low (0.21), and no exit triggers hit yet. (urgency=low)",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2769,
+              "pnl_pct": -0.2194013477511468,
+              "rsi": 32.49,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:25:47.513818",
+            "elapsed_min": 6,
+            "action": "HOLD",
+            "reason": "Position is only 6 minutes old with minimal drawdown (-0.19%), bearish trend intact, RSI at 33 (not extreme <20), strong sell pressure in orderbook with 3 ask walls supporting SHORT, and volume ratio ",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2773,
+              "pnl_pct": -0.18805829807241653,
+              "rsi": 33.01,
+              "trend": "BEARISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:27:08.465558",
+            "elapsed_min": 8,
+            "action": "HOLD",
+            "reason": "Position is only 8 min old with -0.39% PnL, trend remains BEARISH with RSI 34.41 (not oversold <20), orderbook buy pressure is mild (0.155), and drawdown 0.41% from tiny 0.02% peak is acceptable — no ",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2784,
+              "pnl_pct": -0.39178812098416343,
+              "rsi": 34.41,
+              "trend": "BEARISH",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:28:18.466873",
+            "elapsed_min": 9,
+            "action": "HOLD",
+            "reason": "Position is only 9 minutes old with minor drawdown (-0.52%), indicators support SHORT (RSI 35.75 bearish, MACD negative, orderbook showing SELL_PRESSURE with 2 ask walls, Extreme Fear sentiment), no e",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2795,
+              "pnl_pct": -0.5171603196991194,
+              "rsi": 35.75,
+              "trend": "BEARISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:29:37.929943",
+            "elapsed_min": 10,
+            "action": "HOLD",
+            "reason": "Position is only 10 min old with small -0.28% loss, trend is BEARISH (favorable for SHORT), RSI at 33.65 (not extreme <20), volume ratio 0.28 is low, orderbook balanced with more ask walls (3 vs 1 bid",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2778,
+              "pnl_pct": -0.2820874471086074,
+              "rsi": 33.65,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:30:53.912181",
+            "elapsed_min": 11,
+            "action": "HOLD",
+            "reason": "Position is only 11 minutes old with minimal drawdown (-0.30%), trend remains BEARISH with RSI at 36.55 (not extreme), balanced orderbook with 3 ask walls supporting short, and no exit triggers activa",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2781,
+              "pnl_pct": -0.2977589719479726,
+              "rsi": 36.55,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:32:19.929250",
+            "elapsed_min": 13,
+            "action": "HOLD",
+            "reason": "Position is only 13 min old with minor -0.22% loss, trend remains BEARISH supporting SHORT, RSI at 34.84 (not extreme <20), volume ratio 0.06 is low (not against position), and despite mild buy pressu",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2758,
+              "pnl_pct": -0.2194013477511468,
+              "rsi": 34.84,
+              "trend": "BEARISH",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:33:32.431383",
+            "elapsed_min": 14,
+            "action": "HOLD",
+            "reason": "Position is only 14 min old with minimal -0.13% loss, RSI at 35.69 confirms bearish momentum (not at extreme <20), balanced orderbook, low volume ratio 0.11, and price remains below resistance — no ex",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.277,
+              "pnl_pct": -0.12537219871492114,
+              "rsi": 35.69,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:34:55.485094",
+            "elapsed_min": 15,
+            "action": "HOLD",
+            "reason": "Position is only 15 min old with minimal drawdown (-0.06%), RSI at 35 supports SHORT, bearish trend confirmed, balanced orderbook, no exit triggers activated yet. (urgency=low)",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2762,
+              "pnl_pct": -0.06268609935746057,
+              "rsi": 35.12,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:35:53.474324",
+            "elapsed_min": 16,
+            "action": "HOLD",
+            "reason": "Position is in profit (+0.03%), RSI at 34.98 not yet at extreme <20 level, volume ratio low (0.16), balanced orderbook, and duration (16 min) within acceptable SNIPER range - wait for larger move or e",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.276,
+              "pnl_pct": 0.031343049678730285,
+              "rsi": 34.98,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:36:39.952813",
+            "elapsed_min": 17,
+            "action": "BREAKEVEN_SET",
+            "reason": "PnL 0.5% hit trigger, SL moved to 1.2756",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2729,
+              "pnl_pct": 0.5171603196991194,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:37:04.115829",
+            "elapsed_min": 18,
+            "action": "MOVE_SL",
+            "reason": "PnL > +0.3% — moving SL to breakeven to lock in profit per SNIPER rule #3 (urgency=medium)",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2711,
+              "pnl_pct": 0.7208901426108663,
+              "rsi": 31.89,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:38:14.656185",
+            "elapsed_min": 19,
+            "action": "HOLD",
+            "reason": "Position performing well at +0.78% with RSI at 31.61 (not yet extreme <20), bearish trend intact, balanced orderbook, low liquidation pressure, and only 19 min duration - continue holding until RSI hi",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2706,
+              "pnl_pct": 0.7835762419683269,
+              "rsi": 31.61,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:38:31.072025",
+            "elapsed_min": 19,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 1.0%, SL moved to 1.2758",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2695,
+              "pnl_pct": 1.0499921642375691,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:39:27.882679",
+            "elapsed_min": 20,
+            "action": "HOLD",
+            "reason": "Position profitable at +0.96%, RSI at 31.22 not yet extreme (<20), orderbook shows SELL_PRESSURE favoring SHORT, drawdown from peak only 0.09% (well under 40% threshold), duration 20 min within 60 min",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2699,
+              "pnl_pct": 0.9559630152013782,
+              "rsi": 31.22,
+              "trend": "BEARISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:40:12.651594",
+            "elapsed_min": 21,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 1.2%, SL moved to 1.2751",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2688,
+              "pnl_pct": 1.15969283811316,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:40:31.092581",
+            "elapsed_min": 21,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 1.3%, SL moved to 1.274",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2677,
+              "pnl_pct": 1.3320796113461766,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:40:41.381294",
+            "elapsed_min": 21,
+            "action": "CLOSE",
+            "reason": "RSI at 30.15 approaching extreme oversold (<20 rule), combined with +1.33% profit in 21 minutes exceeds quick profit threshold - secure gains before reversal (urgency=high)",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2679,
+              "pnl_pct": 1.3320796113461766,
+              "rsi": 30.15,
+              "trend": "BEARISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          }
+        ]
+      },
+      {
+        "symbol": "AXSUSDT",
+        "side": "SHORT",
+        "pnl_usdt": -0.0408576,
+        "pnl_pct": 0.0,
+        "entry_price": 1.2768,
+        "exit_price": 1.2768,
+        "close_reason": "stop_loss",
+        "leverage": "2",
+        "grade": "C",
+        "closed_at": "2026-02-08T16:15:27.290226",
+        "decision_log": [
+          {
+            "timestamp": "2026-02-08T16:01:37.362604",
+            "elapsed_min": 0,
+            "action": "HOLD",
+            "reason": "Position just opened (0 min), all indicators favor SHORT: bearish trend, RSI 40.9 (not oversold), strong sell pressure in orderbook (-0.324 imbalance with 2 ask walls), low volume ratio (0.5), and ext",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2778,
+              "pnl_pct": -0.10964912280704026,
+              "rsi": 40.92,
+              "trend": "BEARISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:02:44.973493",
+            "elapsed_min": 1,
+            "action": "HOLD",
+            "reason": "Position just opened (1 min), small profit +0.16%, bearish trend confirmed with RSI 38.83, no exit triggers activated yet - let the trade develop. (urgency=low)",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2758,
+              "pnl_pct": 0.15664160401000782,
+              "rsi": 38.83,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:03:53.967365",
+            "elapsed_min": 2,
+            "action": "HOLD",
+            "reason": "Position just opened (2 min), indicators favor SHORT (RSI 40, bearish trend, MACD negative, BB %B low), orderbook imbalance is mild and not critical yet, no exit triggers met. (urgency=low)",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2769,
+              "pnl_pct": -0.01566416040100078,
+              "rsi": 40.0,
+              "trend": "BEARISH",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:05:00.430196",
+            "elapsed_min": 3,
+            "action": "HOLD",
+            "reason": "Position is only 3 minutes old with minor -0.19% loss, all indicators support SHORT (bearish trend, RSI 42, MACD negative, orderbook sell pressure with 2 ask walls, extreme fear sentiment) - no exit t",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.279,
+              "pnl_pct": -0.18796992481204416,
+              "rsi": 42.11,
+              "trend": "BEARISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:06:09.830919",
+            "elapsed_min": 4,
+            "action": "HOLD",
+            "reason": "Position is only 4 minutes old with -0.44% PnL, trend remains BEARISH, RSI at 42 supports short, orderbook has 2 big ask walls favoring shorts, and no exit rules are triggered yet. (urgency=low)",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2791,
+              "pnl_pct": -0.43859649122809147,
+              "rsi": 42.21,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:07:40.313571",
+            "elapsed_min": 6,
+            "action": "HOLD",
+            "reason": "Position is profitable (+0.11%), RSI at 38.39 not yet extreme (<20), orderbook shows 3 ask walls supporting SHORT, minimal drawdown (0.05%), and only 6 minutes into trade with bearish trend intact. (u",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2754,
+              "pnl_pct": 0.10964912280700548,
+              "rsi": 38.39,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:08:54.803479",
+            "elapsed_min": 7,
+            "action": "HOLD",
+            "reason": "Position is only 7 minutes old with minor -0.19% loss, bearish trend intact, RSI at 40.62 (not overbought), balanced orderbook with 1 ask wall supporting SHORT, and no exit rules triggered yet. (urgen",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2775,
+              "pnl_pct": -0.18796992481204416,
+              "rsi": 40.62,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:10:15.156984",
+            "elapsed_min": 8,
+            "action": "HOLD",
+            "reason": "Position is profitable at +0.20% with favorable bearish indicators (RSI 38, StochRSI 21, MACD negative), balanced orderbook with 2 ask walls supporting SHORT, extreme fear sentiment, and only 8 minute",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2754,
+              "pnl_pct": 0.20363408521301016,
+              "rsi": 38.39,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:11:24.245322",
+            "elapsed_min": 10,
+            "action": "HOLD",
+            "reason": "Position is profitable (+0.16%), RSI at 38.39 not yet extreme (<20), duration only 9 min within SNIPER limits, minimal drawdown (0.04%), balanced orderbook, and bearish trend intact - wait for either ",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2754,
+              "pnl_pct": 0.15664160401000782,
+              "rsi": 38.39,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:12:37.338705",
+            "elapsed_min": 11,
+            "action": "HOLD",
+            "reason": "Position is in profit (+0.09%), trend remains BEARISH, RSI at 39 not yet oversold, orderbook balanced with more ask walls supporting SHORT, and duration only 11 min within SNIPER timeframe. (urgency=l",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2762,
+              "pnl_pct": 0.0939849624060047,
+              "rsi": 39.26,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:13:45.572372",
+            "elapsed_min": 12,
+            "action": "MOVE_SL",
+            "reason": "PnL reached +0.39% peak (>+0.3%), moving SL to breakeven to protect profit per rule #3 (urgency=medium)",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2763,
+              "pnl_pct": 0.04699248120300235,
+              "rsi": 39.37,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T16:14:56.980476",
+            "elapsed_min": 13,
+            "action": "HOLD",
+            "reason": "Position is profitable (+0.03%), trend remains BEARISH with RSI at 39.47 (not extreme), balanced orderbook, low liquidation pressure, and only 13 minutes into trade - no exit triggers activated yet. (",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2764,
+              "pnl_pct": 0.03132832080200156,
+              "rsi": 39.47,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          }
+        ]
+      },
+      {
+        "symbol": "AXSUSDT",
+        "side": "SHORT",
+        "pnl_usdt": 0.0008712,
+        "pnl_pct": 0.41,
+        "entry_price": 1.2749,
+        "exit_price": 1.2723,
+        "close_reason": "take_profit",
+        "leverage": "2",
+        "grade": "B",
+        "closed_at": "2026-02-08T16:00:04.430688",
+        "decision_log": [
+          {
+            "timestamp": "2026-02-08T15:30:05.409828",
+            "elapsed_min": 0,
+            "action": "HOLD",
+            "reason": "Position just opened (0 min), RSI at 28.84 approaching oversold but not extreme (<20), orderbook shows SELL_PRESSURE supporting SHORT, minimal drawdown (-0.03%), all conditions favor holding for now. ",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2751,
+              "pnl_pct": -0.03137500980468711,
+              "rsi": 28.84,
+              "trend": "BEARISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": 0.0012
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:31:12.058052",
+            "elapsed_min": 1,
+            "action": "HOLD",
+            "reason": "Position just opened (1 min), all indicators support SHORT: RSI 33.51 oversold but not extreme (<20), strong sell pressure in orderbook (-0.360 imbalance with 3 ask walls), bearish trend confirmed, lo",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.275,
+              "pnl_pct": -0.04706251470703066,
+              "rsi": 33.51,
+              "trend": "BEARISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0005
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:32:23.335065",
+            "elapsed_min": 2,
+            "action": "HOLD",
+            "reason": "Position just opened (2 min), indicators favor SHORT (RSI 34.97, bearish trend, 2 ask walls, negative funding), minor drawdown from peak is acceptable for early position development. (urgency=low)",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2763,
+              "pnl_pct": -0.21962506863284462,
+              "rsi": 34.97,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0007
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:33:43.553962",
+            "elapsed_min": 3,
+            "action": "HOLD",
+            "reason": "Position is only 3 minutes old with minor drawdown (-0.20%), indicators strongly favor SHORT (RSI 35, StochRSI 5, bearish trend, price near lower Bollinger band), no exit rules triggered yet. (urgency",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2764,
+              "pnl_pct": -0.20393756373050104,
+              "rsi": 35.08,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:34:54.016622",
+            "elapsed_min": 5,
+            "action": "HOLD",
+            "reason": "SHORT position aligned with bearish trend, strong sell pressure (imbalance -0.227, 3 ask walls), oversold RSI/StochRSI suggests continuation potential, drawdown from peak (0.83%) within acceptable ran",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2782,
+              "pnl_pct": -0.517687661777407,
+              "rsi": 37.01,
+              "trend": "BEARISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:36:03.103689",
+            "elapsed_min": 6,
+            "action": "HOLD",
+            "reason": "SHORT position aligns with bearish trend, sell pressure in orderbook (-0.328 imbalance, 2 ask walls), oversold RSI (36.8) and StochRSI (8.07) favor continuation, only 6 min hold time with acceptable -",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.278,
+              "pnl_pct": -0.48631265197271983,
+              "rsi": 36.8,
+              "trend": "BEARISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:37:07.470440",
+            "elapsed_min": 7,
+            "action": "HOLD",
+            "reason": "Position aligned with bearish trend, strong sell pressure in orderbook, RSI oversold but not extreme (<20), duration only 7 min within SNIPER window, drawdown from peak (0.59%) acceptable - waiting fo",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2766,
+              "pnl_pct": -0.2823750882422188,
+              "rsi": 35.3,
+              "trend": "BEARISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:38:14.458528",
+            "elapsed_min": 8,
+            "action": "HOLD",
+            "reason": "Position is only 8 min old with bearish trend confirmed (RSI 35, MACD negative, sell pressure in orderbook with 2 ask walls), drawdown from peak 0.58% is acceptable, and no exit triggers hit yet. (urg",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2767,
+              "pnl_pct": -0.2666875833398753,
+              "rsi": 35.41,
+              "trend": "BEARISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:39:18.998057",
+            "elapsed_min": 9,
+            "action": "HOLD",
+            "reason": "SHORT position aligned with bearish trend, RSI at 36 (not extreme <20), oversold StochRSI and low %B suggest potential continuation down, duration only 9 min within SNIPER window, drawdown 0.76% accep",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2774,
+              "pnl_pct": -0.4549376421680328,
+              "rsi": 36.17,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:40:29.532375",
+            "elapsed_min": 10,
+            "action": "HOLD",
+            "reason": "SHORT position aligned with BEARISH trend, strong SELL_PRESSURE in orderbook (2 ask walls, imbalance -0.415), RSI 39.87 not yet oversold, StochRSI K=13.5 suggesting further downside potential, Extreme",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2811,
+              "pnl_pct": -0.8941877794336871,
+              "rsi": 39.87,
+              "trend": "BEARISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:41:51.266426",
+            "elapsed_min": 12,
+            "action": "HOLD",
+            "reason": "Position is only 11 minutes old with -0.86% PnL, but indicators support SHORT: RSI at 39 (not extreme), StochRSI oversold at 12 suggesting bounce risk is monitored but MACD histogram negative, trend B",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2804,
+              "pnl_pct": -0.8628127696290001,
+              "rsi": 39.21,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:43:03.448816",
+            "elapsed_min": 13,
+            "action": "HOLD",
+            "reason": "SHORT position aligned with BEARISH trend, RSI 36.9 not at extreme <20, orderbook shows SELL_PRESSURE favoring position, duration 13 min within 60 min limit, drawdown 0.81% acceptable given peak was o",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2781,
+              "pnl_pct": -0.5020001568750635,
+              "rsi": 36.9,
+              "trend": "BEARISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:44:23.168088",
+            "elapsed_min": 14,
+            "action": "HOLD",
+            "reason": "Position is within acceptable parameters: RSI 38.42 not at extreme (<20), sell pressure in orderbook supports SHORT, volume ratio 1.07 is normal, drawdown 1.05% from 0.31% peak is acceptable, and 14 m",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2796,
+              "pnl_pct": -0.7373127304102516,
+              "rsi": 38.42,
+              "trend": "BEARISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:45:32.995907",
+            "elapsed_min": 15,
+            "action": "HOLD",
+            "reason": "SHORT position is in favorable conditions: RSI 33.62 approaching oversold, SELL_PRESSURE orderbook imbalance with 2 ask walls, extreme fear sentiment (7), and price below resistance - no exit triggers",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2798,
+              "pnl_pct": -0.7686877402149387,
+              "rsi": 33.62,
+              "trend": "BEARISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:46:55.466791",
+            "elapsed_min": 17,
+            "action": "HOLD",
+            "reason": "RSI at 31.65 (not yet extreme <20), SHORT in bearish trend with price near lower Bollinger band (0.04), balanced orderbook, low volume ratio (0.06) - no exit triggers met yet, position has room to rea",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2769,
+              "pnl_pct": -0.517687661777407,
+              "rsi": 31.65,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:48:09.487494",
+            "elapsed_min": 18,
+            "action": "HOLD",
+            "reason": "RSI 32.58 approaching oversold but not extreme (<20), bearish trend intact with negative MACD, balanced orderbook, low volume ratio 0.12 not signaling reversal, and position still within 60 min SNIPER",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2786,
+              "pnl_pct": -0.5647501764844376,
+              "rsi": 32.58,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:49:45.282209",
+            "elapsed_min": 20,
+            "action": "HOLD",
+            "reason": "Position is 19 min old (under 60 min limit), RSI 31 is oversold but not extreme (<20), drawdown 0.56% from 0.31% peak is manageable, and despite BUY_PRESSURE imbalance the trend remains BEARISH with p",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2758,
+              "pnl_pct": -0.25100007843753175,
+              "rsi": 31.07,
+              "trend": "BEARISH",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:50:47.731371",
+            "elapsed_min": 21,
+            "action": "BREAKEVEN_SET",
+            "reason": "PnL 0.6% hit trigger, SL moved to 1.2743",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2711,
+              "pnl_pct": 0.5961251862891248,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:50:57.336045",
+            "elapsed_min": 21,
+            "action": "MOVE_SL",
+            "reason": "PnL > +0.3% — moving SL to breakeven (entry price) to protect profit per SNIPER rule #3 (urgency=medium)",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2711,
+              "pnl_pct": 0.5961251862891248,
+              "rsi": 28.83,
+              "trend": "BEARISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:52:02.458721",
+            "elapsed_min": 22,
+            "action": "HOLD",
+            "reason": "RSI at 29.15 is oversold but not extreme (<20), position profitable at +0.39% with sell pressure supporting SHORT, drawdown from peak only 0.21% which is 35% of peak PnL - continue holding as momentum",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2718,
+              "pnl_pct": 0.39218762255862377,
+              "rsi": 29.15,
+              "trend": "BEARISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:53:14.573065",
+            "elapsed_min": 23,
+            "action": "MOVE_SL",
+            "reason": "PnL > +0.3% — moving SL to breakeven to lock in profit per rule #3 (urgency=medium)",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2711,
+              "pnl_pct": 0.5804376813867463,
+              "rsi": 28.83,
+              "trend": "BEARISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:54:33.805680",
+            "elapsed_min": 24,
+            "action": "HOLD",
+            "reason": "Position profitable at +0.39% with strong bearish confirmation: RSI oversold at 29.24, SELL_PRESSURE orderbook imbalance (-0.153), big ask wall present, and 24 min duration well within 60 min SNIPER l",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.272,
+              "pnl_pct": 0.39218762255862377,
+              "rsi": 29.24,
+              "trend": "BEARISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:55:46.865308",
+            "elapsed_min": 26,
+            "action": "HOLD",
+            "reason": "SHORT profitable +0.47% with RSI 28.92 approaching but not yet at extreme <20, orderbook shows SELL_PRESSURE supporting position, duration 25min within 60min limit, drawdown from peak only 0.13% well ",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2713,
+              "pnl_pct": 0.47062514707034153,
+              "rsi": 28.92,
+              "trend": "BEARISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:57:08.898373",
+            "elapsed_min": 27,
+            "action": "MOVE_SL",
+            "reason": "PnL > +0.3% — move SL to breakeven (entry price) to lock in profit per SNIPER rule #3 (urgency=medium)",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.271,
+              "pnl_pct": 0.5333751666797157,
+              "rsi": 28.79,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:58:24.887277",
+            "elapsed_min": 28,
+            "action": "MOVE_SL",
+            "reason": "PnL > +0.3% (currently +0.53%) — moving SL to breakeven at entry price 1.2749 to lock in risk-free position per SNIPER rule #3 (urgency=medium)",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2714,
+              "pnl_pct": 0.5333751666797157,
+              "rsi": 28.97,
+              "trend": "BEARISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:59:47.852828",
+            "elapsed_min": 30,
+            "action": "CLOSE",
+            "reason": "Duration 29 min approaching SNIPER limit, orderbook shows BUY_PRESSURE against SHORT, RSI at 29.37 near oversold extreme, and drawdown from peak (0.19% from 0.60%) indicates momentum fading - lock in ",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 1.2723,
+              "pnl_pct": 0.40787512746096727,
+              "rsi": 29.37,
+              "trend": "BEARISH",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          }
+        ]
+      },
+      {
+        "symbol": "HBARUSDT",
+        "side": "LONG",
+        "pnl_usdt": -0.3740286,
+        "pnl_pct": -3.13,
+        "entry_price": 0.09581,
+        "exit_price": 0.09431,
+        "close_reason": "stop_loss",
+        "leverage": "2",
+        "grade": "D",
+        "closed_at": "2026-02-08T15:27:15.701603",
+        "decision_log": [
+          {
+            "timestamp": "2026-02-08T15:13:07.545425",
+            "elapsed_min": 0,
+            "action": "HOLD",
+            "reason": "Position just opened (0 min), PnL +0.06% is too small for any action; RSI 66.84 is healthy, volume ratio 2.48 is below exit threshold, and despite orderbook sell pressure the trend remains BULLISH wit",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 0.09584,
+              "pnl_pct": 0.06262394322093387,
+              "rsi": 66.84,
+              "trend": "BULLISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0234
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:14:05.899777",
+            "elapsed_min": 1,
+            "action": "HOLD",
+            "reason": "Position just opened (1 min), minor drawdown -0.06% is normal noise, trend BULLISH, RSI 66.5 healthy, no exit triggers met yet. (urgency=low)",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 0.09578,
+              "pnl_pct": -0.06262394322096283,
+              "rsi": 66.5,
+              "trend": "BULLISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0233
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:15:15.778244",
+            "elapsed_min": 2,
+            "action": "HOLD",
+            "reason": "Position is 2 minutes old with +0.21% PnL, no exit triggers hit yet - RSI 63.62 is not extreme, volume ratio 0.01 is safe, and while orderbook shows mild sell pressure, price is still bullish and near",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 0.09593,
+              "pnl_pct": 0.20874647740317084,
+              "rsi": 63.62,
+              "trend": "BULLISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0229
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:16:28.692076",
+            "elapsed_min": 3,
+            "action": "HOLD",
+            "reason": "Position is only 3 minutes old with +0.13% PnL, bullish trend confirmed, RSI at 62.59 is healthy (not extreme), volume ratio 0.22 is low (not against position), orderbook balanced, and drawdown from p",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 0.09584,
+              "pnl_pct": 0.1252478864418967,
+              "rsi": 62.59,
+              "trend": "BULLISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0229
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:17:53.299231",
+            "elapsed_min": 5,
+            "action": "HOLD",
+            "reason": "Position is only 4 minutes old with minor -0.35% loss, trend remains BULLISH, RSI healthy at 61, volume ratio 0.49 is not against position, orderbook balanced with bid wall support, and drawdown from ",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 0.0957,
+              "pnl_pct": -0.35486901158543677,
+              "rsi": 61.05,
+              "trend": "BULLISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0229
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:18:56.947939",
+            "elapsed_min": 6,
+            "action": "HOLD",
+            "reason": "Position is only 5 min old with minor -0.42% loss, trend remains BULLISH, RSI at 60 is healthy, no exit triggers hit - price near support 0.09381 with SL properly set below it. (urgency=low)",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 0.09561,
+              "pnl_pct": -0.4174929548063996,
+              "rsi": 60.1,
+              "trend": "BULLISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0232
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:19:56.070003",
+            "elapsed_min": 7,
+            "action": "HOLD",
+            "reason": "Position is only 6 minutes old with -0.58% PnL, trend remains BULLISH, RSI at 59 is neutral, volume ratio 0.74 is acceptable, orderbook balanced, and price is still above support at 0.09381 - no exit ",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 0.09552,
+              "pnl_pct": -0.5844901367289478,
+              "rsi": 59.18,
+              "trend": "BULLISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0231
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:21:05.423773",
+            "elapsed_min": 8,
+            "action": "HOLD",
+            "reason": "Position is only 8 minutes old with minor -0.33% loss, trend remains BULLISH, RSI at 60 is healthy, volume ratio 0.86 is acceptable, and orderbook imbalance at -0.181 is not extreme enough to trigger ",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 0.09564,
+              "pnl_pct": -0.3339943638451255,
+              "rsi": 60.42,
+              "trend": "BULLISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.023
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:22:17.921580",
+            "elapsed_min": 9,
+            "action": "HOLD",
+            "reason": "Position is only 9 minutes old with -0.63% PnL, still within normal volatility range; trend remains BULLISH, RSI at 59 is neutral, orderbook balanced, no exit triggers met yet — give trade more time t",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 0.09551,
+              "pnl_pct": -0.6262394322095993,
+              "rsi": 59.08,
+              "trend": "BULLISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0232
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:23:25.126405",
+            "elapsed_min": 10,
+            "action": "HOLD",
+            "reason": "Position is only 10 min old with -1.38% PnL, but trend remains BULLISH, RSI neutral at 55.68, orderbook balanced, no volume spike against position (1.02x), and price is above support 0.09381 - waiting",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 0.09515,
+              "pnl_pct": -1.3777267508610955,
+              "rsi": 55.68,
+              "trend": "BULLISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0232
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:24:37.289788",
+            "elapsed_min": 11,
+            "action": "HOLD",
+            "reason": "Position is underwater at -2.13% but still within SL bounds, trend remains BULLISH, RSI neutral at 52.57, orderbook balanced, low liquidation pressure, and duration only 11 min - no exit trigger met y",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 0.09478,
+              "pnl_pct": -2.1292140695125914,
+              "rsi": 52.57,
+              "trend": "BULLISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0234
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:25:47.235839",
+            "elapsed_min": 13,
+            "action": "HOLD",
+            "reason": "Position is at -2.28% loss but still above SL (0.0938546), price near support (0.09381), RSI neutral at 51, volume ratio normal (1.27), and only 12 minutes in — no exit triggers met yet, let it work t",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 0.0946,
+              "pnl_pct": -2.2753366036948286,
+              "rsi": 51.18,
+              "trend": "BULLISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0235
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:27:00.369843",
+            "elapsed_min": 14,
+            "action": "CLOSE",
+            "reason": "Position is -3.21% with peak PnL only +0.21%, meaning drawdown from peak (3.42%) exceeds 40% of peak profit (0.08%) by massive margin — momentum completely lost on this SNIPER trade. (urgency=high)",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 0.09429,
+              "pnl_pct": -3.214695752009184,
+              "rsi": 48.95,
+              "trend": "BULLISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0236
+            }
+          }
+        ]
+      },
+      {
+        "symbol": "HBARUSDT",
+        "side": "LONG",
+        "pnl_usdt": 0.09308238,
+        "pnl_pct": 1.24,
+        "entry_price": 0.09507,
+        "exit_price": 0.09566,
+        "close_reason": "take_profit",
+        "leverage": "2",
+        "grade": "B",
+        "closed_at": "2026-02-08T15:08:42.344658",
+        "decision_log": [
+          {
+            "timestamp": "2026-02-08T15:04:51.752158",
+            "elapsed_min": 0,
+            "action": "HOLD",
+            "reason": "Position just opened (0 min), indicators bullish (RSI 61, MACD positive, BB%B 0.81), balanced orderbook, no exit triggers met yet - allow trade to develop (urgency=low)",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 0.09506,
+              "pnl_pct": -0.021037130535386816,
+              "rsi": 61.61,
+              "trend": "BULLISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0238
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:05:47.898150",
+            "elapsed_min": 1,
+            "action": "BREAKEVEN_SET",
+            "reason": "PnL 0.6% hit trigger, SL moved to 0.09512",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 0.09534,
+              "pnl_pct": 0.5680025244556484,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:05:57.507434",
+            "elapsed_min": 1,
+            "action": "MOVE_SL",
+            "reason": "PnL > +0.3% (+0.57%), moving SL to breakeven entry price to lock in risk-free trade per SNIPER rule #3 (urgency=medium)",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 0.09537,
+              "pnl_pct": 0.5680025244556484,
+              "rsi": 63.97,
+              "trend": "BULLISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0238
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:06:13.569885",
+            "elapsed_min": 1,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 1.1%, SL moved to 0.09512",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 0.0956,
+              "pnl_pct": 1.1149679183759393,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:07:11.204691",
+            "elapsed_min": 2,
+            "action": "MOVE_SL",
+            "reason": "PnL > +1.0% — moving SL to breakeven to lock in profit per rule #3, while allowing room for potential TP hit at resistance 0.09575 (urgency=medium)",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 0.09567,
+              "pnl_pct": 1.0097822656989468,
+              "rsi": 65.85,
+              "trend": "BULLISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0238
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:07:28.331068",
+            "elapsed_min": 2,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 1.7%, SL moved to 0.09541",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 0.09589,
+              "pnl_pct": 1.7250447039023904,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-08T15:08:26.084494",
+            "elapsed_min": 3,
+            "action": "CLOSE",
+            "reason": "Rule 2 triggered: PnL +1.45% achieved in 3 minutes (<10 min), quick profit secured before potential reversal with RSI at 66 and Bollinger %B at 0.92 indicating overbought conditions (urgency=high)",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 0.09576,
+              "pnl_pct": 1.451562006942245,
+              "rsi": 66.38,
+              "trend": "BULLISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0237
+            }
+          }
+        ]
+      },
       {
         "symbol": "AXSUSDT",
         "side": "SHORT",
@@ -229,8 +1886,8 @@
         "closed_at": "2026-01-30T01:43:20.598972"
       }
     ],
-    "paused_at": null
+    "paused_at": "2026-02-08T19:12:40.026545"
   },
-  "saved_at": "2026-02-08T13:09:12.642908",
+  "saved_at": "2026-02-08T19:12:40.032780",
   "version": "2.0"
 }
