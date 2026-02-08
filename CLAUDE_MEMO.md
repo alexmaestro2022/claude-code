@@ -4241,3 +4241,33 @@ self._post_analysis_queue.append({
 ```
 fecd7af fix: position_monitor.check_positions() must run regardless of daily trade limit
 ```
+
+## 66. Fix: SL/TP отображение в API (2026-02-08)
+
+### Проблема
+API endpoint `/api/ai-trade/positions` показывал `sl_price: null` и `tp_price: null`, хотя на бирже SL/TP были установлены корректно.
+
+### Причина
+Код искал SL/TP в **ордерах** (через `get_open_orders()`), но Bybit возвращает их прямо в **объекте позиции** (поля `stopLoss` и `takeProfit`):
+
+```python
+# БЫЛО (неправильно):
+orders = await exchange.get_open_orders(symbol)
+for order in orders:
+    if order.get("stopLoss"):
+        sl_price = float(order["stopLoss"])
+
+# СТАЛО (правильно):
+if pos.get("stopLoss"):
+    sl_price = float(pos["stopLoss"])
+if pos.get("takeProfit"):
+    tp_price = float(pos["takeProfit"])
+```
+
+### Файл
+`aila/api/routes/ai_trade.py` — строки 1285-1296
+
+### Коммит
+```
+296b8a6 fix: get SL/TP from position object instead of orders
+```
