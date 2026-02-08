@@ -1,6 +1,6 @@
 {
   "session": {
-    "start_time": "2026-02-06T00:15:33.342640",
+    "start_time": "2026-02-08T12:37:36.732547",
     "calls": {
       "sonnet": 0,
       "haiku": 0
@@ -385,6 +385,6 @@
     "initial_balance": 17.07,
     "accumulated_cost": 8.634621499999971,
     "last_reset_date": "2026-01-28T08:48:07.266852",
-    "daily_reset_date": "2026-02-06"
+    "daily_reset_date": "2026-02-08"
   }
 }

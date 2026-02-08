@@ -1282,13 +1282,18 @@ async def get_positions():
                 # Check signal queue for source info
                 source = "TRADER"  # Could be enhanced to track actual source
 
-            # Get SL/TP from position (Bybit returns them in position object)
+            # Get SL/TP orders if available
             sl_price = None
             tp_price = None
-            if pos.get("stopLoss"):
-                sl_price = float(pos["stopLoss"])
-            if pos.get("takeProfit"):
-                tp_price = float(pos["takeProfit"])
+            try:
+                orders = await exchange.get_open_orders(symbol)
+                for order in orders:
+                    if order.get("stopLoss"):
+                        sl_price = float(order["stopLoss"])
+                    if order.get("takeProfit"):
+                        tp_price = float(order["takeProfit"])
+            except Exception:
+                pass
 
             positions.append({
                 "symbol": symbol,
