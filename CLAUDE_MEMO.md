@@ -4411,3 +4411,60 @@ function updateAgentStats(agent, stats) {
 
 ### Файлы:
 - `aila/api/templates/ai_trade.html` — исправлена функция + добавлена карточка HUNTER
+
+---
+
+## 69. Toggle switches для агентов (2026-02-13)
+
+### Добавлено
+Toggle переключатели в карточки агентов для включения/выключения TRADER, SNIPER, HUNTER.
+
+### CSS стили
+```css
+.agent-toggle {
+    width: 36px; height: 20px;
+    background: var(--border-color);
+    border-radius: 10px;
+    cursor: pointer;
+}
+.agent-toggle.active {
+    background: var(--success);
+}
+.agent-toggle::after {
+    /* white circle, moves 16px on active */
+}
+```
+
+### HTML элементы
+```html
+<div class="agent-toggle" id="toggleTrader" onclick="toggleAgent('TRADER')"></div>
+<div class="agent-toggle" id="toggleSniper" onclick="toggleAgent('SNIPER')"></div>
+<div class="agent-toggle" id="toggleHunter" onclick="toggleAgent('HUNTER')"></div>
+```
+
+### JavaScript
+```javascript
+async function toggleAgent(agent) {
+    const result = await postData(`/agent/${agent}/toggle`);
+    if (result.enabled) toggleEl.classList.add('active');
+    else toggleEl.classList.remove('active');
+}
+
+function updateAgentToggles(enabled) {
+    // enabled = {trader: true, sniper: true, hunter: false}
+}
+```
+
+### Backend изменение
+В `autopilot_mode.py:get_heartbeat()` добавлено:
+```python
+'agents_enabled': {
+    'trader': self._config.get('trader_enabled', True),
+    'sniper': self._config.get('sniper_enabled', True),
+    'hunter': self._config.get('hunter_enabled', False),
+},
+```
+
+### Файлы:
+- `aila/api/templates/ai_trade.html` — CSS + HTML + JS для toggles
+- `aila/ai_trade/autopilot_mode.py` — agents_enabled в heartbeat
