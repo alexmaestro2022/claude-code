@@ -4374,3 +4374,40 @@ AGENT_COOLDOWNS["HUNTER"] = 600  # 10 min between trades
 - Partial close 30% при +5%, ещё 30% при +8%
 - Trailing stop с +5%, distance 2%
 - Breakeven при +3%
+
+---
+
+## 68. Исправление UI updateAgentStats + HUNTER карточка (2026-02-13)
+
+### Проблема
+Функция `updateAgentStats()` в ai_trade.html была полностью сломана:
+1. Использовала неправильные ID элементов (`traderLevel` вместо `alTraderLevel`)
+2. Обращалась к несуществующим элементам (`${prefix}Winrate`, `${prefix}Pnl`, `${prefix}Trades`)
+
+### Исправление
+```javascript
+function updateAgentStats(agent, stats) {
+    // Capitalize agent name: 'trader' -> 'Trader'
+    const cap = agent.charAt(0).toUpperCase() + agent.slice(1);
+    const prefix = `al${cap}`;  // 'alTrader', 'alSniper', 'alHunter'
+
+    // Update elements with null check
+    const levelEl = document.getElementById(`${prefix}Level`);
+    if (levelEl) levelEl.textContent = stats.level || 1;
+    // ...
+
+    // Stats summary in single element
+    const statsEl = document.getElementById(`${prefix}Stats`);
+    if (statsEl) {
+        statsEl.innerHTML = `WR: ${wr}% | PnL: <span class="${pnlClass}">${pnlStr}</span> | Trades: ${trades}`;
+    }
+}
+```
+
+### Добавлена карточка HUNTER в UI
+- Grid изменён с 2 на 3 колонки (`grid-template-columns:1fr 1fr 1fr`)
+- Элементы: `alHunterLevel`, `alHunterXpBar`, `alHunterXp`, `alHunterXpNext`, `alHunterStats`
+- Вызов: `updateAgentStats('hunter', stats.hunter)`
+
+### Файлы:
+- `aila/api/templates/ai_trade.html` — исправлена функция + добавлена карточка HUNTER
