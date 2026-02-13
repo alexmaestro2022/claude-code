@@ -1194,6 +1194,11 @@ Trades today: {stats['trades_today']}
                 'last_cascade_at': self._cascade_stats['last_cascade_at'].isoformat() if self._cascade_stats['last_cascade_at'] else None,
                 'signals_found': self._cascade_stats['signals_found'],
             },
+            'agents_enabled': {
+                'trader': self._config.get('trader_enabled', True),
+                'sniper': self._config.get('sniper_enabled', True),
+                'hunter': self._config.get('hunter_enabled', False),
+            },
         }
 
     def set_current_pair(self, pair: Optional[str]) -> None:
