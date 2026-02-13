@@ -17,6 +17,7 @@ from .agents.whale_tracker import WhaleTrackerAgent
 from .agents.news_agent import NewsAgent
 from .agents.predictor import PredictorAgent
 from .agents.sniper import SniperAgent
+from .agents.hunter import HunterAgent
 from .agents.arbitrage import ArbitrageAgent
 from .agents.hedge_master import HedgeMasterAgent
 from .agents.war_room import WarRoomAgent
@@ -81,6 +82,7 @@ class AgentOrchestrator:
         self.news_agent = NewsAgent(self.claude_client, self.knowledge_base)
         self.predictor = PredictorAgent(self.claude_client, self.knowledge_base, self.scanner)
         self.sniper = SniperAgent(self.claude_client, self.knowledge_base, self.scanner)
+        self.hunter = HunterAgent(self.claude_client, self.knowledge_base, self.scanner)
 
         self.arbitrage = ArbitrageAgent(self.claude_client, self.knowledge_base, self.exchanges)
         self.capital_manager = CapitalManager(self.knowledge_base)
@@ -97,7 +99,7 @@ class AgentOrchestrator:
         # Set orchestrator reference for API usage auto-stop
         set_api_usage_orchestrator(self)
 
-        logger.info(f"AgentOrchestrator initialized in {mode} mode (16 agents)")
+        logger.info(f"AgentOrchestrator initialized in {mode} mode (17 agents)")
         if api_key:
             logger.info("Bybit API connected with real credentials")
         else:
@@ -473,6 +475,7 @@ class AgentOrchestrator:
                 "news": {"status": "active", "name": "NEWS"},
                 "predictor": {"status": "active", "name": "PREDICTOR"},
                 "sniper": {"status": "active", "name": "SNIPER", "pending": len(self.sniper._pending_snipes)},
+                "hunter": {"status": "active", "name": "HUNTER", "pending": len(self.hunter._pending_hunts)},
                 "arbitrage": {"status": "active", "name": "ARBITRAGE", "exchanges": self.exchanges.count},
                 "hedge_master": {"status": "active", "name": "HEDGE_MASTER", "active_hedges": len(self.hedge_master._active_hedges)},
                 "war_room": {"status": "active", "name": "WAR_ROOM", "crisis_mode": self.war_room.is_crisis_mode()},

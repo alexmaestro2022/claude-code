@@ -1,5 +1,5 @@
 """
-AGENT STATS - Manages statistics, XP, and levels for TRADER and SNIPER agents.
+AGENT STATS - Manages statistics, XP, and levels for TRADER, SNIPER and HUNTER agents.
 """
 
 import json
@@ -9,8 +9,8 @@ from pathlib import Path
 from typing import Any, Optional
 
 from .config import (
-    TRADER_STATS_PATH, SNIPER_STATS_PATH,
-    TRADER_LEVELS, SNIPER_LEVELS, AGENT_XP_THRESHOLDS,
+    TRADER_STATS_PATH, SNIPER_STATS_PATH, HUNTER_STATS_PATH,
+    TRADER_LEVELS, SNIPER_LEVELS, HUNTER_LEVELS, AGENT_XP_THRESHOLDS,
     PERFORMANCE_LIMITS,
 )
 
@@ -23,17 +23,38 @@ logger = logging.getLogger("ai_trade.agent_stats")
 class AgentStatsManager:
     """Manages statistics, XP, and levels for trading agents."""
 
-    __slots__ = ("_trader_stats", "_sniper_stats", "_trader_path", "_sniper_path")
+    __slots__ = (
+        "_trader_stats", "_sniper_stats", "_hunter_stats",
+        "_trader_path", "_sniper_path", "_hunter_path",
+    )
 
     def __init__(self) -> None:
         self._trader_path = Path(TRADER_STATS_PATH)
         self._sniper_path = Path(SNIPER_STATS_PATH)
+        self._hunter_path = Path(HUNTER_STATS_PATH)
         self._trader_stats = self._load_stats("TRADER")
         self._sniper_stats = self._load_stats("SNIPER")
+        self._hunter_stats = self._load_stats("HUNTER")
+
+    def _get_path(self, agent: str) -> Path:
+        """Get file path for agent stats."""
+        if agent == "TRADER":
+            return self._trader_path
+        elif agent == "SNIPER":
+            return self._sniper_path
+        return self._hunter_path
+
+    def _get_stats(self, agent: str) -> dict[str, Any]:
+        """Get stats dict reference for agent."""
+        if agent == "TRADER":
+            return self._trader_stats
+        elif agent == "SNIPER":
+            return self._sniper_stats
+        return self._hunter_stats
 
     def _load_stats(self, agent: str) -> dict[str, Any]:
         """Load stats from file."""
-        path = self._trader_path if agent == "TRADER" else self._sniper_path
+        path = self._get_path(agent)
         try:
             if path.exists():
                 with open(path, "r") as f:
@@ -45,8 +66,8 @@ class AgentStatsManager:
 
     def _save_stats(self, agent: str) -> None:
         """Save stats to file."""
-        path = self._trader_path if agent == "TRADER" else self._sniper_path
-        stats = self._trader_stats if agent == "TRADER" else self._sniper_stats
+        path = self._get_path(agent)
+        stats = self._get_stats(agent)
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
             container = {
@@ -111,12 +132,20 @@ class AgentStatsManager:
                 "funding_flip": {"trades": 0, "wins": 0, "pnl": 0.0},
             }
 
+        if agent == "HUNTER":
+            base["trigger_stats"] = {
+                "liquidation_cascade": {"trades": 0, "wins": 0, "pnl": 0.0},
+                "funding_flip": {"trades": 0, "wins": 0, "pnl": 0.0},
+                "extreme_fear": {"trades": 0, "wins": 0, "pnl": 0.0},
+                "oi_divergence": {"trades": 0, "wins": 0, "pnl": 0.0},
+            }
+
         return base
 
     def get_stats(self, agent: str) -> dict[str, Any]:
         """Get stats for agent."""
         self._reset_daily_if_needed(agent)
-        return self._trader_stats if agent == "TRADER" else self._sniper_stats
+        return self._get_stats(agent)
 
     def get_level(self, agent: str) -> int:
         """Get current level for agent."""
@@ -126,12 +155,17 @@ class AgentStatsManager:
     def get_level_limits(self, agent: str) -> dict[str, Any]:
         """Get trading limits based on agent level."""
         level = self.get_level(agent)
-        levels = TRADER_LEVELS if agent == "TRADER" else SNIPER_LEVELS
+        if agent == "TRADER":
+            levels = TRADER_LEVELS
+        elif agent == "SNIPER":
+            levels = SNIPER_LEVELS
+        else:
+            levels = HUNTER_LEVELS
         return levels.get(level, levels.get(1, {}))
 
     def add_xp(self, agent: str, amount: int, reason: str = "") -> dict[str, Any]:
         """Add XP to agent and check for level up."""
-        stats = self._trader_stats if agent == "TRADER" else self._sniper_stats
+        stats = self._get_stats(agent)
         old_level = stats["level"]
         stats["xp"] += amount
 
@@ -173,7 +207,7 @@ class AgentStatsManager:
         trade_data: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
         """Record completed trade and update stats."""
-        stats = self._trader_stats if agent == "TRADER" else self._sniper_stats
+        stats = self._get_stats(agent)
         is_win = pnl_usdt > 0
 
         # Store trade in history
@@ -295,7 +329,7 @@ class AgentStatsManager:
 
     def _check_loss_streak_pause(self, agent: str) -> dict[str, Any]:
         """Check if agent should be paused due to loss streak."""
-        stats = self._trader_stats if agent == "TRADER" else self._sniper_stats
+        stats = self._get_stats(agent)
         max_streak = PERFORMANCE_LIMITS.get("loss_streak_pause", 3)
         pause_minutes = PERFORMANCE_LIMITS.get("loss_streak_pause_minutes", 60)
 
@@ -346,7 +380,7 @@ class AgentStatsManager:
 
     def clear_pause(self, agent: str) -> None:
         """Clear pause for agent."""
-        stats = self._trader_stats if agent == "TRADER" else self._sniper_stats
+        stats = self._get_stats(agent)
         stats["paused_until"] = None
         stats["paused_at"] = None
         stats["pause_reason"] = None
@@ -358,7 +392,7 @@ class AgentStatsManager:
         self, agent: str, tokens_in: int, tokens_out: int, cost_usdt: float
     ) -> None:
         """Record API usage for agent."""
-        stats = self._trader_stats if agent == "TRADER" else self._sniper_stats
+        stats = self._get_stats(agent)
         api = stats.setdefault("api_usage", {})
 
         api["calls_today"] = api.get("calls_today", 0) + 1
@@ -375,7 +409,7 @@ class AgentStatsManager:
 
     def _reset_daily_if_needed(self, agent: str) -> None:
         """Reset daily stats if new day."""
-        stats = self._trader_stats if agent == "TRADER" else self._sniper_stats
+        stats = self._get_stats(agent)
         last_trade = stats.get("last_trade_time")
 
         if not last_trade:
@@ -420,13 +454,15 @@ class AgentStatsManager:
             self._save_stats(agent)
 
     def get_all_stats(self) -> dict[str, Any]:
-        """Get stats for both agents."""
+        """Get stats for all agents."""
         return {
             "trader": self.get_stats("TRADER"),
             "sniper": self.get_stats("SNIPER"),
+            "hunter": self.get_stats("HUNTER"),
         }
 
     def save_all(self) -> None:
         """Save all stats."""
         self._save_stats("TRADER")
         self._save_stats("SNIPER")
+        self._save_stats("HUNTER")

@@ -1,6 +1,6 @@
 """
-AUTOPILOT MODE - fully autonomous trading with TRADER and SNIPER agents.
-Both agents work in parallel with smart signal queue.
+AUTOPILOT MODE - fully autonomous trading with TRADER, SNIPER and HUNTER agents.
+All agents work in parallel with smart signal queue.
 """
 
 import asyncio
@@ -36,7 +36,8 @@ class AutopilotMode:
         '_orchestrator', '_running', '_config', '_stats', '_last_trade_time',
         '_last_scan_time', '_currently_scanning', '_current_pair', '_pairs_count',
         '_signal_queue', '_agent_stats', '_sniper_scan_counter',
-        '_last_sniper_scan', '_current_agent', '_cascade_stats',
+        '_last_sniper_scan', '_hunter_scan_counter', '_last_hunter_scan',
+        '_current_agent', '_cascade_stats',
         '_last_position_sync', '_position_monitor',
         '_oauth_refresher', '_oauth_warn_sent', '_oauth_expired_sent',
         '_post_analysis_queue',
@@ -49,11 +50,13 @@ class AutopilotMode:
         # Scan tracking
         self._last_scan_time: Optional[datetime] = None
         self._last_sniper_scan: Optional[datetime] = None
+        self._last_hunter_scan: Optional[datetime] = None
         self._currently_scanning: bool = False
         self._current_pair: Optional[str] = None
         self._current_agent: Optional[str] = None
         self._pairs_count: int = 0
         self._sniper_scan_counter: int = 0
+        self._hunter_scan_counter: int = 0
 
         # Signal queue and agent stats
         self._signal_queue = SignalQueue()
@@ -62,6 +65,10 @@ class AutopilotMode:
         # Inject agent_stats into sniper for level-based leverage limits
         if hasattr(self._orchestrator, 'sniper') and self._orchestrator.sniper is not None:
             self._orchestrator.sniper._agent_stats = self._agent_stats
+
+        # Inject agent_stats into hunter for level-based leverage limits
+        if hasattr(self._orchestrator, 'hunter') and self._orchestrator.hunter is not None:
+            self._orchestrator.hunter._agent_stats = self._agent_stats
 
         # Cascade analysis stats
         self._cascade_stats = {
@@ -102,6 +109,8 @@ class AutopilotMode:
             'cooldown_after_loss_minutes': 30,
             'require_multiple_confirmations': True,
             'sniper_enabled': True,            # Enable SNIPER
+            'hunter_enabled': False,           # Enable HUNTER (disabled by default)
+            'hunter_scan_interval_seconds': 60,  # HUNTER scan interval
             'trader_enabled': True,            # Enable TRADER
         }
 
@@ -124,6 +133,8 @@ class AutopilotMode:
             'sniper_signals': 0,
             'trader_trades': 0,
             'sniper_trades': 0,
+            'hunter_signals': 0,
+            'hunter_trades': 0,
         }
 
     async def start(self) -> dict[str, Any]:
@@ -138,7 +149,7 @@ class AutopilotMode:
 
         self._running = True
         self._orchestrator.mode = "AUTOPILOT"
-        logger.warning("AUTOPILOT MODE ACTIVATED (TRADER + SNIPER)")
+        logger.warning("AUTOPILOT MODE ACTIVATED (TRADER + SNIPER + HUNTER)")
 
         # Sync open positions with queue
         await self._sync_positions()
@@ -188,8 +199,10 @@ class AutopilotMode:
         # Check agent levels
         trader_level = self._agent_stats.get_level("TRADER")
         sniper_level = self._agent_stats.get_level("SNIPER")
+        hunter_level = self._agent_stats.get_level("HUNTER")
         checks.append(f'trader_level_{trader_level}')
         checks.append(f'sniper_level_{sniper_level}')
+        checks.append(f'hunter_level_{hunter_level}')
 
         return {'passed': True, 'checks': checks}
 
@@ -336,10 +349,11 @@ class AutopilotMode:
                 await asyncio.sleep(60)
 
     async def _run_scan_cycle(self) -> None:
-        """Run TRADER and SNIPER scans based on their intervals.
+        """Run TRADER, SNIPER and HUNTER scans based on their intervals.
 
         SNIPER runs first + queue processed immediately so signals
         don't expire while waiting for TRADER cascade (2-3 min).
+        HUNTER runs after SNIPER, looking for A+ liquidation setups.
         """
         now = datetime.utcnow()
 
@@ -352,6 +366,17 @@ class AutopilotMode:
             if should_scan_sniper:
                 await self._scan_sniper()
                 # Process queue immediately after SNIPER finds signals
+                await self._process_queue()
+
+        # HUNTER scan (A+ setups only, every 60 seconds)
+        if self._config.get('hunter_enabled', False):
+            should_scan_hunter = (
+                self._last_hunter_scan is None or
+                (now - self._last_hunter_scan).total_seconds() >= self._config['hunter_scan_interval_seconds']
+            )
+            if should_scan_hunter:
+                await self._scan_hunter()
+                # Process queue immediately after HUNTER finds signals
                 await self._process_queue()
 
         # TRADER scan (slow cascade, every 60 seconds)
@@ -668,6 +693,97 @@ class AutopilotMode:
 
         finally:
             self._last_sniper_scan = datetime.utcnow()
+
+    async def _scan_hunter(self) -> None:
+        """Scan for HUNTER A+ liquidation opportunities."""
+        self._hunter_scan_counter += 1
+
+        try:
+            # Check if HUNTER is paused
+            paused, reason = self._agent_stats.is_paused("HUNTER")
+            if paused:
+                logger.debug(f"[HUNTER] Paused: {reason}")
+                return
+
+            # Only log every 6th scan (once per minute) to reduce noise
+            verbose = self._hunter_scan_counter % 6 == 0
+
+            if verbose:
+                logger.info("[HUNTER][STAGE 1] Scanning for A+ liquidation setups...")
+
+            # Get hunter agent from orchestrator
+            hunter = getattr(self._orchestrator, 'hunter', None)
+            if not hunter:
+                if verbose:
+                    logger.debug("[HUNTER] Agent not initialized")
+                return
+
+            # Get pairs to scan (same as SNIPER)
+            pairs = await self._orchestrator.trader.scanner.get_top_pairs(limit=30)
+            if not pairs:
+                return
+
+            # Run hunter scan
+            hunts = await hunter.scan(pairs)
+
+            if hunts:
+                for hunt in hunts:
+                    pair = hunt.get('pair', 'UNKNOWN')
+                    trigger = hunt.get('trigger', 'unknown')
+                    direction = hunt.get('direction', 'UNKNOWN')
+                    confidence = hunt.get('confidence', 0)
+                    rr_ratio = hunt.get('rr_ratio', 0)
+
+                    logger.warning(
+                        f"[HUNTER][STAGE 1] A+ Setup: {trigger} {direction} {pair} "
+                        f"@ {confidence}% (R:R 1:{rr_ratio:.1f})"
+                    )
+
+                    # Fetch market data so REVIEWER can validate
+                    try:
+                        market_data = await self._orchestrator.trader.scanner.get_market_data(pair)
+                    except Exception as e:
+                        logger.warning(f"[HUNTER] Failed to fetch market data for {pair}: {e}")
+                        market_data = {}
+
+                    # Convert hunt to opportunity format
+                    opportunity = {
+                        'pair': pair,
+                        'decision': direction,
+                        'confidence': confidence,
+                        'strategy': f'hunter_{trigger}',
+                        'entry_price': hunt.get('entry_price'),
+                        'stop_loss': hunt.get('stop_loss'),
+                        'take_profit': hunt.get('take_profit'),
+                        'leverage': 2,  # HUNTER always uses 2x max
+                        'position_size_pct': 1,  # Small size for hunter
+                        'reasoning': hunt.get('reason', ''),
+                        'trigger_type': trigger,
+                        'urgency': hunt.get('urgency', 'medium'),
+                        'market_data': market_data,
+                        'rr_ratio': rr_ratio,
+                        # HUNTER-specific position management
+                        'partial_close_1': hunt.get('partial_close_1'),
+                        'partial_close_2': hunt.get('partial_close_2'),
+                        'trailing_start': hunt.get('trailing_start'),
+                        'trailing_distance': hunt.get('trailing_distance'),
+                        'breakeven_at': hunt.get('breakeven_at'),
+                    }
+
+                    # Add to queue with HIGH priority (A+ setups are important)
+                    result = self._signal_queue.add_signal(
+                        signal=opportunity,
+                        agent="HUNTER",
+                        priority=SignalPriority.HIGH,
+                    )
+                    if result.get("added"):
+                        self._stats['hunter_signals'] += 1
+
+            elif verbose:
+                logger.info("[HUNTER][STAGE 1] No A+ setups found (normal - waiting for blood)")
+
+        finally:
+            self._last_hunter_scan = datetime.utcnow()
 
     async def _process_queue(self) -> None:
         """Process signals from queue."""

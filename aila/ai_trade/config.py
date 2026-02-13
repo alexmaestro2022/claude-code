@@ -47,6 +47,7 @@ SNIPER_KNOWLEDGE_PATH = "/opt/aila/data/ai_trade/sniper_knowledge.json"
 SHARED_KNOWLEDGE_PATH = "/opt/aila/data/ai_trade/shared_knowledge.json"
 TRADER_STATS_PATH = "/opt/aila/data/ai_trade/trader_stats.json"
 SNIPER_STATS_PATH = "/opt/aila/data/ai_trade/sniper_stats.json"
+HUNTER_STATS_PATH = "/opt/aila/data/ai_trade/hunter_stats.json"
 LOG_PATH = "/opt/aila/logs/ai_trade.log"
 
 # TRADER levels (trend-based trading)
@@ -77,6 +78,20 @@ SNIPER_LEVELS = {
     10: {"max_leverage": 20, "max_positions": 4, "max_risk_pct": 2.5, "max_daily_trades": 35},
 }
 
+# HUNTER levels (liquidation hunting - most conservative, R:R 1:5)
+HUNTER_LEVELS = {
+    1: {"max_leverage": 2, "max_positions": 1, "max_risk_pct": 0.5, "max_daily_trades": 3},
+    2: {"max_leverage": 2, "max_positions": 1, "max_risk_pct": 0.5, "max_daily_trades": 4},
+    3: {"max_leverage": 2, "max_positions": 1, "max_risk_pct": 0.75, "max_daily_trades": 5},
+    4: {"max_leverage": 3, "max_positions": 1, "max_risk_pct": 0.75, "max_daily_trades": 5},
+    5: {"max_leverage": 3, "max_positions": 1, "max_risk_pct": 1.0, "max_daily_trades": 6},
+    6: {"max_leverage": 3, "max_positions": 2, "max_risk_pct": 1.0, "max_daily_trades": 7},
+    7: {"max_leverage": 4, "max_positions": 2, "max_risk_pct": 1.0, "max_daily_trades": 8},
+    8: {"max_leverage": 4, "max_positions": 2, "max_risk_pct": 1.25, "max_daily_trades": 9},
+    9: {"max_leverage": 5, "max_positions": 2, "max_risk_pct": 1.25, "max_daily_trades": 10},
+    10: {"max_leverage": 5, "max_positions": 3, "max_risk_pct": 1.5, "max_daily_trades": 12},
+}
+
 # XP thresholds for level up (same for both agents)
 AGENT_XP_THRESHOLDS = {
     1: 0, 2: 100, 3: 250, 4: 500, 5: 1000,
@@ -87,6 +102,7 @@ AGENT_XP_THRESHOLDS = {
 AGENT_COOLDOWNS = {
     "TRADER": 300,   # 5 min between trades
     "SNIPER": 60,    # 1 min between trades
+    "HUNTER": 600,   # 10 min between trades (rare A+ setups)
 }
 
 # Performance limits
