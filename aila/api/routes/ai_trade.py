@@ -859,9 +859,9 @@ async def get_agent_stats():
 
 @router.get("/agent-stats/{agent}")
 async def get_single_agent_stats(agent: str):
-    """Get stats for specific agent (TRADER or SNIPER)."""
-    if agent.upper() not in ["TRADER", "SNIPER"]:
-        raise HTTPException(status_code=400, detail="Invalid agent. Use TRADER or SNIPER")
+    """Get stats for specific agent (TRADER, SNIPER or HUNTER)."""
+    if agent.upper() not in ["TRADER", "SNIPER", "HUNTER"]:
+        raise HTTPException(status_code=400, detail="Invalid agent. Use TRADER, SNIPER or HUNTER")
     try:
         orch = await get_orchestrator()
         return orch.autopilot._agent_stats.get_stats(agent.upper())
@@ -871,9 +871,9 @@ async def get_single_agent_stats(agent: str):
 
 @router.post("/agent-stats/{agent}/clear-pause")
 async def clear_agent_pause(agent: str):
-    """Clear pause for agent (TRADER or SNIPER)."""
-    if agent.upper() not in ["TRADER", "SNIPER"]:
-        raise HTTPException(status_code=400, detail="Invalid agent. Use TRADER or SNIPER")
+    """Clear pause for agent (TRADER, SNIPER or HUNTER)."""
+    if agent.upper() not in ["TRADER", "SNIPER", "HUNTER"]:
+        raise HTTPException(status_code=400, detail="Invalid agent. Use TRADER, SNIPER or HUNTER")
     try:
         orch = await get_orchestrator()
         orch.autopilot.clear_agent_pause(agent.upper())
@@ -884,9 +884,9 @@ async def clear_agent_pause(agent: str):
 
 @router.post("/agent-stats/{agent}/clear-cooldown")
 async def clear_agent_cooldown(agent: str):
-    """Clear cooldown for agent (TRADER or SNIPER)."""
-    if agent.upper() not in ["TRADER", "SNIPER"]:
-        raise HTTPException(status_code=400, detail="Invalid agent. Use TRADER or SNIPER")
+    """Clear cooldown for agent (TRADER, SNIPER or HUNTER)."""
+    if agent.upper() not in ["TRADER", "SNIPER", "HUNTER"]:
+        raise HTTPException(status_code=400, detail="Invalid agent. Use TRADER, SNIPER or HUNTER")
     try:
         orch = await get_orchestrator()
         orch.autopilot.clear_agent_cooldown(agent.upper())
@@ -1069,8 +1069,8 @@ async def toggle_agent(agent: str):
         settings_mgr = get_agent_settings()
         agent_upper = agent.upper()
 
-        if agent_upper not in ("TRADER", "SNIPER"):
-            raise HTTPException(status_code=400, detail="Invalid agent. Use TRADER or SNIPER")
+        if agent_upper not in ("TRADER", "SNIPER", "HUNTER"):
+            raise HTTPException(status_code=400, detail="Invalid agent. Use TRADER, SNIPER or HUNTER")
 
         # Toggle: read current → flip
         currently_enabled = settings_mgr.is_enabled(agent_upper)
@@ -1080,7 +1080,8 @@ async def toggle_agent(agent: str):
         # Apply to autopilot config
         orch = await get_orchestrator()
         if hasattr(orch, 'autopilot'):
-            config_key = 'trader_enabled' if agent_upper == "TRADER" else 'sniper_enabled'
+            config_keys = {"TRADER": "trader_enabled", "SNIPER": "sniper_enabled", "HUNTER": "hunter_enabled"}
+            config_key = config_keys.get(agent_upper, f"{agent_upper.lower()}_enabled")
             orch.autopilot._config[config_key] = new_state
 
             # If enabling, also clear pause so it can resume immediately
@@ -1104,8 +1105,8 @@ async def reset_agent_pause(agent: str):
     """Reset pause for agent manually."""
     try:
         agent_upper = agent.upper()
-        if agent_upper not in ("TRADER", "SNIPER"):
-            raise HTTPException(status_code=400, detail="Invalid agent. Use TRADER or SNIPER")
+        if agent_upper not in ("TRADER", "SNIPER", "HUNTER"):
+            raise HTTPException(status_code=400, detail="Invalid agent. Use TRADER, SNIPER or HUNTER")
 
         orch = await get_orchestrator()
         if not hasattr(orch, 'autopilot'):
@@ -1138,10 +1139,10 @@ async def enable_agent(agent: str):
         orch = await get_orchestrator()
         if hasattr(orch, 'autopilot'):
             agent_upper = agent.upper()
-            if agent_upper == "TRADER":
-                orch.autopilot._config['trader_enabled'] = True
-            elif agent_upper == "SNIPER":
-                orch.autopilot._config['sniper_enabled'] = True
+            config_keys = {"TRADER": "trader_enabled", "SNIPER": "sniper_enabled", "HUNTER": "hunter_enabled"}
+            config_key = config_keys.get(agent_upper)
+            if config_key:
+                orch.autopilot._config[config_key] = True
 
         return result
     except Exception as e:
@@ -1160,10 +1161,10 @@ async def disable_agent(agent: str):
         orch = await get_orchestrator()
         if hasattr(orch, 'autopilot'):
             agent_upper = agent.upper()
-            if agent_upper == "TRADER":
-                orch.autopilot._config['trader_enabled'] = False
-            elif agent_upper == "SNIPER":
-                orch.autopilot._config['sniper_enabled'] = False
+            config_keys = {"TRADER": "trader_enabled", "SNIPER": "sniper_enabled", "HUNTER": "hunter_enabled"}
+            config_key = config_keys.get(agent_upper)
+            if config_key:
+                orch.autopilot._config[config_key] = False
 
         return result
     except Exception as e:

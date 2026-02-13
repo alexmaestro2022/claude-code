@@ -1,4 +1,4 @@
-"""Agent settings management for TRADER and SNIPER."""
+"""Agent settings management for TRADER, SNIPER and HUNTER."""
 
 import json
 import logging
@@ -59,6 +59,38 @@ SNIPER_DEFAULTS = {
     "last_modified": None,
 }
 
+# Default settings for HUNTER
+HUNTER_DEFAULTS = {
+    "enabled": False,  # Disabled by default
+    "scan_interval_seconds": 60,
+    "pairs_to_scan": 30,
+    # Triggers
+    "trigger_liquidation_cascade": True,
+    "trigger_funding_flip": True,
+    "trigger_extreme_fear": True,
+    "trigger_oi_divergence": True,
+    # Strategy parameters (R:R 1:5)
+    "min_rr_ratio": 5.0,
+    "min_sl_pct": 2.0,
+    "max_sl_pct": 3.0,
+    "min_tp_pct": 10.0,
+    # Thresholds
+    "liquidation_threshold_pct": 5.0,
+    "funding_extreme_high": 0.05,
+    "funding_extreme_low": -0.03,
+    "fear_greed_extreme_low": 15,
+    "fear_greed_extreme_high": 85,
+    "rsi_oversold": 20,
+    "rsi_overbought": 80,
+    "oi_change_threshold_pct": 5.0,
+    # Cooldown and protection
+    "cooldown_seconds": 600,  # 10 min
+    "max_trades_per_day": 3,
+    "pause_after_losses": 2,
+    "pause_duration_minutes": 120,
+    "last_modified": None,
+}
+
 # Validation rules
 TRADER_VALIDATION = {
     "scan_interval_seconds": {"min": 30, "max": 600},
@@ -94,15 +126,37 @@ SNIPER_VALIDATION = {
     "pause_duration_minutes": {"min": 15, "max": 240},
 }
 
+HUNTER_VALIDATION = {
+    "scan_interval_seconds": {"min": 30, "max": 300},
+    "pairs_to_scan": {"min": 10, "max": 50},
+    "min_rr_ratio": {"min": 3.0, "max": 10.0},
+    "min_sl_pct": {"min": 1.0, "max": 5.0},
+    "max_sl_pct": {"min": 2.0, "max": 10.0},
+    "min_tp_pct": {"min": 5.0, "max": 30.0},
+    "liquidation_threshold_pct": {"min": 3.0, "max": 15.0},
+    "funding_extreme_high": {"min": 0.01, "max": 0.2},
+    "funding_extreme_low": {"min": -0.2, "max": -0.01},
+    "fear_greed_extreme_low": {"min": 5, "max": 25},
+    "fear_greed_extreme_high": {"min": 75, "max": 95},
+    "rsi_oversold": {"min": 10, "max": 30},
+    "rsi_overbought": {"min": 70, "max": 90},
+    "oi_change_threshold_pct": {"min": 3.0, "max": 15.0},
+    "cooldown_seconds": {"min": 300, "max": 3600},
+    "max_trades_per_day": {"min": 1, "max": 10},
+    "pause_after_losses": {"min": 1, "max": 5},
+    "pause_duration_minutes": {"min": 60, "max": 480},
+}
+
 
 class AgentSettings:
-    """Manages settings for TRADER and SNIPER agents."""
+    """Manages settings for TRADER, SNIPER and HUNTER agents."""
 
-    __slots__ = ("_trader", "_sniper", "_change_log")
+    __slots__ = ("_trader", "_sniper", "_hunter", "_change_log")
 
     def __init__(self) -> None:
         self._trader: dict[str, Any] = {}
         self._sniper: dict[str, Any] = {}
+        self._hunter: dict[str, Any] = {}
         self._change_log: list[dict[str, Any]] = []
         self._load_all()
 
@@ -110,6 +164,7 @@ class AgentSettings:
         """Load settings for all agents."""
         self._trader = self._load_file("trader_settings.json", TRADER_DEFAULTS)
         self._sniper = self._load_file("sniper_settings.json", SNIPER_DEFAULTS)
+        self._hunter = self._load_file("hunter_settings.json", HUNTER_DEFAULTS)
 
     def _load_file(self, filename: str, defaults: dict) -> dict[str, Any]:
         """Load settings from file or return defaults."""
@@ -143,6 +198,8 @@ class AgentSettings:
             return self._trader.copy()
         elif agent.upper() == "SNIPER":
             return self._sniper.copy()
+        elif agent.upper() == "HUNTER":
+            return self._hunter.copy()
         return {}
 
     def update_settings(self, agent: str, settings: dict[str, Any]) -> dict[str, Any]:
@@ -159,6 +216,11 @@ class AgentSettings:
             defaults = SNIPER_DEFAULTS
             validation = SNIPER_VALIDATION
             filename = "sniper_settings.json"
+        elif agent == "HUNTER":
+            current = self._hunter
+            defaults = HUNTER_DEFAULTS
+            validation = HUNTER_VALIDATION
+            filename = "hunter_settings.json"
         else:
             return {"success": False, "error": f"Unknown agent: {agent}"}
 
@@ -207,10 +269,11 @@ class AgentSettings:
         # Save
         if agent == "TRADER":
             self._trader = current
-            self._save_file(filename, current)
-        else:
+        elif agent == "SNIPER":
             self._sniper = current
-            self._save_file(filename, current)
+        elif agent == "HUNTER":
+            self._hunter = current
+        self._save_file(filename, current)
 
         # Log change
         self._log_change(agent, settings)
@@ -235,6 +298,11 @@ class AgentSettings:
             self._sniper["last_modified"] = datetime.now().isoformat()
             self._save_file("sniper_settings.json", self._sniper)
             return {"success": True, "settings": self._sniper}
+        elif agent == "HUNTER":
+            self._hunter = HUNTER_DEFAULTS.copy()
+            self._hunter["last_modified"] = datetime.now().isoformat()
+            self._save_file("hunter_settings.json", self._hunter)
+            return {"success": True, "settings": self._hunter}
 
         return {"success": False, "error": f"Unknown agent: {agent}"}
 
@@ -254,6 +322,12 @@ class AgentSettings:
             self._save_file("sniper_settings.json", self._sniper)
             logger.info(f"[SETTINGS] SNIPER {'enabled' if enabled else 'disabled'}")
             return {"success": True, "agent": agent, "enabled": enabled}
+        elif agent == "HUNTER":
+            self._hunter["enabled"] = enabled
+            self._hunter["last_modified"] = datetime.now().isoformat()
+            self._save_file("hunter_settings.json", self._hunter)
+            logger.info(f"[SETTINGS] HUNTER {'enabled' if enabled else 'disabled'}")
+            return {"success": True, "agent": agent, "enabled": enabled}
 
         return {"success": False, "error": f"Unknown agent: {agent}"}
 
@@ -264,6 +338,8 @@ class AgentSettings:
             return self._trader.get("enabled", True)
         elif agent == "SNIPER":
             return self._sniper.get("enabled", True)
+        elif agent == "HUNTER":
+            return self._hunter.get("enabled", False)  # Disabled by default
         return False
 
     def get_validation_rules(self, agent: str) -> dict[str, Any]:
@@ -273,6 +349,8 @@ class AgentSettings:
             return TRADER_VALIDATION.copy()
         elif agent == "SNIPER":
             return SNIPER_VALIDATION.copy()
+        elif agent == "HUNTER":
+            return HUNTER_VALIDATION.copy()
         return {}
 
     def get_defaults(self, agent: str) -> dict[str, Any]:
