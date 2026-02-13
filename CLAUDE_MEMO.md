@@ -943,6 +943,7 @@ STRATEGY_EVOLUTION (генетические алгоритмы, оптимиз�
 | **NEWS** | Новости, сентимент, breaking news, Fear&Greed | Нет |
 | **PREDICTOR** | Предсказание движений: TA + AI, развороты, паттерны | Нет |
 | **SNIPER** | Мгновенные входы: пробои, ликвидации, funding flip | Нет |
+| **HUNTER** | Охота на ликвидации: A+ сетапы, R:R 1:5, extreme fear | Нет |
 | **ARBITRAGE** | Арбитраж: funding rate, cross-exchange, triangular | Нет |
 | **HEDGE_MASTER** | Хеджирование, защита портфеля, market-neutral | Нет |
 | **WAR_ROOM** | Кризисное управление, чёрные лебеди, экстренные протоколы | Нет |
@@ -4322,3 +4323,54 @@ self.autopilot._config.update(saved_config)
 | scan_interval_seconds | agent_settings | trader_settings.json |
 | trades_today, stats | persistence | autopilot.json |
 | sniper_enabled, trader_enabled | persistence | autopilot.json |
+
+---
+
+## 67. Интеграция HUNTER Agent (2026-02-13)
+
+### Новый агент HUNTER — охота на ликвидации
+
+**Философия:**
+- 80% времени ЖДАТЬ — только A+ сетапы
+- R:R минимум 1:5
+- Вход ПОСЛЕ ликвидаций, не до
+- Максимум 2x leverage (самый консервативный)
+
+**Триггеры:**
+| Триггер | Условия | Направление |
+|---------|---------|-------------|
+| `liquidation_cascade` | Падение >5% за 2ч + RSI<20 + F&G<15 | LONG |
+| `funding_flip` | Funding флипнулся с +0.05% на отриц. + RSI<35 | LONG |
+| `extreme_fear` | F&G<15 + RSI<20 + цена ниже EMA200 на 5% | LONG |
+| `oi_divergence` | OI +5% + цена -3% + RSI<30 (short squeeze) | LONG |
+
+**Файлы:**
+- `aila/ai_trade/agents/hunter.py` — агент HUNTER (465 строк)
+- `aila/ai_trade/config.py` — HUNTER_LEVELS, HUNTER_STATS_PATH
+- `aila/ai_trade/agent_stats.py` — поддержка HUNTER статистики
+- `aila/ai_trade/autopilot_mode.py` — интеграция scan цикла
+- `aila/ai_trade/orchestrator.py` — создание hunter instance
+
+**Настройки (config.py):**
+```python
+HUNTER_LEVELS = {
+    1: {"max_leverage": 2, "max_positions": 1, "max_risk_pct": 0.5, "max_daily_trades": 3},
+    ...
+    10: {"max_leverage": 5, "max_positions": 3, "max_risk_pct": 1.5, "max_daily_trades": 12},
+}
+AGENT_COOLDOWNS["HUNTER"] = 600  # 10 min between trades
+```
+
+**Включение HUNTER:**
+```python
+# В autopilot_mode.py._config
+'hunter_enabled': False,  # по умолчанию выключен
+'hunter_scan_interval_seconds': 60,
+```
+
+**Stats файл:** `/opt/aila/data/ai_trade/hunter_stats.json`
+
+**Особенности позиций HUNTER:**
+- Partial close 30% при +5%, ещё 30% при +8%
+- Trailing stop с +5%, distance 2%
+- Breakeven при +3%
