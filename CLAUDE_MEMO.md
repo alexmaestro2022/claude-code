@@ -4468,3 +4468,27 @@ function updateAgentToggles(enabled) {
 ### Файлы:
 - `aila/api/templates/ai_trade.html` — CSS + HTML + JS для toggles
 - `aila/ai_trade/autopilot_mode.py` — agents_enabled в heartbeat
+
+---
+
+## 70. Удаление кнопки Autopilot Start/Stop (2026-02-13)
+
+### Что удалено
+- Кнопка Start/Stop в top panel
+- Функция `toggleAutopilot()` в JS
+- CSS стили `.autopilot-btn`, `.autopilot-btn.start`, `.autopilot-btn.stop`
+
+### Что оставлено
+- Статус dot + text (`autopilotDot`, `autopilotStatus`) — показывает текущий режим
+- Ссылка на Admin Panel
+- `updateAutopilotStatus()` — обновляет статус
+- `isAutopilotRunning` — используется для логики
+
+### Управление агентами
+Теперь управление через toggle switches в карточках агентов:
+- Toggle TRADER → включает/выключает TRADER сканирование
+- Toggle SNIPER → включает/выключает SNIPER сканирование
+- Toggle HUNTER → включает/выключает HUNTER сканирование
+
+### Файлы:
+- `aila/api/templates/ai_trade.html` — удалена кнопка и связанный код
