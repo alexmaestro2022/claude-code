@@ -433,7 +433,7 @@
                 <i class="fa-solid fa-chevron-down text-dim text-sm"></i>
             </div>
             <div class="collapsible-content" id="agentLevelsContent">
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:12px">
                     <!-- TRADER Level -->
                     <div style="border:1px solid var(--border-color);border-radius:10px;padding:14px">
                         <div style="font-weight:700;margin-bottom:8px"><i class="fa-solid fa-chart-line mr-1"></i> TRADER</div>
@@ -467,6 +467,23 @@
                         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px" id="alSniperLimits"></div>
                         <div style="font-size:0.7rem;color:var(--text-secondary)" id="alSniperStats"></div>
                         <div style="font-size:0.65rem;color:var(--text-secondary);margin-top:6px;opacity:0.7" id="alSniperNext"></div>
+                    </div>
+                    <!-- HUNTER Level -->
+                    <div style="border:1px solid var(--border-color);border-radius:10px;padding:14px">
+                        <div style="font-weight:700;margin-bottom:8px"><i class="fa-solid fa-skull mr-1"></i> HUNTER</div>
+                        <div class="flex items-center gap-2" style="margin-bottom:6px">
+                            <span style="font-size:1.5rem;font-weight:700" class="accent" id="alHunterLevel">1</span>
+                            <span style="font-size:0.75rem;color:var(--text-secondary)" data-i18n="level">Level</span>
+                        </div>
+                        <div class="progress-bar" style="margin-bottom:4px">
+                            <div class="progress-fill" id="alHunterXpBar" style="width:0%"></div>
+                        </div>
+                        <div style="font-size:0.7rem;color:var(--text-secondary);margin-bottom:8px">
+                            <span id="alHunterXp">0</span> / <span id="alHunterXpNext">100</span> XP
+                        </div>
+                        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px" id="alHunterLimits"></div>
+                        <div style="font-size:0.7rem;color:var(--text-secondary)" id="alHunterStats"></div>
+                        <div style="font-size:0.65rem;color:var(--text-secondary);margin-top:6px;opacity:0.7" id="alHunterNext"></div>
                     </div>
                 </div>
             </div>
@@ -1182,6 +1199,7 @@
             if (stats) {
                 updateAgentStats('trader', stats.trader);
                 updateAgentStats('sniper', stats.sniper);
+                updateAgentStats('hunter', stats.hunter);
 
                 // Update Balance Modal PnL from trader stats
                 const traderStats = stats.trader || {};
@@ -1334,23 +1352,36 @@
         function updateAgentStats(agent, stats) {
             if (!stats) return;
 
-            const prefix = agent;
-            document.getElementById(`${prefix}Level`).textContent = stats.level || 1;
-            document.getElementById(`${prefix}Xp`).textContent = stats.xp || 0;
-            document.getElementById(`${prefix}XpNext`).textContent = (stats.xp || 0) + (stats.xp_to_next_level || 100);
+            // Capitalize agent name for element IDs: 'trader' -> 'Trader'
+            const cap = agent.charAt(0).toUpperCase() + agent.slice(1);
+            const prefix = `al${cap}`;
 
+            // Update level and XP
+            const levelEl = document.getElementById(`${prefix}Level`);
+            if (levelEl) levelEl.textContent = stats.level || 1;
+
+            const xpEl = document.getElementById(`${prefix}Xp`);
+            if (xpEl) xpEl.textContent = stats.xp || 0;
+
+            const xpNextEl = document.getElementById(`${prefix}XpNext`);
+            const totalXpNeeded = (stats.xp || 0) + (stats.xp_to_next_level || 100);
+            if (xpNextEl) xpNextEl.textContent = totalXpNeeded;
+
+            // Update XP progress bar
             const xpPct = stats.xp_to_next_level > 0 ?
-                (stats.xp / ((stats.xp || 0) + (stats.xp_to_next_level || 100))) * 100 : 0;
-            document.getElementById(`${prefix}XpBar`).style.width = xpPct + '%';
+                ((stats.xp || 0) / totalXpNeeded) * 100 : 0;
+            const xpBarEl = document.getElementById(`${prefix}XpBar`);
+            if (xpBarEl) xpBarEl.style.width = xpPct + '%';
 
-            document.getElementById(`${prefix}Winrate`).textContent = (stats.winrate || 0).toFixed(0);
-
-            const pnl = stats.total_pnl_usdt || 0;
-            const pnlEl = document.getElementById(`${prefix}Pnl`);
-            pnlEl.textContent = (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(2);
-            pnlEl.className = pnl >= 0 ? 'pnl-positive' : 'pnl-negative';
-
-            document.getElementById(`${prefix}Trades`).textContent = stats.total_trades || 0;
+            // Update stats summary
+            const statsEl = document.getElementById(`${prefix}Stats`);
+            if (statsEl) {
+                const wr = (stats.winrate || 0).toFixed(0);
+                const pnl = stats.total_pnl_usdt || 0;
+                const pnlStr = (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(2);
+                const pnlClass = pnl >= 0 ? 'pnl-positive' : 'pnl-negative';
+                statsEl.innerHTML = `WR: ${wr}% | PnL: <span class="${pnlClass}">${pnlStr}</span> | Trades: ${stats.total_trades || 0}`;
+            }
         }
 
         async function loadActivityFeed(agent) {
