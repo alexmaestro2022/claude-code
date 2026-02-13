@@ -295,31 +295,6 @@
         .pnl-positive { color: #00ff88; }
         .pnl-negative { color: #ef4444; }
 
-        /* Autopilot control */
-        .autopilot-btn {
-            padding: 12px 24px;
-            border-radius: 10px;
-            font-weight: 700;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: all 0.2s;
-            border: 2px solid transparent;
-        }
-        .autopilot-btn.start {
-            background: var(--accent);
-            color: #000;
-        }
-        .autopilot-btn.start:hover {
-            box-shadow: 0 0 30px rgba(0, 255, 136, 0.5);
-        }
-        .autopilot-btn.stop {
-            background: #ef4444;
-            color: #fff;
-        }
-        .autopilot-btn.stop:hover {
-            box-shadow: 0 0 30px rgba(239, 68, 68, 0.5);
-        }
-
         /* Loading spinner */
         .spinner {
             width: 20px;
@@ -414,16 +389,12 @@
                     </div>
                 </div>
 
-                <!-- Autopilot Control -->
+                <!-- Autopilot Status + Admin -->
                 <div class="flex items-center gap-3">
                     <div class="flex items-center gap-2">
                         <span class="status-dot" id="autopilotDot"></span>
                         <span class="text-sm" id="autopilotStatus">Idle</span>
                     </div>
-                    <button id="autopilotBtn" class="autopilot-btn start" onclick="toggleAutopilot()">
-                        <i class="fa-solid fa-play mr-2"></i>
-                        <span data-i18n="start_autopilot">Start</span>
-                    </button>
                     <a href="/admin" class="btn-ghost btn-sm" style="text-decoration:none;padding:8px 12px;border-radius:8px;border:1px solid var(--border);color:var(--text-secondary);display:flex;align-items:center;gap:6px;" title="Admin Panel">
                         <i class="fa-solid fa-terminal"></i>
                     </a>
@@ -1209,24 +1180,6 @@
             }
         }
 
-        // Autopilot control
-        async function toggleAutopilot() {
-            const btn = document.getElementById('autopilotBtn');
-            btn.disabled = true;
-            btn.innerHTML = '<div class="spinner"></div>';
-
-            if (isAutopilotRunning) {
-                await postData('/autopilot/stop');
-            } else {
-                await postData('/autopilot/start');
-            }
-
-            setTimeout(() => {
-                updateAutopilotStatus();
-                btn.disabled = false;
-            }, 1000);
-        }
-
         // Agent toggle control
         async function toggleAgent(agent) {
             const toggleEl = document.getElementById(`toggle${agent.charAt(0) + agent.slice(1).toLowerCase()}`);
@@ -1364,7 +1317,6 @@
                 isAutopilotRunning = heartbeat.running;
                 const dot = document.getElementById('autopilotDot');
                 const statusText = document.getElementById('autopilotStatus');
-                const btn = document.getElementById('autopilotBtn');
 
                 if (isAutopilotRunning) {
                     const isPaused = cascade && cascade.paused_reason;
@@ -1379,9 +1331,6 @@
                         else statusLabel = t('paused');
                     }
                     statusText.textContent = statusLabel;
-
-                    btn.className = 'autopilot-btn stop';
-                    btn.innerHTML = '<i class="fa-solid fa-stop mr-2"></i>' + t('stop_autopilot');
 
                     // Update TRADER status
                     document.getElementById('traderStatusDot').className = isPaused ? 'status-dot status-paused' : 'status-dot status-active';
@@ -1398,8 +1347,6 @@
                 } else {
                     dot.className = 'status-dot status-disabled';
                     statusText.textContent = t('idle');
-                    btn.className = 'autopilot-btn start';
-                    btn.innerHTML = '<i class="fa-solid fa-play mr-2"></i>' + t('start_autopilot');
 
                     document.getElementById('traderStatusDot').className = 'status-dot status-disabled';
                     document.getElementById('traderStatusText').textContent = t('idle');
