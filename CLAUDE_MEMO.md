@@ -4492,3 +4492,31 @@ function updateAgentToggles(enabled) {
 
 ### Файлы:
 - `aila/api/templates/ai_trade.html` — удалена кнопка и связанный код
+
+---
+
+## 71. Исправление ошибки HUNTER unhashable type: 'dict' (2026-02-14)
+
+### Проблема
+Ошибка `Autopilot error: unhashable type: 'dict'` каждую минуту в логах.
+
+### Причина
+В `autopilot_mode.py:722-727` метод `get_top_pairs(limit=30)` возвращает `list[dict]`:
+```python
+{'symbol': 'BTC/USDT', 'price': 69638.0, 'volume_24h': ...}
+```
+
+Но `hunter.scan(pairs)` ожидает `list[str]`. В `hunter.py:402` код `if pair not in self._hunt_cooldowns` падал, так как нельзя использовать `dict` как ключ в `dict`.
+
+### Решение
+Добавлено преобразование перед вызовом `hunter.scan()`:
+```python
+pair_symbols = [p['symbol'] if isinstance(p, dict) else p for p in pairs]
+hunts = await hunter.scan(pair_symbols)
+```
+
+### Файлы:
+- `aila/ai_trade/autopilot_mode.py:724-729` — добавлено извлечение символов из dict
+
+### Связанная проблема (не исправлена)
+`'MarketScanner' object has no attribute 'scan_pair'` в `hunter.py:_get_market_data()` — требует отдельного исправления.
