@@ -4518,5 +4518,18 @@ hunts = await hunter.scan(pair_symbols)
 ### Файлы:
 - `aila/ai_trade/autopilot_mode.py:724-729` — добавлено извлечение символов из dict
 
-### Связанная проблема (не исправлена)
-`'MarketScanner' object has no attribute 'scan_pair'` в `hunter.py:_get_market_data()` — требует отдельного исправления.
+---
+
+## 72. Исправление ошибки HUNTER scan_pair (2026-02-14)
+
+### Проблема
+`'MarketScanner' object has no attribute 'scan_pair'` в логах HUNTER.
+
+### Причина
+В `hunter.py:394` вызывался несуществующий метод `self.scanner.scan_pair(pair)`.
+
+### Решение
+Заменено на правильный метод `self.scanner.get_market_data(pair)`.
+
+### Файлы:
+- `aila/ai_trade/agents/hunter.py:393-394` — заменён вызов scan_pair → get_market_data
