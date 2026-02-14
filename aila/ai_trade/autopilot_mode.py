@@ -723,8 +723,11 @@ class AutopilotMode:
             if not pairs:
                 return
 
+            # Extract symbols from pairs (get_top_pairs returns list[dict])
+            pair_symbols = [p['symbol'] if isinstance(p, dict) else p for p in pairs]
+
             # Run hunter scan
-            hunts = await hunter.scan(pairs)
+            hunts = await hunter.scan(pair_symbols)
 
             if hunts:
                 for hunt in hunts:
