@@ -390,8 +390,8 @@ class HunterAgent(BaseAgent):
             return None
 
         try:
-            # Используем существующий scanner
-            data = await self.scanner.scan_pair(pair)
+            # Use scanner's get_market_data method
+            data = await self.scanner.get_market_data(pair)
             return data
         except Exception as e:
             self.log(f"Error getting data for {pair}: {e}", level="error")
