@@ -65,24 +65,6 @@
         /* Mini cards row */
         .mini-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
         @media (max-width: 768px) { .mini-cards { grid-template-columns: repeat(2, 1fr); } }
-        @media (max-width: 640px) {
-            /* Tabs - только иконки на мобильном */
-            .tabs .tab span { display: none; }
-            .tabs .tab { padding: 10px 12px; min-width: 50px; }
-            .tabs { gap: 4px; }
-
-            /* Agent cards - 1 колонка */
-            .agent-cards-grid { grid-template-columns: 1fr !important; }
-
-            /* Top panel - wrap */
-            .top-panel > div { flex-wrap: wrap; gap: 8px; }
-
-            /* Sub badge - компактнее */
-            .sub-badge { font-size: 0.65rem; padding: 4px 8px; }
-
-            /* Cards - меньше padding */
-            .card { padding: 12px; }
-        }
         .mini-card {
             padding: 14px;
             border-radius: 10px;
@@ -392,6 +374,10 @@
                             <span id="balanceChange" class="text-xs ml-1"></span>
                         </div>
                     </div>
+                    <div id="oauthBadge" class="oauth-badge ok" onclick="openModal('oauthModal')" title="Claude OAuth Status">
+                        <span id="oauthDot" style="width:8px;height:8px;border-radius:50%;background:#00ff88;display:inline-block;"></span>
+                        <span>Claude: <span id="oauthTimer">--</span></span>
+                    </div>
                     <div id="subBadge" class="sub-badge active" title="Claude Max Subscription">
                         <i class="fa-solid fa-crown" style="font-size:0.7rem;"></i>
                         <span id="subDaysText">--д</span>
@@ -521,13 +507,9 @@
                 <i class="fa-solid fa-crosshairs"></i>
                 <span>SNIPER</span>
             </div>
-            <div class="tab" data-tab="hunter" onclick="switchTab('hunter')">
-                <i class="fa-solid fa-skull"></i>
-                <span>HUNTER</span>
-            </div>
-            <div class="tab" data-tab="logs" onclick="switchTab('logs')">
-                <i class="fa-solid fa-scroll"></i>
-                <span>Logs</span>
+            <div class="tab" data-tab="api" onclick="switchTab('api')">
+                <i class="fa-solid fa-robot"></i>
+                <span>Claude API</span>
             </div>
         </div>
 
@@ -645,43 +627,101 @@
             </div>
         </div>
 
-        <!-- HUNTER TAB CONTENT -->
-        <div class="tab-content" id="tab-hunter">
-            <div class="card p-4">
-                <h2 class="text-lg font-semibold mb-4"><i class="fa-solid fa-skull mr-2 text-dim"></i> HUNTER</h2>
-                <div class="grid grid-cols-2 gap-4 mb-4">
-                    <div class="mini-card">
-                        <div class="mini-card-label">Status</div>
-                        <div class="mini-card-value" id="hunterStatus">Idle</div>
+        <!-- CLAUDE API TAB CONTENT -->
+        <div class="tab-content" id="tab-api">
+            <!-- Header with settings icon -->
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold"><i class="fa-solid fa-robot mr-2 text-dim"></i> Claude API</h2>
+                <button class="btn btn-ghost btn-sm" onclick="openModal('apiSettingsModal')">
+                    <i class="fa-solid fa-cog"></i>
+                </button>
+            </div>
+
+            <!-- Budget Cards with Progress Bars -->
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <!-- Daily Usage -->
+                <div class="card p-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-dim text-sm">Сегодня</span>
+                        <span class="text-xs text-dim" id="apiDailyPct">0%</span>
                     </div>
-                    <div class="mini-card">
-                        <div class="mini-card-label">Level</div>
-                        <div class="mini-card-value" id="hunterLevel">1</div>
+                    <div class="text-xl font-bold mb-1">
+                        $<span id="apiCostToday">0.00</span>
+                        <span class="text-dim text-sm">/ $<span id="apiDailyLimit">0</span></span>
                     </div>
-                    <div class="mini-card">
-                        <div class="mini-card-label">Signals</div>
-                        <div class="mini-card-value" id="hunterSignals">0</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="apiDailyBar" style="width: 0%"></div>
                     </div>
-                    <div class="mini-card">
-                        <div class="mini-card-label">Trades</div>
-                        <div class="mini-card-value" id="hunterTrades">0</div>
+                    <div class="text-xs text-dim mt-2">
+                        <span id="apiCallsToday">0</span> вызовов &bull;
+                        S:<span id="apiSonnetToday">0</span> / H:<span id="apiHaikuToday">0</span>
                     </div>
                 </div>
-                <div class="text-dim text-sm" id="hunterInfo">Waiting for A+ setups...</div>
+
+                <!-- Total Usage -->
+                <div class="card p-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-dim text-sm">Общий расход</span>
+                        <span class="text-xs text-dim" id="apiTotalPct">0%</span>
+                    </div>
+                    <div class="text-xl font-bold mb-1">
+                        $<span id="apiCostTotal">0.00</span>
+                        <span class="text-dim text-sm">/ $<span id="apiTotalLimit">0</span></span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="apiTotalBar" style="width: 0%"></div>
+                    </div>
+                    <div class="text-xs text-dim mt-2">
+                        Остаток: <span class="accent">$<span id="apiRemaining">0.00</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Token Stats -->
+            <div class="mini-cards mb-4">
+                <div class="mini-card">
+                    <div class="mini-card-title"><i class="fa-solid fa-download mr-1"></i> Tokens In</div>
+                    <div class="mini-card-value" id="apiTokensIn">0</div>
+                    <div class="mini-card-sub">входных</div>
+                </div>
+                <div class="mini-card">
+                    <div class="mini-card-title"><i class="fa-solid fa-upload mr-1"></i> Tokens Out</div>
+                    <div class="mini-card-value" id="apiTokensOut">0</div>
+                    <div class="mini-card-sub">выходных</div>
+                </div>
+                <div class="mini-card">
+                    <div class="mini-card-title"><i class="fa-solid fa-piggy-bank mr-1"></i> Экономия</div>
+                    <div class="mini-card-value accent" id="apiSavings">0%</div>
+                    <div class="mini-card-sub">каскад</div>
+                </div>
+                <div class="mini-card">
+                    <div class="mini-card-title"><i class="fa-solid fa-calendar mr-1"></i> Сброс</div>
+                    <div class="mini-card-value text-base" id="apiLastReset">-</div>
+                    <div class="mini-card-sub">последний</div>
+                </div>
+            </div>
+
+            <!-- API Usage by Agent -->
+            <div class="card p-4">
+                <h3 class="font-semibold mb-3"><i class="fa-solid fa-chart-bar mr-2 text-dim"></i> Топ потребителей</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-dim text-left">
+                                <th class="pb-2">Агент</th>
+                                <th class="pb-2 text-center">Вызовов</th>
+                                <th class="pb-2 text-right">Стоимость</th>
+                                <th class="pb-2 text-right">%</th>
+                            </tr>
+                        </thead>
+                        <tbody id="apiUsageList">
+                            <tr><td colspan="4" class="text-dim text-center py-4">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
-        <!-- LOGS TAB CONTENT -->
-        <div class="tab-content" id="tab-logs">
-            <div class="card p-4">
-                <h2 class="text-lg font-semibold mb-4"><i class="fa-solid fa-scroll mr-2 text-dim"></i> Logs</h2>
-                <div class="flex gap-2 mb-3">
-                    <button class="btn-sm" onclick="refreshLogs()">Refresh</button>
-                    <button class="btn-sm" onclick="clearLogs()">Clear</button>
-                </div>
-                <div id="logsContent" class="text-xs font-mono bg-black/30 p-3 rounded" style="max-height:400px;overflow-y:auto;white-space:pre-wrap;">Loading logs...</div>
-            </div>
-        </div>
     </div>
 
     <!-- MODALS -->
@@ -1934,55 +1974,6 @@
             loadSubscriptionStatus();
             setInterval(loadSubscriptionStatus, 60000);
         });
-        // ==================== LOGS FUNCTIONS ====================
-        async function refreshLogs() {
-            const logsEl = document.getElementById("logsContent");
-            if (!logsEl) return;
-            logsEl.textContent = "Loading...";
-            try {
-                const response = await fetch("/api/ai-trade/logs?limit=100");
-                if (response.ok) {
-                    const data = await response.json();
-                    logsEl.textContent = data.logs || "No logs available";
-                    logsEl.scrollTop = logsEl.scrollHeight;
-                } else {
-                    logsEl.textContent = "Error loading logs";
-                }
-            } catch (e) {
-                logsEl.textContent = "Error: " + e.message;
-            }
-        }
-
-        function clearLogs() {
-            const logsEl = document.getElementById("logsContent");
-            if (logsEl) logsEl.textContent = "Logs cleared";
-        }
-
-        // ==================== HUNTER FUNCTIONS ====================
-        function updateHunterTab(data) {
-            const status = document.getElementById("hunterStatus");
-            const level = document.getElementById("hunterLevel");
-            const signals = document.getElementById("hunterSignals");
-            const trades = document.getElementById("hunterTrades");
-            const info = document.getElementById("hunterInfo");
-            
-            if (status) status.textContent = data.enabled ? "Active" : "Idle";
-            if (level) level.textContent = data.level || 1;
-            if (signals) signals.textContent = data.signals || 0;
-            if (trades) trades.textContent = data.trades || 0;
-            if (info) info.textContent = data.enabled ? "Scanning for A+ setups..." : "Disabled";
-        }
-
-        // Auto-refresh logs when tab is active
-        document.addEventListener("DOMContentLoaded", function() {
-            const logsTab = document.querySelector("[data-tab=\"logs\"]");
-            if (logsTab) {
-                logsTab.addEventListener("click", function() {
-                    setTimeout(refreshLogs, 100);
-                });
-            }
-        });
-
     </script>
 </body>
 </html>

@@ -3,7 +3,7 @@
     "stats": {
       "trades_this_hour": 0,
       "trades_today": 3,
-      "last_hour_reset": "2026-02-16 19:50:59.864652",
+      "last_hour_reset": "2026-02-16 20:57:32.552124",
       "last_day_reset": "2026-02-16",
       "trader_signals": 311,
       "sniper_signals": 2240,
@@ -15,7 +15,7 @@
     "config": {
       "scan_interval_seconds": 300,
       "sniper_scan_interval_seconds": 10,
-      "min_confidence": 54,
+      "min_confidence": 50,
       "max_trades_per_hour": 5,
       "max_trades_per_day": 20,
       "cooldown_after_loss_minutes": 30,
@@ -25,8 +25,8 @@
       "hunter_scan_interval_seconds": 60,
       "trader_enabled": false
     },
-    "running": true
+    "running": false
   },
-  "saved_at": "2026-02-16T20:50:50.352053",
+  "saved_at": "2026-02-16T21:40:22.394641",
   "version": "2.0"
 }
