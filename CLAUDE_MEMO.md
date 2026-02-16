@@ -4533,3 +4533,40 @@ hunts = await hunter.scan(pair_symbols)
 
 ### Файлы:
 - `aila/ai_trade/agents/hunter.py:393-394` — заменён вызов scan_pair → get_market_data
+
+---
+
+## 73. HUNTER Strategy Tightening (2026-02-17)
+
+### Проблема:
+HUNTER входил в сделки без подтверждения разворота ("falling knife"):
+- 5 сделок, 3 win / 2 loss, PnL -$0.40
+- extreme_fear триггер слишком агрессивный
+- oi_divergence не соответствует стратегии "Охота на ликвидации"
+
+### Решение:
+Ужесточены параметры для соответствия изначальной стратегии:
+
+| Параметр | Было | Стало |
+|----------|------|-------|
+| FEAR_GREED_EXTREME_LOW | 15 | 10 |
+| FEAR_GREED_EXTREME_HIGH | 85 | 90 |
+| RSI_OVERSOLD | 20 | 15 |
+| RSI_OVERBOUGHT | 80 | 85 |
+| oi_divergence | enabled | **disabled** |
+| volume_ratio > 2.0 | нет | **обязательно** |
+
+### Логика:
+extreme_fear LONG теперь требует:
+- F&G < 10 (Extreme Fear)
+- RSI < 15 (сильно oversold)
+- Price < EMA200 * 0.95 (на 5%+ ниже)
+- Volume > 2x average (подтверждение разворота)
+
+Без volume spike — сигнал НЕ генерируется.
+
+### Файлы:
+- `aila/ai_trade/agents/hunter.py` — обновлены пороги и условия
+
+### Коммит:
+- `54a26a3` — fix: tighten HUNTER strategy
