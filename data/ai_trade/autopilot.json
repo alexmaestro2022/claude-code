@@ -5,7 +5,7 @@
       "trades_today": 3,
       "last_hour_reset": "2026-02-16 21:57:39.464960",
       "last_day_reset": "2026-02-16",
-      "trader_signals": 311,
+      "trader_signals": 313,
       "sniper_signals": 2240,
       "trader_trades": 34,
       "sniper_trades": 34,
@@ -27,6 +27,6 @@
     },
     "running": true
   },
-  "saved_at": "2026-02-16T22:01:30.545319",
+  "saved_at": "2026-02-16T22:25:34.117834",
   "version": "2.0"
 }

@@ -1088,6 +1088,11 @@ async def toggle_agent(agent: str):
             if new_state:
                 orch.autopilot._agent_stats.clear_pause(agent_upper)
                 _logger.warning(f"[{agent_upper}] Enabled by user (pause cleared)")
+                # Auto-start autopilot if not running
+                if not orch.autopilot._running:
+                    import asyncio
+                    asyncio.create_task(orch.autopilot.start())
+                    _logger.warning(f"[AUTOPILOT] Auto-started because {agent_upper} was enabled")
             else:
                 _logger.warning(f"[{agent_upper}] Disabled by user (positions remain open)")
 

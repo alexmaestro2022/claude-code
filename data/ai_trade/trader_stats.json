@@ -85,7 +85,7 @@
         "pnl_usdt": 0.0
       }
     },
-    "enabled": false,
+    "enabled": true,
     "cooldown_remaining": 0.0,
     "trades_history": [
       {
@@ -1524,6 +1524,6 @@
     ],
     "paused_at": null
   },
-  "saved_at": "2026-02-16T21:59:12.923082",
+  "saved_at": "2026-02-16T22:26:17.679547",
   "version": "2.0"
 }
