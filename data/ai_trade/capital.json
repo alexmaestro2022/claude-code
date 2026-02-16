@@ -1,6 +1,6 @@
 {
   "data": {
-    "total": 19.15958935,
+    "total": 17.98857643,
     "config": {
       "reserve_pct": 20,
       "max_risk_per_trade_pct": 2,
@@ -10,6 +10,6 @@
       "kelly_fraction": 0.5
     }
   },
-  "saved_at": "2026-02-08T19:59:55.110548",
+  "saved_at": "2026-02-16T20:50:50.352612",
   "version": "2.0"
 }

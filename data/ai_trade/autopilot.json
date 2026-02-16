@@ -2,27 +2,31 @@
   "data": {
     "stats": {
       "trades_this_hour": 0,
-      "trades_today": 15,
-      "last_hour_reset": "2026-02-08 19:05:55.899843",
-      "last_day_reset": "2026-02-08",
-      "trader_signals": 256,
-      "sniper_signals": 662,
-      "trader_trades": 27,
-      "sniper_trades": 18
+      "trades_today": 3,
+      "last_hour_reset": "2026-02-16 19:50:59.864652",
+      "last_day_reset": "2026-02-16",
+      "trader_signals": 311,
+      "sniper_signals": 2240,
+      "trader_trades": 34,
+      "sniper_trades": 34,
+      "hunter_signals": 126,
+      "hunter_trades": 5
     },
     "config": {
       "scan_interval_seconds": 300,
       "sniper_scan_interval_seconds": 10,
-      "min_confidence": 53,
+      "min_confidence": 54,
       "max_trades_per_hour": 5,
       "max_trades_per_day": 20,
       "cooldown_after_loss_minutes": 30,
       "require_multiple_confirmations": true,
-      "sniper_enabled": true,
-      "trader_enabled": true
+      "sniper_enabled": false,
+      "hunter_enabled": true,
+      "hunter_scan_interval_seconds": 60,
+      "trader_enabled": false
     },
-    "running": false
+    "running": true
   },
-  "saved_at": "2026-02-08T19:59:55.110203",
+  "saved_at": "2026-02-16T20:50:50.352053",
   "version": "2.0"
 }

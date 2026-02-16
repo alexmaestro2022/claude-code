@@ -2,31 +2,31 @@
   "data": {
     "agent": "SNIPER",
     "level": 2,
-    "xp": 95,
-    "xp_to_next_level": 155,
-    "total_trades": 17,
-    "winning_trades": 6,
+    "xp": 110,
+    "xp_to_next_level": 140,
+    "total_trades": 18,
+    "winning_trades": 7,
     "losing_trades": 11,
-    "winrate": 35.294117647058826,
-    "total_pnl_usdt": -0.12221366,
+    "winrate": 38.88888888888889,
+    "total_pnl_usdt": -0.10145966000000001,
     "total_pnl_percent": 0.0,
     "best_trade_usdt": 0.5270712,
     "worst_trade_usdt": -0.48336423,
     "avg_trade_duration_minutes": 0,
     "avg_rr_ratio": 0.0,
-    "consecutive_wins": 0,
-    "consecutive_losses": 3,
+    "consecutive_wins": 1,
+    "consecutive_losses": 0,
     "max_consecutive_wins": 2,
     "max_consecutive_losses": 3,
-    "trades_today": 10,
-    "pnl_today_usdt": 0.06431997000000006,
-    "trades_this_week": 13,
-    "pnl_this_week_usdt": 0.07511234000000006,
-    "last_trade_time": "2026-02-08T19:12:40.026428",
-    "last_win_time": "2026-02-08T16:41:13.305048",
+    "trades_today": 0,
+    "pnl_today_usdt": 0.0,
+    "trades_this_week": 0,
+    "pnl_this_week_usdt": 0.0,
+    "last_trade_time": "2026-02-13T21:38:32.636160",
+    "last_win_time": "2026-02-13T21:38:32.636151",
     "last_loss_time": "2026-02-08T19:12:40.025918",
-    "paused_until": "2026-02-08T20:12:40.026545",
-    "pause_reason": "3 consecutive losses",
+    "paused_until": null,
+    "pause_reason": null,
     "trigger_stats": {
       "breakout": {
         "trades": 0,
@@ -53,9 +53,9 @@
         "pnl": -1.37785644
       },
       "take_profit": {
-        "trades": 6,
-        "wins": 6,
-        "pnl": 1.2556427799999998
+        "trades": 7,
+        "wins": 7,
+        "pnl": 1.2763967799999998
       }
     },
     "api_usage": {
@@ -92,17 +92,81 @@
         "pnl_usdt": 0.0,
         "api_calls": 0,
         "api_cost": 0.0
+      },
+      "2026-02-08": {
+        "trades": 0,
+        "pnl_usdt": 0.0,
+        "api_calls": 0,
+        "api_cost": 0.0
+      },
+      "2026-02-13": {
+        "trades": 0,
+        "pnl_usdt": 0.0,
+        "api_calls": 0,
+        "api_cost": 0.0
       }
     },
     "weekly_history": {
       "2026-W05": {
         "trades": 0,
         "pnl_usdt": 0.0
+      },
+      "2026-W06": {
+        "trades": 0,
+        "pnl_usdt": 0.0
+      },
+      "2026-W07": {
+        "trades": 0,
+        "pnl_usdt": 0.0
       }
     },
-    "enabled": true,
+    "enabled": false,
     "cooldown_remaining": 0.0,
     "trades_history": [
+      {
+        "symbol": "LTCUSDT",
+        "side": "LONG",
+        "pnl_usdt": 0.020754,
+        "pnl_pct": 0.69,
+        "entry_price": 55.31,
+        "exit_price": 55.5,
+        "close_reason": "take_profit",
+        "leverage": "2",
+        "grade": "B",
+        "closed_at": "2026-02-13T21:38:32.636138",
+        "decision_log": [
+          {
+            "timestamp": "2026-02-13T20:51:56.268034",
+            "elapsed_min": 1,
+            "action": "HOLD",
+            "reason": "Position just opened (1 min), minor -0.07% PnL within normal volatility, trend still BULLISH with neutral RSI/orderbook - no exit triggers met yet. (urgency=low)",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 55.29,
+              "pnl_pct": -0.07231965286567754,
+              "rsi": 58.17,
+              "trend": "BULLISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0053
+            }
+          },
+          {
+            "timestamp": "2026-02-13T20:53:14.860068",
+            "elapsed_min": 2,
+            "action": "HOLD",
+            "reason": "Position just opened 2 min ago with minor -0.22% drawdown, trend is BULLISH, RSI neutral at 57, orderbook balanced with bid wall support, no exit triggers hit yet - allow trade to develop. (urgency=lo",
+            "source": "SNIPER",
+            "context_snapshot": {
+              "price": 55.25,
+              "pnl_pct": -0.21695895859700692,
+              "rsi": 57.05,
+              "trend": "BULLISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0054
+            }
+          }
+        ]
+      },
       {
         "symbol": "RESOLVUSDT",
         "side": "SHORT",
@@ -1886,8 +1950,8 @@
         "closed_at": "2026-01-30T01:43:20.598972"
       }
     ],
-    "paused_at": "2026-02-08T19:12:40.026545"
+    "paused_at": null
   },
-  "saved_at": "2026-02-08T19:12:40.032780",
+  "saved_at": "2026-02-16T20:12:47.930367",
   "version": "2.0"
 }

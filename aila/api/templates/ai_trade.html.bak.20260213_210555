@@ -1,0 +1,1920 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AILA AI Trade</title>
+    <script src="/static/css/tailwind.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        :root {
+            --accent: #00ff88;
+            --accent-dim: rgba(0, 255, 136, 0.3);
+            --bg-dark: #0a0a0f;
+            --bg-card: #12121a;
+            --bg-card-hover: #1a1a25;
+            --text-primary: #e5e7eb;
+            --text-secondary: #9ca3af;
+            --border: rgba(255, 255, 255, 0.1);
+        }
+        body {
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            transition: all 0.2s;
+        }
+        .card:hover { background: var(--bg-card-hover); }
+        .card-clickable { cursor: pointer; }
+        .card-clickable:hover {
+            border-color: var(--accent-dim);
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.1);
+        }
+        .accent { color: var(--accent); }
+        .accent-bg { background: var(--accent); color: #000; }
+        .text-dim { color: var(--text-secondary); }
+
+        /* Tabs */
+        .tabs { display: flex; gap: 4px; background: var(--bg-card); padding: 4px; border-radius: 10px; }
+        .tab {
+            flex: 1;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            border: 1px solid transparent;
+        }
+        .tab:hover { background: rgba(255,255,255,0.05); }
+        .tab.active {
+            background: var(--accent);
+            color: #000;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* Mini cards row */
+        .mini-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        @media (max-width: 768px) { .mini-cards { grid-template-columns: repeat(2, 1fr); } }
+        .mini-card {
+            padding: 14px;
+            border-radius: 10px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .mini-card:hover {
+            border-color: var(--accent-dim);
+            transform: translateY(-2px);
+        }
+        .mini-card-title { font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 6px; }
+        .mini-card-value { font-size: 1.25rem; font-weight: 700; }
+        .mini-card-sub { font-size: 0.7rem; color: var(--text-secondary); margin-top: 4px; }
+
+        /* Progress bar */
+        .progress-bar {
+            height: 6px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--accent);
+            transition: width 0.3s;
+        }
+
+        /* Status indicator */
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .status-active { background: #00ff88; box-shadow: 0 0 8px #00ff88; }
+        .status-paused { background: #fbbf24; }
+        .status-disabled { background: #6b7280; }
+
+        /* OAuth indicator */
+        .oauth-badge {
+            display: flex; align-items: center; gap: 6px;
+            padding: 4px 12px; border-radius: 8px; cursor: pointer;
+            border: 1px solid var(--border); font-size: 0.8rem;
+            transition: all 0.3s;
+        }
+        .oauth-badge.ok { border-color: rgba(0,255,136,0.3); color: #00ff88; }
+        .oauth-badge.warn { border-color: rgba(251,191,36,0.3); color: #fbbf24; animation: blink 1.5s infinite; }
+        .oauth-badge.expired { border-color: rgba(239,68,68,0.3); color: #ef4444; animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0.5; } }
+
+        /* Subscription badge */
+        .sub-badge {
+            display: flex; align-items: center; gap: 6px;
+            padding: 4px 12px; border-radius: 8px; cursor: pointer;
+            border: 1px solid var(--border); font-size: 0.8rem;
+            transition: all 0.3s;
+        }
+        .sub-badge.active { border-color: rgba(0,255,136,0.3); color: #00ff88; }
+        .sub-badge.warning { border-color: rgba(251,191,36,0.3); color: #fbbf24; }
+        .sub-badge.danger { border-color: rgba(239,68,68,0.3); color: #ef4444; animation: blink 1s infinite; }
+        .sub-progress-bar {
+            height: 4px; border-radius: 2px; background: rgba(255,255,255,0.1);
+            width: 60px; overflow: hidden;
+        }
+        .sub-progress-fill {
+            height: 100%; border-radius: 2px; transition: width 0.5s, background 0.5s;
+        }
+
+        /* Position row */
+        .position-row {
+            display: flex;
+            align-items: center;
+            padding: 10px 14px;
+            background: var(--bg-card);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            transition: all 0.2s;
+        }
+        .position-row:hover { border-color: var(--accent-dim); }
+        .position-details { display: none; padding: 12px; background: rgba(0,0,0,0.3); border-radius: 8px; margin-top: 8px; }
+        .position-row.expanded .position-details { display: block; }
+
+        /* Activity feed */
+        .feed-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .feed-item:last-child { border-bottom: none; }
+        .feed-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            flex-shrink: 0;
+        }
+        .feed-icon.approve { background: rgba(0, 255, 136, 0.2); color: #00ff88; }
+        .feed-icon.reject { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        .feed-icon.signal { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
+        .feed-icon.trade_open { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+        .feed-icon.trade_close { background: rgba(168, 85, 247, 0.2); color: #a855f7; }
+        .feed-icon.learn { background: rgba(236, 72, 153, 0.2); color: #ec4899; }
+        .feed-icon.info { background: rgba(107, 114, 128, 0.2); color: #9ca3af; }
+        .feed-time { font-size: 0.65rem; color: var(--text-secondary); }
+        .feed-msg { font-size: 0.8rem; line-height: 1.4; }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-content {
+            background: var(--bg-card);
+            border-radius: 16px;
+            max-width: 500px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+        }
+        .modal-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            background: var(--bg-card);
+        }
+        .modal-body { padding: 20px; }
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            border: none;
+            background: rgba(255,255,255,0.1);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-close:hover { background: rgba(255,255,255,0.2); }
+
+        /* Buttons */
+        .btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-primary { background: var(--accent); color: #000; }
+        .btn-primary:hover { filter: brightness(1.1); }
+        .btn-danger { background: #ef4444; color: #fff; }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-ghost {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+        .btn-ghost:hover { border-color: var(--accent-dim); color: var(--accent); }
+        .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+
+        /* Top panel */
+        .top-panel {
+            background: linear-gradient(180deg, var(--bg-card) 0%, transparent 100%);
+            padding: 16px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        /* Collapsible section */
+        .collapsible-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            padding: 12px 0;
+        }
+        .collapsible-content { transition: all 0.3s; }
+        .collapsible-content.collapsed { display: none; }
+
+        /* Stats row */
+        .stats-row { display: flex; gap: 20px; flex-wrap: wrap; }
+        .stat-item { text-align: center; }
+        .stat-value { font-size: 1.5rem; font-weight: 700; }
+        .stat-label { font-size: 0.7rem; color: var(--text-secondary); }
+
+        /* Badge */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        .badge-green { background: rgba(0, 255, 136, 0.2); color: #00ff88; }
+        .badge-red { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        .badge-yellow { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
+        .badge-gray { background: rgba(107, 114, 128, 0.2); color: #9ca3af; }
+
+        /* PnL colors */
+        .pnl-positive { color: #00ff88; }
+        .pnl-negative { color: #ef4444; }
+
+        /* Autopilot control */
+        .autopilot-btn {
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+        .autopilot-btn.start {
+            background: var(--accent);
+            color: #000;
+        }
+        .autopilot-btn.start:hover {
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.5);
+        }
+        .autopilot-btn.stop {
+            background: #ef4444;
+            color: #fff;
+        }
+        .autopilot-btn.stop:hover {
+            box-shadow: 0 0 30px rgba(239, 68, 68, 0.5);
+        }
+
+        /* Loading spinner */
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+
+        /* Value changed animation */
+        .value-changed {
+            animation: valueChange 0.5s ease-out;
+        }
+        @keyframes valueChange {
+            0% { transform: scale(1.1); color: var(--accent); }
+            100% { transform: scale(1); }
+        }
+
+        /* Trade history table */
+        .trade-row {
+            display: grid;
+            grid-template-columns: 1fr 60px 80px 60px;
+            gap: 8px;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.85rem;
+        }
+        .trade-row:last-child { border-bottom: none; }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div class="max-w-5xl mx-auto px-4 py-4">
+
+        <!-- TOP PANEL: Balance + Autopilot Control -->
+        <div class="top-panel">
+            <div class="flex justify-between items-center mb-4">
+                <!-- Logo & Balance -->
+                <div class="flex items-center gap-4">
+                    <div class="text-xl font-bold">
+                        <span class="accent">AILA</span> <span class="text-dim">AI Trade</span>
+                    </div>
+                    <div class="card card-clickable px-4 py-2" onclick="openModal('balanceModal')">
+                        <div class="text-dim text-xs" data-i18n="balance">Balance</div>
+                        <div class="font-bold text-lg">
+                            $<span id="balanceValue">0.00</span>
+                            <span id="balanceChange" class="text-xs ml-1"></span>
+                        </div>
+                    </div>
+                    <div id="oauthBadge" class="oauth-badge ok" onclick="openModal('oauthModal')" title="Claude OAuth Status">
+                        <span id="oauthDot" style="width:8px;height:8px;border-radius:50%;background:#00ff88;display:inline-block;"></span>
+                        <span>Claude: <span id="oauthTimer">--</span></span>
+                    </div>
+                    <div id="subBadge" class="sub-badge active" title="Claude Max Subscription">
+                        <i class="fa-solid fa-crown" style="font-size:0.7rem;"></i>
+                        <span id="subDaysText">--д</span>
+                        <div class="sub-progress-bar">
+                            <div id="subProgressFill" class="sub-progress-fill" style="width:100%;background:#00ff88;"></div>
+                        </div>
+                        <span id="subOAuthMini" style="font-size:0.7rem;opacity:0.7;">OAuth:--</span>
+                        <a href="https://claude.ai/settings" target="_blank" onclick="event.stopPropagation();" style="font-size:0.65rem;color:inherit;text-decoration:none;opacity:0.6;" title="Продлить">↗</a>
+                    </div>
+                </div>
+
+                <!-- Autopilot Control -->
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-2">
+                        <span class="status-dot" id="autopilotDot"></span>
+                        <span class="text-sm" id="autopilotStatus">Idle</span>
+                    </div>
+                    <button id="autopilotBtn" class="autopilot-btn start" onclick="toggleAutopilot()">
+                        <i class="fa-solid fa-play mr-2"></i>
+                        <span data-i18n="start_autopilot">Start</span>
+                    </button>
+                    <a href="/admin" class="btn-ghost btn-sm" style="text-decoration:none;padding:8px 12px;border-radius:8px;border:1px solid var(--border);color:var(--text-secondary);display:flex;align-items:center;gap:6px;" title="Admin Panel">
+                        <i class="fa-solid fa-terminal"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- POSITIONS PANEL -->
+        <div class="card p-4 mb-4" id="positionsPanel">
+            <div class="collapsible-header" onclick="toggleSection('positionsContent')">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-wallet text-dim"></i>
+                    <span class="font-semibold" data-i18n="positions">Positions</span>
+                    <span class="badge badge-gray" id="positionsCount">0</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span id="totalPnl" class="font-bold">$0.00</span>
+                    <i class="fa-solid fa-chevron-down text-dim text-sm" id="positionsChevron"></i>
+                </div>
+            </div>
+            <div class="collapsible-content" id="positionsContent">
+                <div id="positionsList" class="mt-3">
+                    <div class="text-dim text-sm text-center py-4" data-i18n="no_positions">No open positions</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AGENT LEVELS PANEL -->
+        <div class="card p-4 mb-4" id="agentLevelsPanel">
+            <div class="collapsible-header" onclick="toggleSection('agentLevelsContent')">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-trophy text-dim"></i>
+                    <span class="font-semibold" data-i18n="agent_levels">Agent Levels</span>
+                </div>
+                <i class="fa-solid fa-chevron-down text-dim text-sm"></i>
+            </div>
+            <div class="collapsible-content" id="agentLevelsContent">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+                    <!-- TRADER Level -->
+                    <div style="border:1px solid var(--border-color);border-radius:10px;padding:14px">
+                        <div style="font-weight:700;margin-bottom:8px"><i class="fa-solid fa-chart-line mr-1"></i> TRADER</div>
+                        <div class="flex items-center gap-2" style="margin-bottom:6px">
+                            <span style="font-size:1.5rem;font-weight:700" class="accent" id="alTraderLevel">1</span>
+                            <span style="font-size:0.75rem;color:var(--text-secondary)" data-i18n="level">Level</span>
+                        </div>
+                        <div class="progress-bar" style="margin-bottom:4px">
+                            <div class="progress-fill" id="alTraderXpBar" style="width:0%"></div>
+                        </div>
+                        <div style="font-size:0.7rem;color:var(--text-secondary);margin-bottom:8px">
+                            <span id="alTraderXp">0</span> / <span id="alTraderXpNext">100</span> XP
+                        </div>
+                        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px" id="alTraderLimits"></div>
+                        <div style="font-size:0.7rem;color:var(--text-secondary)" id="alTraderStats"></div>
+                        <div style="font-size:0.65rem;color:var(--text-secondary);margin-top:6px;opacity:0.7" id="alTraderNext"></div>
+                    </div>
+                    <!-- SNIPER Level -->
+                    <div style="border:1px solid var(--border-color);border-radius:10px;padding:14px">
+                        <div style="font-weight:700;margin-bottom:8px"><i class="fa-solid fa-crosshairs mr-1"></i> SNIPER</div>
+                        <div class="flex items-center gap-2" style="margin-bottom:6px">
+                            <span style="font-size:1.5rem;font-weight:700" class="accent" id="alSniperLevel">1</span>
+                            <span style="font-size:0.75rem;color:var(--text-secondary)" data-i18n="level">Level</span>
+                        </div>
+                        <div class="progress-bar" style="margin-bottom:4px">
+                            <div class="progress-fill" id="alSniperXpBar" style="width:0%"></div>
+                        </div>
+                        <div style="font-size:0.7rem;color:var(--text-secondary);margin-bottom:8px">
+                            <span id="alSniperXp">0</span> / <span id="alSniperXpNext">100</span> XP
+                        </div>
+                        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px" id="alSniperLimits"></div>
+                        <div style="font-size:0.7rem;color:var(--text-secondary)" id="alSniperStats"></div>
+                        <div style="font-size:0.65rem;color:var(--text-secondary);margin-top:6px;opacity:0.7" id="alSniperNext"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AGENT TABS -->
+        <div class="tabs mb-4">
+            <div class="tab active" data-tab="trader" onclick="switchTab('trader')">
+                <i class="fa-solid fa-chart-line"></i>
+                <span>TRADER</span>
+            </div>
+            <div class="tab" data-tab="sniper" onclick="switchTab('sniper')">
+                <i class="fa-solid fa-crosshairs"></i>
+                <span>SNIPER</span>
+            </div>
+            <div class="tab" data-tab="api" onclick="switchTab('api')">
+                <i class="fa-solid fa-robot"></i>
+                <span>Claude API</span>
+            </div>
+        </div>
+
+        <!-- TRADER TAB CONTENT -->
+        <div class="tab-content active" id="tab-trader">
+            <!-- Mini Cards -->
+            <div class="mini-cards mb-4">
+                <div class="mini-card" onclick="openModal('scanModal')">
+                    <div class="mini-card-title"><i class="fa-solid fa-radar mr-1"></i> <span data-i18n="status">Status</span></div>
+                    <div class="flex items-center gap-2">
+                        <span class="status-dot" id="traderStatusDot"></span>
+                        <span class="mini-card-value text-base" id="traderStatusText">Idle</span>
+                    </div>
+                    <div class="mini-card-sub" id="traderCascadeStage">-</div>
+                </div>
+                <div class="mini-card" onclick="openModal('learningModal', 'trader')">
+                    <div class="mini-card-title"><i class="fa-solid fa-star mr-1"></i> Level</div>
+                    <div class="mini-card-value accent" id="traderLevel">1</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="traderXpBar" style="width: 15%"></div>
+                    </div>
+                    <div class="mini-card-sub"><span id="traderXp">15</span> / <span id="traderXpNext">100</span> XP</div>
+                </div>
+                <div class="mini-card" onclick="openModal('historyModal', 'trader')">
+                    <div class="mini-card-title"><i class="fa-solid fa-chart-pie mr-1"></i> <span data-i18n="stats">Stats</span></div>
+                    <div class="mini-card-value">
+                        <span id="traderWinrate">0</span><span class="text-dim text-sm">%</span>
+                    </div>
+                    <div class="mini-card-sub">
+                        <span id="traderPnl" class="pnl-positive">$0.00</span> &bull;
+                        <span id="traderTrades">0</span> <span data-i18n="trades">trades</span>
+                    </div>
+                </div>
+                <div class="mini-card" onclick="openModal('learningModal', 'trader')">
+                    <div class="mini-card-title"><i class="fa-solid fa-brain mr-1"></i> <span data-i18n="learning">Learning</span></div>
+                    <div class="mini-card-value" id="traderLessons">0</div>
+                    <div class="mini-card-sub" data-i18n="lessons_learned">lessons learned</div>
+                </div>
+            </div>
+
+            <!-- Activity Feed -->
+            <div class="card p-4">
+                <div class="collapsible-header" onclick="toggleSection('traderFeed')">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-stream text-dim"></i>
+                        <span class="font-semibold" data-i18n="activity_feed">Activity Feed</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-down text-dim text-sm" id="traderFeedChevron"></i>
+                </div>
+                <div class="collapsible-content" id="traderFeed">
+                    <div id="traderFeedList" class="mt-2">
+                        <div class="text-dim text-sm text-center py-4">Loading...</div>
+                    </div>
+                    <button class="btn btn-ghost btn-sm w-full mt-3" onclick="loadMoreFeed('trader')" data-i18n="show_more">
+                        Show more
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- SNIPER TAB CONTENT -->
+        <div class="tab-content" id="tab-sniper">
+            <!-- Mini Cards -->
+            <div class="mini-cards mb-4">
+                <div class="mini-card" onclick="openModal('scanModal')">
+                    <div class="mini-card-title"><i class="fa-solid fa-radar mr-1"></i> <span data-i18n="status">Status</span></div>
+                    <div class="flex items-center gap-2">
+                        <span class="status-dot" id="sniperStatusDot"></span>
+                        <span class="mini-card-value text-base" id="sniperStatusText">Idle</span>
+                    </div>
+                    <div class="mini-card-sub" id="sniperMode">-</div>
+                </div>
+                <div class="mini-card" onclick="openModal('learningModal', 'sniper')">
+                    <div class="mini-card-title"><i class="fa-solid fa-star mr-1"></i> Level</div>
+                    <div class="mini-card-value accent" id="sniperLevel">1</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="sniperXpBar" style="width: 10%"></div>
+                    </div>
+                    <div class="mini-card-sub"><span id="sniperXp">10</span> / <span id="sniperXpNext">100</span> XP</div>
+                </div>
+                <div class="mini-card" onclick="openModal('historyModal', 'sniper')">
+                    <div class="mini-card-title"><i class="fa-solid fa-chart-pie mr-1"></i> <span data-i18n="stats">Stats</span></div>
+                    <div class="mini-card-value">
+                        <span id="sniperWinrate">0</span><span class="text-dim text-sm">%</span>
+                    </div>
+                    <div class="mini-card-sub">
+                        <span id="sniperPnl" class="pnl-positive">$0.00</span> &bull;
+                        <span id="sniperTrades">0</span> <span data-i18n="trades">trades</span>
+                    </div>
+                </div>
+                <div class="mini-card" onclick="openModal('learningModal', 'sniper')">
+                    <div class="mini-card-title"><i class="fa-solid fa-brain mr-1"></i> <span data-i18n="learning">Learning</span></div>
+                    <div class="mini-card-value" id="sniperLessons">0</div>
+                    <div class="mini-card-sub" data-i18n="lessons_learned">lessons learned</div>
+                </div>
+            </div>
+
+            <!-- Activity Feed -->
+            <div class="card p-4">
+                <div class="collapsible-header" onclick="toggleSection('sniperFeed')">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-stream text-dim"></i>
+                        <span class="font-semibold" data-i18n="activity_feed">Activity Feed</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-down text-dim text-sm" id="sniperFeedChevron"></i>
+                </div>
+                <div class="collapsible-content" id="sniperFeed">
+                    <div id="sniperFeedList" class="mt-2">
+                        <div class="text-dim text-sm text-center py-4">Loading...</div>
+                    </div>
+                    <button class="btn btn-ghost btn-sm w-full mt-3" onclick="loadMoreFeed('sniper')" data-i18n="show_more">
+                        Show more
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- CLAUDE API TAB CONTENT -->
+        <div class="tab-content" id="tab-api">
+            <!-- Header with settings icon -->
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold"><i class="fa-solid fa-robot mr-2 text-dim"></i> Claude API</h2>
+                <button class="btn btn-ghost btn-sm" onclick="openModal('apiSettingsModal')">
+                    <i class="fa-solid fa-cog"></i>
+                </button>
+            </div>
+
+            <!-- Budget Cards with Progress Bars -->
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <!-- Daily Usage -->
+                <div class="card p-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-dim text-sm">Сегодня</span>
+                        <span class="text-xs text-dim" id="apiDailyPct">0%</span>
+                    </div>
+                    <div class="text-xl font-bold mb-1">
+                        $<span id="apiCostToday">0.00</span>
+                        <span class="text-dim text-sm">/ $<span id="apiDailyLimit">0</span></span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="apiDailyBar" style="width: 0%"></div>
+                    </div>
+                    <div class="text-xs text-dim mt-2">
+                        <span id="apiCallsToday">0</span> вызовов &bull;
+                        S:<span id="apiSonnetToday">0</span> / H:<span id="apiHaikuToday">0</span>
+                    </div>
+                </div>
+
+                <!-- Total Usage -->
+                <div class="card p-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-dim text-sm">Общий расход</span>
+                        <span class="text-xs text-dim" id="apiTotalPct">0%</span>
+                    </div>
+                    <div class="text-xl font-bold mb-1">
+                        $<span id="apiCostTotal">0.00</span>
+                        <span class="text-dim text-sm">/ $<span id="apiTotalLimit">0</span></span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="apiTotalBar" style="width: 0%"></div>
+                    </div>
+                    <div class="text-xs text-dim mt-2">
+                        Остаток: <span class="accent">$<span id="apiRemaining">0.00</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Token Stats -->
+            <div class="mini-cards mb-4">
+                <div class="mini-card">
+                    <div class="mini-card-title"><i class="fa-solid fa-download mr-1"></i> Tokens In</div>
+                    <div class="mini-card-value" id="apiTokensIn">0</div>
+                    <div class="mini-card-sub">входных</div>
+                </div>
+                <div class="mini-card">
+                    <div class="mini-card-title"><i class="fa-solid fa-upload mr-1"></i> Tokens Out</div>
+                    <div class="mini-card-value" id="apiTokensOut">0</div>
+                    <div class="mini-card-sub">выходных</div>
+                </div>
+                <div class="mini-card">
+                    <div class="mini-card-title"><i class="fa-solid fa-piggy-bank mr-1"></i> Экономия</div>
+                    <div class="mini-card-value accent" id="apiSavings">0%</div>
+                    <div class="mini-card-sub">каскад</div>
+                </div>
+                <div class="mini-card">
+                    <div class="mini-card-title"><i class="fa-solid fa-calendar mr-1"></i> Сброс</div>
+                    <div class="mini-card-value text-base" id="apiLastReset">-</div>
+                    <div class="mini-card-sub">последний</div>
+                </div>
+            </div>
+
+            <!-- API Usage by Agent -->
+            <div class="card p-4">
+                <h3 class="font-semibold mb-3"><i class="fa-solid fa-chart-bar mr-2 text-dim"></i> Топ потребителей</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-dim text-left">
+                                <th class="pb-2">Агент</th>
+                                <th class="pb-2 text-center">Вызовов</th>
+                                <th class="pb-2 text-right">Стоимость</th>
+                                <th class="pb-2 text-right">%</th>
+                            </tr>
+                        </thead>
+                        <tbody id="apiUsageList">
+                            <tr><td colspan="4" class="text-dim text-center py-4">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- MODALS -->
+
+    <!-- OAuth Status Modal -->
+    <div class="modal-overlay" id="oauthModal" onclick="closeModalOnOverlay(event)">
+        <div class="modal-content" style="max-width:440px;">
+            <div class="modal-header">
+                <h3 class="font-semibold"><i class="fa-solid fa-key mr-2"></i> Claude OAuth</h3>
+                <button class="modal-close" onclick="closeModal('oauthModal')"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="modal-body" style="padding:16px;">
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                    <div style="display:flex;justify-content:space-between;">
+                        <span class="text-dim">Status</span>
+                        <span id="oauthModalStatus" class="font-bold">--</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;">
+                        <span class="text-dim">Expires</span>
+                        <span id="oauthModalExpires">--</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;">
+                        <span class="text-dim">Remaining</span>
+                        <span id="oauthModalRemaining" class="font-bold">--</span>
+                    </div>
+                    <hr style="border-color:var(--border);margin:2px 0;">
+                    <div style="display:flex;justify-content:space-between;">
+                        <span class="text-dim">Auto-refresh</span>
+                        <span id="oauthModalAutoRefresh">--</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;">
+                        <span class="text-dim">Last refresh</span>
+                        <span id="oauthModalLastRefresh">--</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;">
+                        <span class="text-dim">Refreshes today</span>
+                        <span id="oauthModalRefreshCount">--</span>
+                    </div>
+                    <hr style="border-color:var(--border);margin:2px 0;">
+                    <div id="oauthModalInfo" class="text-dim" style="font-size:0.8rem;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Balance Modal -->
+    <div class="modal-overlay" id="balanceModal" onclick="closeModalOnOverlay(event)">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="font-semibold"><i class="fa-solid fa-wallet mr-2"></i> <span data-i18n="balance_details">Balance Details</span></h3>
+                <button class="modal-close" onclick="closeModal('balanceModal')"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="stats-row justify-center mb-6">
+                    <div class="stat-item">
+                        <div class="stat-value accent">$<span id="modalBalance">0.00</span></div>
+                        <div class="stat-label" data-i18n="available_balance">Available Balance</div>
+                    </div>
+                </div>
+                <div class="space-y-3">
+                    <div class="flex justify-between">
+                        <span class="text-dim" data-i18n="today_pnl">Today PnL</span>
+                        <span id="modalTodayPnl">$0.00</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-dim" data-i18n="week_pnl">Week PnL</span>
+                        <span id="modalWeekPnl">$0.00</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-dim" data-i18n="total_pnl">Total PnL</span>
+                        <span id="modalTotalPnl">$0.00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scan Modal -->
+    <div class="modal-overlay" id="scanModal" onclick="closeModalOnOverlay(event)">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="font-semibold"><i class="fa-solid fa-radar mr-2"></i> <span data-i18n="scanning_status">Scanning Status</span></h3>
+                <button class="modal-close" onclick="closeModal('scanModal')"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="status-dot" id="modalScanDot"></span>
+                    <span class="font-semibold" id="modalScanStatus">Idle</span>
+                </div>
+                <div class="space-y-3 mb-4">
+                    <div class="flex justify-between">
+                        <span class="text-dim" data-i18n="mode">Mode</span>
+                        <span id="modalScanMode">Cascade</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-dim" data-i18n="current_stage">Current Stage</span>
+                        <span id="modalScanStage">-</span>
+                    </div>
+                </div>
+                <h4 class="text-sm font-semibold mb-2 text-dim" data-i18n="pair_distribution">Pair Distribution</h4>
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                    <div class="bg-black/30 rounded p-2 text-center" id="modalPairsVipBox" title="">
+                        <div class="text-xs text-dim">VIP</div>
+                        <div class="font-bold" id="modalPairsVip">0</div>
+                        <div class="text-xs text-dim mt-1" id="modalPairsVipNames" style="font-size:0.6rem;line-height:1.2;"></div>
+                    </div>
+                    <div class="bg-black/30 rounded p-2 text-center" id="modalPairsP1Box" title="">
+                        <div class="text-xs text-dim">P1 <span style="font-size:0.55rem;opacity:0.6">5-20%</span></div>
+                        <div class="font-bold" id="modalPairsP1">0</div>
+                        <div class="text-xs text-dim mt-1" id="modalPairsP1Names" style="font-size:0.6rem;line-height:1.2;"></div>
+                    </div>
+                    <div class="bg-black/30 rounded p-2 text-center" id="modalPairsP2Box" title="">
+                        <div class="text-xs text-dim">P2 <span style="font-size:0.55rem;opacity:0.6">20-35%</span></div>
+                        <div class="font-bold" id="modalPairsP2">0</div>
+                        <div class="text-xs text-dim mt-1" id="modalPairsP2Names" style="font-size:0.6rem;line-height:1.2;"></div>
+                    </div>
+                    <div class="bg-black/30 rounded p-2 text-center" id="modalPairsP3Box" title="">
+                        <div class="text-xs text-dim">P3 <span style="font-size:0.55rem;opacity:0.6">35-50%</span></div>
+                        <div class="font-bold" id="modalPairsP3">0</div>
+                        <div class="text-xs text-dim mt-1" id="modalPairsP3Names" style="font-size:0.6rem;line-height:1.2;"></div>
+                    </div>
+                </div>
+                <div class="flex justify-between items-center p-3 bg-black/30 rounded">
+                    <span class="text-dim" data-i18n="token_savings">Token Savings</span>
+                    <span class="accent font-bold" id="modalSavings">0%</span>
+                </div>
+
+                <!-- Trading Parameters -->
+                <h4 class="text-sm font-semibold mt-4 mb-2 text-dim"><i class="fa-solid fa-sliders mr-1"></i> Trading Parameters</h4>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center p-3 bg-black/30 rounded">
+                        <div>
+                            <div class="text-sm">Min Confidence</div>
+                            <div class="text-xs text-dim">TRADER signal threshold</div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="number" id="settingMinConfidence" min="50" max="95" step="5" value="70"
+                                style="width:60px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:4px 8px;color:white;text-align:center;font-size:0.85rem;">
+                            <span class="text-dim text-sm">%</span>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-black/30 rounded">
+                        <div>
+                            <div class="text-sm">Min Trade Size</div>
+                            <div class="text-xs text-dim">Minimum order in USDT</div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="number" id="settingMinTradeSize" min="1" max="100" step="1" value="5"
+                                style="width:60px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:6px;padding:4px 8px;color:white;text-align:center;font-size:0.85rem;">
+                            <span class="text-dim text-sm">$</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-accent btn-sm w-full" onclick="saveTradingParams()" id="saveTradingParamsBtn">
+                        <i class="fa-solid fa-save mr-1"></i> Save Parameters
+                    </button>
+                    <div id="tradingParamsSaved" style="display:none;text-align:center;color:#22c55e;font-size:0.8rem;margin-top:4px;">
+                        <i class="fa-solid fa-check"></i> Saved
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- History Modal -->
+    <div class="modal-overlay" id="historyModal" onclick="closeModalOnOverlay(event)">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="font-semibold"><i class="fa-solid fa-history mr-2"></i> <span data-i18n="trade_history">Trade History</span></h3>
+                <button class="modal-close" onclick="closeModal('historyModal')"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="stats-row justify-around mb-4">
+                    <div class="stat-item">
+                        <div class="stat-value" id="modalHistoryTrades">0</div>
+                        <div class="stat-label" data-i18n="total_trades">Total</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value pnl-positive" id="modalHistoryWins">0</div>
+                        <div class="stat-label" data-i18n="wins">Wins</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value pnl-negative" id="modalHistoryLosses">0</div>
+                        <div class="stat-label" data-i18n="losses">Losses</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="modalHistoryWinrate">0%</div>
+                        <div class="stat-label">Winrate</div>
+                    </div>
+                </div>
+                <div class="flex justify-between mb-4 p-3 bg-black/30 rounded">
+                    <span class="text-dim" data-i18n="total_pnl">Total PnL</span>
+                    <span class="font-bold" id="modalHistoryPnl">$0.00</span>
+                </div>
+                <h4 class="text-sm font-semibold mb-2 text-dim" data-i18n="recent_trades">Recent Trades</h4>
+                <div id="modalHistoryList" class="max-h-60 overflow-y-auto">
+                    <div class="text-dim text-sm text-center py-4">Loading...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Learning Modal -->
+    <div class="modal-overlay" id="learningModal" onclick="closeModalOnOverlay(event)">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="font-semibold"><i class="fa-solid fa-graduation-cap mr-2"></i> <span data-i18n="learning_progress">Learning Progress</span></h3>
+                <button class="modal-close" onclick="closeModal('learningModal')"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-4">
+                    <div class="text-4xl font-bold accent mb-1">Level <span id="modalLearningLevel">1</span></div>
+                    <div class="text-dim text-sm"><span id="modalLearningXp">0</span> / <span id="modalLearningXpNext">100</span> XP</div>
+                    <div class="progress-bar mt-2 mx-auto" style="max-width: 200px;">
+                        <div class="progress-fill" id="modalLearningXpBar" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <h4 class="text-sm font-semibold mb-2 text-dim" data-i18n="next_level_unlocks">Next Level Unlocks</h4>
+                <div class="bg-black/30 rounded p-3 mb-4" id="modalNextBenefits">
+                    <span class="text-dim">-</span>
+                </div>
+
+                <h4 class="text-sm font-semibold mb-2 text-dim" data-i18n="worst_pairs">Worst Pairs</h4>
+                <div id="modalWorstPairs" class="mb-4 text-sm">
+                    <span class="text-dim">-</span>
+                </div>
+
+                <h4 class="text-sm font-semibold mb-2 text-dim" data-i18n="mistakes_to_avoid">Mistakes to Avoid</h4>
+                <div id="modalMistakes" class="text-sm">
+                    <span class="text-dim">-</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- API Settings Modal -->
+    <div class="modal-overlay" id="apiSettingsModal" onclick="closeModalOnOverlay(event)">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="font-semibold"><i class="fa-solid fa-cog mr-2"></i> Настройки API</h3>
+                <button class="modal-close" onclick="closeModal('apiSettingsModal')"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="modal-body">
+                <!-- Initial Balance -->
+                <div class="mb-4">
+                    <label class="text-dim text-sm block mb-1">Начальный баланс</label>
+                    <div class="flex gap-2">
+                        <input type="number" id="apiInitialBalance" step="0.01"
+                            class="flex-1 bg-black/30 border border-white/10 rounded px-3 py-2 text-white"
+                            placeholder="17.07">
+                        <button class="btn btn-ghost btn-sm" onclick="resetApiBalance()">
+                            <i class="fa-solid fa-rotate"></i> Сброс
+                        </button>
+                    </div>
+                    <div class="text-xs text-dim mt-1">Текущий накопленный расход: $<span id="apiAccumulatedCost">0.00</span></div>
+                </div>
+
+                <!-- Use Budget Limit Toggle -->
+                <div class="flex items-center justify-between p-3 bg-black/30 rounded mb-4">
+                    <div>
+                        <div class="font-semibold">Использовать лимит</div>
+                        <div class="text-xs text-dim">Остановить вызовы при достижении лимита</div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="apiUseBudgetLimit" class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                    </label>
+                </div>
+
+                <!-- Limits -->
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="text-dim text-sm block mb-1">Дневной лимит ($)</label>
+                        <input type="number" id="apiDailyLimitInput" step="0.5" min="0.5"
+                            class="w-full bg-black/30 border border-white/10 rounded px-3 py-2 text-white"
+                            placeholder="6.00">
+                    </div>
+                    <div>
+                        <label class="text-dim text-sm block mb-1">Общий лимит ($)</label>
+                        <input type="number" id="apiTotalLimitInput" step="1" min="1"
+                            class="w-full bg-black/30 border border-white/10 rounded px-3 py-2 text-white"
+                            placeholder="17.07">
+                    </div>
+                </div>
+
+                <!-- Info -->
+                <div class="p-3 bg-blue-500/10 border border-blue-500/30 rounded mb-4 text-sm">
+                    <i class="fa-solid fa-info-circle mr-1"></i>
+                    При сбросе баланса накопленный расход обнуляется
+                </div>
+
+                <!-- Buttons -->
+                <div class="flex gap-2">
+                    <button class="btn btn-primary flex-1" onclick="saveApiSettings()">
+                        <i class="fa-solid fa-save mr-1"></i> Сохранить
+                    </button>
+                    <button class="btn btn-ghost" onclick="resetApiSettingsToDefault()">
+                        <i class="fa-solid fa-undo mr-1"></i> По умолчанию
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/ai-trade';
+        let currentTab = 'trader';
+        let currentModalAgent = 'trader';
+        let isAutopilotRunning = false;
+        let feedLimits = { trader: 10, sniper: 10 };
+
+        // Translations
+        const translations = {
+            ru: {
+                balance: 'Баланс',
+                positions: 'Позиции',
+                no_positions: 'Нет открытых позиций',
+                status: 'Статус',
+                stats: 'Статистика',
+                learning: 'Обучение',
+                lessons_learned: 'усвоено уроков',
+                activity_feed: 'Лента событий',
+                show_more: 'Показать ещё',
+                trades: 'сделок',
+                balance_details: 'Детали баланса',
+                available_balance: 'Доступный баланс',
+                today_pnl: 'PnL за сегодня',
+                week_pnl: 'PnL за неделю',
+                total_pnl: 'Общий PnL',
+                scanning_status: 'Статус сканирования',
+                mode: 'Режим',
+                current_stage: 'Текущий этап',
+                pair_distribution: 'Распределение пар',
+                token_savings: 'Экономия токенов',
+                trade_history: 'История сделок',
+                total_trades: 'Всего',
+                wins: 'Выигрышей',
+                losses: 'Проигрышей',
+                recent_trades: 'Последние сделки',
+                learning_progress: 'Прогресс обучения',
+                next_level_unlocks: 'Следующий уровень даёт',
+                worst_pairs: 'Худшие пары',
+                mistakes_to_avoid: 'Ошибки которых избегать',
+                start_autopilot: 'Запустить',
+                stop_autopilot: 'Остановить',
+                today_cost: 'Сегодня',
+                input_tokens: 'входных токенов',
+                output_tokens: 'выходных токенов',
+                savings: 'Экономия',
+                cascade_savings: 'экономия каскада',
+                usage_by_agent: 'Использование по агентам',
+                close: 'Закрыть',
+                scanning: 'Сканирует',
+                paused: 'Пауза',
+                idle: 'Ожидание',
+                agent_levels: 'Уровни агентов',
+                level: 'Уровень',
+                leverage: 'Плечо',
+                max_positions: 'Макс. позиций',
+                risk_per_trade: 'Риск на сделку',
+                trades_per_day: 'Сделок/день',
+                next_level: 'След. уровень',
+                current_limits: 'Текущие лимиты',
+                positions_open: 'Открыто',
+            },
+            en: {
+                agent_levels: 'Agent Levels',
+                level: 'Level',
+                leverage: 'Leverage',
+                max_positions: 'Max Positions',
+                risk_per_trade: 'Risk/Trade',
+                trades_per_day: 'Trades/Day',
+                next_level: 'Next Level',
+                current_limits: 'Current Limits',
+                positions_open: 'Open',
+            }
+        };
+
+        function t(key) {
+            const lang = localStorage.getItem('language') || 'ru';
+            return translations[lang]?.[key] || translations.ru[key] || key;
+        }
+
+        function applyLanguage() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                el.textContent = t(el.dataset.i18n);
+            });
+        }
+
+        // API helpers
+        async function fetchData(endpoint) {
+            try {
+                const res = await fetch(API_BASE + endpoint);
+                if (!res.ok) throw new Error(res.statusText);
+                return await res.json();
+            } catch (e) {
+                console.error('API error:', endpoint, e);
+                return null;
+            }
+        }
+
+        async function postData(endpoint, data = {}) {
+            try {
+                const res = await fetch(API_BASE + endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                return await res.json();
+            } catch (e) {
+                console.error('API error:', endpoint, e);
+                return null;
+            }
+        }
+
+        // Tab switching
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById(`tab-${tab}`).classList.add('active');
+
+            if (tab === 'trader' || tab === 'sniper') {
+                loadActivityFeed(tab);
+            }
+        }
+
+        // Collapsible sections
+        function toggleSection(id) {
+            const content = document.getElementById(id);
+            const chevron = document.getElementById(id + 'Chevron') || content.previousElementSibling.querySelector('.fa-chevron-down');
+            content.classList.toggle('collapsed');
+            if (chevron) chevron.style.transform = content.classList.contains('collapsed') ? 'rotate(-90deg)' : '';
+        }
+
+        // Modals
+        function openModal(modalId, agent = null) {
+            if (agent) currentModalAgent = agent;
+            document.getElementById(modalId).classList.add('active');
+
+            // Load modal data
+            if (modalId === 'scanModal') loadScanData();
+            if (modalId === 'historyModal') loadHistoryData(currentModalAgent);
+            if (modalId === 'learningModal') loadLearningData(currentModalAgent);
+            if (modalId === 'apiSettingsModal') loadApiSettings();
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        function closeModalOnOverlay(e) {
+            if (e.target.classList.contains('modal-overlay')) {
+                e.target.classList.remove('active');
+            }
+        }
+
+        // Autopilot control
+        async function toggleAutopilot() {
+            const btn = document.getElementById('autopilotBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner"></div>';
+
+            if (isAutopilotRunning) {
+                await postData('/autopilot/stop');
+            } else {
+                await postData('/autopilot/start');
+            }
+
+            setTimeout(() => {
+                updateAutopilotStatus();
+                btn.disabled = false;
+            }, 1000);
+        }
+
+        // Data loading functions
+        async function loadDashboardData() {
+            // Note: Balance and positions are updated by realtimeUpdate() every 3 sec
+
+            // Agent stats
+            const stats = await fetchData('/agent-stats');
+            if (stats) {
+                updateAgentStats('trader', stats.trader);
+                updateAgentStats('sniper', stats.sniper);
+
+                // Update Balance Modal PnL from trader stats
+                const traderStats = stats.trader || {};
+                const todayPnl = traderStats.pnl_today_usdt || 0;
+                const weekPnl = traderStats.pnl_this_week_usdt || 0;
+                const totalPnl = traderStats.total_pnl_usdt || 0;
+
+                updatePnlElement('modalTodayPnl', todayPnl);
+                updatePnlElement('modalWeekPnl', weekPnl);
+                updatePnlElement('modalTotalPnl', totalPnl);
+            }
+
+            // Autopilot status
+            await updateAutopilotStatus();
+
+            // API usage
+            const apiUsage = await fetchData('/api-usage');
+            if (apiUsage) {
+                const today = apiUsage.today || {};
+                const budget = apiUsage.budget || {};
+                const todayAgents = today.agents || {};
+
+                // Daily cost and limits
+                document.getElementById('apiCostToday').textContent = (today.cost_usd || 0).toFixed(2);
+                document.getElementById('apiDailyLimit').textContent = (budget.daily_limit || 0).toFixed(0);
+                document.getElementById('apiDailyPct').textContent = (budget.daily_pct || 0).toFixed(1) + '%';
+                document.getElementById('apiDailyBar').style.width = Math.min(budget.daily_pct || 0, 100) + '%';
+                document.getElementById('apiCallsToday').textContent = today.total_calls || 0;
+
+                // Model breakdown
+                const todayCalls = today.calls || {};
+                document.getElementById('apiSonnetToday').textContent = todayCalls.sonnet || 0;
+                document.getElementById('apiHaikuToday').textContent = todayCalls.haiku || 0;
+
+                // Total cost and limits
+                document.getElementById('apiCostTotal').textContent = (budget.accumulated_cost || 0).toFixed(2);
+                document.getElementById('apiTotalLimit').textContent = (budget.total_limit || 0).toFixed(0);
+                document.getElementById('apiTotalPct').textContent = (budget.total_pct || 0).toFixed(1) + '%';
+                document.getElementById('apiTotalBar').style.width = Math.min(budget.total_pct || 0, 100) + '%';
+                document.getElementById('apiRemaining').textContent = (budget.remaining_balance || 0).toFixed(2);
+
+                // Calculate total tokens from agents
+                let tokensIn = 0, tokensOut = 0;
+                for (const agent in todayAgents) {
+                    tokensIn += todayAgents[agent].input_tokens || 0;
+                    tokensOut += todayAgents[agent].output_tokens || 0;
+                }
+                document.getElementById('apiTokensIn').textContent = formatNumber(tokensIn);
+                document.getElementById('apiTokensOut').textContent = formatNumber(tokensOut);
+
+                // Last reset date
+                if (budget.last_reset_date) {
+                    const resetDate = new Date(budget.last_reset_date);
+                    document.getElementById('apiLastReset').textContent = resetDate.toLocaleDateString('ru-RU', {
+                        day: '2-digit', month: '2-digit', year: 'numeric'
+                    });
+                }
+
+                // Populate agent usage table
+                const agentList = document.getElementById('apiUsageList');
+                const topConsumers = apiUsage.today_top_consumers || [];
+                if (topConsumers.length > 0) {
+                    agentList.innerHTML = topConsumers.map(a => `
+                        <tr class="border-t border-white/5">
+                            <td class="py-2 font-semibold">${a.agent}</td>
+                            <td class="py-2 text-center">${a.calls}</td>
+                            <td class="py-2 text-right">$${a.cost.toFixed(4)}</td>
+                            <td class="py-2 text-right text-dim">${a.pct_of_today.toFixed(1)}%</td>
+                        </tr>
+                    `).join('');
+                } else {
+                    agentList.innerHTML = '<tr><td colspan="4" class="text-dim text-center py-4">Нет вызовов сегодня</td></tr>';
+                }
+            }
+
+            // Cascade status for savings
+            const cascade = await fetchData('/cascade/status');
+            if (cascade) {
+                document.getElementById('apiSavings').textContent = (cascade.token_savings_pct || 0) + '%';
+            }
+
+            // Load learning data for lessons count
+            await loadLessonsCount('trader');
+            await loadLessonsCount('sniper');
+        }
+
+        async function loadLessonsCount(agent) {
+            const data = await fetchData(`/learning/${agent}`);
+            if (data) {
+                const totalLessons = (data.learned_rules?.length || 0) + (data.mistakes_to_avoid?.length || 0);
+                document.getElementById(`${agent}Lessons`).textContent = totalLessons;
+            }
+        }
+
+        async function updateAutopilotStatus() {
+            const heartbeat = await fetchData('/autopilot/heartbeat');
+            const cascade = await fetchData('/cascade/status');
+
+            if (heartbeat) {
+                isAutopilotRunning = heartbeat.running;
+                const dot = document.getElementById('autopilotDot');
+                const statusText = document.getElementById('autopilotStatus');
+                const btn = document.getElementById('autopilotBtn');
+
+                if (isAutopilotRunning) {
+                    const isPaused = cascade && cascade.paused_reason;
+                    dot.className = isPaused ? 'status-dot status-paused' : 'status-dot status-active';
+
+                    // Show pause reason if paused
+                    let statusLabel = t('scanning');
+                    if (isPaused) {
+                        const reason = cascade.paused_reason;
+                        if (reason === 'position_limit') statusLabel = 'Лимит позиций';
+                        else if (reason === 'daily_loss') statusLabel = 'Дневной лимит';
+                        else statusLabel = t('paused');
+                    }
+                    statusText.textContent = statusLabel;
+
+                    btn.className = 'autopilot-btn stop';
+                    btn.innerHTML = '<i class="fa-solid fa-stop mr-2"></i>' + t('stop_autopilot');
+
+                    // Update TRADER status
+                    document.getElementById('traderStatusDot').className = isPaused ? 'status-dot status-paused' : 'status-dot status-active';
+                    document.getElementById('traderStatusText').textContent = statusLabel;
+                    document.getElementById('sniperStatusDot').className = 'status-dot status-active';
+                    document.getElementById('sniperStatusText').textContent = t('scanning');
+                    document.getElementById('sniperMode').textContent = 'Breakout/Breakdown';
+
+                    // Show cascade stage
+                    if (cascade) {
+                        const stage = cascade.current_stage || (isPaused ? cascade.paused_reason : '-');
+                        document.getElementById('traderCascadeStage').textContent = stage;
+                    }
+                } else {
+                    dot.className = 'status-dot status-disabled';
+                    statusText.textContent = t('idle');
+                    btn.className = 'autopilot-btn start';
+                    btn.innerHTML = '<i class="fa-solid fa-play mr-2"></i>' + t('start_autopilot');
+
+                    document.getElementById('traderStatusDot').className = 'status-dot status-disabled';
+                    document.getElementById('traderStatusText').textContent = t('idle');
+                    document.getElementById('traderCascadeStage').textContent = '-';
+                    document.getElementById('sniperStatusDot').className = 'status-dot status-disabled';
+                    document.getElementById('sniperStatusText').textContent = t('idle');
+                    document.getElementById('sniperMode').textContent = '-';
+                }
+            }
+        }
+
+        function updateAgentStats(agent, stats) {
+            if (!stats) return;
+
+            const prefix = agent;
+            document.getElementById(`${prefix}Level`).textContent = stats.level || 1;
+            document.getElementById(`${prefix}Xp`).textContent = stats.xp || 0;
+            document.getElementById(`${prefix}XpNext`).textContent = (stats.xp || 0) + (stats.xp_to_next_level || 100);
+
+            const xpPct = stats.xp_to_next_level > 0 ?
+                (stats.xp / ((stats.xp || 0) + (stats.xp_to_next_level || 100))) * 100 : 0;
+            document.getElementById(`${prefix}XpBar`).style.width = xpPct + '%';
+
+            document.getElementById(`${prefix}Winrate`).textContent = (stats.winrate || 0).toFixed(0);
+
+            const pnl = stats.total_pnl_usdt || 0;
+            const pnlEl = document.getElementById(`${prefix}Pnl`);
+            pnlEl.textContent = (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(2);
+            pnlEl.className = pnl >= 0 ? 'pnl-positive' : 'pnl-negative';
+
+            document.getElementById(`${prefix}Trades`).textContent = stats.total_trades || 0;
+        }
+
+        async function loadActivityFeed(agent) {
+            const limit = feedLimits[agent] || 10;
+            const data = await fetchData(`/activity-feed?agent=${agent}&limit=${limit}`);
+            const list = document.getElementById(`${agent}FeedList`);
+
+            if (!data || !data.events || data.events.length === 0) {
+                list.innerHTML = '<div class="text-dim text-sm text-center py-4">No events yet</div>';
+                return;
+            }
+
+            list.innerHTML = data.events.map(e => `
+                <div class="feed-item">
+                    <div class="feed-icon ${e.type}">
+                        <i class="fa-solid ${e.icon}"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="feed-time">${e.timestamp}</div>
+                        <div class="feed-msg">${e.message}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function loadMoreFeed(agent) {
+            feedLimits[agent] = (feedLimits[agent] || 10) + 10;
+            loadActivityFeed(agent);
+        }
+
+        async function loadScanData() {
+            const data = await fetchData('/cascade/status');
+            if (!data) return;
+
+            document.getElementById('modalScanDot').className =
+                'status-dot ' + (data.status === 'active' ? 'status-active' : 'status-disabled');
+            document.getElementById('modalScanStatus').textContent = data.status === 'active' ? t('scanning') : t('idle');
+            document.getElementById('modalScanMode').textContent = 'Cascade';
+            document.getElementById('modalScanStage').textContent = data.current_stage || '-';
+
+            const dist = data.pair_distribution || {};
+            document.getElementById('modalPairsVip').textContent = dist.vip || 0;
+            document.getElementById('modalPairsP1').textContent = dist.p1 || 0;
+            document.getElementById('modalPairsP2').textContent = dist.p2 || 0;
+            document.getElementById('modalPairsP3').textContent = dist.p3 || 0;
+            document.getElementById('modalSavings').textContent = (data.token_savings_pct || 0) + '%';
+
+            // Populate pair name lists
+            const formatPairs = (pairs) => pairs ? pairs.map(p => p.replace('/USDT','')).join(', ') : '';
+            document.getElementById('modalPairsVipNames').textContent = formatPairs(dist.vip_pairs);
+            document.getElementById('modalPairsP1Names').textContent = formatPairs(dist.p1_pairs);
+            document.getElementById('modalPairsP2Names').textContent = formatPairs(dist.p2_pairs);
+            document.getElementById('modalPairsP3Names').textContent = formatPairs(dist.p3_pairs);
+
+            // Load trading parameters
+            const traderSettings = await fetchData('/agent/TRADER/settings');
+            if (traderSettings?.settings) {
+                document.getElementById('settingMinConfidence').value = traderSettings.settings.min_confidence ?? 70;
+            }
+            const fullSettings = await fetchData('/settings/full');
+            if (fullSettings?.capital) {
+                const minTrade = fullSettings.capital.min_trade_size_usdt ?? fullSettings.trading?.min_trade_size_usdt ?? 5;
+                document.getElementById('settingMinTradeSize').value = minTrade;
+            }
+        }
+
+        async function saveTradingParams() {
+            const btn = document.getElementById('saveTradingParamsBtn');
+            const savedMsg = document.getElementById('tradingParamsSaved');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Saving...';
+
+            try {
+                const minConf = parseInt(document.getElementById('settingMinConfidence').value);
+                const minTrade = parseFloat(document.getElementById('settingMinTradeSize').value);
+
+                // Update TRADER min_confidence
+                await fetch(`${API_BASE}/agent/TRADER/settings`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({min_confidence: minConf}),
+                });
+
+                // Update capital min_trade_size
+                await fetch(`${API_BASE}/capital/config`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({min_trade_size_usdt: minTrade}),
+                });
+
+                savedMsg.style.display = 'block';
+                setTimeout(() => { savedMsg.style.display = 'none'; }, 3000);
+            } catch (e) {
+                console.error('Save error:', e);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-save mr-1"></i> Save Parameters';
+            }
+        }
+
+        async function loadHistoryData(agent) {
+            const data = await fetchData(`/trades/history?agent=${agent}`);
+            if (!data) return;
+
+            document.getElementById('modalHistoryTrades').textContent = data.total_trades || 0;
+            document.getElementById('modalHistoryWins').textContent = data.winning_trades || 0;
+            document.getElementById('modalHistoryLosses').textContent = data.losing_trades || 0;
+            document.getElementById('modalHistoryWinrate').textContent = (data.winrate || 0).toFixed(0) + '%';
+
+            const pnl = data.total_pnl_usdt || 0;
+            const pnlEl = document.getElementById('modalHistoryPnl');
+            pnlEl.textContent = (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(2);
+            pnlEl.className = pnl >= 0 ? 'font-bold pnl-positive' : 'font-bold pnl-negative';
+
+            const list = document.getElementById('modalHistoryList');
+            if (!data.trades || data.trades.length === 0) {
+                list.innerHTML = '<div class="text-dim text-sm text-center py-4">No trades yet</div>';
+                return;
+            }
+
+            list.innerHTML = data.trades.slice(0, 20).map(t => {
+                const pnlClass = t.pnl_usdt >= 0 ? 'pnl-positive' : 'pnl-negative';
+                const reason = t.close_reason === 'stop_loss' ? 'SL' :
+                              t.close_reason === 'take_profit' ? 'TP' : 'M';
+                return `
+                    <div class="trade-row">
+                        <div>
+                            <div class="font-semibold">${t.symbol}</div>
+                            <div class="text-xs text-dim">${t.side}</div>
+                        </div>
+                        <div class="${pnlClass} text-right">$${t.pnl_usdt.toFixed(2)}</div>
+                        <div class="text-center">
+                            <span class="badge ${reason === 'SL' ? 'badge-red' : reason === 'TP' ? 'badge-green' : 'badge-gray'}">${reason}</span>
+                        </div>
+                        <div class="text-center">
+                            <span class="badge badge-gray">${t.grade || '-'}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function loadLearningData(agent) {
+            const data = await fetchData(`/learning/${agent}`);
+            if (!data) return;
+
+            document.getElementById('modalLearningLevel').textContent = data.level || 1;
+            document.getElementById('modalLearningXp').textContent = data.xp || 0;
+            document.getElementById('modalLearningXpNext').textContent = (data.xp || 0) + (data.xp_to_next_level || 100);
+
+            const xpPct = data.xp_to_next_level > 0 ?
+                (data.xp / ((data.xp || 0) + (data.xp_to_next_level || 100))) * 100 : 0;
+            document.getElementById('modalLearningXpBar').style.width = xpPct + '%';
+
+            // Next level benefits
+            const benefits = data.next_level_benefits || {};
+            if (Object.keys(benefits).length > 0) {
+                document.getElementById('modalNextBenefits').innerHTML = `
+                    <div class="grid grid-cols-2 gap-2 text-sm">
+                        <div><span class="text-dim">Max Leverage:</span> ${benefits.max_leverage || '-'}x</div>
+                        <div><span class="text-dim">Max Positions:</span> ${benefits.max_positions || '-'}</div>
+                        <div><span class="text-dim">Max Risk:</span> ${benefits.max_risk_pct || '-'}%</div>
+                    </div>
+                `;
+            }
+
+            // Worst pairs
+            const worstPairs = data.worst_pairs || [];
+            document.getElementById('modalWorstPairs').innerHTML = worstPairs.length > 0 ?
+                worstPairs.map(p => `
+                    <div class="flex justify-between py-1">
+                        <span>${p.symbol}</span>
+                        <span class="pnl-negative">$${p.pnl_usdt?.toFixed(2) || '0.00'}</span>
+                    </div>
+                `).join('') : '<span class="text-dim">-</span>';
+
+            // Mistakes
+            const mistakes = data.mistakes_to_avoid || [];
+            document.getElementById('modalMistakes').innerHTML = mistakes.length > 0 ?
+                mistakes.map(m => `
+                    <div class="py-1 text-dim">&bull; ${m.lesson || m}</div>
+                `).join('') : '<span class="text-dim">-</span>';
+
+            // Update lessons count on card
+            const totalLessons = (data.learned_rules?.length || 0) + (data.mistakes_to_avoid?.length || 0);
+            document.getElementById(`${agent}Lessons`).textContent = totalLessons;
+        }
+
+        async function closePosition(symbol) {
+            if (!confirm(`Close position ${symbol}?`)) return;
+
+            const result = await postData(`/positions/${symbol}/close`);
+            if (result && result.success) {
+                loadDashboardData();
+            } else {
+                alert('Failed to close position');
+            }
+        }
+
+        function formatNumber(num) {
+            if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+            return num.toString();
+        }
+
+        function updatePnlElement(id, value) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.textContent = (value >= 0 ? '+' : '') + '$' + value.toFixed(2);
+                el.className = value >= 0 ? 'pnl-positive' : 'pnl-negative';
+            }
+        }
+
+        // Store previous PnL values for change detection
+        let prevPnlValues = {};
+        let prevBalance = 0;
+
+        // Realtime updates: balance and positions every 3 seconds
+        async function realtimeUpdate() {
+            const data = await fetchData('/realtime');
+            if (!data) return;
+
+            // Update balance with change animation
+            const balanceEl = document.getElementById('balanceValue');
+            const newBalance = data.balance || 0;
+            if (prevBalance !== newBalance && prevBalance !== 0) {
+                balanceEl.classList.add('value-changed');
+                setTimeout(() => balanceEl.classList.remove('value-changed'), 500);
+            }
+            balanceEl.textContent = newBalance.toFixed(2);
+            document.getElementById('modalBalance').textContent = newBalance.toFixed(2);
+            prevBalance = newBalance;
+
+            // Update positions with PnL change detection
+            updateRealtimePositions(data);
+        }
+
+        function updateRealtimePositions(data) {
+            const list = document.getElementById('positionsList');
+            const count = document.getElementById('positionsCount');
+            const totalPnlEl = document.getElementById('totalPnl');
+
+            if (!data || !data.positions || data.positions.length === 0) {
+                list.innerHTML = `<div class="text-dim text-sm text-center py-4">${t('no_positions')}</div>`;
+                count.textContent = '0';
+                totalPnlEl.textContent = '$0.00';
+                totalPnlEl.className = 'font-bold';
+                prevPnlValues = {};
+                return;
+            }
+
+            count.textContent = data.positions.length;
+
+            list.innerHTML = data.positions.map(p => {
+                const pnl = p.pnl_usdt || 0;
+                const pnlClass = pnl >= 0 ? 'pnl-positive' : 'pnl-negative';
+                const pnlSign = pnl >= 0 ? '+' : '';
+
+                // Track PnL values
+                prevPnlValues[p.symbol] = pnl;
+
+                const ccxtSymbol = p.symbol.replace("USDT", "/USDT");
+
+                return `
+                    <div class="position-row">
+                        <div class="flex-1 flex items-center gap-3">
+                            <i class="fa-solid fa-chart-line text-dim text-sm"></i>
+                            <span class="font-semibold">${ccxtSymbol}</span>
+                            <span class="badge ${p.side === 'LONG' ? 'badge-green' : 'badge-red'}">${p.side}</span>
+                            <span class="badge badge-gray">${p.leverage}x</span>
+                        </div>
+                        <div class="text-right">
+                            <div class="font-bold ${pnlClass}" data-pnl="${p.symbol}">${pnlSign}$${pnl.toFixed(2)}</div>
+                            <div class="text-xs text-dim">${pnlSign}${(p.pnl_percent || 0).toFixed(2)}%</div>
+                        </div>
+                        <button class="btn btn-danger btn-sm ml-3" onclick="closePosition('${p.symbol}')">
+                            <i class="fa-solid fa-times"></i>
+                        </button>
+                    </div>
+                `;
+            }).join('');
+
+            // Update total PnL
+            const total = data.total_pnl || 0;
+            totalPnlEl.textContent = (total >= 0 ? '+' : '') + '$' + total.toFixed(2);
+            totalPnlEl.className = total >= 0 ? 'font-bold pnl-positive' : 'font-bold pnl-negative';
+        }
+
+        // Medium updates: autopilot status, activity feed every 10 seconds
+        async function fastUpdate() {
+            // Autopilot status
+            await updateAutopilotStatus();
+
+            // Activity feed for current tab
+            if (currentTab === 'trader' || currentTab === 'sniper') {
+                loadActivityFeed(currentTab);
+            }
+        }
+
+        // API Settings functions
+        async function loadApiSettings() {
+            const data = await fetchData('/api-usage/settings');
+            if (!data) return;
+
+            document.getElementById('apiInitialBalance').value = data.initial_balance || 17.07;
+            document.getElementById('apiAccumulatedCost').textContent = (data.accumulated_cost || 0).toFixed(2);
+            document.getElementById('apiUseBudgetLimit').checked = data.use_budget_limit !== false;
+            document.getElementById('apiDailyLimitInput').value = data.daily_limit || 6.0;
+            document.getElementById('apiTotalLimitInput').value = data.total_limit || 17.07;
+        }
+
+        async function saveApiSettings() {
+            const useBudgetLimit = document.getElementById('apiUseBudgetLimit').checked;
+            const dailyLimit = parseFloat(document.getElementById('apiDailyLimitInput').value) || 6.0;
+            const totalLimit = parseFloat(document.getElementById('apiTotalLimitInput').value) || 17.07;
+
+            // Use PUT with query params
+            const params = new URLSearchParams({
+                use_budget_limit: useBudgetLimit,
+                daily_limit: dailyLimit,
+                total_limit: totalLimit
+            });
+
+            try {
+                const res = await fetch(`${API_BASE}/api-usage/settings?${params}`, { method: 'PUT' });
+                const result = await res.json();
+                if (result && result.success) {
+                    closeModal('apiSettingsModal');
+                    loadDashboardData();
+                    alert('Настройки сохранены');
+                } else {
+                    alert('Ошибка сохранения: ' + (result?.error || 'Unknown error'));
+                }
+            } catch (e) {
+                alert('Ошибка: ' + e.message);
+            }
+        }
+
+        async function resetApiBalance() {
+            if (!confirm('Сбросить накопленный расход? Это обнулит историю затрат.')) return;
+
+            const initialBalance = parseFloat(document.getElementById('apiInitialBalance').value) || 17.07;
+            try {
+                const res = await fetch(`${API_BASE}/api-usage/reset?initial_balance=${initialBalance}`, { method: 'POST' });
+                const result = await res.json();
+                if (result && result.success) {
+                    loadApiSettings();
+                    loadDashboardData();
+                    alert('Баланс сброшен');
+                } else {
+                    alert('Ошибка сброса: ' + (result?.error || 'Unknown error'));
+                }
+            } catch (e) {
+                alert('Ошибка: ' + e.message);
+            }
+        }
+
+        async function resetApiSettingsToDefault() {
+            document.getElementById('apiInitialBalance').value = 17.07;
+            document.getElementById('apiUseBudgetLimit').checked = true;
+            document.getElementById('apiDailyLimitInput').value = 6.0;
+            document.getElementById('apiTotalLimitInput').value = 17.07;
+        }
+
+        // OAuth status
+        let _oauthRemainingSec = 0;
+        let _oauthStatus = 'expired';
+        let _oauthRefreshedAt = 0; // timestamp when "refreshed" flash started
+        async function loadOAuthStatus() {
+            try {
+                const r = await fetch('/api/ai-trade/oauth/status');
+                const d = await r.json();
+                const prevRemaining = _oauthRemainingSec;
+                _oauthRemainingSec = d.remaining_seconds || 0;
+                _oauthStatus = d.status || 'expired';
+                // Detect successful refresh: remaining jumped up
+                if (_oauthRemainingSec > prevRemaining + 600 && prevRemaining > 0) {
+                    _oauthRefreshedAt = Date.now();
+                }
+                updateOAuthBadge();
+                updateOAuthModal(d);
+            } catch(e) {}
+        }
+        function updateOAuthModal(d) {
+            const statusEl = document.getElementById('oauthModalStatus');
+            if (statusEl) {
+                const labels = {healthy:'Connected',refreshing:'Refreshed',warning:'Warning',expired:'EXPIRED'};
+                const colors = {healthy:'#00ff88',refreshing:'#00ff88',warning:'#fbbf24',expired:'#ef4444'};
+                statusEl.textContent = labels[d.status] || d.status;
+                statusEl.style.color = colors[d.status] || '#ccc';
+            }
+            const expEl = document.getElementById('oauthModalExpires');
+            if (expEl) expEl.textContent = d.expires_at ? new Date(d.expires_at).toLocaleString() : '--';
+            const remEl = document.getElementById('oauthModalRemaining');
+            if (remEl) { remEl.textContent = d.remaining_human; remEl.style.color = d.connected ? '#00ff88' : '#ef4444'; }
+            const arEl = document.getElementById('oauthModalAutoRefresh');
+            if (arEl) { arEl.innerHTML = d.auto_refresh_enabled ? '<span style="color:#00ff88">Enabled</span>' : '<span style="color:#ef4444">Disabled</span>'; }
+            const lr = d.last_refresh;
+            const lrEl = document.getElementById('oauthModalLastRefresh');
+            if (lrEl && lr && lr.time) {
+                const t = new Date(lr.time).toLocaleString();
+                lrEl.innerHTML = lr.success ? `<span style="color:#00ff88">${t}</span>` : `<span style="color:#ef4444">${t} (failed)</span>`;
+            } else if (lrEl) { lrEl.textContent = 'Never'; }
+            const rcEl = document.getElementById('oauthModalRefreshCount');
+            if (rcEl && lr) {
+                const fails = lr.failures_today || 0;
+                rcEl.innerHTML = `${lr.count_today || 0}` + (fails > 0 ? ` <span style="color:#ef4444">(${fails} failed)</span>` : '');
+            }
+            const infoEl = document.getElementById('oauthModalInfo');
+            if (infoEl) {
+                if (d.status === 'expired') {
+                    infoEl.innerHTML = '<b style="color:#ef4444">Token expired!</b> Manual renewal needed:<br><code style="font-size:0.75rem;color:#fbbf24;">su - aila -c \'claude auth login\'</code><br><code style="font-size:0.75rem;color:#fbbf24;">cp /home/aila/.claude/.credentials.json /opt/aila/.claude/.credentials.json</code><br><code style="font-size:0.75rem;color:#fbbf24;">sudo systemctl restart aila</code>';
+                } else if (d.status === 'warning') {
+                    infoEl.innerHTML = '<b style="color:#fbbf24">Auto-refresh failed.</b> Token still valid but may expire soon. Will retry automatically.';
+                } else {
+                    infoEl.innerHTML = '<span style="color:#00ff88">Token refreshes automatically.</span>';
+                }
+            }
+        }
+        function updateOAuthBadge() {
+            const badge = document.getElementById('oauthBadge');
+            const dot = document.getElementById('oauthDot');
+            const timer = document.getElementById('oauthTimer');
+            if (!badge) return;
+            const s = _oauthRemainingSec;
+            const h = Math.floor(s / 3600);
+            const m = Math.floor((s % 3600) / 60);
+            // Show "refreshed" flash for 10 seconds after detected refresh
+            if (_oauthRefreshedAt && Date.now() - _oauthRefreshedAt < 10000) {
+                badge.className = 'oauth-badge ok';
+                dot.style.background = '#00ff88';
+                timer.textContent = 'refreshed \u2713';
+                return;
+            }
+            _oauthRefreshedAt = 0;
+            if (s <= 0) {
+                badge.className = 'oauth-badge expired';
+                dot.style.background = '#ef4444';
+                timer.textContent = 'OFFLINE';
+            } else if (_oauthStatus === 'warning') {
+                badge.className = 'oauth-badge warn';
+                dot.style.background = '#fbbf24';
+                timer.textContent = h + 'ч ' + String(m).padStart(2,'0') + 'м \u26a0';
+            } else if (s < 7200) {
+                badge.className = 'oauth-badge warn';
+                dot.style.background = '#fbbf24';
+                timer.textContent = h + 'ч ' + String(m).padStart(2,'0') + 'м';
+            } else {
+                badge.className = 'oauth-badge ok';
+                dot.style.background = '#00ff88';
+                timer.textContent = h + 'ч ' + String(m).padStart(2,'0') + 'м';
+            }
+        }
+        setInterval(() => {
+            if (_oauthRemainingSec > 0) _oauthRemainingSec--;
+            updateOAuthBadge();
+        }, 1000);
+
+        // Subscription status
+        async function loadSubscriptionStatus() {
+            try {
+                const r = await fetch('/api/ai-trade/subscription/status');
+                const d = await r.json();
+                const badge = document.getElementById('subBadge');
+                const text = document.getElementById('subDaysText');
+                const fill = document.getElementById('subProgressFill');
+                const oauth = document.getElementById('subOAuthMini');
+                if (!badge) return;
+
+                const days = d.days_remaining || 0;
+                const pct = Math.min(100, Math.round((days / 30) * 100));
+                text.textContent = days + 'д';
+
+                fill.style.width = pct + '%';
+                if (days > 7) {
+                    badge.className = 'sub-badge active';
+                    fill.style.background = '#00ff88';
+                } else if (days > 3) {
+                    badge.className = 'sub-badge warning';
+                    fill.style.background = '#fbbf24';
+                } else {
+                    badge.className = 'sub-badge danger';
+                    fill.style.background = '#ef4444';
+                }
+
+                const oh = d.oauth || {};
+                const oSt = oh.status || 'EXPIRED';
+                const oH = oh.remaining_hours || 0;
+                const oColor = oSt === 'OK' ? '#00ff88' : oSt === 'WARNING' ? '#fbbf24' : '#ef4444';
+                oauth.innerHTML = 'OAuth:<span style="color:' + oColor + '">' + oH + 'h</span>';
+            } catch (e) { /* silent */ }
+        }
+
+        // Agent Levels
+        async function loadAgentLevels() {
+            try {
+                const data = await fetchData('/agent-levels');
+                if (!data) return;
+                for (const agent of ['trader', 'sniper']) {
+                    const d = data[agent];
+                    if (!d) continue;
+                    const pfx = agent.charAt(0).toUpperCase() + agent.slice(1);
+                    document.getElementById('al' + pfx + 'Level').textContent = d.level;
+                    document.getElementById('al' + pfx + 'Xp').textContent = d.xp;
+                    const xpNext = d.xp_next || 100;
+                    document.getElementById('al' + pfx + 'XpNext').textContent = xpNext;
+                    const pct = xpNext > 0 ? Math.min(100, (d.xp / xpNext) * 100) : 0;
+                    const bar = document.getElementById('al' + pfx + 'XpBar');
+                    bar.style.width = pct + '%';
+                    bar.style.background = d.xp >= 0 ? 'var(--accent)' : '#ef4444';
+
+                    const lim = d.limits || {};
+                    const limEl = document.getElementById('al' + pfx + 'Limits');
+                    limEl.innerHTML =
+                        '<span class="badge badge-gray" style="font-size:0.65rem">' + t('leverage') + ' ' + (lim.max_leverage || '?') + 'x</span>' +
+                        '<span class="badge badge-gray" style="font-size:0.65rem">' + t('max_positions') + ' ' + (lim.max_positions || '?') + ' (' + t('positions_open') + ' ' + (d.positions_open || 0) + ')</span>' +
+                        '<span class="badge badge-gray" style="font-size:0.65rem">' + t('risk_per_trade') + ' ' + (lim.max_risk_pct || '?') + '%</span>' +
+                        '<span class="badge badge-gray" style="font-size:0.65rem">' + t('trades_per_day') + ' ' + (lim.max_daily_trades || '?') + '</span>';
+
+                    const s = d.stats || {};
+                    const pnl = s.pnl || 0;
+                    const pnlCls = pnl >= 0 ? 'pnl-positive' : 'pnl-negative';
+                    document.getElementById('al' + pfx + 'Stats').innerHTML =
+                        s.total_trades + ' ' + t('trades') + ' | WR ' + (s.winrate || 0) + '% | <span class="' + pnlCls + '">' + (pnl >= 0 ? '+' : '') + '$' + pnl.toFixed(2) + '</span>';
+
+                    const nl = d.next_level_limits || {};
+                    const nextEl = document.getElementById('al' + pfx + 'Next');
+                    if (Object.keys(nl).length > 0) {
+                        nextEl.innerHTML = t('next_level') + ': ' + (nl.max_leverage || '?') + 'x lev, ' + (nl.max_positions || '?') + ' pos, ' + (nl.max_risk_pct || '?') + '% risk';
+                    } else {
+                        nextEl.textContent = 'MAX LEVEL';
+                    }
+                }
+            } catch (e) { /* silent */ }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            applyLanguage();
+            loadDashboardData();
+            loadActivityFeed('trader');
+            realtimeUpdate(); // Initial realtime load
+
+            // Realtime refresh every 3 seconds (balance, positions, PnL)
+            setInterval(realtimeUpdate, 1000);
+
+            // Medium refresh every 10 seconds (autopilot status, activity feed)
+            setInterval(fastUpdate, 10000);
+
+            // Full refresh every 30 seconds (stats, API usage, learning)
+            setInterval(loadDashboardData, 30000);
+
+            // Agent levels
+            loadAgentLevels();
+            setInterval(loadAgentLevels, 30000);
+
+            // OAuth status
+            loadOAuthStatus();
+            setInterval(loadOAuthStatus, 60000);
+
+            // Subscription status
+            loadSubscriptionStatus();
+            setInterval(loadSubscriptionStatus, 60000);
+        });
+    </script>
+</body>
+</html>

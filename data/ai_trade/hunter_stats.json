@@ -2,29 +2,29 @@
   "data": {
     "agent": "HUNTER",
     "level": 1,
-    "xp": 0,
-    "xp_to_next_level": 100,
-    "total_trades": 0,
-    "winning_trades": 0,
-    "losing_trades": 0,
-    "winrate": 0.0,
-    "total_pnl_usdt": 0.0,
+    "xp": 55,
+    "xp_to_next_level": 45,
+    "total_trades": 5,
+    "winning_trades": 3,
+    "losing_trades": 2,
+    "winrate": 60.0,
+    "total_pnl_usdt": -0.40253892,
     "total_pnl_percent": 0.0,
-    "best_trade_usdt": 0.0,
-    "worst_trade_usdt": 0.0,
+    "best_trade_usdt": 0.05511771,
+    "worst_trade_usdt": -0.45351466,
     "avg_trade_duration_minutes": 0,
     "avg_rr_ratio": 0.0,
-    "consecutive_wins": 0,
+    "consecutive_wins": 1,
     "consecutive_losses": 0,
-    "max_consecutive_wins": 0,
-    "max_consecutive_losses": 0,
-    "trades_today": 0,
-    "pnl_today_usdt": 0.0,
-    "trades_this_week": 0,
-    "pnl_this_week_usdt": 0.0,
-    "last_trade_time": null,
-    "last_win_time": null,
-    "last_loss_time": null,
+    "max_consecutive_wins": 2,
+    "max_consecutive_losses": 2,
+    "trades_today": 3,
+    "pnl_today_usdt": -0.46084583,
+    "trades_this_week": 3,
+    "pnl_this_week_usdt": -0.46084583,
+    "last_trade_time": "2026-02-16T15:00:40.984995",
+    "last_win_time": "2026-02-16T15:00:40.984978",
+    "last_loss_time": "2026-02-16T12:51:35.558255",
     "paused_until": null,
     "pause_reason": null,
     "api_usage": {
@@ -37,8 +37,26 @@
       "tokens_out_total": 0,
       "cost_total_usdt": 0.0
     },
-    "daily_history": {},
-    "weekly_history": {},
+    "daily_history": {
+      "2026-02-14": {
+        "trades": 0,
+        "pnl_usdt": 0.0,
+        "api_calls": 0,
+        "api_cost": 0.0
+      },
+      "2026-02-15": {
+        "trades": 0,
+        "pnl_usdt": 0.0,
+        "api_calls": 0,
+        "api_cost": 0.0
+      }
+    },
+    "weekly_history": {
+      "2026-W07": {
+        "trades": 0,
+        "pnl_usdt": 0.0
+      }
+    },
     "trigger_stats": {
       "liquidation_cascade": {
         "trades": 0,
@@ -61,8 +79,1745 @@
         "pnl": 0.0
       }
     },
-    "paused_at": null
+    "paused_at": null,
+    "trades_history": [
+      {
+        "symbol": "IPUSDT",
+        "side": "SHORT",
+        "pnl_usdt": 0.02043427,
+        "pnl_pct": 4.5,
+        "entry_price": 1.2321,
+        "exit_price": 1.1766,
+        "close_reason": "take_profit",
+        "leverage": "1",
+        "grade": "B",
+        "closed_at": "2026-02-16T15:00:40.984847",
+        "decision_log": [
+          {
+            "timestamp": "2026-02-16T13:28:43.633961",
+            "elapsed_min": 7,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 3.2%, SL moved to 1.2106",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 1.1927,
+              "pnl_pct": 3.197792386981566,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-16T13:28:53.903581",
+            "elapsed_min": 7,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 3.6%, SL moved to 1.2056",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 1.1878,
+              "pnl_pct": 3.5954873792711637,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-16T13:29:35.250404",
+            "elapsed_min": 8,
+            "action": "MOVE_SL",
+            "reason": "PnL > +3% triggers Rule 4: moving SL to breakeven+0.5% (entry 1.2321 - 0.5% = 1.2259) to lock in profit while allowing position to run toward TP (urgency=medium)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.1971,
+              "pnl_pct": 3.043584124665195,
+              "rsi": 62.06,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.8776
+            }
+          },
+          {
+            "timestamp": "2026-02-16T13:32:10.265903",
+            "elapsed_min": 10,
+            "action": "MOVE_SL",
+            "reason": "PnL > +3% triggers Rule 4: moving SL to breakeven+0.5% (entry 1.2321 - 0.5% = 1.2259) to lock in profit while allowing position to run toward TP (urgency=medium)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.1953,
+              "pnl_pct": 3.0517003489976524,
+              "rsi": 60.55,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.7507
+            }
+          },
+          {
+            "timestamp": "2026-02-16T13:34:48.128077",
+            "elapsed_min": 13,
+            "action": "MOVE_SL",
+            "reason": "PnL >3% triggers Rule 4: moving SL to breakeven+0.5% (entry 1.2321 minus 0.5% = 1.2259) to lock in profit while trend remains neutral with supporting momentum for SHORT (urgency=medium)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.1963,
+              "pnl_pct": 2.92995698401104,
+              "rsi": 60.71,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.5921
+            }
+          },
+          {
+            "timestamp": "2026-02-16T13:37:24.325382",
+            "elapsed_min": 16,
+            "action": "MOVE_SL",
+            "reason": "PnL > +3% (currently +2.81%), moving SL to breakeven+0.5% to lock in profit while allowing room for further downside (urgency=medium)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.1979,
+              "pnl_pct": 2.8082136190244267,
+              "rsi": 60.97,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.4752
+            }
+          },
+          {
+            "timestamp": "2026-02-16T13:39:58.722657",
+            "elapsed_min": 18,
+            "action": "MOVE_SL",
+            "reason": "PnL > +3%, moving SL to breakeven+0.5% (entry 1.2321 minus 0.5% = 1.2259) to lock in profit while allowing position to run toward TP (urgency=medium)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.1908,
+              "pnl_pct": 3.4493953412872322,
+              "rsi": 59.42,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.4144
+            }
+          },
+          {
+            "timestamp": "2026-02-16T13:42:32.568802",
+            "elapsed_min": 21,
+            "action": "MOVE_SL",
+            "reason": "PnL at +2.66% with peak +3.60%, applying rule 4: moving SL to breakeven+0.5% (entry 1.2321 - 0.5% = 1.2259) to lock in profit given high liquidation pressure and extreme fear favoring short continuati",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.1993,
+              "pnl_pct": 2.6621215810404952,
+              "rsi": 61.2,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.3243
+            }
+          },
+          {
+            "timestamp": "2026-02-16T13:45:06.827675",
+            "elapsed_min": 23,
+            "action": "MOVE_SL",
+            "reason": "PnL > +3% triggers rule #4: moving SL to breakeven+0.5% (entry 1.2321 - 0.5% = 1.2259) to lock in profit while allowing room for further downside (urgency=medium)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.1947,
+              "pnl_pct": 2.9867705543381176,
+              "rsi": 60.39,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.2837
+            }
+          },
+          {
+            "timestamp": "2026-02-16T13:47:42.220871",
+            "elapsed_min": 26,
+            "action": "MOVE_SL",
+            "reason": "PnL at +2.80% exceeds +3% threshold (rule 4), moving SL to breakeven+0.5% to lock in profit while position remains favorable with bearish MACD, extreme fear sentiment supporting shorts, and negative f",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.198,
+              "pnl_pct": 2.8000973946919876,
+              "rsi": 62.59,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.2267
+            }
+          },
+          {
+            "timestamp": "2026-02-16T13:50:16.792885",
+            "elapsed_min": 28,
+            "action": "MOVE_SL",
+            "reason": "PnL > +3% triggers Rule 4: moving SL to breakeven+0.5% (entry 1.2321 - 0.5% = 1.2259) to lock in profit while trend remains neutral and momentum supports SHORT (urgency=medium)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.1903,
+              "pnl_pct": 3.376349322295275,
+              "rsi": 60.93,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.1788
+            }
+          },
+          {
+            "timestamp": "2026-02-16T13:51:48.908779",
+            "elapsed_min": 30,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 3.8%, SL moved to 1.2032",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 1.1854,
+              "pnl_pct": 3.7902767632497336,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-16T13:51:59.559982",
+            "elapsed_min": 30,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 3.9%, SL moved to 1.2024",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 1.1846,
+              "pnl_pct": 3.8552065579092507,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-16T13:52:19.908308",
+            "elapsed_min": 30,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 3.9%, SL moved to 1.202",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 1.1842,
+              "pnl_pct": 3.887671455239027,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-16T13:52:53.394983",
+            "elapsed_min": 31,
+            "action": "MOVE_SL",
+            "reason": "PnL > +3% triggers Rule 4: moving SL to breakeven+0.5% (entry 1.2321 - 0.5% = 1.2259) to lock in profit while letting winner run toward TP (urgency=medium)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.1852,
+              "pnl_pct": 3.8065092119146127,
+              "rsi": 59.64,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.1615
+            }
+          },
+          {
+            "timestamp": "2026-02-16T13:55:31.282178",
+            "elapsed_min": 34,
+            "action": "MOVE_SL",
+            "reason": "PnL > +3%, moving SL to breakeven+0.5% (entry 1.2321 minus 0.5% = 1.2259) to lock in profit per rule #4 (urgency=medium)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.1895,
+              "pnl_pct": 3.4575115656196713,
+              "rsi": 60.73,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.1392
+            }
+          },
+          {
+            "timestamp": "2026-02-16T13:58:08.459172",
+            "elapsed_min": 36,
+            "action": "MOVE_SL",
+            "reason": "PnL >3%, moving SL to breakeven+0.5% (1.2321 - 0.5% = 1.2259) per rule #4; high liquidation pressure and negative funding favor SHORT continuation (urgency=medium)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.1935,
+              "pnl_pct": 3.0517003489976524,
+              "rsi": 61.77,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.1263
+            }
+          },
+          {
+            "timestamp": "2026-02-16T14:00:44.525478",
+            "elapsed_min": 39,
+            "action": "MOVE_SL",
+            "reason": "PnL > +3% triggers Rule 4: moving SL to breakeven+0.5% (entry 1.2321 - 0.5% = 1.2259) to lock in profit while trend remains neutral and momentum supports the short position. (urgency=medium)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.1898,
+              "pnl_pct": 3.343884424965498,
+              "rsi": 60.96,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-16T14:03:20.768225",
+            "elapsed_min": 41,
+            "action": "MOVE_SL",
+            "reason": "PnL >3% triggers breakeven+0.5% rule: entry 1.2321 minus 0.5% = 1.2259 as new SL to lock in profit (urgency=medium)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.19,
+              "pnl_pct": 3.4169304439574737,
+              "rsi": 60.99,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0314
+            }
+          },
+          {
+            "timestamp": "2026-02-16T14:05:59.889594",
+            "elapsed_min": 44,
+            "action": "MOVE_SL",
+            "reason": "PnL > +3% triggers breakeven+0.5% rule: entry 1.2321 minus 0.5% = 1.2259 SL to lock in profit (urgency=medium)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.1964,
+              "pnl_pct": 2.9137245353461605,
+              "rsi": 62.01,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0107
+            }
+          },
+          {
+            "timestamp": "2026-02-16T14:08:36.125048",
+            "elapsed_min": 47,
+            "action": "MOVE_SL",
+            "reason": "PnL > +3% triggers Rule 4: moving SL to breakeven+0.5% (entry 1.2321 - 0.5% = 1.2259) to lock in profit while allowing room for continuation toward TP (urgency=medium)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.1915,
+              "pnl_pct": 3.262722181641102,
+              "rsi": 61.24,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0285
+            }
+          },
+          {
+            "timestamp": "2026-02-16T14:11:10.037376",
+            "elapsed_min": 49,
+            "action": "MOVE_SL",
+            "reason": "PnL > +3%, moving SL to breakeven+0.5% to lock in profit while allowing position to run toward TP (urgency=medium)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.188,
+              "pnl_pct": 3.5954873792711637,
+              "rsi": 60.6,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0204
+            }
+          },
+          {
+            "timestamp": "2026-02-16T14:13:42.803344",
+            "elapsed_min": 52,
+            "action": "MOVE_SL",
+            "reason": "PnL > +3%, moving SL to breakeven+0.5% (1.2321 - 0.5% = 1.2259) to lock in profit while allowing position to run toward TP (urgency=medium)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.1916,
+              "pnl_pct": 3.270838405973541,
+              "rsi": 61.25,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0242
+            }
+          },
+          {
+            "timestamp": "2026-02-16T14:16:17.617663",
+            "elapsed_min": 54,
+            "action": "MOVE_SL",
+            "reason": "PnL > +3% triggers Rule 4: moving SL to breakeven+0.5% (entry 1.2321 - 0.5% = 1.2259) to lock in profit while allowing position to run toward TP (urgency=medium)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.1886,
+              "pnl_pct": 3.530557584611629,
+              "rsi": 61.09,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0312
+            }
+          },
+          {
+            "timestamp": "2026-02-16T14:18:51.162773",
+            "elapsed_min": 57,
+            "action": "MOVE_SL",
+            "reason": "PnL > +3%, moving SL to breakeven+0.5% (entry 1.2321 - 0.5% = 1.2259) to lock in profit per rule #4 (urgency=medium)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.1883,
+              "pnl_pct": 3.563022481941405,
+              "rsi": 61.01,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0443
+            }
+          },
+          {
+            "timestamp": "2026-02-16T14:21:27.009476",
+            "elapsed_min": 60,
+            "action": "MOVE_SL",
+            "reason": "PnL > +3% triggers Rule 4: moving SL to breakeven+0.5% (entry 1.2321 - 0.5% = 1.2259) to lock in profit while letting winner run toward TP (urgency=medium)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.1908,
+              "pnl_pct": 3.352000649297938,
+              "rsi": 61.48,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.0457
+            }
+          },
+          {
+            "timestamp": "2026-02-16T14:24:00.133159",
+            "elapsed_min": 62,
+            "action": "MOVE_SL",
+            "reason": "PnL > +3%, moving SL to breakeven+0.5% (entry 1.2321 minus 0.5% = 1.2259) to lock in profit per rule 4 (urgency=medium)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.1901,
+              "pnl_pct": 3.3195357519681794,
+              "rsi": 61.37,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.0381
+            }
+          },
+          {
+            "timestamp": "2026-02-16T14:26:35.736010",
+            "elapsed_min": 65,
+            "action": "MOVE_SL",
+            "reason": "PnL > +3% triggers Rule 4: moving SL to breakeven+0.5% (entry 1.2321 - 0.5% = 1.2259) to lock in profit while trend remains neutral with supporting momentum (urgency=medium)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.1859,
+              "pnl_pct": 3.749695641587535,
+              "rsi": 60.39,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.0464
+            }
+          },
+          {
+            "timestamp": "2026-02-16T14:27:07.457255",
+            "elapsed_min": 65,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 4.1%, SL moved to 1.1988",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 1.1811,
+              "pnl_pct": 4.139274409544674,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-16T14:27:17.768427",
+            "elapsed_min": 65,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 4.6%, SL moved to 1.1935",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 1.1759,
+              "pnl_pct": 4.561318074831591,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-16T14:27:28.113285",
+            "elapsed_min": 66,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 4.6%, SL moved to 1.1929",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 1.1753,
+              "pnl_pct": 4.610015420826229,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-16T14:27:38.283183",
+            "elapsed_min": 66,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 4.8%, SL moved to 1.1909",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 1.1733,
+              "pnl_pct": 4.77233990747504,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-16T14:27:48.561733",
+            "elapsed_min": 66,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 4.8%, SL moved to 1.19",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 1.1724,
+              "pnl_pct": 4.845385926466997,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-16T14:29:01.201022",
+            "elapsed_min": 67,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 4.9%, SL moved to 1.189",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 1.1714,
+              "pnl_pct": 4.9265481697914115,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-16T14:29:13.356532",
+            "elapsed_min": 67,
+            "action": "MOVE_SL",
+            "reason": "PnL at +4.93% exceeds +3% threshold — moving SL to breakeven+0.5% (entry 1.2321 minus 0.5% = 1.2259) to lock in profit while allowing position to run toward TP (urgency=medium)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.1709,
+              "pnl_pct": 4.9265481697914115,
+              "rsi": 56.82,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.0384
+            }
+          },
+          {
+            "timestamp": "2026-02-16T14:31:47.963150",
+            "elapsed_min": 70,
+            "action": "MOVE_SL",
+            "reason": "PnL > +3% (currently +4.69%), moving SL to breakeven+0.5% to lock in profit while allowing position to run toward TP (urgency=medium)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.1743,
+              "pnl_pct": 4.6911776641506435,
+              "rsi": 58.9,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0275
+            }
+          },
+          {
+            "timestamp": "2026-02-16T14:34:26.186119",
+            "elapsed_min": 73,
+            "action": "MOVE_SL",
+            "reason": "PnL +4.42% exceeds +3% threshold, moving SL to breakeven+0.5% (entry 1.2321 - 0.5% = 1.2259) to lock in profit while trend remains neutral with bearish MACD and sell pressure supporting SHORT (urgency",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.1765,
+              "pnl_pct": 4.423342261180099,
+              "rsi": 59.27,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0162
+            }
+          },
+          {
+            "timestamp": "2026-02-16T14:36:18.751478",
+            "elapsed_min": 74,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 5.0%, SL moved to 1.1882",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 1.1706,
+              "pnl_pct": 4.991477964450929,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-16T14:37:00.984300",
+            "elapsed_min": 75,
+            "action": "MOVE_SL",
+            "reason": "PnL at +4.99% triggers Rule 4: move SL to breakeven+0.5% (entry 1.2321 - 0.5% = 1.2259) to lock in profit while allowing further downside. (urgency=medium)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.1699,
+              "pnl_pct": 4.991477964450929,
+              "rsi": 57.92,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0145
+            }
+          },
+          {
+            "timestamp": "2026-02-16T14:39:35.633938",
+            "elapsed_min": 78,
+            "action": "MOVE_SL",
+            "reason": "PnL at +4.80% exceeds +3% threshold; moving SL to breakeven+0.5% (entry 1.2321 minus 0.5% = 1.2259) to lock in profit while allowing position to run toward TP (urgency=medium)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.173,
+              "pnl_pct": 4.796688580472359,
+              "rsi": 58.65,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0298
+            }
+          },
+          {
+            "timestamp": "2026-02-16T14:42:09.080809",
+            "elapsed_min": 80,
+            "action": "MOVE_SL",
+            "reason": "PnL at +4.91% exceeds +3% threshold, moving SL to breakeven+0.5% (entry 1.2321 - 0.5% = 1.2259) to lock in profits while trend remains neutral with supporting momentum. (urgency=medium)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.1715,
+              "pnl_pct": 4.910315721126532,
+              "rsi": 58.29,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0351
+            }
+          },
+          {
+            "timestamp": "2026-02-16T14:42:50.880207",
+            "elapsed_min": 81,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 5.0%, SL moved to 1.1879",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 1.1703,
+              "pnl_pct": 5.015826637448265,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-16T14:43:01.119778",
+            "elapsed_min": 81,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 5.1%, SL moved to 1.1872",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 1.1697,
+              "pnl_pct": 5.064523983442903,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-16T14:44:44.221617",
+            "elapsed_min": 83,
+            "action": "PARTIAL_CLOSE",
+            "reason": "PnL at +4.76% near peak +5.06% with RSI rising (58.74) and StochRSI oversold (5.72) suggesting potential bounce; locking profits while momentum still supporting but showing early reversal signs (urgen",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.1734,
+              "pnl_pct": 4.764223683142601,
+              "rsi": 58.74,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.031
+            }
+          },
+          {
+            "timestamp": "2026-02-16T14:47:18.561249",
+            "elapsed_min": 85,
+            "action": "PARTIAL_CLOSE",
+            "reason": "PnL at +4.8% with peak at +5.06%, RSI rising to 58 and StochRSI at 0.58 indicate fading bearish momentum for this SHORT position (urgency=medium)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.1729,
+              "pnl_pct": 4.804804804804799,
+              "rsi": 58.25,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0268
+            }
+          },
+          {
+            "timestamp": "2026-02-16T14:49:53.367215",
+            "elapsed_min": 88,
+            "action": "MOVE_SL",
+            "reason": "PnL > +3% (currently +4.25%), moving SL to breakeven+0.5% to lock in profit while allowing position to run toward TP (urgency=medium)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.1787,
+              "pnl_pct": 4.252901550198848,
+              "rsi": 59.3,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0208
+            }
+          },
+          {
+            "timestamp": "2026-02-16T14:52:31.754355",
+            "elapsed_min": 91,
+            "action": "PARTIAL_CLOSE",
+            "reason": "PnL at +4.55% with peak +5.06%, momentum fading (RSI 58.8 rising, StochRSI oversold at 1.22 suggesting potential bounce), and Extreme Fear (12) favors longs against our short — lock in profits on half",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.1757,
+              "pnl_pct": 4.545085626166712,
+              "rsi": 58.8,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0283
+            }
+          },
+          {
+            "timestamp": "2026-02-16T14:55:08.999143",
+            "elapsed_min": 93,
+            "action": "PARTIAL_CLOSE",
+            "reason": "PnL > +5% (currently +4.85% ≈ 5%) with fading momentum: RSI rising to 58, StochRSI at 0.58, and price bouncing from lows with 3 bid walls vs 1 ask wall suggesting buying pressure building against SHOR",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.1724,
+              "pnl_pct": 4.845385926466997,
+              "rsi": 58.13,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0395
+            }
+          },
+          {
+            "timestamp": "2026-02-16T14:57:43.182214",
+            "elapsed_min": 96,
+            "action": "PARTIAL_CLOSE",
+            "reason": "PnL > +5% with neutral trend and RSI recovering (57.94), momentum may be fading as price bounced from lows (urgency=medium)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.1716,
+              "pnl_pct": 4.9021994967940925,
+              "rsi": 57.94,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0352
+            }
+          },
+          {
+            "timestamp": "2026-02-16T15:00:19.712848",
+            "elapsed_min": 98,
+            "action": "CLOSE",
+            "reason": "Trend reversed to BULLISH against SHORT position with buy pressure in orderbook (imbalance 0.185), RSI at 58 indicating strength, and price above both EMAs - locking in +4.66% profit before reversal c",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.1744,
+              "pnl_pct": 4.658712766820867,
+              "rsi": 58.36,
+              "trend": "BULLISH",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          }
+        ]
+      },
+      {
+        "symbol": "IPUSDT",
+        "side": "SHORT",
+        "pnl_usdt": -0.02776544,
+        "pnl_pct": 0.11,
+        "entry_price": 1.2254,
+        "exit_price": 1.22472623,
+        "close_reason": "stop_loss",
+        "leverage": "2",
+        "grade": "C",
+        "closed_at": "2026-02-16T12:51:35.558224",
+        "decision_log": [
+          {
+            "timestamp": "2026-02-16T12:48:38.419951",
+            "elapsed_min": 0,
+            "action": "HOLD",
+            "reason": "SHORT position has strong technical support: RSI 81.93 and StochRSI 93.25 indicate overbought conditions, MACD bearish, negative funding rate -0.64% favors shorts, Fear&Greed 12 (Extreme Fear) support",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.2276,
+              "pnl_pct": -0.21217561612532346,
+              "rsi": 81.93,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.6418
+            }
+          },
+          {
+            "timestamp": "2026-02-16T12:50:39.374579",
+            "elapsed_min": 2,
+            "action": "BREAKEVEN_SET",
+            "reason": "PnL 1.7% hit trigger, SL moved to 1.2242",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 1.2151,
+              "pnl_pct": 1.6810837277623594,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-16T12:51:15.293230",
+            "elapsed_min": 3,
+            "action": "HOLD",
+            "reason": "Position is profitable (+1.31%) with indicators supporting SHORT (RSI overbought at 76, BB%B>1, bearish MACD), extreme fear sentiment favors shorts, negative funding rate benefits shorts, and drawdown",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 1.2174,
+              "pnl_pct": 1.3056960992329047,
+              "rsi": 76.04,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.6969
+            }
+          }
+        ]
+      },
+      {
+        "symbol": "HUSDT",
+        "side": "LONG",
+        "pnl_usdt": -0.45351466,
+        "pnl_pct": -4.48,
+        "entry_price": 0.20554,
+        "exit_price": 0.20094,
+        "close_reason": "stop_loss",
+        "leverage": "2",
+        "grade": "D",
+        "closed_at": "2026-02-16T12:31:37.984874",
+        "decision_log": [
+          {
+            "timestamp": "2026-02-16T11:52:50.347284",
+            "elapsed_min": 0,
+            "action": "HOLD",
+            "reason": "Position just opened with minimal profit (+0.22%), no drawdown from peak, extreme fear sentiment (F&G=12) favors LONG positions, and despite weak technicals (oversold RSI=13, low Stoch), orderbook is ",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.20568,
+              "pnl_pct": 0.2179624404008971,
+              "rsi": 13.32,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-16T11:55:25.364402",
+            "elapsed_min": 2,
+            "action": "HOLD",
+            "reason": "Position just opened (2m), minimal PnL (+0.01%), extreme fear sentiment (12) favors LONG continuation, balanced orderbook, no reversal signals yet despite oversold RSI/StochRSI which could indicate bo",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.20554,
+              "pnl_pct": 0.010703512698268951,
+              "rsi": 13.22,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-16T11:57:58.088214",
+            "elapsed_min": 5,
+            "action": "HOLD",
+            "reason": "RSI 11.32 and StochRSI 1.7 indicate extreme oversold conditions with high volume (3.13x), suggesting a bounce is likely; price is still above SL (0.20023) with support at 0.20104, and Fear&Greed at 12",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.20232,
+              "pnl_pct": -3.0816386104894455,
+              "rsi": 11.32,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-16T12:00:32.201706",
+            "elapsed_min": 8,
+            "action": "HOLD",
+            "reason": "Despite -2.5% PnL and bearish indicators (RSI 11.94 oversold, StochRSI 0), price is near support (0.20104) with SL at 0.20023 providing protection; Fear&Greed at 12 (Extreme Fear) favors LONG position",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.20292,
+              "pnl_pct": -2.5046219713924227,
+              "rsi": 11.94,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-16T12:03:05.664760",
+            "elapsed_min": 10,
+            "action": "HOLD",
+            "reason": "Despite negative PnL (-2.29%) and bearish indicators, position is still above SL (0.20023), Fear&Greed at 12 favors LONG positions per rule #9, and current price (0.203189) remains above support (0.20",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.20317,
+              "pnl_pct": -2.2876325776004593,
+              "rsi": 12.08,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-16T12:05:39.143318",
+            "elapsed_min": 13,
+            "action": "HOLD",
+            "reason": "Position is down -2.78% but still above SL (0.20023), RSI at extreme oversold (11.76) suggests potential bounce, Fear&Greed at 12 favors LONG entries, and current price (0.2027) is near support (0.201",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.2026,
+              "pnl_pct": -2.7751289286756773,
+              "rsi": 11.76,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-16T12:08:12.630846",
+            "elapsed_min": 15,
+            "action": "HOLD",
+            "reason": "Despite -3.73% PnL and sell pressure, RSI=11.29 and StochRSI=0 indicate extreme oversold conditions near support (0.20104), and Fear&Greed=12 favors LONG positions; price is still above SL at 0.20023,",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.20169,
+              "pnl_pct": -3.734552885083203,
+              "rsi": 11.29,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-16T12:10:44.653399",
+            "elapsed_min": 18,
+            "action": "HOLD",
+            "reason": "Despite -2.70% PnL and bearish MACD, RSI at 11.87 and StochRSI at 0.0 indicate extreme oversold conditions with likely bounce ahead; Fear&Greed at 12 favors LONG positions per rule 9, SL at 0.20023 re",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.2028,
+              "pnl_pct": -2.699231293178942,
+              "rsi": 11.87,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-16T12:13:17.427579",
+            "elapsed_min": 20,
+            "action": "HOLD",
+            "reason": "RSI at extreme oversold (12.7) with Fear&Greed at 12 favors LONG bounce potential; price near support (0.20104), SL (0.20023) properly placed below support; drawdown 2.25% is manageable and no trend r",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.20343,
+              "pnl_pct": -2.0297752262333413,
+              "rsi": 12.7,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-16T12:15:49.964082",
+            "elapsed_min": 23,
+            "action": "HOLD",
+            "reason": "Despite -2.32% drawdown, RSI at 6.36 indicates extreme oversold conditions, orderbook shows BUY_PRESSURE (0.174), Fear&Greed at 12 favors LONG recovery, SL at 0.20023 provides adequate protection near",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.20316,
+              "pnl_pct": -2.315850929259505,
+              "rsi": 6.36,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-16T12:18:22.163606",
+            "elapsed_min": 25,
+            "action": "HOLD",
+            "reason": "Despite bearish indicators (RSI=11, MACD bearish), extreme oversold conditions with Fear&Greed=12 favor LONG positions, price is above support (0.20104), SL at 0.20023 is properly set, and bid walls (",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.20441,
+              "pnl_pct": -1.0158606597255906,
+              "rsi": 11.22,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-16T12:20:56.397952",
+            "elapsed_min": 28,
+            "action": "HOLD",
+            "reason": "RSI at extreme oversold (6.04) with Fear&Greed at 12 favors LONG reversal; price near support (0.20104) with SL (0.20023) properly placed below it; no trend reversal signal yet despite drawdown. (urge",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.20209,
+              "pnl_pct": -3.280140118711699,
+              "rsi": 6.04,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-16T12:23:30.341910",
+            "elapsed_min": 31,
+            "action": "HOLD",
+            "reason": "RSI=6.19 and Bollinger %B=0.098 indicate extremely oversold conditions with high bounce probability; price is still above SL (0.20023) and support (0.20104); Fear&Greed=12 favors LONG positions per ru",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.20261,
+              "pnl_pct": -2.815996886250859,
+              "rsi": 6.19,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-16T12:26:04.441265",
+            "elapsed_min": 33,
+            "action": "HOLD",
+            "reason": "Despite -2.33% PnL and bearish MACD, RSI at 6.37 indicates extremely oversold conditions, Fear&Greed at 12 (Extreme Fear) favors LONG positions per rule 9, price is holding above support (0.20104), an",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.20319,
+              "pnl_pct": -2.331419675002442,
+              "rsi": 6.37,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-16T12:28:39.743927",
+            "elapsed_min": 36,
+            "action": "HOLD",
+            "reason": "RSI at 6.27 indicates extremely oversold conditions with price near support (0.20104), Fear&Greed at 12 favors LONG positions, and SL at 0.20023 is appropriately placed below support - waiting for ove",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.20285,
+              "pnl_pct": -2.6856086406538995,
+              "rsi": 6.27,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-16T12:31:17.728867",
+            "elapsed_min": 38,
+            "action": "CLOSE",
+            "reason": "Trend reversed BEARISH against LONG position with strong sell pressure (imbalance -0.279), RSI extremely oversold at 5.48, price broke below EMA50/200, and orderbook shows 3 ask walls vs 1 bid wall - ",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.20082,
+              "pnl_pct": -4.4380655833414515,
+              "rsi": 5.48,
+              "trend": "BEARISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          }
+        ]
+      },
+      {
+        "symbol": "BEATUSDT",
+        "side": "LONG",
+        "pnl_usdt": 0.05511771,
+        "pnl_pct": 4.73,
+        "entry_price": 0.25165,
+        "exit_price": 0.26355,
+        "close_reason": "take_profit",
+        "leverage": "1",
+        "grade": "B",
+        "closed_at": "2026-02-15T05:20:28.688874",
+        "decision_log": [
+          {
+            "timestamp": "2026-02-15T04:44:32.466267",
+            "elapsed_min": 0,
+            "action": "HOLD",
+            "reason": "Position just opened with small +0.24% PnL, extreme fear (F&G=8) favors LONG, trend neutral with no reversal signal, SL and TP properly set, no urgency to act despite oversold RSI indicators. (urgency",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.25265,
+              "pnl_pct": 0.2384263858533636,
+              "rsi": 11.79,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-15T04:47:09.159428",
+            "elapsed_min": 2,
+            "action": "HOLD",
+            "reason": "Position is profitable (+1.08%) with no drawdown, orderbook shows BUY_PRESSURE, Fear&Greed at 8 (Extreme Fear) favors LONG, and SL/TP are appropriately set — no action needed yet. (urgency=low)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.25375,
+              "pnl_pct": 1.0808662825352673,
+              "rsi": 8.12,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-15T04:47:50.910635",
+            "elapsed_min": 3,
+            "action": "BREAKEVEN_SET",
+            "reason": "PnL 1.9% hit trigger, SL moved to 0.2519",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 0.25653,
+              "pnl_pct": 1.9392012716073894,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-15T04:49:46.413599",
+            "elapsed_min": 5,
+            "action": "HOLD",
+            "reason": "Position is profitable (+2.38%) with no drawdown from peak, Fear&Greed at 8 (Extreme Fear) favors LONG, balanced orderbook, low liquidation pressure, and normal funding rate - wait for PnL >3% to move",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.25797,
+              "pnl_pct": 2.3763163123385818,
+              "rsi": 13.37,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-15T04:52:21.933853",
+            "elapsed_min": 8,
+            "action": "HOLD",
+            "reason": "Position is profitable (+2.24%) with minimal drawdown (0.14%), Fear&Greed at 8 favors LONG positions, trend is neutral not reversed, and PnL hasn't reached +3% threshold to move SL to breakeven yet. (",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.25711,
+              "pnl_pct": 2.2412080270216705,
+              "rsi": 12.35,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-15T04:54:59.302538",
+            "elapsed_min": 10,
+            "action": "HOLD",
+            "reason": "Position is +1.99% profitable with minimal drawdown (0.39%), Fear&Greed at 8 favors LONG positions, and despite orderbook sell pressure the current SL at 0.24 provides adequate protection while allowi",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.25667,
+              "pnl_pct": 1.9868865487780667,
+              "rsi": 11.82,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-15T04:57:34.028102",
+            "elapsed_min": 13,
+            "action": "HOLD",
+            "reason": "PnL +2.60% is positive but below +3% threshold for SL adjustment; trend is NEUTRAL (not reversed), drawdown from peak is only 0.30% (far below 50% trigger), Fear&Greed=8 favors LONG positions, and ord",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.25826,
+              "pnl_pct": 2.598847605801705,
+              "rsi": 13.71,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-15T04:59:47.447365",
+            "elapsed_min": 15,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 3.0%, SL moved to 0.25543",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 0.25932,
+              "pnl_pct": 3.0478839658255557,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-15T05:00:11.001994",
+            "elapsed_min": 16,
+            "action": "MOVE_SL",
+            "reason": "PnL > +3% triggers rule #4: move SL to breakeven+0.5% (entry 0.25165 + 0.5% = 0.2529) to lock in profit while Fear&Greed=8 supports LONG continuation (urgency=medium)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.25954,
+              "pnl_pct": 3.016093781045119,
+              "rsi": 15.17,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-15T05:00:33.439749",
+            "elapsed_min": 16,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 3.1%, SL moved to 0.25563",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 0.25952,
+              "pnl_pct": 3.1273594277766694,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-15T05:02:48.114505",
+            "elapsed_min": 18,
+            "action": "MOVE_SL",
+            "reason": "PnL > +3%, moving SL to breakeven+0.5% (entry 0.25165 + 0.5% = 0.2529) to lock in profits while allowing room for upside given buy pressure in orderbook and extreme fear sentiment favoring longs (urge",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.25897,
+              "pnl_pct": 2.9882773693622204,
+              "rsi": 21.41,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-15T05:03:19.403598",
+            "elapsed_min": 19,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 3.3%, SL moved to 0.25594",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 0.25984,
+              "pnl_pct": 3.254520166898482,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-15T05:03:29.700504",
+            "elapsed_min": 19,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 3.8%, SL moved to 0.25739",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 0.26131,
+              "pnl_pct": 3.838664812239222,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-15T05:04:41.449420",
+            "elapsed_min": 20,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 3.9%, SL moved to 0.25752",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 0.26144,
+              "pnl_pct": 3.8903238625074597,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-15T05:04:51.688091",
+            "elapsed_min": 20,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 3.9%, SL moved to 0.25758",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 0.2615,
+              "pnl_pct": 3.914166501092798,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-15T05:05:22.613706",
+            "elapsed_min": 21,
+            "action": "MOVE_SL",
+            "reason": "PnL > +3% triggers Rule 4: moving SL to breakeven+0.5% (entry 0.25165 + 0.5% = 0.2529) to lock in profit while allowing upside to TP (urgency=medium)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.26057,
+              "pnl_pct": 3.6836876614345324,
+              "rsi": 23.06,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-15T05:06:15.728898",
+            "elapsed_min": 22,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 3.9%, SL moved to 0.25763",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 0.26155,
+              "pnl_pct": 3.9340353665805767,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-15T05:07:17.568601",
+            "elapsed_min": 23,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 4.4%, SL moved to 0.25873",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 0.26267,
+              "pnl_pct": 4.379097953506867,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-15T05:08:00.631638",
+            "elapsed_min": 23,
+            "action": "MOVE_SL",
+            "reason": "PnL > +3% triggers rule 4: moving SL to breakeven+0.5% (entry 0.25165 + 0.5% = 0.2529) to lock in profits while allowing room for continuation given buy pressure in orderbook and extreme fear sentimen",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.26187,
+              "pnl_pct": 4.132724021458383,
+              "rsi": 24.86,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-15T05:08:52.940854",
+            "elapsed_min": 24,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 4.4%, SL moved to 0.25877",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 0.26271,
+              "pnl_pct": 4.394993045897086,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-15T05:09:45.443170",
+            "elapsed_min": 25,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 4.4%, SL moved to 0.25884",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 0.26278,
+              "pnl_pct": 4.422809457579984,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-15T05:09:55.606392",
+            "elapsed_min": 25,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 4.5%, SL moved to 0.25895",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 0.26289,
+              "pnl_pct": 4.466520961653101,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-15T05:10:05.852219",
+            "elapsed_min": 25,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 4.5%, SL moved to 0.25905",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 0.26299,
+              "pnl_pct": 4.506258692628657,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-15T05:10:16.127571",
+            "elapsed_min": 26,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 4.5%, SL moved to 0.25906",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 0.263,
+              "pnl_pct": 4.510232465726218,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-15T05:10:26.292230",
+            "elapsed_min": 26,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 4.5%, SL moved to 0.25909",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 0.26304,
+              "pnl_pct": 4.526127558116436,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-15T05:10:36.639446",
+            "elapsed_min": 26,
+            "action": "MOVE_SL",
+            "reason": "PnL > +3% (currently +4.53%), moving SL to breakeven+0.5% to lock in profit; high liquidation pressure and extreme fear favor cautious approach (urgency=medium)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.2631,
+              "pnl_pct": 4.526127558116436,
+              "rsi": 26.5,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-15T05:10:57.943741",
+            "elapsed_min": 26,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 4.7%, SL moved to 0.25953",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 0.26348,
+              "pnl_pct": 4.700973574408905,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-15T05:11:08.103591",
+            "elapsed_min": 26,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 5.0%, SL moved to 0.26038",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 0.26435,
+              "pnl_pct": 5.04669183389628,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-15T05:11:18.370436",
+            "elapsed_min": 27,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 5.4%, SL moved to 0.26132",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 0.2653,
+              "pnl_pct": 5.424200278164115,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-15T05:11:28.627058",
+            "elapsed_min": 27,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 5.5%, SL moved to 0.26155",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 0.26553,
+              "pnl_pct": 5.515597059407909,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-15T05:11:38.925757",
+            "elapsed_min": 27,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 5.6%, SL moved to 0.26167",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 0.26565,
+              "pnl_pct": 5.563282336578586,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-15T05:12:20.571323",
+            "elapsed_min": 28,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 5.6%, SL moved to 0.26182",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 0.26581,
+              "pnl_pct": 5.626862706139482,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-15T05:13:01.185894",
+            "elapsed_min": 28,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 5.6%, SL moved to 0.26187",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 0.26586,
+              "pnl_pct": 5.646731571627261,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-15T05:13:12.394587",
+            "elapsed_min": 29,
+            "action": "PARTIAL_CLOSE",
+            "reason": "PnL >+5% with bearish MACD, RSI oversold at 30, high liquidation pressure, and Extreme Fear sentiment — locking in profits while momentum fades (urgency=medium)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.26597,
+              "pnl_pct": 5.646731571627261,
+              "rsi": 30.04,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-15T05:13:33.814955",
+            "elapsed_min": 29,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 5.8%, SL moved to 0.26225",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 0.26624,
+              "pnl_pct": 5.79773494933439,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-15T05:13:54.186853",
+            "elapsed_min": 29,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 5.8%, SL moved to 0.26229",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 0.26628,
+              "pnl_pct": 5.813630041724631,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-15T05:15:47.119898",
+            "elapsed_min": 31,
+            "action": "PARTIAL_CLOSE",
+            "reason": "PnL > +5% with fading momentum (MACD bearish, neutral trend, low volume 0.05), high liquidation pressure and extreme fear suggest locking profits (urgency=medium)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.26642,
+              "pnl_pct": 5.583151202066365,
+              "rsi": 28.59,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          },
+          {
+            "timestamp": "2026-02-15T05:16:09.426111",
+            "elapsed_min": 31,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 6.2%, SL moved to 0.26324",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 0.26725,
+              "pnl_pct": 6.199086032187564,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-15T05:16:19.595280",
+            "elapsed_min": 32,
+            "action": "TRAILING_UPDATED",
+            "reason": "PnL 6.3%, SL moved to 0.26356",
+            "source": "HUNTER",
+            "context_snapshot": {
+              "price": 0.26757,
+              "pnl_pct": 6.326246771309354,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-15T05:18:23.749215",
+            "elapsed_min": 34,
+            "action": "PARTIAL_CLOSE",
+            "reason": "PnL > +5% with fading momentum (MACD bearish, price below both EMAs, RSI dropping to 29) - locking in profits per rule #3 (urgency=medium)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.26679,
+              "pnl_pct": 5.8772104112855255,
+              "rsi": 29.04,
+              "trend": "NEUTRAL",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.0013
+            }
+          }
+        ]
+      },
+      {
+        "symbol": "1000BONKUSDT",
+        "side": "SHORT",
+        "pnl_usdt": 0.0031892,
+        "pnl_pct": 0.23,
+        "entry_price": 0.006869,
+        "exit_price": 0.006853,
+        "close_reason": "take_profit",
+        "leverage": "1",
+        "grade": "B",
+        "closed_at": "2026-02-14T17:12:29.942545",
+        "decision_log": [
+          {
+            "timestamp": "2026-02-14T17:09:48.873975",
+            "elapsed_min": 0,
+            "action": "HOLD",
+            "reason": "Position just opened (0m), indicators show extreme overbought conditions (RSI 86, StochRSI 95.9, BB%B 0.98) which strongly favor SHORT direction, and Fear&Greed at 9 (Extreme Fear) supports potential ",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.006868,
+              "pnl_pct": -0.04513029553064208,
+              "rsi": 86.01,
+              "trend": "BULLISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.005
+            }
+          },
+          {
+            "timestamp": "2026-02-14T17:12:19.435525",
+            "elapsed_min": 2,
+            "action": "CLOSE",
+            "reason": "Trend is BULLISH against SHORT position with RSI at 85.47 and StochRSI at 95.28 indicating extreme overbought - while this could mean reversal, the bullish trend contradicts the short, and with only +",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.006864,
+              "pnl_pct": 0.05240937545494692,
+              "rsi": 85.47,
+              "trend": "BULLISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": 0.005
+            }
+          }
+        ]
+      }
+    ]
   },
-  "saved_at": "2026-02-13T21:11:55.818023",
+  "saved_at": "2026-02-16T15:00:40.990813",
   "version": "2.0"
 }

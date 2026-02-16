@@ -29,10 +29,10 @@ MIN_TP_PERCENT = 10.0     # Минимум +10% тейк профит
 LIQUIDATION_THRESHOLD = 5.0      # Падение >5% за 2 часа
 FUNDING_EXTREME_HIGH = 0.05      # Funding > 0.05% — перегрет
 FUNDING_EXTREME_LOW = -0.03      # Funding < -0.03% — перепродан
-FEAR_GREED_EXTREME_LOW = 10      # Extreme fear
-FEAR_GREED_EXTREME_HIGH = 90     # Extreme greed
-RSI_OVERSOLD = 15                # RSI для LONG
-RSI_OVERBOUGHT = 85              # RSI для SHORT
+FEAR_GREED_EXTREME_LOW = 15      # Extreme fear
+FEAR_GREED_EXTREME_HIGH = 85     # Extreme greed
+RSI_OVERSOLD = 20                # RSI для LONG
+RSI_OVERBOUGHT = 80              # RSI для SHORT
 OI_CHANGE_THRESHOLD = 5.0        # Изменение OI >5%
 
 
@@ -85,7 +85,7 @@ class HunterAgent(BaseAgent):
             "liquidation_cascade": self._check_liquidation_cascade,
             "funding_flip": self._check_funding_flip,
             "extreme_fear": self._check_extreme_fear,
-            # "oi_divergence": self._check_oi_divergence,  # DISABLED - not part of liquidation strategy
+            "oi_divergence": self._check_oi_divergence,
         }
 
         self.log("HUNTER agent initialized — waiting for A+ setups only")
@@ -231,18 +231,16 @@ class HunterAgent(BaseAgent):
         rsi = data.get("rsi", 50)
         price = data.get("price", 0)
         ema200 = data.get("ema200", price)
-        volume_ratio = data.get("volume_ratio", 1.0)  # Price confirmation
 
         # Extreme fear + oversold = LONG
         if (fear_greed < FEAR_GREED_EXTREME_LOW and
             rsi < RSI_OVERSOLD and
-            price < ema200 * 0.95 and
-            volume_ratio > 2.0):  # Volume spike confirmation
+            price < ema200 * 0.95):  # Цена на 5%+ ниже EMA200
 
             return {
                 "triggered": True,
                 "direction": "LONG",
-                "reason": f"Extreme fear: F&G={fear_greed}, RSI={rsi:.0f}, price {((price/ema200-1)*100):.1f}% below EMA200, vol_spike={volume_ratio:.1f}x",
+                "reason": f"Extreme fear: F&G={fear_greed}, RSI={rsi:.0f}, price {((price/ema200-1)*100):.1f}% below EMA200",
                 "confidence_boost": 12,
                 "urgency": "medium",
             }
@@ -250,13 +248,12 @@ class HunterAgent(BaseAgent):
         # Extreme greed + overbought = SHORT
         if (fear_greed > FEAR_GREED_EXTREME_HIGH and
             rsi > RSI_OVERBOUGHT and
-            price > ema200 * 1.10 and
-            volume_ratio > 2.0):  # Volume spike confirmation
+            price > ema200 * 1.10):  # Цена на 10%+ выше EMA200
 
             return {
                 "triggered": True,
                 "direction": "SHORT",
-                "reason": f"Extreme greed: F&G={fear_greed}, RSI={rsi:.0f}, price {((price/ema200-1)*100):.1f}% above EMA200, vol_spike={volume_ratio:.1f}x",
+                "reason": f"Extreme greed: F&G={fear_greed}, RSI={rsi:.0f}, price {((price/ema200-1)*100):.1f}% above EMA200",
                 "confidence_boost": 12,
                 "urgency": "medium",
             }
