@@ -1943,7 +1943,7 @@
                 const response = await fetch("/api/ai-trade/logs?limit=100");
                 if (response.ok) {
                     const data = await response.json();
-                    logsEl.textContent = data.logs || "No logs available";
+                    const logsText = Array.isArray(data.logs) ? data.logs.map(l => l.log || l).join("\n") : (data.logs || "No logs available"); logsEl.textContent = logsText;
                     logsEl.scrollTop = logsEl.scrollHeight;
                 } else {
                     logsEl.textContent = "Error loading logs";

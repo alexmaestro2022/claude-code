@@ -1,5 +1,5 @@
 {
-  "enabled": false,
+  "enabled": true,
   "scan_interval_seconds": 300,
   "min_confidence": 50,
   "min_rr_ratio": 2.0,
@@ -17,5 +17,5 @@
   "priority_3_max_pairs": 10,
   "min_24h_change_pct": 3.0,
   "max_24h_change_pct": 50.0,
-  "last_modified": "2026-02-16T12:32:20.684746"
+  "last_modified": "2026-02-16T21:59:02.011605"
 }

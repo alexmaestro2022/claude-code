@@ -15,7 +15,7 @@
     "avg_trade_duration_minutes": 0,
     "avg_rr_ratio": 0.0,
     "consecutive_wins": 0,
-    "consecutive_losses": 2,
+    "consecutive_losses": 0,
     "max_consecutive_wins": 4,
     "max_consecutive_losses": 4,
     "trades_today": 0,
@@ -1524,6 +1524,6 @@
     ],
     "paused_at": null
   },
-  "saved_at": "2026-02-16T21:40:33.256958",
+  "saved_at": "2026-02-16T21:59:12.923082",
   "version": "2.0"
 }
