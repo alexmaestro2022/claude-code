@@ -2,28 +2,28 @@
   "data": {
     "agent": "TRADER",
     "level": 2,
-    "xp": 95,
-    "xp_to_next_level": 155,
-    "total_trades": 24,
-    "winning_trades": 8,
+    "xp": 110,
+    "xp_to_next_level": 140,
+    "total_trades": 25,
+    "winning_trades": 9,
     "losing_trades": 16,
-    "winrate": 33.33333333333333,
-    "total_pnl_usdt": -2.2889693400000004,
+    "winrate": 36.0,
+    "total_pnl_usdt": -2.2590429400000005,
     "total_pnl_percent": 0.0,
     "best_trade_usdt": 0.2958357,
     "worst_trade_usdt": -0.5614848,
     "avg_trade_duration_minutes": 0,
     "avg_rr_ratio": 0.0,
-    "consecutive_wins": 0,
+    "consecutive_wins": 1,
     "consecutive_losses": 0,
     "max_consecutive_wins": 4,
     "max_consecutive_losses": 4,
     "trades_today": 0,
     "pnl_today_usdt": 0.0,
-    "trades_this_week": 0,
-    "pnl_this_week_usdt": 0.0,
-    "last_trade_time": "2026-02-08T16:50:33.856675",
-    "last_win_time": "2026-02-08T12:55:58.730441",
+    "trades_this_week": 1,
+    "pnl_this_week_usdt": 0.0299264,
+    "last_trade_time": "2026-02-16T22:42:34.994689",
+    "last_win_time": "2026-02-16T22:42:34.994633",
     "last_loss_time": "2026-02-08T16:50:33.856653",
     "paused_until": null,
     "pause_reason": null,
@@ -73,6 +73,12 @@
         "pnl_usdt": 0.0,
         "api_calls": 0,
         "api_cost": 0.0
+      },
+      "2026-02-16": {
+        "trades": 0,
+        "pnl_usdt": 0.0,
+        "api_calls": 0,
+        "api_cost": 0.0
       }
     },
     "weekly_history": {
@@ -85,9 +91,128 @@
         "pnl_usdt": 0.0
       }
     },
-    "enabled": true,
+    "enabled": false,
     "cooldown_remaining": 0.0,
     "trades_history": [
+      {
+        "symbol": "MOVEUSDT",
+        "side": "LONG",
+        "pnl_usdt": 0.0299264,
+        "pnl_pct": 0.83,
+        "entry_price": 0.02656,
+        "exit_price": 0.02667,
+        "close_reason": "take_profit",
+        "leverage": "2",
+        "grade": "B",
+        "closed_at": "2026-02-16T22:42:34.992561",
+        "decision_log": [
+          {
+            "timestamp": "2026-02-16T22:27:05.014048",
+            "elapsed_min": 0,
+            "action": "HOLD",
+            "reason": "Position just opened with +0.08% PnL, trend is BULLISH, price above EMAs, Fear&Greed=12 favors LONG per rule #9, no adverse conditions present. (urgency=low)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.02656,
+              "pnl_pct": 0.07530120481927405,
+              "rsi": 54.23,
+              "trend": "BULLISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0841
+            }
+          },
+          {
+            "timestamp": "2026-02-16T22:29:38.316860",
+            "elapsed_min": 2,
+            "action": "HOLD",
+            "reason": "Position is slightly profitable (+0.53%), trend remains BULLISH, Fear&Greed at 12 (Extreme Fear) favors LONG, and drawdown from peak is minimal (0.07%) — no action triggers met yet. (urgency=low)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.02662,
+              "pnl_pct": 0.5271084337349444,
+              "rsi": 55.4,
+              "trend": "BULLISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0784
+            }
+          },
+          {
+            "timestamp": "2026-02-16T22:32:11.549554",
+            "elapsed_min": 5,
+            "action": "HOLD",
+            "reason": "Position is slightly profitable (+0.45%), trend remains BULLISH, price near resistance (0.02663), Fear&Greed=12 favors LONG positions, drawdown from peak (0.23%) is minimal - no action needed yet. (ur",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.02661,
+              "pnl_pct": 0.4518072289156704,
+              "rsi": 53.18,
+              "trend": "BULLISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0669
+            }
+          },
+          {
+            "timestamp": "2026-02-16T22:33:11.446842",
+            "elapsed_min": 6,
+            "action": "BREAKEVEN_SET",
+            "reason": "PnL 1.6% hit trigger, SL moved to 0.02659",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.02677,
+              "pnl_pct": 1.581325301204807,
+              "rsi": null,
+              "trend": null,
+              "orderbook_signal": null,
+              "funding_rate": null
+            }
+          },
+          {
+            "timestamp": "2026-02-16T22:34:42.609441",
+            "elapsed_min": 7,
+            "action": "HOLD",
+            "reason": "Position is profitable at +2.26% with bullish trend, buy pressure in orderbook, and Fear&Greed at 12 (Extreme Fear) which favors LONG positions; drawdown from peak is minimal at 0.15%, no trigger to a",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.02684,
+              "pnl_pct": 2.2590361445782996,
+              "rsi": 56.99,
+              "trend": "BULLISH",
+              "orderbook_signal": "BUY_PRESSURE",
+              "funding_rate": -0.0588
+            }
+          },
+          {
+            "timestamp": "2026-02-16T22:37:19.047839",
+            "elapsed_min": 10,
+            "action": "HOLD",
+            "reason": "Position is profitable (+1.81%), trend remains BULLISH, price above EMAs, and Fear&Greed=12 favors LONG; orderbook sell pressure is moderate but not critical with current SL protection. (urgency=low)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.0268,
+              "pnl_pct": 1.8072289156626553,
+              "rsi": 56.38,
+              "trend": "BULLISH",
+              "orderbook_signal": "SELL_PRESSURE",
+              "funding_rate": -0.0796
+            }
+          },
+          {
+            "timestamp": "2026-02-16T22:39:59.374702",
+            "elapsed_min": 13,
+            "action": "HOLD",
+            "reason": "Position is profitable (+1.51%), trend remains BULLISH, price above both EMAs, Fear&Greed at 12 favors LONG, and drawdown from peak (0.90%) is minimal - no action needed yet. (urgency=low)",
+            "source": "TRADER",
+            "context_snapshot": {
+              "price": 0.02675,
+              "pnl_pct": 1.506024096385533,
+              "rsi": 55.6,
+              "trend": "BULLISH",
+              "orderbook_signal": "BALANCED",
+              "funding_rate": -0.0778
+            }
+          }
+        ]
+      },
       {
         "symbol": "SOLUSDT",
         "side": "LONG",
@@ -1524,6 +1649,6 @@
     ],
     "paused_at": null
   },
-  "saved_at": "2026-02-16T22:26:17.679547",
+  "saved_at": "2026-02-17T17:36:53.267966",
   "version": "2.0"
 }

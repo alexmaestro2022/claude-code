@@ -18,8 +18,8 @@
     "consecutive_losses": 0,
     "max_consecutive_wins": 2,
     "max_consecutive_losses": 2,
-    "trades_today": 3,
-    "pnl_today_usdt": -0.46084583,
+    "trades_today": 0,
+    "pnl_today_usdt": 0.0,
     "trades_this_week": 3,
     "pnl_this_week_usdt": -0.46084583,
     "last_trade_time": "2026-02-16T15:00:40.984995",
@@ -45,6 +45,12 @@
         "api_cost": 0.0
       },
       "2026-02-15": {
+        "trades": 0,
+        "pnl_usdt": 0.0,
+        "api_calls": 0,
+        "api_cost": 0.0
+      },
+      "2026-02-16": {
         "trades": 0,
         "pnl_usdt": 0.0,
         "api_calls": 0,
@@ -1818,6 +1824,6 @@
       }
     ]
   },
-  "saved_at": "2026-02-16T22:23:49.067926",
+  "saved_at": "2026-02-17T17:39:12.258050",
   "version": "2.0"
 }

@@ -1,14 +1,14 @@
 {
   "data": {
     "stats": {
-      "trades_this_hour": 0,
-      "trades_today": 3,
-      "last_hour_reset": "2026-02-16 21:57:39.464960",
-      "last_day_reset": "2026-02-16",
-      "trader_signals": 313,
-      "sniper_signals": 2240,
-      "trader_trades": 34,
-      "sniper_trades": 34,
+      "trades_this_hour": 1,
+      "trades_today": 13,
+      "last_hour_reset": "2026-02-17 17:00:02.570731",
+      "last_day_reset": "2026-02-17",
+      "trader_signals": 314,
+      "sniper_signals": 2421,
+      "trader_trades": 35,
+      "sniper_trades": 50,
       "hunter_signals": 126,
       "hunter_trades": 5
     },
@@ -20,13 +20,13 @@
       "max_trades_per_day": 20,
       "cooldown_after_loss_minutes": 30,
       "require_multiple_confirmations": true,
-      "sniper_enabled": false,
+      "sniper_enabled": true,
       "hunter_enabled": true,
       "hunter_scan_interval_seconds": 60,
-      "trader_enabled": true
+      "trader_enabled": false
     },
-    "running": true
+    "running": false
   },
-  "saved_at": "2026-02-16T22:25:34.117834",
+  "saved_at": "2026-02-17T17:39:36.914135",
   "version": "2.0"
 }

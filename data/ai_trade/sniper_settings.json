@@ -1,5 +1,5 @@
 {
-  "enabled": false,
+  "enabled": true,
   "scan_interval_seconds": 10,
   "pairs_to_scan": 20,
   "trigger_breakout": true,
@@ -16,5 +16,5 @@
   "max_trades_per_day": 20,
   "pause_after_losses": 3,
   "pause_duration_minutes": 60,
-  "last_modified": "2026-02-13T21:35:27.654275"
+  "last_modified": "2026-02-16T22:36:33.761142"
 }
