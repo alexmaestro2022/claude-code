@@ -4570,3 +4570,58 @@ extreme_fear LONG теперь требует:
 
 ### Коммит:
 - `54a26a3` — fix: tighten HUNTER strategy
+
+---
+
+## 74. Mobile UI Redesign + Auto-start + Toggle Fix (2026-02-17)
+
+### Изменения UI:
+
+**Удалено:**
+- OAuth Badge из шапки (дублировал информацию)
+- Вкладка Claude API и её контент (~100 строк)
+
+**Добавлено:**
+- Вкладка HUNTER (Status, Level, Signals, Trades)
+- Вкладка Logs (Refresh/Clear кнопки, область логов)
+- Мобильные стили @media (max-width: 640px):
+  - Tabs — только иконки
+  - Agent cards — 1 колонка
+  - Top panel — flex-wrap
+  - Компактный padding
+
+**Вкладки теперь:** TRADER | SNIPER | HUNTER | Logs
+
+### Auto-start Autopilot:
+
+При включении любого агента через toggle, автопилот автоматически запускается:
+```python
+# routes.py, toggle endpoint
+if new_state and not orch.autopilot._running:
+    asyncio.create_task(orch.autopilot.start())
+```
+
+### Toggle Fix:
+
+**Проблема:** Toggle ON/OFF не отображались при загрузке (только через 10 сек)
+**Решение:** Добавлен вызов `fastUpdate()` в DOMContentLoaded
+
+### Logs Tab Fix:
+
+**Проблема:** API возвращает `{logs: [{log: "..."}]}`, JS ожидал строку
+**Решение:** Преобразование массива в текст:
+```javascript
+const logsText = Array.isArray(data.logs) 
+    ? data.logs.map(l => l.log || l).join("\n") 
+    : data.logs;
+```
+
+### Коммиты:
+- `648ab2d` — feat: redesign mobile UI
+- `9fe50d5` — fix: parse logs array to text
+- `2c30908` — fix: call fastUpdate() on page load
+- `78937d6` — feat: auto-start autopilot when enabling agent
+
+### Файлы:
+- `aila/api/templates/ai_trade.html` — UI изменения
+- `aila/api/routes/ai_trade.py` — auto-start логика
