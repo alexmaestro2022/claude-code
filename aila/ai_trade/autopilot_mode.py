@@ -293,8 +293,11 @@ class AutopilotMode:
 
     async def _autopilot_loop(self) -> None:
         """Main autopilot loop with parallel TRADER and SNIPER scanning."""
+        logger.info("[AUTOPILOT] Loop started")
+        iteration = 0
         while self._running:
             try:
+                iteration += 1
                 self._reset_counters_if_needed()
 
                 # Check OAuth token every loop iteration
@@ -324,7 +327,7 @@ class AutopilotMode:
                 if not await self._can_trade():
                     # Log why we can't trade (only skip new trade scanning)
                     if self._stats['trades_today'] >= self._config['max_trades_per_day']:
-                        logger.info(f"[AUTOPILOT] Daily limit reached ({self._stats['trades_today']}/{self._config['max_trades_per_day']}), waiting for reset...")
+                        logger.info(f"[AUTOPILOT] Daily limit reached ({self._stats['trades_today']}/{self._config['max_trades_per_day']}), waiting...")
                     elif self._stats['trades_this_hour'] >= self._config['max_trades_per_hour']:
                         logger.info(f"[AUTOPILOT] Hourly limit reached ({self._stats['trades_this_hour']}/{self._config['max_trades_per_hour']}), waiting...")
                     await asyncio.sleep(60)
@@ -332,7 +335,7 @@ class AutopilotMode:
 
                 market_safety = await self._orchestrator.check_market_safety()
                 if market_safety.get('crisis_level') in ['critical', 'elevated']:
-                    logger.warning("Market unsafe, skipping cycle")
+                    logger.warning(f"[AUTOPILOT] Market unsafe: {market_safety.get('crisis_level')}, skipping")
                     await asyncio.sleep(300)
                     continue
 
@@ -342,10 +345,16 @@ class AutopilotMode:
                 # Process signal queue
                 await self._process_queue()
 
+                # Log every 6th iteration (once per minute)
+                if iteration % 6 == 0:
+                    logger.info(f"[AUTOPILOT] Running: iteration {iteration}")
+
                 await asyncio.sleep(10)  # Base loop interval
 
             except Exception as e:
                 logger.error(f"Autopilot error: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
                 await asyncio.sleep(60)
 
     async def _run_scan_cycle(self) -> None:
@@ -705,17 +714,16 @@ class AutopilotMode:
                 logger.debug(f"[HUNTER] Paused: {reason}")
                 return
 
-            # Only log every 6th scan (once per minute) to reduce noise
-            verbose = self._hunter_scan_counter % 6 == 0
+            # Log first scan and every 6th scan
+            verbose = self._hunter_scan_counter == 1 or self._hunter_scan_counter % 6 == 0
 
             if verbose:
-                logger.info("[HUNTER][STAGE 1] Scanning for A+ liquidation setups...")
+                logger.info(f"[HUNTER][STAGE 1] Scanning for A+ setups... (scan #{self._hunter_scan_counter})")
 
             # Get hunter agent from orchestrator
             hunter = getattr(self._orchestrator, 'hunter', None)
             if not hunter:
-                if verbose:
-                    logger.debug("[HUNTER] Agent not initialized")
+                logger.warning("[HUNTER] Agent not initialized in orchestrator")
                 return
 
             # Get pairs to scan (same as SNIPER)
