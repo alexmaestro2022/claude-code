@@ -4625,3 +4625,62 @@ const logsText = Array.isArray(data.logs)
 ### Файлы:
 - `aila/api/templates/ai_trade.html` — UI изменения
 - `aila/api/routes/ai_trade.py` — auto-start логика
+
+---
+
+## 75. Autopilot Loop Logging Fix (2026-02-21)
+
+### Проблема:
+После перезапуска сервиса HUNTER не сканировал, loop застревал без видимых логов.
+
+### Причина:
+1. Автопилот не автозапускался при старте сервиса (только при включении toggle в UI)
+2. Недостаточное логирование в loop — невозможно отследить где застряло
+3. HUNTER логировал только каждый 6-й scan (6 минут ожидания)
+
+### Решения:
+
+**autopilot_mode.py:**
+```python
+# 1. Логирование старта loop
+logger.info("[AUTOPILOT] Loop started")
+
+# 2. Iteration counter + лог каждые 6 итераций (~60 сек)
+iteration = 0
+...
+iteration += 1
+if iteration % 6 == 0:
+    logger.info(f"[AUTOPILOT] Running: iteration {iteration}")
+
+# 3. Traceback для ошибок
+except Exception as e:
+    logger.error(f"Autopilot error: {e}")
+    import traceback
+    logger.error(traceback.format_exc())
+
+# 4. HUNTER: логировать первый scan и номер
+verbose = self._hunter_scan_counter == 1 or self._hunter_scan_counter % 6 == 0
+logger.info(f"[HUNTER][STAGE 1] Scanning for A+ setups... (scan #{self._hunter_scan_counter})")
+
+# 5. Warning вместо debug для "Agent not initialized"
+logger.warning("[HUNTER] Agent not initialized in orchestrator")
+```
+
+### Логи при работе:
+```
+[AUTOPILOT] Loop started
+[HUNTER][STAGE 1] Scanning for A+ setups... (scan #1)
+[HUNTER][STAGE 1] No A+ setups found (normal - waiting for blood)
+[AUTOPILOT] Running: iteration 6
+```
+
+### Важно:
+- Autopilot НЕ автозапускается при старте сервиса
+- Auto-start работает только при включении агента через toggle в UI
+- Для запуска после рестарта: POST /api/ai-trade/autopilot/start
+
+### Коммит:
+- `0251068` — fix: improve autopilot loop logging and HUNTER scan tracking
+
+### Файлы:
+- `aila/ai_trade/autopilot_mode.py` — улучшенное логирование loop и HUNTER
