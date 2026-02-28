@@ -18,22 +18,7 @@ import asyncio
 from datetime import datetime, timedelta
 from typing import Optional
 from .base_agent import BaseAgent
-
-# HUNTER параметры — консервативные для R:R 1:5
-MIN_SL_PERCENT = 2.0      # Максимальный SL
-MAX_SL_PERCENT = 3.0      # Для волатильных
-MIN_RR_RATIO = 5.0        # Минимум 1:5
-MIN_TP_PERCENT = 10.0     # Минимум +10% тейк профит
-
-# Пороги для триггеров
-LIQUIDATION_THRESHOLD = 5.0      # Падение >5% за 2 часа
-FUNDING_EXTREME_HIGH = 0.05      # Funding > 0.05% — перегрет
-FUNDING_EXTREME_LOW = -0.03      # Funding < -0.03% — перепродан
-FEAR_GREED_EXTREME_LOW = 10      # Extreme fear
-FEAR_GREED_EXTREME_HIGH = 90     # Extreme greed
-RSI_OVERSOLD = 15                # RSI для LONG
-RSI_OVERBOUGHT = 85              # RSI для SHORT
-OI_CHANGE_THRESHOLD = 5.0        # Изменение OI >5%
+from ..agent_settings import get_agent_settings
 
 
 class HunterAgent(BaseAgent):
@@ -56,6 +41,7 @@ class HunterAgent(BaseAgent):
         "_last_scan",
         "_pending_hunts",
         "_liquidation_history",
+        "_settings",
     )
 
     def __init__(
@@ -79,6 +65,9 @@ class HunterAgent(BaseAgent):
         self._last_scan = None
         self._pending_hunts = []
         self._liquidation_history = []  # История ликвидаций для анализа
+
+        # Load settings from hunter_settings.json
+        self._settings = get_agent_settings().get_settings("HUNTER")
 
         # Триггеры HUNTER
         self._triggers = {
@@ -136,27 +125,35 @@ class HunterAgent(BaseAgent):
 
         Условия для LONG:
         - Цена упала >5% за 2 часа
-        - RSI < 20
+        - RSI < rsi_oversold (из настроек)
         - Funding отрицательный
-        - Fear & Greed < 20
+        - Fear & Greed < fear_greed_extreme_low (из настроек)
 
         Условия для SHORT (обратные):
         - Цена выросла >5% за 2 часа
-        - RSI > 80
+        - RSI > rsi_overbought
         - Funding > 0.05%
-        - Fear & Greed > 80
+        - Fear & Greed > fear_greed_extreme_high
         """
-        change_2h = data.get("change_2h", 0)
-        rsi = data.get("rsi", 50)
-        funding = data.get("funding_rate", 0)
-        fear_greed = data.get("fear_greed", 50)
-        liquidation_pressure = data.get("liquidation_pressure", "NEUTRAL")
+        # Use change_24h if change_2h not available
+        change_2h = data.get("change_2h") or data.get("change_24h", 0) or 0
+        rsi = data.get("rsi") or 50  # Default 50 if None
+        funding = data.get("funding_rate") or 0
+        fear_greed = data.get("fear_greed") or 50
+
+        # Get thresholds from settings
+        liq_threshold = self._settings.get("liquidation_threshold_pct", 5.0)
+        rsi_oversold = self._settings.get("rsi_oversold", 20)
+        rsi_overbought = self._settings.get("rsi_overbought", 80)
+        fg_low = self._settings.get("fear_greed_extreme_low", 15)
+        fg_high = self._settings.get("fear_greed_extreme_high", 85)
+        funding_high = self._settings.get("funding_extreme_high", 0.05)
 
         # LONG после массовых ликвидаций лонгов
-        if (change_2h <= -LIQUIDATION_THRESHOLD and
-            rsi < RSI_OVERSOLD and
+        if (change_2h <= -liq_threshold and
+            rsi < rsi_oversold and
             funding < 0 and
-            fear_greed < FEAR_GREED_EXTREME_LOW):
+            fear_greed < fg_low):
 
             return {
                 "triggered": True,
@@ -167,10 +164,10 @@ class HunterAgent(BaseAgent):
             }
 
         # SHORT после массовых ликвидаций шортов
-        if (change_2h >= LIQUIDATION_THRESHOLD and
-            rsi > RSI_OVERBOUGHT and
-            funding > FUNDING_EXTREME_HIGH and
-            fear_greed > FEAR_GREED_EXTREME_HIGH):
+        if (change_2h >= liq_threshold and
+            rsi > rsi_overbought and
+            funding > funding_high and
+            fear_greed > fg_high):
 
             return {
                 "triggered": True,
@@ -191,12 +188,16 @@ class HunterAgent(BaseAgent):
         - Это значит лонги ликвиднулись
         - Вход в LONG
         """
-        funding = data.get("funding_rate", 0)
-        funding_prev = data.get("funding_rate_prev", funding)  # Предыдущий funding
-        rsi = data.get("rsi", 50)
+        funding = data.get("funding_rate") or 0
+        funding_prev = data.get("funding_rate_prev") or funding
+        rsi = data.get("rsi") or 50
+
+        # Get thresholds from settings
+        funding_high = self._settings.get("funding_extreme_high", 0.05)
+        funding_low = self._settings.get("funding_extreme_low", -0.03)
 
         # Funding флипнулся с положительного на отрицательный
-        if funding_prev > FUNDING_EXTREME_HIGH and funding < 0 and rsi < 35:
+        if funding_prev > funding_high and funding < 0 and rsi < 35:
             return {
                 "triggered": True,
                 "direction": "LONG",
@@ -206,7 +207,7 @@ class HunterAgent(BaseAgent):
             }
 
         # Funding флипнулся с отрицательного на положительный
-        if funding_prev < FUNDING_EXTREME_LOW and funding > 0 and rsi > 65:
+        if funding_prev < funding_low and funding > 0 and rsi > 65:
             return {
                 "triggered": True,
                 "direction": "SHORT",
@@ -222,22 +223,31 @@ class HunterAgent(BaseAgent):
         Триггер: Extreme Fear + Oversold.
 
         Условия:
-        - Fear & Greed < 15
-        - RSI < 20
+        - Fear & Greed < fear_greed_extreme_low (из настроек)
+        - RSI < rsi_oversold (из настроек)
         - Цена ниже EMA200
-        - Это классический "buy blood" момент
+        - Volume spike > 1.5x (снижен с 2.0 для большей чувствительности)
         """
-        fear_greed = data.get("fear_greed", 50)
-        rsi = data.get("rsi", 50)
-        price = data.get("price", 0)
-        ema200 = data.get("ema200", price)
-        volume_ratio = data.get("volume_ratio", 1.0)  # Price confirmation
+        fear_greed = data.get("fear_greed") or 50
+        rsi = data.get("rsi") or 50
+        price = data.get("price") or 0
+        ema200 = data.get("ema200") or price or 1
 
-        # Extreme fear + oversold = LONG
-        if (fear_greed < FEAR_GREED_EXTREME_LOW and
-            rsi < RSI_OVERSOLD and
+        # Get volume_ratio from volume_profile if available
+        vol_profile = data.get("volume_profile") or {}
+        volume_ratio = vol_profile.get("ratio") or data.get("volume_ratio") or 1.0
+
+        # Get thresholds from settings
+        fg_low = self._settings.get("fear_greed_extreme_low", 15)
+        fg_high = self._settings.get("fear_greed_extreme_high", 85)
+        rsi_oversold = self._settings.get("rsi_oversold", 20)
+        rsi_overbought = self._settings.get("rsi_overbought", 80)
+
+        # Extreme fear + oversold = LONG (volume spike 1.5x instead of 2.0x)
+        if (fear_greed < fg_low and
+            rsi < rsi_oversold and
             price < ema200 * 0.95 and
-            volume_ratio > 2.0):  # Volume spike confirmation
+            volume_ratio > 1.5):
 
             return {
                 "triggered": True,
@@ -248,10 +258,10 @@ class HunterAgent(BaseAgent):
             }
 
         # Extreme greed + overbought = SHORT
-        if (fear_greed > FEAR_GREED_EXTREME_HIGH and
-            rsi > RSI_OVERBOUGHT and
+        if (fear_greed > fg_high and
+            rsi > rsi_overbought and
             price > ema200 * 1.10 and
-            volume_ratio > 2.0):  # Volume spike confirmation
+            volume_ratio > 1.5):
 
             return {
                 "triggered": True,
@@ -271,12 +281,15 @@ class HunterAgent(BaseAgent):
         - OI растёт, цена падает → шорты накапливаются → потенциальный short squeeze
         - OI растёт, цена растёт → лонги накапливаются → потенциальный long squeeze
         """
-        oi_change = data.get("oi_change_pct", 0)
-        price_change = data.get("change_24h", 0)
-        rsi = data.get("rsi", 50)
+        oi_change = data.get("oi_change_pct") or 0
+        price_change = data.get("change_24h") or 0
+        rsi = data.get("rsi") or 50
+
+        # Get threshold from settings
+        oi_threshold = self._settings.get("oi_change_threshold_pct", 5.0)
 
         # OI растёт, цена падает — шорты накапливаются
-        if (oi_change > OI_CHANGE_THRESHOLD and
+        if (oi_change > oi_threshold and
             price_change < -3 and
             rsi < 30):
 
@@ -289,7 +302,7 @@ class HunterAgent(BaseAgent):
             }
 
         # OI растёт, цена растёт — лонги накапливаются
-        if (oi_change > OI_CHANGE_THRESHOLD and
+        if (oi_change > oi_threshold and
             price_change > 5 and
             rsi > 70):
 
@@ -307,16 +320,16 @@ class HunterAgent(BaseAgent):
 
     def _build_signal(self, pair: str, trigger: str, result: dict, data: dict) -> Optional[dict]:
         """
-        Строит сигнал с R:R минимум 1:5.
+        Строит сигнал с R:R минимум из настроек.
         """
         direction = result["direction"]
-        price = data.get("price", 0)
-        atr = data.get("atr", price * 0.02)  # Fallback 2%
+        price = data.get("price") or 0
+        atr = data.get("atr") or (price * 0.02)  # Fallback 2%
 
         if not price or price <= 0:
             return None
 
-        # Рассчитываем SL и TP для R:R 1:5
+        # Рассчитываем SL и TP
         sl_pct, tp_pct = self._calc_sl_tp(data, direction)
 
         if direction == "LONG":
@@ -331,8 +344,9 @@ class HunterAgent(BaseAgent):
         reward = abs(take_profit - price)
         rr_ratio = reward / risk if risk > 0 else 0
 
-        if rr_ratio < MIN_RR_RATIO:
-            self.log(f"Skip {pair}: R:R {rr_ratio:.1f} < {MIN_RR_RATIO}")
+        min_rr = self._settings.get("min_rr_ratio", 5.0)
+        if rr_ratio < min_rr:
+            self.log(f"Skip {pair}: R:R {rr_ratio:.1f} < {min_rr}")
             return None
 
         # Confidence
@@ -368,20 +382,26 @@ class HunterAgent(BaseAgent):
 
     def _calc_sl_tp(self, data: dict, direction: str) -> tuple[float, float]:
         """
-        Рассчитывает SL и TP для R:R минимум 1:5.
+        Рассчитывает SL и TP для R:R из настроек.
 
         Использует ATR для динамического SL.
         """
-        atr_pct = data.get("atr_pct", 2.0)
+        atr_pct = data.get("atr_pct") or 2.0
+
+        # Get limits from settings
+        min_sl = self._settings.get("min_sl_pct", 2.0)
+        max_sl = self._settings.get("max_sl_pct", 3.0)
+        min_rr = self._settings.get("min_rr_ratio", 5.0)
+        min_tp = self._settings.get("min_tp_pct", 10.0)
 
         # SL = ATR × 1.5, но в пределах MIN/MAX
-        sl_pct = max(MIN_SL_PERCENT, min(MAX_SL_PERCENT, atr_pct * 1.5))
+        sl_pct = max(min_sl, min(max_sl, atr_pct * 1.5))
 
-        # TP = SL × 5 (для R:R 1:5)
-        tp_pct = sl_pct * MIN_RR_RATIO
+        # TP = SL × R:R ratio
+        tp_pct = sl_pct * min_rr
 
-        # Минимум 10%
-        tp_pct = max(MIN_TP_PERCENT, tp_pct)
+        # Минимум из настроек
+        tp_pct = max(min_tp, tp_pct)
 
         return sl_pct, tp_pct
 
@@ -420,6 +440,24 @@ class HunterAgent(BaseAgent):
     def get_max_leverage(self) -> int:
         """HUNTER использует минимальное плечо для безопасности."""
         return 2  # Максимум 2x
+
+    def reload_settings(self) -> dict:
+        """Reload settings from hunter_settings.json without restart."""
+        self._settings = get_agent_settings().get_settings("HUNTER")
+        self.log(f"Settings reloaded: rsi_oversold={self._settings.get('rsi_oversold')}, "
+                 f"fg_low={self._settings.get('fear_greed_extreme_low')}")
+        return self._settings
+
+    def get_current_settings(self) -> dict:
+        """Return current settings for debugging."""
+        return {
+            "rsi_oversold": self._settings.get("rsi_oversold", 20),
+            "rsi_overbought": self._settings.get("rsi_overbought", 80),
+            "fear_greed_extreme_low": self._settings.get("fear_greed_extreme_low", 15),
+            "fear_greed_extreme_high": self._settings.get("fear_greed_extreme_high", 85),
+            "liquidation_threshold_pct": self._settings.get("liquidation_threshold_pct", 5.0),
+            "min_rr_ratio": self._settings.get("min_rr_ratio", 5.0),
+        }
 
     # ==================== THINK (для Claude) ====================
 
