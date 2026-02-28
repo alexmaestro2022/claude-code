@@ -4749,3 +4749,28 @@ volume_ratio = vol_profile.get("ratio") or data.get("volume_ratio") or 1.0
 - RSI = 19 проходит условие `< 20` (раньше требовалось `< 15`)
 - Нет ошибок NoneType при сравнении
 - Настройки можно менять в UI без перезапуска кода
+
+---
+
+## 77. Автоочистка старых процессов Claude (2026-02-28)
+
+### Проблема:
+Процессы Claude Code могут зависать и накапливаться, занимая память.
+
+### Решение:
+Создан скрипт автоочистки `scripts/cleanup_claude.sh`:
+- Убивает процессы Claude старше 24 часов
+- Запускается через cron каждые 6 часов
+- Логирует действия в `/opt/aila/logs/cleanup.log`
+
+### Cron задачи:
+```bash
+*/5 * * * * cp /home/aila/.claude/stats-cache.json /opt/aila/.claude/stats-cache.json  # Stats sync
+0 */6 * * * /opt/aila/scripts/cleanup_claude.sh  # Claude cleanup
+```
+
+### Коммит:
+- `b2eaf4f` — feat: add auto-cleanup script for old Claude processes
+
+### Файлы:
+- `scripts/cleanup_claude.sh` — скрипт очистки старых процессов
