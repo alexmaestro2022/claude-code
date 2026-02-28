@@ -4774,3 +4774,31 @@ volume_ratio = vol_profile.get("ratio") or data.get("volume_ratio") or 1.0
 
 ### Файлы:
 - `scripts/cleanup_claude.sh` — скрипт очистки старых процессов
+
+---
+
+## 78. Nginx IPv6 fix (2026-02-28)
+
+### Проблема:
+Nginx пытался подключиться к `[::1]:8080` (IPv6), но Python слушает только IPv4 (`0.0.0.0:8080`).
+Результат: периодические ошибки `Connection refused` в логах nginx.
+
+### Решение:
+Изменён `/etc/nginx/sites-available/aila.zone`:
+```nginx
+# Было:
+proxy_pass http://localhost:8080;
+
+# Стало:
+proxy_pass http://127.0.0.1:8080;
+```
+
+### Команды:
+```bash
+sudo sed -i 's/proxy_pass http:\/\/localhost:8080/proxy_pass http:\/\/127.0.0.1:8080/g' /etc/nginx/sites-available/aila.zone
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+### Результат:
+- Ошибки `[::1]:8080 Connection refused` больше не появляются
+- Все запросы идут через IPv4
