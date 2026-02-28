@@ -4684,3 +4684,68 @@ logger.warning("[HUNTER] Agent not initialized in orchestrator")
 
 ### Файлы:
 - `aila/ai_trade/autopilot_mode.py` — улучшенное логирование loop и HUNTER
+
+---
+
+## 76. HUNTER использует настройки из файла вместо хардкода (2026-02-28)
+
+### Проблема:
+HUNTER не заходил в сделки из-за слишком жёстких захардкоженных условий:
+- `FEAR_GREED_EXTREME_LOW = 10` — F&G должен быть < 10 (очень редко!)
+- `RSI_OVERSOLD = 15` — RSI < 15 (экстремально низкий)
+
+При этом в `hunter_settings.json` были более разумные значения:
+- `fear_greed_extreme_low: 15`
+- `rsi_oversold: 20`
+
+Также ошибка NoneType при сравнении:
+```
+'<' not supported between instances of 'NoneType' and 'int'
+```
+
+### Решение:
+1. **Загрузка настроек из файла:**
+```python
+from ..agent_settings import get_agent_settings
+self._settings = get_agent_settings().get_settings("HUNTER")
+```
+
+2. **Использование настроек вместо констант:**
+```python
+# Было (хардкод):
+if fear_greed < FEAR_GREED_EXTREME_LOW:  # 10
+
+# Стало (из настроек):
+fg_low = self._settings.get("fear_greed_extreme_low", 15)
+if fear_greed < fg_low:
+```
+
+3. **Обработка None значений:**
+```python
+rsi = data.get("rsi") or 50  # Вместо data.get("rsi", 50)
+fear_greed = data.get("fear_greed") or 50
+```
+
+4. **Получение volume_ratio из volume_profile:**
+```python
+vol_profile = data.get("volume_profile") or {}
+volume_ratio = vol_profile.get("ratio") or data.get("volume_ratio") or 1.0
+```
+
+5. **Снижен порог volume spike:** 1.5x вместо 2.0x
+
+6. **Новые методы для отладки:**
+- `reload_settings()` — перезагрузка настроек без рестарта
+- `get_current_settings()` — получение текущих настроек
+
+### Коммит:
+- `e85a713` — fix: HUNTER now uses settings from hunter_settings.json
+
+### Файлы:
+- `aila/ai_trade/agents/hunter.py` — использование настроек из файла
+
+### Теперь:
+- F&G = 11 проходит условие `< 15` (раньше требовалось `< 10`)
+- RSI = 19 проходит условие `< 20` (раньше требовалось `< 15`)
+- Нет ошибок NoneType при сравнении
+- Настройки можно менять в UI без перезапуска кода
